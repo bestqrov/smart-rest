@@ -36,6 +36,7 @@ async function main() {
   app.use(
     cors({ origin: allowedOrigin === '*' ? true : allowedOrigin, credentials: true })
   )
+  logger.info({ msg: 'CORS/socket origin', allowedOrigin })
   app.use(bodyParser.json())
 
   // mount API routes first so /api/* handled by Express
