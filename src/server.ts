@@ -3,6 +3,7 @@ import http from 'http'
 import cors from 'cors'
 import bodyParser from 'body-parser'
 import { Server as SocketIOServer } from 'socket.io'
+import next from 'next'
 
 import logger from './logger'
 import errorHandler from './middleware/errorHandler'
@@ -15,32 +16,51 @@ import adminStatsRouter from './routes/adminStats'
 import clientMenuRouter from './routes/clientMenu'
 import { registerSocketHandlers } from './socket/handlers'
 
-const app = express()
-app.use(cors())
-app.use(bodyParser.json())
+async function main() {
+  const dev = process.env.NODE_ENV !== 'production'
+  const nextApp = next({ dev, dir: '.' })
+  const handle = nextApp.getRequestHandler()
 
-// mount API routes
-app.use(authRouter)
-app.use(ordersRouter)
-app.use(billRequestsRouter)
-app.use(adminStatsRouter)
-app.use(clientMenuRouter)
+  await nextApp.prepare()
 
-// health
-app.get('/health', (req, res) => res.json({ ok: true }))
+  const app = express()
+  app.use(cors())
+  app.use(bodyParser.json())
 
-// error handler (last)
-app.use(errorHandler)
+  // mount API routes first so /api/* handled by Express
+  app.use(authRouter)
+  app.use(ordersRouter)
+  app.use(billRequestsRouter)
+  app.use(adminStatsRouter)
+  app.use(clientMenuRouter)
 
-const port = Number(process.env.PORT || 4000)
-const httpServer = http.createServer(app)
+  // health
+  app.get('/health', (req, res) => res.json({ ok: true }))
 
-const io = new SocketIOServer(httpServer, { cors: { origin: '*' } })
-// attach io instance to app so routes can use it
-app.set('io', io)
-registerSocketHandlers(io)
+  // error handler (last)
+  app.use(errorHandler)
 
-httpServer.listen(port, () => {
-  logger.info({ msg: 'Server started', port })
-  console.log(`Server listening on http://localhost:${port}`)
+  // Next.js request handler for everything else (pages, assets)
+  // Use app.use to avoid path-to-regexp parsing issues with '*'
+  app.use((req, res) => {
+    return handle(req, res)
+  })
+
+  const port = Number(process.env.PORT || 4000)
+  const httpServer = http.createServer(app)
+
+  const io = new SocketIOServer(httpServer, { cors: { origin: '*' } })
+  // attach io instance to app so routes can use it
+  app.set('io', io)
+  registerSocketHandlers(io)
+
+  httpServer.listen(port, () => {
+    logger.info({ msg: 'Server started', port })
+    console.log(`Server listening on http://localhost:${port}`)
+  })
+}
+
+main().catch((err) => {
+  console.error('Server failed to start', err)
+  process.exit(1)
 })
