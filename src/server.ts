@@ -4,6 +4,7 @@ import cors from 'cors'
 import bodyParser from 'body-parser'
 import { Server as SocketIOServer } from 'socket.io'
 import next from 'next'
+import dotenv from 'dotenv'
 
 import logger from './logger'
 import errorHandler from './middleware/errorHandler'
@@ -17,6 +18,9 @@ import clientMenuRouter from './routes/clientMenu'
 import { registerSocketHandlers } from './socket/handlers'
 
 async function main() {
+  // load .env into process.env
+  dotenv.config()
+
   const dev = process.env.NODE_ENV !== 'production'
   const nextApp = next({ dev, dir: '.' })
   const handle = nextApp.getRequestHandler()
@@ -24,7 +28,14 @@ async function main() {
   await nextApp.prepare()
 
   const app = express()
-  app.use(cors())
+
+  const allowedOrigin =
+    process.env.FRONTEND_URL || process.env.NEXT_PUBLIC_SOCKET_URL || (dev ? 'http://localhost:3000' : '*')
+
+  // configure CORS for API routes
+  app.use(
+    cors({ origin: allowedOrigin === '*' ? true : allowedOrigin, credentials: true })
+  )
   app.use(bodyParser.json())
 
   // mount API routes first so /api/* handled by Express
@@ -49,7 +60,9 @@ async function main() {
   const port = Number(process.env.PORT || 4000)
   const httpServer = http.createServer(app)
 
-  const io = new SocketIOServer(httpServer, { cors: { origin: '*' } })
+  const io = new SocketIOServer(httpServer, {
+    cors: { origin: allowedOrigin === '*' ? '*' : allowedOrigin, methods: ['GET', 'POST'] },
+  })
   // attach io instance to app so routes can use it
   app.set('io', io)
   registerSocketHandlers(io)
