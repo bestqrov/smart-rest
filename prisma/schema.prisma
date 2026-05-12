@@ -1,0 +1,170 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum SubscriptionStatus {
+  FREE
+  PRO
+  GOLD
+}
+
+enum OrderStatus {
+  PENDING
+  PREPARING
+  DELIVERED
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  ONLINE
+}
+
+enum WaiterCallType {
+  WATER
+  CLEAN
+  QUESTION
+}
+
+model Cafe {
+  id Int @id @default(autoincrement())
+  name String
+  subdomain String @unique
+  logoUrl String?
+  lat Float?
+  lng Float?
+  currency String @default("MAD")
+  socialLinks Json?
+  subscriptionStatus SubscriptionStatus @default(FREE)
+
+  categories Category[]
+  tables Table[]
+  orders Order[]
+  billRequests BillRequest[]
+  users User[]
+  waiterCalls WaiterCall[]
+
+  @@index([subdomain])
+}
+
+model Category {
+  id Int @id @default(autoincrement())
+  cafeId Int
+  cafe Cafe @relation(fields: [cafeId], references: [id], onDelete: Cascade)
+  nameAr String
+  nameEn String
+  order Int
+
+  products Product[]
+
+  @@index([cafeId])
+}
+
+model Product {
+  id Int @id @default(autoincrement())
+  categoryId Int
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  nameAr String
+  nameEn String
+  description String?
+  price Decimal @db.Decimal(10, 2)
+  imageUrl String?
+  isAvailable Boolean @default(true)
+
+  orderItems OrderItem[]
+
+  @@index([categoryId])
+}
+
+model Table {
+  id Int @id @default(autoincrement())
+  cafeId Int
+  cafe Cafe @relation(fields: [cafeId], references: [id], onDelete: Cascade)
+  tableNumber Int
+  qrToken String @unique
+  isActive Boolean @default(true)
+
+  orders Order[]
+  billRequests BillRequest[]
+  waiterCalls WaiterCall[]
+
+  @@index([cafeId])
+  @@index([qrToken])
+}
+
+model Order {
+  id Int @id @default(autoincrement())
+  cafeId Int
+  cafe Cafe @relation(fields: [cafeId], references: [id], onDelete: Cascade)
+  tableId Int?
+  table Table? @relation(fields: [tableId], references: [id], onDelete: SetNull)
+  status OrderStatus @default(PENDING)
+  paymentMethod PaymentMethod
+  isPaid Boolean @default(false)
+  totalPrice Decimal @db.Decimal(10, 2)
+  customerPhone String?
+  createdAt DateTime @default(now())
+
+  items OrderItem[]
+
+  @@index([cafeId])
+}
+
+model OrderItem {
+  id Int @id @default(autoincrement())
+  orderId Int
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId Int
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  quantity Int
+  notes String?
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+model BillRequest {
+  id Int @id @default(autoincrement())
+  cafeId Int
+  cafe Cafe @relation(fields: [cafeId], references: [id], onDelete: Cascade)
+  tableId Int
+  table Table @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  message String?
+  createdAt DateTime @default(now())
+  resolvedAt DateTime?
+
+  @@index([cafeId])
+  @@index([tableId])
+}
+
+model WaiterCall {
+  id Int @id @default(autoincrement())
+  cafeId Int
+  cafe Cafe @relation(fields: [cafeId], references: [id], onDelete: Cascade)
+  tableId Int
+  table Table @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  type WaiterCallType
+  message String?
+  createdAt DateTime @default(now())
+  acknowledgedAt DateTime?
+
+  @@index([cafeId])
+  @@index([tableId])
+}
+
+model User {
+  id Int @id @default(autoincrement())
+  email String @unique
+  passwordHash String
+  cafeId Int
+  cafe Cafe @relation(fields: [cafeId], references: [id], onDelete: Cascade)
+
+  @@index([cafeId])
+}
