@@ -60,6 +60,7 @@ model Category {
   cafe Cafe @relation(fields: [cafeId], references: [id], onDelete: Cascade)
   nameAr String
   nameEn String
+  nameFr String @default("")
   order Int
 
   products Product[]
@@ -73,6 +74,7 @@ model Product {
   category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   nameAr String
   nameEn String
+  nameFr String @default("")
   description String?
   price Decimal @db.Decimal(10, 2)
   imageUrl String?

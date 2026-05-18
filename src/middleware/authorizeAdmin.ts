@@ -1,10 +1,8 @@
 import { Request, Response, NextFunction } from 'express'
 import jwt from 'jsonwebtoken'
-import { PrismaClient } from '@prisma/client'
 import logger from '../logger'
 import { JWT_SECRET } from '../config'
-
-const prisma = new PrismaClient()
+import prisma from '../prisma'
 
 export interface AdminTokenPayload {
   userId: number

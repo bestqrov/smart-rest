@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "start": "ts-node src/server.ts",
+    "build": "prisma generate && next build",
+    "start": "prisma migrate deploy; ts-node src/server.ts",
     "dev": "ts-node src/server.ts",
     "smoke": "ts-node scripts/smoke.ts",
     "seed": "ts-node prisma/seed.ts",
@@ -16,14 +17,20 @@
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "express-rate-limit": "^7.5.1",
+    "framer-motion": "^11.18.2",
     "jsonwebtoken": "^9.0.0",
+    "lucide-react": "^0.400.0",
     "next": "^13.5.6",
     "nprogress": "^0.2.0",
     "pino": "^8.21.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "recharts": "^2.15.4",
     "socket.io": "^4.8.3",
-    "socket.io-client": "^4.8.3"
+    "socket.io-client": "^4.8.3",
+    "ts-node": "^10.9.1",
+    "typescript": "^4.9.5"
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",
@@ -33,7 +40,7 @@
     "@types/jsonwebtoken": "^9.0.1",
     "@types/node": "^18.11.9",
     "@types/react": "19.2.14",
-    "ts-node": "^10.9.1",
-    "typescript": "^4.9.5"
+    "autoprefixer": "^10.5.0",
+    "tailwindcss": "^3.4.19"
   }
 }

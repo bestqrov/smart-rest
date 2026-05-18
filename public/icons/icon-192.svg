@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+  <!-- Background -->
+  <rect width="192" height="192" rx="40" fill="#059669"/>
+
+  <!-- Fork & Knife icon centered -->
+  <!-- Fork -->
+  <rect x="72" y="40" width="6" height="30" rx="3" fill="white"/>
+  <rect x="66" y="40" width="4" height="22" rx="2" fill="white"/>
+  <rect x="78" y="40" width="4" height="22" rx="2" fill="white"/>
+  <rect x="72" y="70" width="6" height="82" rx="3" fill="white"/>
+
+  <!-- Knife -->
+  <rect x="114" y="40" width="6" height="112" rx="3" fill="white"/>
+  <path d="M120 40 Q135 55 120 70 Z" fill="white"/>
+
+  <!-- "SM" text at bottom -->
+  <text x="96" y="168" font-family="Arial, sans-serif" font-size="22" font-weight="bold"
+        fill="white" text-anchor="middle" letter-spacing="2">SMART</text>
+</svg>

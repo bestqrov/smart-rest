@@ -1,10 +1,8 @@
 import { Server as SocketIOServer, Socket } from 'socket.io'
-import { PrismaClient } from '@prisma/client'
 import logger from '../logger'
 import jwt from 'jsonwebtoken'
 import { JWT_SECRET } from '../config'
-
-const prisma = new PrismaClient()
+import prisma from '../prisma'
 
 export function registerSocketHandlers(io: SocketIOServer) {
   io.on('connection', (socket: Socket) => {
@@ -93,13 +91,23 @@ export function registerSocketHandlers(io: SocketIOServer) {
         const now = new Date()
         const updated = await prisma.waiterCall.update({ where: { id: callId }, data: { acknowledgedAt: now } })
 
-        // compute response time (ms)
-        const responseTimeMs = updated.acknowledgedAt ? (new Date(updated.acknowledgedAt).getTime() - new Date(updated.createdAt).getTime()) : null
+        const responseTimeMs = updated.acknowledgedAt
+          ? new Date(updated.acknowledgedAt).getTime() - new Date(updated.createdAt).getTime()
+          : null
 
-        io.to(`room_${cafeId}`).emit('waiter_acknowledged', { id: updated.id, tableId: updated.tableId, acknowledgedAt: updated.acknowledgedAt, responseTimeMs })
+        io.to(`room_${cafeId}`).emit('waiter_acknowledged', {
+          id: updated.id,
+          tableId: updated.tableId,
+          acknowledgedAt: updated.acknowledgedAt,
+          responseTimeMs
+        })
       } catch (err) {
         logger.error({ msg: 'ack_call handler error', err, payload })
       }
+    })
+
+    socket.on('disconnect', (reason) => {
+      logger.debug({ msg: 'Socket disconnected', socketId: socket.id, reason })
     })
   })
 }

@@ -1,7 +1,5 @@
 import { Request, Response, NextFunction } from 'express'
-import { PrismaClient } from '@prisma/client'
-
-const prisma = new PrismaClient()
+import prisma from '../prisma'
 
 /**
  * Calculate Haversine distance between two lat/lng points in meters.
@@ -26,14 +24,15 @@ export function haversineDistance(lat1: number, lon1: number, lat2: number, lon2
  */
 export default async function verifyLocation(req: Request, res: Response, next: NextFunction) {
   try {
-    const subdomain = req.params.subdomain
+    const raw = req.params.subdomain
+    const subdomain = Array.isArray(raw) ? raw[0] : raw
     if (!subdomain) {
       return res.status(400).json({ error: 'Missing subdomain param' })
     }
 
     const cafe = await prisma.cafe.findUnique({
       where: { subdomain },
-      select: { lat: true, lng: true }
+      select: { id: true, lat: true, lng: true, name: true }
     })
 
     if (!cafe) {
@@ -60,9 +59,12 @@ export default async function verifyLocation(req: Request, res: Response, next: 
 
     const distanceMeters = haversineDistance(cafe.lat, cafe.lng, userLat, userLng)
 
-    if (distanceMeters > 50) {
+    if (distanceMeters > 70) {
       return res.status(403).json({ error: 'You must be inside the cafe to view the menu' })
     }
+
+    // Attach cafe to request for downstream handlers
+    ;(req as any).cafe = cafe
 
     return next()
   } catch (err) {

@@ -32,15 +32,19 @@ export default function AdminDashboard() {
     load()
     // socket: join cafe room and listen for waiter calls
     const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || '/'
-    const socket = io(SOCKET_URL, { transports: ['websocket'] })
-    socketRef.current = socket
-    // assume admin's cafeId is available in stats response; if not, admin token includes cafeId
-    const tokenPayloadRaw = localStorage.getItem('token')
+    const storedToken = localStorage.getItem('token')
     let cafeId: number | null = null
     try {
-      const payload = tokenPayloadRaw ? JSON.parse(atob((tokenPayloadRaw as string).split('.')[1])) : null
+      const payload = storedToken ? JSON.parse(atob(storedToken.split('.')[1])) : null
       cafeId = payload?.cafeId ?? null
     } catch {}
+
+    // Pass the JWT in the socket handshake so the server can authenticate this connection
+    const socket = io(SOCKET_URL, {
+      transports: ['websocket'],
+      auth: { token: storedToken }
+    })
+    socketRef.current = socket
     if (cafeId) socket.emit('join', `room_${cafeId}`)
 
     socket.on('waiter_called', (payload: WaiterCall) => {
@@ -174,6 +178,7 @@ export default function AdminDashboard() {
         </div>
       </div>
     </div>
+  </ErrorBoundary>
   )
 }
 

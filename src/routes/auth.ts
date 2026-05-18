@@ -1,11 +1,9 @@
 import express, { Request, Response } from 'express'
-import { PrismaClient } from '@prisma/client'
 import jwt from 'jsonwebtoken'
 import { verifyPassword } from '../auth/hash'
 import logger from '../logger'
 import { JWT_SECRET } from '../config'
-
-const prisma = new PrismaClient()
+import prisma from '../prisma'
 const router = express.Router()
 
 const TOKEN_EXPIRY = '8h'

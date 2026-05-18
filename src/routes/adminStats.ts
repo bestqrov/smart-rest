@@ -1,9 +1,8 @@
 import express, { Request, Response } from 'express'
-import { PrismaClient, Prisma } from '@prisma/client'
+import { Prisma } from '@prisma/client'
 import { authorizeAdmin } from '../middleware/authorizeAdmin'
 import logger from '../logger'
-
-const prisma = new PrismaClient()
+import prisma from '../prisma'
 const router = express.Router()
 
 function startOfDay(d: Date) {

@@ -5,6 +5,7 @@ import bodyParser from 'body-parser'
 import { Server as SocketIOServer } from 'socket.io'
 import next from 'next'
 import dotenv from 'dotenv'
+import rateLimit from 'express-rate-limit'
 
 import logger from './logger'
 import errorHandler from './middleware/errorHandler'
@@ -15,6 +16,7 @@ import ordersRouter from './routes/orders'
 import billRequestsRouter from './routes/billRequests'
 import adminStatsRouter from './routes/adminStats'
 import clientMenuRouter from './routes/clientMenu'
+import waiterCallsRouter from './routes/waiterCalls'
 import { registerSocketHandlers } from './socket/handlers'
 
 async function main() {
@@ -39,24 +41,42 @@ async function main() {
   logger.info({ msg: 'CORS/socket origin', allowedOrigin })
   app.use(bodyParser.json())
 
+  // Rate limiting — protects against brute force and volumetric attacks
+  const apiLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 minute
+    max: 60,             // 60 requests per minute per IP
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many requests, please try again later.' }
+  })
+  const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 10,                   // 10 login attempts per 15 min per IP
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many login attempts, please try again in 15 minutes.' }
+  })
+  app.use('/api/auth', authLimiter)
+  app.use('/api', apiLimiter)
+
   // mount API routes first so /api/* handled by Express
   app.use(authRouter)
   app.use(ordersRouter)
   app.use(billRequestsRouter)
   app.use(adminStatsRouter)
   app.use(clientMenuRouter)
+  app.use(waiterCallsRouter)
 
   // health
   app.get('/health', (req, res) => res.json({ ok: true }))
 
-  // error handler (last)
-  app.use(errorHandler)
-
-  // Next.js request handler for everything else (pages, assets)
-  // Use app.use to avoid path-to-regexp parsing issues with '*'
+  // Next.js handles all non-API routes (pages, assets, etc.)
   app.use((req, res) => {
     return handle(req, res)
   })
+
+  // error handler must be absolute last — after Next.js handler
+  app.use(errorHandler)
 
   const port = Number(process.env.PORT || 4000)
   const httpServer = http.createServer(app)
@@ -68,9 +88,9 @@ async function main() {
   app.set('io', io)
   registerSocketHandlers(io)
 
-  httpServer.listen(port, () => {
-    logger.info({ msg: 'Server started', port })
-    console.log(`Server listening on http://localhost:${port}`)
+  httpServer.listen(port, '0.0.0.0', () => {
+    logger.info({ msg: 'Server started', port, host: '0.0.0.0' })
+    console.log(`Server listening on http://0.0.0.0:${port}`)
   })
 }
 

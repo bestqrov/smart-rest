@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Background -->
+  <rect width="512" height="512" rx="100" fill="#059669"/>
+
+  <!-- Fork -->
+  <rect x="190" y="100" width="16" height="80" rx="8" fill="white"/>
+  <rect x="174" y="100" width="10" height="58" rx="5" fill="white"/>
+  <rect x="208" y="100" width="10" height="58" rx="5" fill="white"/>
+  <rect x="190" y="180" width="16" height="222" rx="8" fill="white"/>
+
+  <!-- Knife -->
+  <rect x="306" y="100" width="16" height="302" rx="8" fill="white"/>
+  <path d="M322 100 Q362 145 322 188 Z" fill="white"/>
+
+  <!-- "SMART MENU" text -->
+  <text x="256" y="448" font-family="Arial, sans-serif" font-size="52" font-weight="bold"
+        fill="white" text-anchor="middle" letter-spacing="4">SMART</text>
+  <text x="256" y="496" font-family="Arial, sans-serif" font-size="30"
+        fill="#a7f3d0" text-anchor="middle" letter-spacing="6">MENU</text>
+</svg>
