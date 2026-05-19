@@ -1,6 +1,6 @@
 import express, { Request, Response } from 'express'
 import { Server as SocketIOServer } from 'socket.io'
-import { v4 as uuidv4 } from 'uuid'
+import { randomUUID } from 'crypto'
 import { authorizeAdmin } from '../middleware/authorizeAdmin'
 import { validateSeatQR } from '../middleware/validateSeatQR'
 import logger from '../logger'
@@ -86,12 +86,12 @@ router.post('/api/tables/generate', authorizeAdmin, async (req: Request, res: Re
           data: {
             cafeId,
             tableNumber,
-            qrToken: uuidv4(),
+            qrToken: randomUUID(),
             seats: {
               create: Array.from({ length: seatsPerTable }, (_, i) => ({
                 seatNumber: i + 1,
                 cafeId,
-                qrToken: uuidv4()
+                qrToken: randomUUID()
               }))
             }
           },
