@@ -26,11 +26,13 @@ ALTER TABLE "Cafe" ADD COLUMN IF NOT EXISTS "hasSocialShareAddon" BOOLEAN       
 -- ── Table: composite unique (cafeId, tableNumber) ─────────────────────────────
 ALTER TABLE "Table" ADD CONSTRAINT "Table_cafeId_tableNumber_key" UNIQUE ("cafeId", "tableNumber");
 
--- ── Category: Spanish + German names ──────────────────────────────────────────
+-- ── Category: French + Spanish + German names ────────────────────────────────
+ALTER TABLE "Category" ADD COLUMN IF NOT EXISTS "nameFr" TEXT NOT NULL DEFAULT '';
 ALTER TABLE "Category" ADD COLUMN IF NOT EXISTS "nameEs" TEXT NOT NULL DEFAULT '';
 ALTER TABLE "Category" ADD COLUMN IF NOT EXISTS "nameDe" TEXT NOT NULL DEFAULT '';
 
--- ── Product: Spanish + German names ───────────────────────────────────────────
+-- ── Product: French + Spanish + German names ──────────────────────────────────
+ALTER TABLE "Product" ADD COLUMN IF NOT EXISTS "nameFr" TEXT NOT NULL DEFAULT '';
 ALTER TABLE "Product" ADD COLUMN IF NOT EXISTS "nameEs" TEXT NOT NULL DEFAULT '';
 ALTER TABLE "Product" ADD COLUMN IF NOT EXISTS "nameDe" TEXT NOT NULL DEFAULT '';
 
