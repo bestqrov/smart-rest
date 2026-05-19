@@ -32,7 +32,10 @@ async function main() {
   const nextApp = next({ dev, dir: '.' })
   const handle = nextApp.getRequestHandler()
 
-  await nextApp.prepare()
+  await nextApp.prepare().catch((err: unknown) => {
+    console.error('❌ Next.js prepare() failed — did you run `npm run build` first?', err)
+    process.exit(1)
+  })
 
   const app = express()
 
