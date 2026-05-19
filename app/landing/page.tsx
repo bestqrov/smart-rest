@@ -2,7 +2,8 @@
 
 import Link from 'next/link'
 import { useState } from 'react'
-import { QrCode, Zap, BarChart3, Globe, Star, CheckCircle, Menu, X } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { QrCode, Zap, BarChart3, Globe, Star, CheckCircle, Menu, X, MessageCircle, ArrowRight, Loader2 } from 'lucide-react'
 
 const RESTAURANTS = [
   {
@@ -72,6 +73,30 @@ const FEATURES = [
 
 export default function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const router = useRouter()
+  const [phone, setPhone] = useState('')
+  const [waLoading, setWaLoading] = useState(false)
+  const [waError, setWaError] = useState('')
+
+  async function handleWhatsAppRegister(e: React.FormEvent) {
+    e.preventDefault()
+    setWaError('')
+    setWaLoading(true)
+    try {
+      const res = await fetch('/api/auth/quick-register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, country: 'MA' })
+      })
+      const data = await res.json()
+      if (!res.ok) { setWaError(data.error || 'حدث خطأ'); return }
+      router.push('/whatsapp-sent')
+    } catch {
+      setWaError('تعذّر الاتصال بالخادم')
+    } finally {
+      setWaLoading(false)
+    }
+  }
 
   return (
     <main className="min-h-screen bg-[#FFFBF3] text-gray-900 font-sans overflow-x-hidden">
@@ -192,6 +217,56 @@ export default function LandingPage() {
               <RestaurantCard key={r.name} restaurant={r} />
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* ─── WhatsApp 1-Click Onboarding ─── */}
+      <section className="py-16 bg-gradient-to-br from-emerald-900 via-emerald-800 to-teal-900 relative overflow-hidden">
+        <div className="absolute inset-0 opacity-10" style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60'%3E%3Cpath d='M30 0 L60 30 L30 60 L0 30Z' fill='white'/%3E%3C/svg%3E")`,
+          backgroundSize: '60px 60px'
+        }} />
+        <div className="relative max-w-2xl mx-auto px-4 text-center">
+          <div className="inline-flex items-center gap-2 bg-white/10 border border-white/20 text-emerald-100 px-4 py-2 rounded-full text-sm mb-6">
+            <MessageCircle className="w-4 h-4 text-green-400" />
+            <span>تفعيل فوري عبر واتساب — بدون إيميل ولا كلمة مرور</span>
+          </div>
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-3" dir="rtl">
+            ابدأ أسبوعك المجاني<br />
+            <span className="text-green-400">بضغطة واحدة</span>
+          </h2>
+          <p className="text-emerald-200 mb-8 text-lg" dir="rtl">
+            أدخل رقم واتساب وسنرسل لك رابط الدخول الفوري — جاهز خلال ثوانٍ.
+          </p>
+
+          <form onSubmit={handleWhatsAppRegister} className="max-w-md mx-auto">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex-1 relative">
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-mono select-none" dir="ltr">+212</span>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="6 12 34 56 78"
+                  required
+                  dir="ltr"
+                  className="w-full pr-16 pl-4 py-4 rounded-xl text-gray-900 font-mono text-lg focus:outline-none focus:ring-2 focus:ring-green-400 placeholder:text-gray-400"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={waLoading}
+                className="flex items-center justify-center gap-2 bg-green-500 hover:bg-green-400 disabled:bg-gray-400 text-white font-bold px-6 py-4 rounded-xl transition-all shadow-lg shadow-green-900/40 whitespace-nowrap"
+              >
+                {waLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <MessageCircle className="w-5 h-5" />}
+                {waLoading ? 'جاري الإرسال...' : 'أرسل لي الرابط'}
+              </button>
+            </div>
+            {waError && <p className="mt-3 text-red-300 text-sm">{waError}</p>}
+            <p className="mt-4 text-emerald-400/70 text-xs" dir="rtl">
+              ✓ مجاني 7 أيام كاملة &nbsp;·&nbsp; ✓ لا يلزم بطاقة بنكية &nbsp;·&nbsp; ✓ إلغاء في أي وقت
+            </p>
+          </form>
         </div>
       </section>
 

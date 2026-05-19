@@ -106,4 +106,110 @@ router.post('/api/auth/register', async (req: Request, res: Response) => {
   }
 })
 
+// ─── POST /api/auth/quick-register — WhatsApp 1-click onboarding ─────────────
+
+router.post('/api/auth/quick-register', async (req: Request, res: Response) => {
+  try {
+    const { phone, country } = req.body as { phone: string; country?: string }
+    if (!phone) return res.status(400).json({ error: 'Phone number is required' })
+
+    // Normalise phone: strip spaces, dashes, ensure starts with +
+    const normalised = phone.replace(/[\s\-().]/g, '').replace(/^00/, '+')
+    if (!/^\+?[0-9]{7,15}$/.test(normalised)) {
+      return res.status(400).json({ error: 'Invalid phone number format' })
+    }
+
+    const resolvedCountry = (country ?? 'MA').toUpperCase()
+    const currencyMap: Record<string, string> = {
+      MA: 'MAD', SA: 'SAR', AE: 'AED', US: 'USD', FR: 'EUR', GB: 'GBP'
+    }
+    const currency = currencyMap[resolvedCountry] ?? 'MAD'
+
+    // Derive a stable subdomain from the phone digits
+    const digits   = normalised.replace(/\D/g, '').slice(-8)
+    let subdomain = `resto-${digits}`
+
+    // Ensure uniqueness
+    const exists = await prisma.cafe.findUnique({ where: { subdomain } })
+    if (exists) subdomain = `${subdomain}-${Date.now().toString(36)}`
+
+    const now        = new Date()
+    const trialEndsAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
+
+    // Temporary password hash — user never uses it (logs in via magic link)
+    const { hashPassword } = await import('../auth/hash')
+    const tempPass = await hashPassword(Math.random().toString(36) + Date.now())
+
+    const { user, cafe } = await prisma.$transaction(async (tx) => {
+      const cafe = await tx.cafe.create({
+        data: {
+          name: `مطعم ${digits}`,
+          businessName: '',
+          subdomain,
+          country: resolvedCountry,
+          currency,
+          trialEndsAt,
+          billingStatus: 'GRACE_PERIOD',
+          isActive: true
+        }
+      })
+      // Use phone as email placeholder so the unique constraint is met
+      const email = `${normalised.replace('+', '')}@whatsapp.smartmenu.ma`
+      const user = await tx.user.create({
+        data: { email, passwordHash: tempPass, cafeId: cafe.id }
+      })
+      return { user, cafe }
+    })
+
+    // Issue a short-lived magic link token (15 min)
+    const magicToken = jwt.sign({ userId: user.id, cafeId: cafe.id, magic: true }, JWT_SECRET, { expiresIn: '15m' })
+    const magicLink  = `${process.env.FRONTEND_URL || 'https://smartrestau.digima.cloud'}/admin/magic?token=${magicToken}`
+
+    // ── n8n webhook — send WhatsApp magic link ───────────────────────────────
+    const n8nWebhook = process.env.N8N_WHATSAPP_WEBHOOK
+    if (n8nWebhook) {
+      fetch(n8nWebhook, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: normalised, magicLink, cafeId: cafe.id, subdomain, country: resolvedCountry })
+      }).catch((e) => logger.warn({ msg: 'n8n webhook failed', err: e.message }))
+    } else {
+      logger.info({ msg: 'Magic link (n8n not configured)', magicLink, phone: normalised })
+    }
+
+    return res.status(201).json({
+      message: 'Check your WhatsApp for the magic login link',
+      subdomain,
+      cafeId: cafe.id
+    })
+  } catch (err) {
+    logger.error({ msg: 'quick-register error', err })
+    return res.status(500).json({ error: 'Registration failed' })
+  }
+})
+
+// ─── GET /api/auth/magic — exchange magic token for full session ──────────────
+
+router.get('/api/auth/magic', async (req: Request, res: Response) => {
+  try {
+    const { token } = req.query as { token: string }
+    if (!token) return res.status(400).json({ error: 'Token required' })
+
+    let payload: any
+    try {
+      payload = jwt.verify(token, JWT_SECRET)
+    } catch {
+      return res.status(401).json({ error: 'Invalid or expired magic link' })
+    }
+
+    if (!payload.magic) return res.status(401).json({ error: 'Not a magic link token' })
+
+    // Issue a full 8-hour session token
+    const sessionToken = jwt.sign({ userId: payload.userId, cafeId: payload.cafeId }, JWT_SECRET, { expiresIn: '8h' })
+    return res.json({ token: sessionToken, userId: payload.userId, cafeId: payload.cafeId })
+  } catch (err) {
+    return res.status(500).json({ error: 'Magic link exchange failed' })
+  }
+})
+
 export default router

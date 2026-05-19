@@ -19,6 +19,8 @@ import clientMenuRouter from './routes/clientMenu'
 import waiterCallsRouter from './routes/waiterCalls'
 import financeRouter from './routes/finance'
 import tablesRouter from './routes/tables'
+import menuAdminRouter from './routes/menuAdmin'
+import superadminRouter from './routes/superadmin'
 import { registerSocketHandlers } from './socket/handlers'
 import { startWeeklyBillingCron } from './cron/weeklyBilling'
 
@@ -71,6 +73,8 @@ async function main() {
   app.use(waiterCallsRouter)
   app.use(financeRouter)
   app.use(tablesRouter)
+  app.use(menuAdminRouter)
+  app.use(superadminRouter)
 
   // health
   app.get('/health', (req, res) => res.json({ ok: true }))
