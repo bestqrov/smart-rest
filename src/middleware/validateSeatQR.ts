@@ -23,9 +23,9 @@ declare global {
 
 export async function validateSeatQR(req: Request, res: Response, next: NextFunction) {
   try {
-    const subdomain   = req.params.subdomain as string
-    const tableNumber = Number(req.params.tableNumber)
-    const seatNumber  = Number(req.params.seatNumber)
+    const subdomain   = (req.params.subdomain   ?? req.query.subdomain)   as string
+    const tableNumber = Number(req.params.tableNumber ?? req.query.tableNumber)
+    const seatNumber  = Number(req.params.seatNumber  ?? req.query.seatNumber)
     const qrToken     = (req.query.token ?? req.header('x-seat-token')) as string | undefined
 
     if (!subdomain || !Number.isFinite(tableNumber) || !Number.isFinite(seatNumber)) {

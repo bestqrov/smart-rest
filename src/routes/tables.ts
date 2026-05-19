@@ -268,9 +268,10 @@ router.post('/api/tables/unmerge', authorizeAdmin, async (req: Request, res: Res
   }
 })
 
-// ─── GET /:subdomain/t/:tableNumber/s/:seatNumber — Hybrid QR seat session ───
+// ─── GET /api/qr/session — validate seat QR and return session data ──────────
+// Called by the customer menu page (Next.js) via fetch on load.
 
-router.get('/:subdomain/t/:tableNumber/s/:seatNumber', validateSeatQR, (req: Request, res: Response) => {
+router.get('/api/qr/session', validateSeatQR, (req: Request, res: Response) => {
   const session = req.seatSession!
 
   return res.json({
@@ -281,8 +282,7 @@ router.get('/:subdomain/t/:tableNumber/s/:seatNumber', validateSeatQR, (req: Req
     seatNumber:  session.seatNumber,
     billingTableId: session.billingTableId,
     isMerged:    session.isMerged,
-    mergedIntoTableNumber: session.mergedIntoTableNumber ?? null,
-    sessionHint: `T${session.tableNumber}-S${session.seatNumber}`
+    mergedIntoTableNumber: session.mergedIntoTableNumber ?? null
   })
 })
 
