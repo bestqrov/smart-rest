@@ -4,65 +4,128 @@ import jwt from 'jsonwebtoken'
 import { JWT_SECRET } from '../config'
 import prisma from '../prisma'
 
+// ─── Room naming conventions ──────────────────────────────────────────────────
+// Admin dashboard  : room_{cafeId}
+// Kitchen Display  : kds_room_{cafeId}
+// Customer table   : table_room_{cafeId}_{tableId}
+// ─────────────────────────────────────────────────────────────────────────────
+
 export function registerSocketHandlers(io: SocketIOServer) {
   io.on('connection', (socket: Socket) => {
-    // try to authenticate socket (admin users)
+
+    // ── Admin / KDS authentication ──────────────────────────────────────────
     try {
-      const token = (socket.handshake && (socket.handshake as any).auth && (socket.handshake as any).auth.token) || (socket.handshake.headers && (socket.handshake.headers.authorization as string))
-      if (token) {
-        let raw = token as string
-        if (raw.startsWith('Bearer ')) raw = raw.slice(7)
+      const raw =
+        (socket.handshake?.auth as any)?.token ||
+        (socket.handshake?.headers?.authorization as string | undefined)
+      if (raw) {
+        const token = (raw as string).startsWith('Bearer ') ? (raw as string).slice(7) : raw
         try {
-          const payload = jwt.verify(raw, JWT_SECRET) as any
-          ;(socket as any).data = (socket as any).data || {}
-          ;(socket as any).data.admin = payload
+          const payload = jwt.verify(token, JWT_SECRET) as any
+          ;(socket as any).data = { ...(socket as any).data, admin: payload }
           logger.info({ msg: 'Socket authenticated', userId: payload.userId, cafeId: payload.cafeId })
-        } catch (e) {
-          logger.debug({ msg: 'Socket auth failed', err: e })
+        } catch (_) {
+          logger.debug({ msg: 'Socket auth failed — guest connection' })
         }
       }
     } catch (e) {
       logger.error({ msg: 'Socket auth check error', err: e })
     }
-    // join room event - restrict admin rooms to authenticated admin sockets
+
+    // ── join — admin/KDS room ───────────────────────────────────────────────
     socket.on('join', (room: string) => {
       try {
-        if (typeof room === 'string' && room.startsWith('room_')) {
-          // parse cafeId
+        if (typeof room !== 'string') return
+
+        if (room.startsWith('room_') || room.startsWith('kds_room_')) {
           const parts = room.split('_')
-          const cafeId = Number(parts[1])
+          const cafeId = Number(parts[parts.length - 1])
           const admin = (socket as any).data?.admin
           if (!admin || Number(admin.cafeId) !== cafeId) {
-            socket.emit('error', { message: 'Forbidden to join admin room' })
+            socket.emit('error', { message: 'Forbidden to join admin/KDS room' })
             return
           }
+          socket.join(room)
+          logger.debug({ msg: 'Admin/KDS joined room', room, socketId: socket.id })
+          return
         }
-        socket.join(room)
+
+        socket.emit('error', { message: 'Use join_table_room for customer rooms' })
       } catch (e) {
-        logger.error({ msg: 'Join room error', err: e, room })
+        logger.error({ msg: 'join event error', err: e, room })
       }
     })
 
-    // client requests bill via socket
+    // ── join_table_room — customer device joins their seat room ─────────────
+    // Payload: { cafeId, tableId, seatToken }
+    // seatToken is the Seat.qrToken — validates customer is at that table
+    socket.on('join_table_room', async (payload: { cafeId: number; tableId: number; seatToken: string }) => {
+      try {
+        const { cafeId, tableId, seatToken } = payload
+        if (!cafeId || !tableId || !seatToken) return
+
+        const seat = await prisma.seat.findFirst({
+          where: { qrToken: seatToken, tableId, cafeId },
+          select: { id: true, seatNumber: true }
+        })
+
+        if (!seat) {
+          socket.emit('error', { message: 'Invalid seat token' })
+          return
+        }
+
+        const room = `table_room_${cafeId}_${tableId}`
+        socket.join(room)
+        ;(socket as any).data = {
+          ...(socket as any).data,
+          cafeId,
+          tableId,
+          seatId: seat.id,
+          seatNumber: seat.seatNumber
+        }
+
+        // Immediately inform the customer if this table is currently merged
+        const table = await prisma.table.findUnique({
+          where: { id: tableId },
+          select: {
+            tableNumber: true,
+            mergedIntoTableId: true,
+            mergedIntoTable: { select: { tableNumber: true } }
+          }
+        })
+
+        if (table?.mergedIntoTableId) {
+          socket.emit('TABLES_MERGED', {
+            targetTableNumber: table.mergedIntoTable?.tableNumber,
+            message: `You are now connected with the group at Table ${table.mergedIntoTable?.tableNumber}`
+          })
+        }
+
+        logger.debug({ msg: 'Customer joined table room', room, seatNumber: seat.seatNumber })
+      } catch (err) {
+        logger.error({ msg: 'join_table_room error', err, payload })
+      }
+    })
+
+    // ── request_bill ────────────────────────────────────────────────────────
     socket.on('request_bill', async (payload: { cafeId: number; tableId: number; message?: string }) => {
       try {
         const { cafeId, tableId, message } = payload
         if (!cafeId || !tableId) return
 
-        // validate table belongs to cafe
         const table = await prisma.table.findUnique({ where: { id: tableId } })
         if (!table || table.cafeId !== cafeId) return
 
         const bill = await prisma.billRequest.create({ data: { cafeId, tableId, message: message || null } })
-
-        // notify admin room
-        io.to(`room_${cafeId}`).emit('bill_requested', { id: bill.id, tableId: bill.tableId, createdAt: bill.createdAt })
+        io.to(`room_${cafeId}`).emit('bill_requested', {
+          id: bill.id, tableId: bill.tableId, createdAt: bill.createdAt
+        })
       } catch (err) {
-        logger.error({ msg: 'request_bill handler error', err, payload })
+        logger.error({ msg: 'request_bill error', err, payload })
       }
     })
 
-    // client calls waiter
+    // ── waiter_call ──────────────────────────────────────────────────────────
     socket.on('waiter_call', async (payload: { cafeId: number; tableId: number; type: string; message?: string }) => {
       try {
         const { cafeId, tableId, type, message } = payload
@@ -71,15 +134,19 @@ export function registerSocketHandlers(io: SocketIOServer) {
         const table = await prisma.table.findUnique({ where: { id: tableId } })
         if (!table || table.cafeId !== cafeId) return
 
-        const call = await prisma.waiterCall.create({ data: { cafeId, tableId, type: type as any, message: message || null } })
-
-        io.to(`room_${cafeId}`).emit('waiter_called', { id: call.id, tableId: call.tableId, type: call.type, message: call.message, createdAt: call.createdAt })
+        const call = await prisma.waiterCall.create({
+          data: { cafeId, tableId, type: type as any, message: message || null }
+        })
+        io.to(`room_${cafeId}`).emit('waiter_called', {
+          id: call.id, tableId: call.tableId, type: call.type,
+          message: call.message, createdAt: call.createdAt
+        })
       } catch (err) {
-        logger.error({ msg: 'waiter_call handler error', err, payload })
+        logger.error({ msg: 'waiter_call error', err, payload })
       }
     })
 
-    // waiter acknowledges a call (e.g., clicks 'Coming')
+    // ── ack_call ─────────────────────────────────────────────────────────────
     socket.on('ack_call', async (payload: { cafeId: number; callId: number }) => {
       try {
         const { cafeId, callId } = payload
@@ -88,21 +155,71 @@ export function registerSocketHandlers(io: SocketIOServer) {
         const call = await prisma.waiterCall.findUnique({ where: { id: callId } })
         if (!call || call.cafeId !== cafeId) return
 
-        const now = new Date()
-        const updated = await prisma.waiterCall.update({ where: { id: callId }, data: { acknowledgedAt: now } })
+        const updated = await prisma.waiterCall.update({
+          where: { id: callId },
+          data: { acknowledgedAt: new Date() }
+        })
 
         const responseTimeMs = updated.acknowledgedAt
-          ? new Date(updated.acknowledgedAt).getTime() - new Date(updated.createdAt).getTime()
+          ? updated.acknowledgedAt.getTime() - updated.createdAt.getTime()
           : null
 
         io.to(`room_${cafeId}`).emit('waiter_acknowledged', {
-          id: updated.id,
-          tableId: updated.tableId,
-          acknowledgedAt: updated.acknowledgedAt,
-          responseTimeMs
+          id: updated.id, tableId: updated.tableId,
+          acknowledgedAt: updated.acknowledgedAt, responseTimeMs
         })
       } catch (err) {
-        logger.error({ msg: 'ack_call handler error', err, payload })
+        logger.error({ msg: 'ack_call error', err, payload })
+      }
+    })
+
+    // ── kds_ack_order — kitchen confirms order → PREPARING ───────────────────
+    socket.on('kds_ack_order', async (payload: { cafeId: number; orderId: number }) => {
+      try {
+        const { cafeId, orderId } = payload
+        const admin = (socket as any).data?.admin
+        if (!admin || Number(admin.cafeId) !== cafeId) return
+
+        const order = await prisma.order.findUnique({
+          where: { id: orderId }, select: { cafeId: true, tableId: true, status: true }
+        })
+        if (!order || order.cafeId !== cafeId || order.status !== 'PENDING') return
+
+        await prisma.order.update({ where: { id: orderId }, data: { status: 'PREPARING' } })
+
+        const update = { orderId, status: 'PREPARING', tableId: order.tableId }
+        io.to(`room_${cafeId}`).emit('order_status_updated', update)
+        io.to(`kds_room_${cafeId}`).emit('kds_order_updated', update)
+        if (order.tableId) {
+          io.to(`table_room_${cafeId}_${order.tableId}`).emit('your_order_updated', update)
+        }
+      } catch (err) {
+        logger.error({ msg: 'kds_ack_order error', err, payload })
+      }
+    })
+
+    // ── kds_ready — kitchen marks order ready → DELIVERED ───────────────────
+    socket.on('kds_ready', async (payload: { cafeId: number; orderId: number }) => {
+      try {
+        const { cafeId, orderId } = payload
+        const admin = (socket as any).data?.admin
+        if (!admin || Number(admin.cafeId) !== cafeId) return
+
+        const order = await prisma.order.findUnique({
+          where: { id: orderId }, select: { cafeId: true, tableId: true, status: true }
+        })
+        if (!order || order.cafeId !== cafeId || order.status !== 'PREPARING') return
+
+        await prisma.order.update({ where: { id: orderId }, data: { status: 'DELIVERED' } })
+
+        const update = { orderId, status: 'DELIVERED', tableId: order.tableId }
+        io.to(`room_${cafeId}`).emit('order_status_updated', update)
+        io.to(`kds_room_${cafeId}`).emit('kds_order_updated', update)
+        if (order.tableId) {
+          io.to(`table_room_${cafeId}_${order.tableId}`).emit('your_order_updated', update)
+        }
+      } catch (err) {
+        logger.error({ msg: 'kds_ready error', err, payload })
       }
     })
 

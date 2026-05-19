@@ -37,8 +37,7 @@ async function main() {
       lat: cafeData.lat,
       lng: cafeData.lng,
       currency: cafeData.currency,
-      socialLinks: cafeData.socialLinks,
-      subscriptionStatus: cafeData.subscriptionStatus
+      socialLinks: cafeData.socialLinks
     },
     create: {
       name: cafeData.name,
@@ -47,8 +46,7 @@ async function main() {
       lat: cafeData.lat,
       lng: cafeData.lng,
       currency: cafeData.currency,
-      socialLinks: cafeData.socialLinks,
-      subscriptionStatus: cafeData.subscriptionStatus
+      socialLinks: cafeData.socialLinks
     }
   })
   console.log(`Cafe upserted: ${cafe.name} (id=${cafe.id})`)

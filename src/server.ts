@@ -17,7 +17,10 @@ import billRequestsRouter from './routes/billRequests'
 import adminStatsRouter from './routes/adminStats'
 import clientMenuRouter from './routes/clientMenu'
 import waiterCallsRouter from './routes/waiterCalls'
+import financeRouter from './routes/finance'
+import tablesRouter from './routes/tables'
 import { registerSocketHandlers } from './socket/handlers'
+import { startWeeklyBillingCron } from './cron/weeklyBilling'
 
 async function main() {
   // load .env into process.env
@@ -66,6 +69,8 @@ async function main() {
   app.use(adminStatsRouter)
   app.use(clientMenuRouter)
   app.use(waiterCallsRouter)
+  app.use(financeRouter)
+  app.use(tablesRouter)
 
   // health
   app.get('/health', (req, res) => res.json({ ok: true }))
@@ -87,6 +92,9 @@ async function main() {
   // attach io instance to app so routes can use it
   app.set('io', io)
   registerSocketHandlers(io)
+
+  // Start automated billing governance cron
+  startWeeklyBillingCron()
 
   httpServer.listen(port, '0.0.0.0', () => {
     logger.info({ msg: 'Server started', port, host: '0.0.0.0' })

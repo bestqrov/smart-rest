@@ -7,11 +7,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum SubscriptionStatus {
-  FREE
-  PRO
-  GOLD
-}
+// ─── Enums ────────────────────────────────────────────────────────────────────
 
 enum OrderStatus {
   PENDING
@@ -33,35 +29,111 @@ enum WaiterCallType {
   QUESTION
 }
 
-model Cafe {
-  id Int @id @default(autoincrement())
-  name String
-  subdomain String @unique
-  logoUrl String?
-  lat Float?
-  lng Float?
-  currency String @default("MAD")
-  socialLinks Json?
-  subscriptionStatus SubscriptionStatus @default(FREE)
+enum BillingStatus {
+  GRACE_PERIOD
+  COLLECTING_DEBT
+  SUSPENDED
+}
 
-  categories Category[]
-  tables Table[]
-  orders Order[]
+enum WalletLogType {
+  DEBT_ACC_ORDER
+  DEBT_ACC_SOCIAL
+  PAYMENT_SETTLEMENT
+  TRIAL_EXTENSION
+}
+
+// ─── Tenant / Cafe ────────────────────────────────────────────────────────────
+
+model Cafe {
+  id           Int    @id @default(autoincrement())
+  name         String
+  businessName String @default("")
+  subdomain    String @unique
+  country      String @default("MA") // ISO-2: MA | SA | AE | FR | US …
+  currency     String @default("MAD")
+  totalSeats   Int    @default(0)
+  logoUrl      String?
+  lat          Float?
+  lng          Float?
+  socialLinks  Json?
+
+  // Billing & trial
+  isActive          Boolean       @default(true)
+  walletBalance     Decimal       @default(0.00) @db.Decimal(10, 2)
+  trialEndsAt       DateTime?
+  hasExtendedTrial  Boolean       @default(false)
+  billingStatus     BillingStatus @default(GRACE_PERIOD)
+  hasSocialShareAddon Boolean     @default(false)
+
+  categories   Category[]
+  tables       Table[]
+  seats        Seat[]
+  orders       Order[]
   billRequests BillRequest[]
-  users User[]
-  waiterCalls WaiterCall[]
+  users        User[]
+  waiterCalls  WaiterCall[]
+  walletLogs   WalletLog[]
+  billingTiers BillingTier[]
 
   @@index([subdomain])
 }
 
+// ─── Table & Seat (Hybrid QR Layout) ─────────────────────────────────────────
+
+model Table {
+  id          Int     @id @default(autoincrement())
+  cafeId      Int
+  cafe        Cafe    @relation(fields: [cafeId], references: [id], onDelete: Cascade)
+  tableNumber Int
+  qrToken     String  @unique // table-level QR (backward compat)
+  isActive    Boolean @default(true)
+
+  // Merge graph — points to the master table this one has been merged into
+  mergedIntoTableId Int?
+  mergedIntoTable   Table?  @relation("TableMerge", fields: [mergedIntoTableId], references: [id], onDelete: SetNull)
+  mergedTables      Table[] @relation("TableMerge") // tables merged INTO this one
+
+  seats        Seat[]
+  orders       Order[]
+  originalOrders Order[] @relation("OriginalTable")
+  billRequests BillRequest[]
+  waiterCalls  WaiterCall[]
+
+  @@unique([cafeId, tableNumber])
+  @@index([cafeId])
+  @@index([qrToken])
+  @@index([mergedIntoTableId])
+}
+
+model Seat {
+  id         Int    @id @default(autoincrement())
+  seatNumber Int
+  tableId    Int
+  table      Table  @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  cafeId     Int
+  cafe       Cafe   @relation(fields: [cafeId], references: [id], onDelete: Cascade)
+  qrToken    String @unique @default(uuid())
+
+  orders Order[]
+
+  @@unique([tableId, seatNumber])
+  @@index([tableId])
+  @@index([qrToken])
+}
+
+// ─── Menu ─────────────────────────────────────────────────────────────────────
+
 model Category {
-  id Int @id @default(autoincrement())
+  id     Int    @id @default(autoincrement())
   cafeId Int
-  cafe Cafe @relation(fields: [cafeId], references: [id], onDelete: Cascade)
+  cafe   Cafe   @relation(fields: [cafeId], references: [id], onDelete: Cascade)
+  // 5 languages: Arabic · English · French · Spanish · German
   nameAr String
   nameEn String
   nameFr String @default("")
-  order Int
+  nameEs String @default("") // Spanish
+  nameDe String @default("") // German
+  order  Int
 
   products Product[]
 
@@ -69,15 +141,18 @@ model Category {
 }
 
 model Product {
-  id Int @id @default(autoincrement())
+  id         Int      @id @default(autoincrement())
   categoryId Int
-  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  nameAr String
-  nameEn String
-  nameFr String @default("")
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  // 5 languages
+  nameAr      String
+  nameEn      String
+  nameFr      String  @default("")
+  nameEs      String  @default("") // Spanish
+  nameDe      String  @default("") // German
   description String?
-  price Decimal @db.Decimal(10, 2)
-  imageUrl String?
+  price       Decimal @db.Decimal(10, 2)
+  imageUrl    String?
   isAvailable Boolean @default(true)
 
   orderItems OrderItem[]
@@ -85,61 +160,90 @@ model Product {
   @@index([categoryId])
 }
 
-model Table {
-  id Int @id @default(autoincrement())
-  cafeId Int
-  cafe Cafe @relation(fields: [cafeId], references: [id], onDelete: Cascade)
-  tableNumber Int
-  qrToken String @unique
-  isActive Boolean @default(true)
-
-  orders Order[]
-  billRequests BillRequest[]
-  waiterCalls WaiterCall[]
-
-  @@index([cafeId])
-  @@index([qrToken])
-}
+// ─── Orders ───────────────────────────────────────────────────────────────────
 
 model Order {
-  id Int @id @default(autoincrement())
-  cafeId Int
-  cafe Cafe @relation(fields: [cafeId], references: [id], onDelete: Cascade)
-  tableId Int?
-  table Table? @relation(fields: [tableId], references: [id], onDelete: SetNull)
-  status OrderStatus @default(PENDING)
-  paymentMethod PaymentMethod
-  isPaid Boolean @default(false)
-  totalPrice Decimal @db.Decimal(10, 2)
-  customerPhone String?
-  createdAt DateTime @default(now())
+  id             Int           @id @default(autoincrement())
+  cafeId         Int
+  cafe           Cafe          @relation(fields: [cafeId], references: [id], onDelete: Cascade)
+  tableId        Int?          // billing table (may be the merge master)
+  table          Table?        @relation(fields: [tableId], references: [id], onDelete: SetNull)
+  originalTableId Int?         // physical table the customer actually sat at
+  originalTable   Table?       @relation("OriginalTable", fields: [originalTableId], references: [id], onDelete: SetNull)
+  seatId         Int?          // which seat placed this order
+  seat           Seat?         @relation(fields: [seatId], references: [id], onDelete: SetNull)
+  seatNumber     Int?          // denormalised for KDS display
+  status         OrderStatus   @default(PENDING)
+  paymentMethod  PaymentMethod
+  isPaid         Boolean       @default(false)
+  totalPrice     Decimal       @db.Decimal(10, 2)
+  customerPhone  String?
+  createdAt      DateTime      @default(now())
 
-  items OrderItem[]
+  items      OrderItem[]
+  walletLogs WalletLog[]
 
   @@index([cafeId])
+  @@index([tableId])
+  @@index([seatId])
 }
 
 model OrderItem {
-  id Int @id @default(autoincrement())
-  orderId Int
-  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  id        Int     @id @default(autoincrement())
+  orderId   Int
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
   productId Int
-  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
-  quantity Int
-  notes String?
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  quantity  Int
+  notes     String?
 
   @@index([orderId])
   @@index([productId])
 }
 
+// ─── Billing ──────────────────────────────────────────────────────────────────
+
+// Per-country fee tiers; cafeId = null means national default, set = AI override
+model BillingTier {
+  id            Int     @id @default(autoincrement())
+  cafeId        Int?
+  cafe          Cafe?   @relation(fields: [cafeId], references: [id], onDelete: Cascade)
+  country       String
+  minOrderValue Decimal @db.Decimal(10, 2)
+  maxOrderValue Decimal @db.Decimal(10, 2)
+  feeAmount     Decimal @db.Decimal(10, 2)
+  isSocialShareFee Boolean @default(false)
+
+  @@index([country])
+  @@index([cafeId])
+}
+
+model WalletLog {
+  id              Int           @id @default(autoincrement())
+  cafeId          Int
+  cafe            Cafe          @relation(fields: [cafeId], references: [id], onDelete: Cascade)
+  orderId         Int?
+  order           Order?        @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  amount          Decimal       @db.Decimal(10, 2)
+  type            WalletLogType
+  previousBalance Decimal       @db.Decimal(10, 2)
+  newBalance      Decimal       @db.Decimal(10, 2)
+  createdAt       DateTime      @default(now())
+
+  @@index([cafeId])
+  @@index([orderId])
+}
+
+// ─── Support models ───────────────────────────────────────────────────────────
+
 model BillRequest {
-  id Int @id @default(autoincrement())
-  cafeId Int
-  cafe Cafe @relation(fields: [cafeId], references: [id], onDelete: Cascade)
-  tableId Int
-  table Table @relation(fields: [tableId], references: [id], onDelete: Cascade)
-  message String?
-  createdAt DateTime @default(now())
+  id         Int       @id @default(autoincrement())
+  cafeId     Int
+  cafe       Cafe      @relation(fields: [cafeId], references: [id], onDelete: Cascade)
+  tableId    Int
+  table      Table     @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  message    String?
+  createdAt  DateTime  @default(now())
   resolvedAt DateTime?
 
   @@index([cafeId])
@@ -147,14 +251,14 @@ model BillRequest {
 }
 
 model WaiterCall {
-  id Int @id @default(autoincrement())
-  cafeId Int
-  cafe Cafe @relation(fields: [cafeId], references: [id], onDelete: Cascade)
-  tableId Int
-  table Table @relation(fields: [tableId], references: [id], onDelete: Cascade)
-  type WaiterCallType
-  message String?
-  createdAt DateTime @default(now())
+  id             Int            @id @default(autoincrement())
+  cafeId         Int
+  cafe           Cafe           @relation(fields: [cafeId], references: [id], onDelete: Cascade)
+  tableId        Int
+  table          Table          @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  type           WaiterCallType
+  message        String?
+  createdAt      DateTime       @default(now())
   acknowledgedAt DateTime?
 
   @@index([cafeId])
@@ -162,11 +266,11 @@ model WaiterCall {
 }
 
 model User {
-  id Int @id @default(autoincrement())
-  email String @unique
+  id           Int    @id @default(autoincrement())
+  email        String @unique
   passwordHash String
-  cafeId Int
-  cafe Cafe @relation(fields: [cafeId], references: [id], onDelete: Cascade)
+  cafeId       Int
+  cafe         Cafe   @relation(fields: [cafeId], references: [id], onDelete: Cascade)
 
   @@index([cafeId])
 }
