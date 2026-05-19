@@ -6,7 +6,7 @@ const router = express.Router()
 
 async function getMenu(req: Request, res: Response) {
   try {
-    const cafe = (req as any).cafe as { id: number; name: string }
+    const cafe = (req as any).cafe as { id: string; name: string }
     if (!cafe) return res.status(500).json({ error: 'Cafe not attached to request' })
 
     const tableToken = (req.header('x-table-token') as string) || (req.query.tableToken as string)

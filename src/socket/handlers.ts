@@ -39,9 +39,9 @@ export function registerSocketHandlers(io: SocketIOServer) {
 
         if (room.startsWith('room_') || room.startsWith('kds_room_')) {
           const parts = room.split('_')
-          const cafeId = Number(parts[parts.length - 1])
+          const cafeId = parts[parts.length - 1]
           const admin = (socket as any).data?.admin
-          if (!admin || Number(admin.cafeId) !== cafeId) {
+          if (!admin || String(admin.cafeId) !== cafeId) {
             socket.emit('error', { message: 'Forbidden to join admin/KDS room' })
             return
           }
@@ -57,9 +57,7 @@ export function registerSocketHandlers(io: SocketIOServer) {
     })
 
     // ── join_table_room — customer device joins their seat room ─────────────
-    // Payload: { cafeId, tableId, seatToken }
-    // seatToken is the Seat.qrToken — validates customer is at that table
-    socket.on('join_table_room', async (payload: { cafeId: number; tableId: number; seatToken: string }) => {
+    socket.on('join_table_room', async (payload: { cafeId: string; tableId: string; seatToken: string }) => {
       try {
         const { cafeId, tableId, seatToken } = payload
         if (!cafeId || !tableId || !seatToken) return
@@ -84,7 +82,6 @@ export function registerSocketHandlers(io: SocketIOServer) {
           seatNumber: seat.seatNumber
         }
 
-        // Immediately inform the customer if this table is currently merged
         const table = await prisma.table.findUnique({
           where: { id: tableId },
           select: {
@@ -108,7 +105,7 @@ export function registerSocketHandlers(io: SocketIOServer) {
     })
 
     // ── request_bill ────────────────────────────────────────────────────────
-    socket.on('request_bill', async (payload: { cafeId: number; tableId: number; message?: string }) => {
+    socket.on('request_bill', async (payload: { cafeId: string; tableId: string; message?: string }) => {
       try {
         const { cafeId, tableId, message } = payload
         if (!cafeId || !tableId) return
@@ -126,7 +123,7 @@ export function registerSocketHandlers(io: SocketIOServer) {
     })
 
     // ── waiter_call ──────────────────────────────────────────────────────────
-    socket.on('waiter_call', async (payload: { cafeId: number; tableId: number; type: string; message?: string }) => {
+    socket.on('waiter_call', async (payload: { cafeId: string; tableId: string; type: string; message?: string }) => {
       try {
         const { cafeId, tableId, type, message } = payload
         if (!cafeId || !tableId || !type) return
@@ -147,7 +144,7 @@ export function registerSocketHandlers(io: SocketIOServer) {
     })
 
     // ── ack_call ─────────────────────────────────────────────────────────────
-    socket.on('ack_call', async (payload: { cafeId: number; callId: number }) => {
+    socket.on('ack_call', async (payload: { cafeId: string; callId: string }) => {
       try {
         const { cafeId, callId } = payload
         if (!cafeId || !callId) return
@@ -174,11 +171,11 @@ export function registerSocketHandlers(io: SocketIOServer) {
     })
 
     // ── kds_ack_order — kitchen confirms order → PREPARING ───────────────────
-    socket.on('kds_ack_order', async (payload: { cafeId: number; orderId: number }) => {
+    socket.on('kds_ack_order', async (payload: { cafeId: string; orderId: string }) => {
       try {
         const { cafeId, orderId } = payload
         const admin = (socket as any).data?.admin
-        if (!admin || Number(admin.cafeId) !== cafeId) return
+        if (!admin || String(admin.cafeId) !== cafeId) return
 
         const order = await prisma.order.findUnique({
           where: { id: orderId }, select: { cafeId: true, tableId: true, status: true }
@@ -199,11 +196,11 @@ export function registerSocketHandlers(io: SocketIOServer) {
     })
 
     // ── kds_ready — kitchen marks order ready → DELIVERED ───────────────────
-    socket.on('kds_ready', async (payload: { cafeId: number; orderId: number }) => {
+    socket.on('kds_ready', async (payload: { cafeId: string; orderId: string }) => {
       try {
         const { cafeId, orderId } = payload
         const admin = (socket as any).data?.admin
-        if (!admin || Number(admin.cafeId) !== cafeId) return
+        if (!admin || String(admin.cafeId) !== cafeId) return
 
         const order = await prisma.order.findUnique({
           where: { id: orderId }, select: { cafeId: true, tableId: true, status: true }

@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "build": "prisma generate && next build",
-    "start": "prisma migrate resolve --applied 20260519000000_add_namefr 2>/dev/null; prisma migrate deploy && ts-node --transpile-only src/server.ts",
+    "start": "prisma db push && ts-node --transpile-only src/server.ts",
     "dev": "ts-node --transpile-only src/server.ts",
     "smoke": "ts-node scripts/smoke.ts",
     "seed": "ts-node prisma/seed.ts",

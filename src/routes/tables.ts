@@ -10,20 +10,17 @@ const router = express.Router()
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-// Returns the full merge group for a given table (master + all merged children)
-async function resolveMergeGroup(tableId: number): Promise<number[]> {
+async function resolveMergeGroup(tableId: string): Promise<string[]> {
   const table = await prisma.table.findUnique({
     where: { id: tableId },
     select: { id: true, mergedIntoTableId: true, mergedTables: { select: { id: true } } }
   })
   if (!table) return [tableId]
 
-  // If this table is itself merged into another, the master is the parent
   if (table.mergedIntoTableId) {
     return resolveMergeGroup(table.mergedIntoTableId)
   }
 
-  // This is the master — return it + all children
   return [table.id, ...table.mergedTables.map((t) => t.id)]
 }
 
@@ -121,8 +118,8 @@ router.post('/api/tables/merge', authorizeAdmin, async (req: Request, res: Respo
   try {
     const cafeId = req.admin!.cafeId
     const { sourceTableIds, targetTableId } = req.body as {
-      sourceTableIds: number[]
-      targetTableId: number
+      sourceTableIds: string[]
+      targetTableId: string
     }
 
     if (!Array.isArray(sourceTableIds) || sourceTableIds.length === 0 || !targetTableId) {
@@ -132,7 +129,6 @@ router.post('/api/tables/merge', authorizeAdmin, async (req: Request, res: Respo
       return res.status(400).json({ error: 'targetTableId must not appear in sourceTableIds' })
     }
 
-    // Validate all tables belong to this cafe
     const allIds = [...new Set([...sourceTableIds, targetTableId])]
     const tables = await prisma.table.findMany({
       where: { id: { in: allIds }, cafeId },
@@ -155,15 +151,12 @@ router.post('/api/tables/merge', authorizeAdmin, async (req: Request, res: Respo
       })
     }
 
-    // Atomic merge operation
     await prisma.$transaction(async (tx) => {
-      // 1. Point source tables at the master
       await tx.table.updateMany({
         where: { id: { in: sourceTableIds }, cafeId },
         data: { mergedIntoTableId: targetTableId }
       })
 
-      // 2. Consolidate active unpaid orders from source tables onto the master
       await tx.order.updateMany({
         where: {
           cafeId,
@@ -175,7 +168,6 @@ router.post('/api/tables/merge', authorizeAdmin, async (req: Request, res: Respo
       })
     })
 
-    // Resolve table numbers for the event payload
     const sourceNumbers = tables
       .filter((t) => sourceTableIds.includes(t.id))
       .map((t) => t.tableNumber)
@@ -193,7 +185,6 @@ router.post('/api/tables/merge', authorizeAdmin, async (req: Request, res: Respo
         message: `You are now connected with the group at Table ${target.tableNumber}`
       }
 
-      // Notify every table room in the merge group + admin + KDS
       for (const id of mergeGroupIds) {
         io.to(`table_room_${cafeId}_${id}`).emit('TABLES_MERGED', payload)
       }
@@ -218,7 +209,7 @@ router.post('/api/tables/merge', authorizeAdmin, async (req: Request, res: Respo
 router.post('/api/tables/unmerge', authorizeAdmin, async (req: Request, res: Response) => {
   try {
     const cafeId = req.admin!.cafeId
-    const { targetTableId } = req.body as { targetTableId: number }
+    const { targetTableId } = req.body as { targetTableId: string }
 
     if (!targetTableId) return res.status(400).json({ error: 'targetTableId is required' })
 
@@ -278,7 +269,6 @@ router.post('/api/tables/unmerge', authorizeAdmin, async (req: Request, res: Res
 })
 
 // ─── GET /:subdomain/t/:tableNumber/s/:seatNumber — Hybrid QR seat session ───
-// Public endpoint: customer scans QR code, receives a validated session context.
 
 router.get('/:subdomain/t/:tableNumber/s/:seatNumber', validateSeatQR, (req: Request, res: Response) => {
   const session = req.seatSession!
@@ -292,7 +282,6 @@ router.get('/:subdomain/t/:tableNumber/s/:seatNumber', validateSeatQR, (req: Req
     billingTableId: session.billingTableId,
     isMerged:    session.isMerged,
     mergedIntoTableNumber: session.mergedIntoTableNumber ?? null,
-    // Client should store this in session and pass it back on orders
     sessionHint: `T${session.tableNumber}-S${session.seatNumber}`
   })
 })

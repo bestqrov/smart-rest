@@ -3,9 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
 }
 
 // ─── Enums ────────────────────────────────────────────────────────────────────
@@ -46,25 +45,24 @@ enum WalletLogType {
 // ─── Tenant / Cafe ────────────────────────────────────────────────────────────
 
 model Cafe {
-  id           Int    @id @default(autoincrement())
+  id           String  @id @default(auto()) @map("_id") @db.ObjectId
   name         String
-  businessName String @default("")
-  subdomain    String @unique
-  country      String @default("MA") // ISO-2: MA | SA | AE | FR | US …
-  currency     String @default("MAD")
-  totalSeats   Int    @default(0)
+  businessName String  @default("")
+  subdomain    String  @unique
+  country      String  @default("MA")
+  currency     String  @default("MAD")
+  totalSeats   Int     @default(0)
   logoUrl      String?
   lat          Float?
   lng          Float?
   socialLinks  Json?
 
-  // Billing & trial
-  isActive          Boolean       @default(true)
-  walletBalance     Decimal       @default(0.00) @db.Decimal(10, 2)
-  trialEndsAt       DateTime?
-  hasExtendedTrial  Boolean       @default(false)
-  billingStatus     BillingStatus @default(GRACE_PERIOD)
-  hasSocialShareAddon Boolean     @default(false)
+  isActive            Boolean       @default(true)
+  walletBalance       Float         @default(0.0)
+  trialEndsAt         DateTime?
+  hasExtendedTrial    Boolean       @default(false)
+  billingStatus       BillingStatus @default(GRACE_PERIOD)
+  hasSocialShareAddon Boolean       @default(false)
 
   categories   Category[]
   tables       Table[]
@@ -76,64 +74,59 @@ model Cafe {
   walletLogs   WalletLog[]
   billingTiers BillingTier[]
 
-  @@index([subdomain])
 }
 
 // ─── Table & Seat (Hybrid QR Layout) ─────────────────────────────────────────
 
 model Table {
-  id          Int     @id @default(autoincrement())
-  cafeId      Int
-  cafe        Cafe    @relation(fields: [cafeId], references: [id], onDelete: Cascade)
+  id          String  @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId      String  @db.ObjectId
+  cafe        Cafe    @relation(fields: [cafeId], references: [id])
   tableNumber Int
-  qrToken     String  @unique // table-level QR (backward compat)
+  qrToken     String  @unique
   isActive    Boolean @default(true)
 
-  // Merge graph — points to the master table this one has been merged into
-  mergedIntoTableId Int?
-  mergedIntoTable   Table?  @relation("TableMerge", fields: [mergedIntoTableId], references: [id], onDelete: SetNull)
-  mergedTables      Table[] @relation("TableMerge") // tables merged INTO this one
+  mergedIntoTableId String? @db.ObjectId
+  mergedIntoTable   Table?  @relation("TableMerge", fields: [mergedIntoTableId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  mergedTables      Table[] @relation("TableMerge")
 
-  seats        Seat[]
-  orders       Order[]
-  originalOrders Order[] @relation("OriginalTable")
-  billRequests BillRequest[]
-  waiterCalls  WaiterCall[]
+  seats          Seat[]
+  orders         Order[]
+  originalOrders Order[]       @relation("OriginalTable")
+  billRequests   BillRequest[]
+  waiterCalls    WaiterCall[]
 
   @@unique([cafeId, tableNumber])
   @@index([cafeId])
-  @@index([qrToken])
   @@index([mergedIntoTableId])
 }
 
 model Seat {
-  id         Int    @id @default(autoincrement())
+  id         String @id @default(auto()) @map("_id") @db.ObjectId
   seatNumber Int
-  tableId    Int
-  table      Table  @relation(fields: [tableId], references: [id], onDelete: Cascade)
-  cafeId     Int
-  cafe       Cafe   @relation(fields: [cafeId], references: [id], onDelete: Cascade)
+  tableId    String @db.ObjectId
+  table      Table  @relation(fields: [tableId], references: [id])
+  cafeId     String @db.ObjectId
+  cafe       Cafe   @relation(fields: [cafeId], references: [id])
   qrToken    String @unique @default(uuid())
 
   orders Order[]
 
   @@unique([tableId, seatNumber])
   @@index([tableId])
-  @@index([qrToken])
 }
 
 // ─── Menu ─────────────────────────────────────────────────────────────────────
 
 model Category {
-  id     Int    @id @default(autoincrement())
-  cafeId Int
-  cafe   Cafe   @relation(fields: [cafeId], references: [id], onDelete: Cascade)
-  // 5 languages: Arabic · English · French · Spanish · German
+  id     String @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId String @db.ObjectId
+  cafe   Cafe   @relation(fields: [cafeId], references: [id])
   nameAr String
   nameEn String
   nameFr String @default("")
-  nameEs String @default("") // Spanish
-  nameDe String @default("") // German
+  nameEs String @default("")
+  nameDe String @default("")
   order  Int
 
   products Product[]
@@ -142,17 +135,16 @@ model Category {
 }
 
 model Product {
-  id         Int      @id @default(autoincrement())
-  categoryId Int
-  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  // 5 languages
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  categoryId  String   @db.ObjectId
+  category    Category @relation(fields: [categoryId], references: [id])
   nameAr      String
   nameEn      String
   nameFr      String  @default("")
-  nameEs      String  @default("") // Spanish
-  nameDe      String  @default("") // German
+  nameEs      String  @default("")
+  nameDe      String  @default("")
   description String?
-  price       Decimal @db.Decimal(10, 2)
+  price       Float
   imageUrl    String?
   isAvailable Boolean @default(true)
 
@@ -164,22 +156,22 @@ model Product {
 // ─── Orders ───────────────────────────────────────────────────────────────────
 
 model Order {
-  id             Int           @id @default(autoincrement())
-  cafeId         Int
-  cafe           Cafe          @relation(fields: [cafeId], references: [id], onDelete: Cascade)
-  tableId        Int?          // billing table (may be the merge master)
-  table          Table?        @relation(fields: [tableId], references: [id], onDelete: SetNull)
-  originalTableId Int?         // physical table the customer actually sat at
-  originalTable   Table?       @relation("OriginalTable", fields: [originalTableId], references: [id], onDelete: SetNull)
-  seatId         Int?          // which seat placed this order
-  seat           Seat?         @relation(fields: [seatId], references: [id], onDelete: SetNull)
-  seatNumber     Int?          // denormalised for KDS display
-  status         OrderStatus   @default(PENDING)
-  paymentMethod  PaymentMethod
-  isPaid         Boolean       @default(false)
-  totalPrice     Decimal       @db.Decimal(10, 2)
-  customerPhone  String?
-  createdAt      DateTime      @default(now())
+  id              String        @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId          String        @db.ObjectId
+  cafe            Cafe          @relation(fields: [cafeId], references: [id])
+  tableId         String?       @db.ObjectId
+  table           Table?        @relation(fields: [tableId], references: [id])
+  originalTableId String?       @db.ObjectId
+  originalTable   Table?        @relation("OriginalTable", fields: [originalTableId], references: [id])
+  seatId          String?       @db.ObjectId
+  seat            Seat?         @relation(fields: [seatId], references: [id])
+  seatNumber      Int?
+  status          OrderStatus   @default(PENDING)
+  paymentMethod   PaymentMethod
+  isPaid          Boolean       @default(false)
+  totalPrice      Float
+  customerPhone   String?
+  createdAt       DateTime      @default(now())
 
   items      OrderItem[]
   walletLogs WalletLog[]
@@ -190,11 +182,11 @@ model Order {
 }
 
 model OrderItem {
-  id        Int     @id @default(autoincrement())
-  orderId   Int
-  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  productId Int
-  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  id        String  @id @default(auto()) @map("_id") @db.ObjectId
+  orderId   String  @db.ObjectId
+  order     Order   @relation(fields: [orderId], references: [id])
+  productId String  @db.ObjectId
+  product   Product @relation(fields: [productId], references: [id])
   quantity  Int
   notes     String?
 
@@ -204,15 +196,14 @@ model OrderItem {
 
 // ─── Billing ──────────────────────────────────────────────────────────────────
 
-// Per-country fee tiers; cafeId = null means national default, set = AI override
 model BillingTier {
-  id            Int     @id @default(autoincrement())
-  cafeId        Int?
-  cafe          Cafe?   @relation(fields: [cafeId], references: [id], onDelete: Cascade)
-  country       String
-  minOrderValue Decimal @db.Decimal(10, 2)
-  maxOrderValue Decimal @db.Decimal(10, 2)
-  feeAmount     Decimal @db.Decimal(10, 2)
+  id               String  @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId           String? @db.ObjectId
+  cafe             Cafe?   @relation(fields: [cafeId], references: [id])
+  country          String
+  minOrderValue    Float
+  maxOrderValue    Float
+  feeAmount        Float
   isSocialShareFee Boolean @default(false)
 
   @@index([country])
@@ -220,15 +211,15 @@ model BillingTier {
 }
 
 model WalletLog {
-  id              Int           @id @default(autoincrement())
-  cafeId          Int
-  cafe            Cafe          @relation(fields: [cafeId], references: [id], onDelete: Cascade)
-  orderId         Int?
-  order           Order?        @relation(fields: [orderId], references: [id], onDelete: SetNull)
-  amount          Decimal       @db.Decimal(10, 2)
+  id              String        @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId          String        @db.ObjectId
+  cafe            Cafe          @relation(fields: [cafeId], references: [id])
+  orderId         String?       @db.ObjectId
+  order           Order?        @relation(fields: [orderId], references: [id])
+  amount          Float
   type            WalletLogType
-  previousBalance Decimal       @db.Decimal(10, 2)
-  newBalance      Decimal       @db.Decimal(10, 2)
+  previousBalance Float
+  newBalance      Float
   createdAt       DateTime      @default(now())
 
   @@index([cafeId])
@@ -238,11 +229,11 @@ model WalletLog {
 // ─── Support models ───────────────────────────────────────────────────────────
 
 model BillRequest {
-  id         Int       @id @default(autoincrement())
-  cafeId     Int
-  cafe       Cafe      @relation(fields: [cafeId], references: [id], onDelete: Cascade)
-  tableId    Int
-  table      Table     @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  id         String    @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId     String    @db.ObjectId
+  cafe       Cafe      @relation(fields: [cafeId], references: [id])
+  tableId    String    @db.ObjectId
+  table      Table     @relation(fields: [tableId], references: [id])
   message    String?
   createdAt  DateTime  @default(now())
   resolvedAt DateTime?
@@ -252,11 +243,11 @@ model BillRequest {
 }
 
 model WaiterCall {
-  id             Int            @id @default(autoincrement())
-  cafeId         Int
-  cafe           Cafe           @relation(fields: [cafeId], references: [id], onDelete: Cascade)
-  tableId        Int
-  table          Table          @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  id             String         @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId         String         @db.ObjectId
+  cafe           Cafe           @relation(fields: [cafeId], references: [id])
+  tableId        String         @db.ObjectId
+  table          Table          @relation(fields: [tableId], references: [id])
   type           WaiterCallType
   message        String?
   createdAt      DateTime       @default(now())
@@ -267,11 +258,11 @@ model WaiterCall {
 }
 
 model User {
-  id           Int    @id @default(autoincrement())
+  id           String @id @default(auto()) @map("_id") @db.ObjectId
   email        String @unique
   passwordHash String
-  cafeId       Int
-  cafe         Cafe   @relation(fields: [cafeId], references: [id], onDelete: Cascade)
+  cafeId       String @db.ObjectId
+  cafe         Cafe   @relation(fields: [cafeId], references: [id])
 
   @@index([cafeId])
 }

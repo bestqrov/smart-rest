@@ -1,4 +1,4 @@
-import { PrismaClient, Prisma } from '@prisma/client'
+import { PrismaClient } from '@prisma/client'
 import crypto from 'crypto'
 import logger from '../src/logger'
 
@@ -106,7 +106,7 @@ async function main() {
         nameAr: p.nameAr,
         nameEn: p.nameEn,
         description: '',
-        price: new Prisma.Decimal(p.price),
+        price: parseFloat(p.price),
         imageUrl: null,
         isAvailable: true
       }

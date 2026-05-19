@@ -2,15 +2,13 @@ import { Request, Response, NextFunction } from 'express'
 import prisma from '../prisma'
 import logger from '../logger'
 
-// Shape attached to req by this middleware
 export interface SeatSession {
-  cafeId:      number
-  tableId:     number
+  cafeId:      string
+  tableId:     string
   tableNumber: number
-  seatId:      number
+  seatId:      string
   seatNumber:  number
-  // The resolved billing tableId — may differ when this table is merged
-  billingTableId: number
+  billingTableId: string
   isMerged:    boolean
   mergedIntoTableNumber?: number
 }
@@ -23,16 +21,9 @@ declare global {
   }
 }
 
-/**
- * Validates the Hybrid Table QR URL pattern:
- *   /t/:tableNumber/s/:seatNumber?token=:qrToken
- *
- * Resolves the cafe from `subdomain` in req.params (set by the outer router).
- * Attaches `req.seatSession` for downstream route handlers.
- */
 export async function validateSeatQR(req: Request, res: Response, next: NextFunction) {
   try {
-    const subdomain = req.params.subdomain as string
+    const subdomain   = req.params.subdomain as string
     const tableNumber = Number(req.params.tableNumber)
     const seatNumber  = Number(req.params.seatNumber)
     const qrToken     = (req.query.token ?? req.header('x-seat-token')) as string | undefined
@@ -44,7 +35,6 @@ export async function validateSeatQR(req: Request, res: Response, next: NextFunc
       return res.status(400).json({ error: 'Missing QR token' })
     }
 
-    // 1. Resolve the cafe
     const cafe = await prisma.cafe.findUnique({
       where: { subdomain },
       select: { id: true, isActive: true }
@@ -52,7 +42,6 @@ export async function validateSeatQR(req: Request, res: Response, next: NextFunc
     if (!cafe) return res.status(404).json({ error: 'Cafe not found' })
     if (!cafe.isActive) return res.status(403).json({ error: 'This venue is currently unavailable' })
 
-    // 2. Validate the seat — token must match table + seat + cafe
     const seat = await prisma.seat.findFirst({
       where: {
         qrToken,
@@ -73,14 +62,9 @@ export async function validateSeatQR(req: Request, res: Response, next: NextFunc
       }
     })
 
-    if (!seat) {
-      return res.status(403).json({ error: 'Invalid or expired QR code' })
-    }
-    if (!seat.table.isActive) {
-      return res.status(403).json({ error: 'This table is currently inactive' })
-    }
+    if (!seat) return res.status(403).json({ error: 'Invalid or expired QR code' })
+    if (!seat.table.isActive) return res.status(403).json({ error: 'This table is currently inactive' })
 
-    // 3. Resolve billing table — walk up the merge chain to the master
     const masterTable = seat.table.mergedIntoTable ?? seat.table
 
     req.seatSession = {
@@ -93,15 +77,6 @@ export async function validateSeatQR(req: Request, res: Response, next: NextFunc
       isMerged:     !!seat.table.mergedIntoTableId,
       mergedIntoTableNumber: seat.table.mergedIntoTable?.tableNumber
     }
-
-    logger.debug({
-      msg: 'Seat QR validated',
-      cafeId: cafe.id,
-      tableNumber,
-      seatNumber,
-      billingTableId: masterTable.id,
-      isMerged: req.seatSession.isMerged
-    })
 
     return next()
   } catch (err) {

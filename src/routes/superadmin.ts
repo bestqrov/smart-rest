@@ -1,12 +1,10 @@
 import express, { Request, Response, NextFunction } from 'express'
-import { Prisma } from '@prisma/client'
+
 import logger from '../logger'
 import prisma from '../prisma'
 
 const router = express.Router()
 
-// Super-admin is protected by a static secret set in .env
-// Pass header: x-superadmin-secret: <SUPERADMIN_SECRET>
 function requireSuperAdmin(req: Request, res: Response, next: NextFunction) {
   const secret = req.header('x-superadmin-secret')
   const expected = process.env.SUPERADMIN_SECRET
@@ -35,12 +33,8 @@ router.get('/api/superadmin/overview', requireSuperAdmin, async (_req: Request, 
       })
     ])
 
-    const totalDebt = debtAgg._sum.walletBalance
-      ? (debtAgg._sum.walletBalance as unknown as Prisma.Decimal).abs().toString()
-      : '0.00'
-    const totalRevenue = revenueAgg._sum.totalPrice
-      ? (revenueAgg._sum.totalPrice as unknown as Prisma.Decimal).toString()
-      : '0.00'
+    const totalDebt = Math.abs(debtAgg._sum.walletBalance || 0).toFixed(2)
+    const totalRevenue = (revenueAgg._sum.totalPrice || 0).toFixed(2)
 
     return res.json({
       totalCafes,
@@ -75,7 +69,7 @@ router.get('/api/superadmin/tenants', requireSuperAdmin, async (req: Request, re
       prisma.cafe.count({ where }),
       prisma.cafe.findMany({
         where,
-        orderBy: { walletBalance: 'asc' }, // most indebted first
+        orderBy: { walletBalance: 'asc' },
         skip: (page - 1) * limit,
         take: limit,
         select: {
@@ -94,7 +88,7 @@ router.get('/api/superadmin/tenants', requireSuperAdmin, async (req: Request, re
       pages: Math.ceil(total / limit),
       cafes: cafes.map((c) => ({
         ...c,
-        walletBalance: (c.walletBalance as unknown as Prisma.Decimal).toString()
+        walletBalance: c.walletBalance
       }))
     })
   } catch (err) {
@@ -107,7 +101,7 @@ router.get('/api/superadmin/tenants', requireSuperAdmin, async (req: Request, re
 
 router.post('/api/superadmin/tenants/:id/suspend', requireSuperAdmin, async (req: Request, res: Response) => {
   try {
-    const id = Number(req.params.id)
+    const id = req.params.id as string
     await prisma.cafe.update({ where: { id }, data: { isActive: false, billingStatus: 'SUSPENDED' } })
     logger.warn({ msg: 'SuperAdmin force-suspended cafe', cafeId: id })
     return res.json({ ok: true })
@@ -120,14 +114,14 @@ router.post('/api/superadmin/tenants/:id/suspend', requireSuperAdmin, async (req
 
 router.post('/api/superadmin/tenants/:id/reactivate', requireSuperAdmin, async (req: Request, res: Response) => {
   try {
-    const id = Number(req.params.id)
+    const id = req.params.id as string
     const { clearDebt } = req.body as { clearDebt?: boolean }
     await prisma.cafe.update({
       where: { id },
       data: {
         isActive: true,
         billingStatus: 'COLLECTING_DEBT',
-        ...(clearDebt ? { walletBalance: new Prisma.Decimal('0.00') } : {})
+        ...(clearDebt ? { walletBalance: 0 } : {})
       }
     })
     logger.info({ msg: 'SuperAdmin reactivated cafe', cafeId: id, clearDebt })
@@ -141,10 +135,10 @@ router.post('/api/superadmin/tenants/:id/reactivate', requireSuperAdmin, async (
 
 router.post('/api/superadmin/tenants/:id/override-balance', requireSuperAdmin, async (req: Request, res: Response) => {
   try {
-    const id = Number(req.params.id)
-    const { balance } = req.body as { balance: string }
+    const id = req.params.id as string
+    const { balance } = req.body as { balance: number }
     if (balance === undefined) return res.status(400).json({ error: 'balance required' })
-    await prisma.cafe.update({ where: { id }, data: { walletBalance: new Prisma.Decimal(balance) } })
+    await prisma.cafe.update({ where: { id }, data: { walletBalance: Number(balance) } })
     return res.json({ ok: true })
   } catch (err) {
     return res.status(500).json({ error: 'Failed' })

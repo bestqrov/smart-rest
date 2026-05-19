@@ -1,5 +1,4 @@
 import express, { Request, Response } from 'express'
-import { Prisma } from '@prisma/client'
 import { Server as SocketIOServer } from 'socket.io'
 import { authorizeAdmin } from '../middleware/authorizeAdmin'
 import logger from '../logger'
@@ -9,23 +8,13 @@ import { emitKdsTicket, emitOrderStatusUpdate } from '../services/kds'
 
 const router = express.Router()
 
-type OrderItemInput = { productId: number; quantity: number; notes?: string }
+type OrderItemInput = { productId: string; quantity: number; notes?: string }
 
 // ─── POST /api/orders — customer places an order ──────────────────────────────
-// Accepts either:
-//   - `tableToken`  (legacy table-level QR)
-//   - `seatToken`   (new seat-level QR from Hybrid layout)
-// When seatToken is used, the order is linked to the seat and the billing
-// table is resolved through the merge chain automatically.
 
 router.post('/api/orders', async (req: Request, res: Response) => {
   try {
-    const {
-      tableToken,  // legacy table-level
-      seatToken,   // new seat-level
-      customerPhone,
-      items
-    } = req.body as {
+    const { tableToken, seatToken, customerPhone, items } = req.body as {
       tableToken?:    string
       seatToken?:     string
       customerPhone?: string
@@ -39,28 +28,17 @@ router.post('/api/orders', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Provide either tableToken or seatToken' })
     }
 
-    // ── Resolve identity from either token type ─────────────────────────────
-    let cafeId: number
-    let physicalTableId: number      // the real table the customer sat at
-    let billingTableId: number       // may differ when merged
-    let seatId: number | null = null
+    let cafeId: string
+    let physicalTableId: string
+    let billingTableId: string
+    let seatId: string | null = null
     let seatNumber: number | null = null
 
     if (seatToken) {
       const seat = await prisma.seat.findUnique({
         where: { qrToken: seatToken },
-        include: {
-          table: {
-            select: {
-              id: true,
-              cafeId: true,
-              isActive: true,
-              mergedIntoTableId: true
-            }
-          }
-        }
+        include: { table: { select: { id: true, cafeId: true, isActive: true, mergedIntoTableId: true } } }
       })
-
       if (!seat) return res.status(404).json({ error: 'Invalid seat token' })
       if (!seat.table.isActive) return res.status(403).json({ error: 'Table is inactive' })
 
@@ -71,54 +49,49 @@ router.post('/api/orders', async (req: Request, res: Response) => {
       seatNumber      = seat.seatNumber
     } else {
       const table = await prisma.table.findUnique({ where: { qrToken: tableToken! } })
-      if (!table || !table.isActive) {
-        return res.status(404).json({ error: 'Invalid or inactive table token' })
-      }
+      if (!table || !table.isActive) return res.status(404).json({ error: 'Invalid or inactive table token' })
       cafeId          = table.cafeId
       physicalTableId = table.id
       billingTableId  = table.mergedIntoTableId ?? table.id
     }
 
-    // ── Venue active check ──────────────────────────────────────────────────
     const cafe = await prisma.cafe.findUnique({
       where: { id: cafeId },
-      select: { isActive: true, billingStatus: true, country: true }
+      select: { isActive: true, country: true }
     })
-    if (!cafe || !cafe.isActive) {
+    if (!cafe?.isActive) {
       return res.status(403).json({ error: 'This venue is currently unavailable. Please contact staff.' })
     }
 
-    // ── Validate + price products ───────────────────────────────────────────
     const productIds = items.map((i) => i.productId)
     const products = await prisma.product.findMany({
       where: { id: { in: productIds }, isAvailable: true, category: { cafeId } },
-      include: { category: { select: { cafeId: true } } }
+      select: { id: true, price: true }
     })
 
     if (products.length !== productIds.length) {
       return res.status(400).json({ error: 'One or more products are unavailable or do not belong to this cafe' })
     }
 
-    const priceMap = new Map<number, Prisma.Decimal>()
-    for (const p of products) priceMap.set(p.id, p.price as unknown as Prisma.Decimal)
+    const priceMap = new Map<string, number>(products.map((p) => [p.id, p.price]))
 
-    let total = new Prisma.Decimal(0)
+    let total = 0
     for (const it of items) {
       const qty = Number(it.quantity)
       if (!Number.isInteger(qty) || qty <= 0) {
         return res.status(400).json({ error: `Invalid quantity for product ${it.productId}` })
       }
       const price = priceMap.get(it.productId)
-      if (!price) return res.status(400).json({ error: `Product ${it.productId} price not found` })
-      total = total.add(price.mul(qty))
+      if (price === undefined) return res.status(400).json({ error: `Product ${it.productId} price not found` })
+      total += price * qty
     }
+    total = parseFloat(total.toFixed(2))
 
-    // ── Atomic order creation ───────────────────────────────────────────────
     const result = await prisma.$transaction(async (tx) => {
       const order = await tx.order.create({
         data: {
           cafeId,
-          tableId:         billingTableId,      // billing/master table
+          tableId:         billingTableId,
           originalTableId: physicalTableId !== billingTableId ? physicalTableId : null,
           seatId:          seatId ?? undefined,
           seatNumber:      seatNumber ?? undefined,
@@ -141,30 +114,21 @@ router.post('/api/orders', async (req: Request, res: Response) => {
       return order
     })
 
-    // ── Real-time: KDS ticket ───────────────────────────────────────────────
     const io = req.app.get('io') as SocketIOServer | undefined
-    if (io) {
-      await emitKdsTicket(io, result.id)
-    }
+    if (io) await emitKdsTicket(io, result.id)
 
-    return res.status(201).json({
-      orderId:    result.id,
-      totalPrice: total.toString(),
-      billingTableId,
-      physicalTableId,
-      seatNumber
-    })
+    return res.status(201).json({ orderId: result.id, totalPrice: total, billingTableId, physicalTableId, seatNumber })
   } catch (err: any) {
     logger.error({ msg: 'Create order error', err })
     return res.status(500).json({ error: 'Failed to create order' })
   }
 })
 
-// ─── PATCH /api/orders/:orderId/status — admin updates order status ───────────
+// ─── PATCH /api/orders/:orderId/status ───────────────────────────────────────
 
 router.patch('/api/orders/:orderId/status', authorizeAdmin, async (req: Request, res: Response) => {
   try {
-    const orderId = Number(req.params.orderId)
+    const orderId = req.params.orderId as string
     const { status } = req.body as { status: string }
     const cafeId = req.admin!.cafeId
 
@@ -181,24 +145,17 @@ router.patch('/api/orders/:orderId/status', authorizeAdmin, async (req: Request,
     if (order.cafeId !== cafeId) return res.status(403).json({ error: 'Forbidden' })
     if (order.status === status) return res.json({ message: 'No change', status })
 
-    const cafe = await prisma.cafe.findUnique({
-      where: { id: cafeId },
-      select: { country: true }
-    })
+    const cafe = await prisma.cafe.findUnique({ where: { id: cafeId }, select: { country: true } })
 
     await prisma.$transaction(async (tx) => {
       await tx.order.update({ where: { id: orderId }, data: { status: status as any } })
-
       if (status === 'COMPLETED' && order.status !== 'COMPLETED') {
-        const orderTotal = order.totalPrice as unknown as Prisma.Decimal
-        await applyOrderFee(tx, cafeId, orderId, orderTotal, cafe?.country ?? 'MA', false)
+        await applyOrderFee(tx, cafeId, orderId, order.totalPrice, cafe?.country ?? 'MA', false)
       }
     })
 
     const io = req.app.get('io') as SocketIOServer | undefined
-    if (io) {
-      emitOrderStatusUpdate(io, cafeId, orderId, status, order.tableId ?? null)
-    }
+    if (io) emitOrderStatusUpdate(io, cafeId, orderId, status, order.tableId ?? null)
 
     return res.json({ orderId, status })
   } catch (err) {
@@ -211,7 +168,7 @@ router.patch('/api/orders/:orderId/status', authorizeAdmin, async (req: Request,
 
 router.post('/api/orders/:orderId/social-verified', authorizeAdmin, async (req: Request, res: Response) => {
   try {
-    const orderId = Number(req.params.orderId)
+    const orderId = req.params.orderId as string
     const cafeId = req.admin!.cafeId
 
     const order = await prisma.order.findUnique({
@@ -229,8 +186,7 @@ router.post('/api/orders/:orderId/social-verified', authorizeAdmin, async (req: 
     }
 
     await prisma.$transaction(async (tx) => {
-      const orderTotal = order.totalPrice as unknown as Prisma.Decimal
-      await applyOrderFee(tx, cafeId, orderId, orderTotal, cafe.country, true)
+      await applyOrderFee(tx, cafeId, orderId, order.totalPrice, cafe.country, true)
     })
 
     return res.json({ message: 'Social share fee applied.' })
@@ -240,7 +196,7 @@ router.post('/api/orders/:orderId/social-verified', authorizeAdmin, async (req: 
   }
 })
 
-// ─── GET /api/orders — admin fetches orders ───────────────────────────────────
+// ─── GET /api/orders ──────────────────────────────────────────────────────────
 
 router.get('/api/orders', authorizeAdmin, async (req: Request, res: Response) => {
   try {
@@ -248,18 +204,13 @@ router.get('/api/orders', authorizeAdmin, async (req: Request, res: Response) =>
     const statusFilter = req.query.status as string | undefined
 
     const orders = await prisma.order.findMany({
-      where: {
-        cafeId,
-        ...(statusFilter ? { status: statusFilter as any } : {})
-      },
+      where: { cafeId, ...(statusFilter ? { status: statusFilter as any } : {}) },
       orderBy: { createdAt: 'desc' },
       take: 100,
       include: {
         items: {
           include: {
-            product: {
-              select: { nameEn: true, nameAr: true, nameFr: true, nameEs: true, nameDe: true, price: true }
-            }
+            product: { select: { nameEn: true, nameAr: true, nameFr: true, nameEs: true, nameDe: true, price: true } }
           }
         },
         table:         { select: { tableNumber: true } },
@@ -275,14 +226,13 @@ router.get('/api/orders', authorizeAdmin, async (req: Request, res: Response) =>
   }
 })
 
-// ─── GET /api/orders/table/:tableId — all active orders for a table group ─────
+// ─── GET /api/orders/table/:tableId ──────────────────────────────────────────
 
 router.get('/api/orders/table/:tableId', authorizeAdmin, async (req: Request, res: Response) => {
   try {
-    const cafeId = req.admin!.cafeId
-    const tableId = Number(req.params.tableId)
+    const cafeId  = req.admin!.cafeId
+    const tableId = req.params.tableId as string
 
-    // Resolve the full merge group to include orders from all merged tables
     const table = await prisma.table.findUnique({
       where: { id: tableId },
       select: {
@@ -292,34 +242,26 @@ router.get('/api/orders/table/:tableId', authorizeAdmin, async (req: Request, re
         mergedTables: { select: { id: true, tableNumber: true } }
       }
     })
-
     if (!table || table.cafeId !== cafeId) return res.status(404).json({ error: 'Table not found' })
 
-    // If this table is merged into a master, fetch from the master
     const masterTableId = table.mergedIntoTableId ?? tableId
-    const childIds = table.mergedIntoTableId
-      ? [] // this IS a child, query against master
-      : table.mergedTables.map((t) => t.id)
-
+    const childIds = table.mergedIntoTableId ? [] : table.mergedTables.map((t) => t.id)
     const allTableIds = [masterTableId, ...childIds]
 
     const orders = await prisma.order.findMany({
       where: { cafeId, tableId: { in: allTableIds }, isPaid: false, status: { notIn: ['CANCELLED'] } },
       orderBy: { createdAt: 'asc' },
       include: {
-        items: {
-          include: { product: { select: { nameEn: true, price: true } } }
-        },
+        items: { include: { product: { select: { nameEn: true, price: true } } } },
         table:         { select: { tableNumber: true } },
         originalTable: { select: { tableNumber: true } },
         seat:          { select: { seatNumber: true } }
       }
     })
 
-    const mergeLabel =
-      childIds.length > 0
-        ? `TABLE ${table.tableNumber} [Merged with ${table.mergedTables.map((t) => t.tableNumber).join(', ')}]`
-        : `TABLE ${table.tableNumber}`
+    const mergeLabel = childIds.length > 0
+      ? `TABLE ${table.tableNumber} [Merged with ${table.mergedTables.map((t) => t.tableNumber).join(', ')}]`
+      : `TABLE ${table.tableNumber}`
 
     return res.json({ mergeLabel, orders })
   } catch (err) {

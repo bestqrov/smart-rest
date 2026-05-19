@@ -42,7 +42,7 @@ router.post('/api/admin/categories', authorizeAdmin, async (req: Request, res: R
 router.put('/api/admin/categories/:id', authorizeAdmin, async (req: Request, res: Response) => {
   try {
     const cafeId = req.admin!.cafeId
-    const id = Number(req.params.id)
+    const id = req.params.id as string
     const { nameAr, nameEn, nameFr, nameEs, nameDe, order } = req.body
 
     const existing = await prisma.category.findUnique({ where: { id } })
@@ -69,7 +69,7 @@ router.put('/api/admin/categories/:id', authorizeAdmin, async (req: Request, res
 router.delete('/api/admin/categories/:id', authorizeAdmin, async (req: Request, res: Response) => {
   try {
     const cafeId = req.admin!.cafeId
-    const id = Number(req.params.id)
+    const id = req.params.id as string
     const existing = await prisma.category.findUnique({ where: { id } })
     if (!existing || existing.cafeId !== cafeId) return res.status(404).json({ error: 'Not found' })
     await prisma.category.delete({ where: { id } })
@@ -84,7 +84,7 @@ router.delete('/api/admin/categories/:id', authorizeAdmin, async (req: Request, 
 router.get('/api/admin/products', authorizeAdmin, async (req: Request, res: Response) => {
   try {
     const cafeId = req.admin!.cafeId
-    const categoryId = req.query.categoryId ? Number(req.query.categoryId) : undefined
+    const categoryId = req.query.categoryId as string | undefined
     const products = await prisma.product.findMany({
       where: { category: { cafeId }, ...(categoryId ? { categoryId } : {}) },
       orderBy: { nameEn: 'asc' },
@@ -103,11 +103,11 @@ router.post('/api/admin/products', authorizeAdmin, async (req: Request, res: Res
     if (!categoryId || !nameAr || !nameEn || price === undefined) {
       return res.status(400).json({ error: 'categoryId, nameAr, nameEn, price required' })
     }
-    const cat = await prisma.category.findUnique({ where: { id: Number(categoryId) } })
+    const cat = await prisma.category.findUnique({ where: { id: String(categoryId) } })
     if (!cat || cat.cafeId !== cafeId) return res.status(403).json({ error: 'Category not yours' })
 
     const product = await prisma.product.create({
-      data: { categoryId: Number(categoryId), nameAr, nameEn, nameFr, nameEs, nameDe, description: description || null, price, imageUrl: imageUrl || null }
+      data: { categoryId: String(categoryId), nameAr, nameEn, nameFr, nameEs, nameDe, description: description || null, price, imageUrl: imageUrl || null }
     })
     return res.status(201).json(product)
   } catch (err) {
@@ -119,7 +119,7 @@ router.post('/api/admin/products', authorizeAdmin, async (req: Request, res: Res
 router.put('/api/admin/products/:id', authorizeAdmin, async (req: Request, res: Response) => {
   try {
     const cafeId = req.admin!.cafeId
-    const id = Number(req.params.id)
+    const id = req.params.id as string
     const existing = await prisma.product.findUnique({ where: { id }, include: { category: { select: { cafeId: true } } } })
     if (!existing || existing.category.cafeId !== cafeId) return res.status(404).json({ error: 'Not found' })
 
@@ -147,7 +147,7 @@ router.put('/api/admin/products/:id', authorizeAdmin, async (req: Request, res: 
 router.delete('/api/admin/products/:id', authorizeAdmin, async (req: Request, res: Response) => {
   try {
     const cafeId = req.admin!.cafeId
-    const id = Number(req.params.id)
+    const id = req.params.id as string
     const existing = await prisma.product.findUnique({ where: { id }, include: { category: { select: { cafeId: true } } } })
     if (!existing || existing.category.cafeId !== cafeId) return res.status(404).json({ error: 'Not found' })
     await prisma.product.delete({ where: { id } })

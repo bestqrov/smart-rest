@@ -5,8 +5,8 @@ import { JWT_SECRET } from '../config'
 import prisma from '../prisma'
 
 export interface AdminTokenPayload {
-  userId: number
-  cafeId: number
+  userId: string
+  cafeId: string
   iat?: number
   exp?: number
 }
@@ -35,24 +35,23 @@ export async function authorizeAdmin(req: Request, res: Response, next: NextFunc
     req.admin = payload
 
     // If route contains cafeId param, ensure it matches
-    const paramCafeId = req.params.cafeId ? Number(req.params.cafeId) : undefined
-    if (paramCafeId && paramCafeId !== payload.cafeId) {
+    if (req.params.cafeId && req.params.cafeId !== payload.cafeId) {
       return res.status(403).json({ error: 'Forbidden: cafe mismatch' })
     }
 
     // If route contains orderId param, ensure that order belongs to admin cafe
     if (req.params.orderId) {
-      const orderId = Number(req.params.orderId)
-      if (Number.isFinite(orderId)) {
-        const order = await prisma.order.findUnique({ where: { id: orderId }, select: { cafeId: true } })
-        if (!order || order.cafeId !== payload.cafeId) {
-          return res.status(403).json({ error: 'Forbidden: order does not belong to your cafe' })
-        }
+      const order = await prisma.order.findUnique({
+        where: { id: req.params.orderId as string },
+        select: { cafeId: true }
+      })
+      if (!order || order.cafeId !== payload.cafeId) {
+        return res.status(403).json({ error: 'Forbidden: order does not belong to your cafe' })
       }
     }
 
     // If body contains cafeId, ensure it matches
-    if ((req.body && req.body.cafeId) && Number(req.body.cafeId) !== payload.cafeId) {
+    if (req.body?.cafeId && req.body.cafeId !== payload.cafeId) {
       return res.status(403).json({ error: 'Forbidden: cafe mismatch' })
     }
 
