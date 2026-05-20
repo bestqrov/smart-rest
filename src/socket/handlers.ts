@@ -110,12 +110,12 @@ export function registerSocketHandlers(io: SocketIOServer) {
         const { cafeId, tableId, message } = payload
         if (!cafeId || !tableId) return
 
-        const table = await prisma.table.findUnique({ where: { id: tableId } })
+        const table = await prisma.table.findUnique({ where: { id: tableId }, select: { cafeId: true, tableNumber: true } })
         if (!table || table.cafeId !== cafeId) return
 
         const bill = await prisma.billRequest.create({ data: { cafeId, tableId, message: message || null } })
         io.to(`room_${cafeId}`).emit('bill_requested', {
-          id: bill.id, tableId: bill.tableId, createdAt: bill.createdAt
+          id: bill.id, tableId: bill.tableId, tableNumber: table.tableNumber, createdAt: bill.createdAt
         })
       } catch (err) {
         logger.error({ msg: 'request_bill error', err, payload })
@@ -128,15 +128,15 @@ export function registerSocketHandlers(io: SocketIOServer) {
         const { cafeId, tableId, type, message } = payload
         if (!cafeId || !tableId || !type) return
 
-        const table = await prisma.table.findUnique({ where: { id: tableId } })
+        const table = await prisma.table.findUnique({ where: { id: tableId }, select: { cafeId: true, tableNumber: true } })
         if (!table || table.cafeId !== cafeId) return
 
         const call = await prisma.waiterCall.create({
           data: { cafeId, tableId, type: type as any, message: message || null }
         })
         io.to(`room_${cafeId}`).emit('waiter_called', {
-          id: call.id, tableId: call.tableId, type: call.type,
-          message: call.message, createdAt: call.createdAt
+          id: call.id, tableId: call.tableId, tableNumber: table.tableNumber,
+          type: call.type, message: call.message, createdAt: call.createdAt
         })
       } catch (err) {
         logger.error({ msg: 'waiter_call error', err, payload })

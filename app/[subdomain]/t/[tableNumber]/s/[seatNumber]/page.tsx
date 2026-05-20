@@ -87,9 +87,13 @@ function MenuPageInner() {
   const [showCart, setShowCart]         = useState(false)
   const [showAI, setShowAI]             = useState(false)
   const [showPhoto, setShowPhoto]       = useState(false)
+  const [showPhotoCard, setShowPhotoCard] = useState(false)
   const [upsells, setUpsells]           = useState<Product[]>([])
   const [ordering, setOrdering]         = useState(false)
   const [orderId, setOrderId]           = useState<string | null>(null)
+  const [orderItems, setOrderItems]     = useState<CartItem[]>([])
+  const [orderTotal, setOrderTotal]     = useState(0)
+  const [orderConfirmedAt, setOrderConfirmedAt] = useState<number | null>(null)
   const [toasts, setToasts]             = useState<Toast[]>([])
   const [photoFiltered, setPhotoFiltered] = useState<string | null>(null)
   const [photoLoading, setPhotoLoading] = useState(false)
@@ -154,6 +158,31 @@ function MenuPageInner() {
   // ─── Cart persistence ─────────────────────────────────────────────────────
   useEffect(() => { saveCart(cart) }, [cart])
 
+  // ─── Restore last order from localStorage (survives share/navigation) ──────
+  useEffect(() => {
+    if (!session) return
+    const key = `sm_order_${session.seatId}`
+    try {
+      const saved = JSON.parse(localStorage.getItem(key) || 'null')
+      if (saved?.orderId && saved?.confirmedAt) {
+        setOrderId(saved.orderId)
+        setOrderItems(saved.items ?? [])
+        setOrderTotal(saved.total ?? 0)
+        setOrderConfirmedAt(saved.confirmedAt)
+      }
+    } catch {}
+  }, [session])
+
+  // ─── 10-minute photo card timer ───────────────────────────────────────────
+  useEffect(() => {
+    if (!orderConfirmedAt || showPhotoCard) return
+    const elapsed = Date.now() - orderConfirmedAt
+    const remaining = 10 * 60 * 1000 - elapsed
+    if (remaining <= 0) { setShowPhotoCard(true); return }
+    const timer = setTimeout(() => setShowPhotoCard(true), remaining)
+    return () => clearTimeout(timer)
+  }, [orderConfirmedAt, showPhotoCard])
+
   // ─── Cart helpers ─────────────────────────────────────────────────────────
   const addToCart = useCallback((product: Product) => {
     setCart(c => {
@@ -203,11 +232,24 @@ function MenuPageInner() {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
+      const confirmedAt = Date.now()
       setOrderId(data.orderId)
+      setOrderItems([...cart])
+      setOrderTotal(cartTotal)
+      setOrderConfirmedAt(confirmedAt)
+      // persist order info so it survives share dialogs / navigation back
+      if (session) {
+        const key = `sm_order_${session.seatId}`
+        localStorage.setItem(key, JSON.stringify({
+          orderId: data.orderId,
+          items: cart,
+          total: cartTotal,
+          confirmedAt
+        }))
+      }
       setCart([])
       saveCart([])
       toast('🎉 Order placed! We\'re on it.', 'success')
-      setTimeout(() => setShowPhoto(true), 2000)
     } catch (err: any) {
       toast(err.message || 'Failed to place order', 'error')
     } finally {
@@ -380,11 +422,43 @@ function MenuPageInner() {
         )}
       </header>
 
-      {/* ── Post-order share card ── */}
+      {/* ── Order summary card (always visible after ordering) ── */}
       <AnimatePresence>
-        {orderId && !showPhoto && (
+        {orderId && orderItems.length > 0 && (
           <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
             className="mx-4 mt-4 rounded-3xl overflow-hidden shadow-lg">
+            <div className="bg-white border border-gray-100 rounded-3xl p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="font-extrabold text-gray-900 flex items-center gap-2">
+                  <span className="text-emerald-500 text-lg">✅</span> Your Order
+                </span>
+                <span className="text-xs bg-emerald-100 text-emerald-700 font-bold px-2.5 py-1 rounded-full">
+                  Table {tableNumber} · Seat {seatNumber}
+                </span>
+              </div>
+              <ul className="space-y-1.5">
+                {orderItems.map((item, i) => (
+                  <li key={i} className="flex justify-between text-sm text-gray-700">
+                    <span><span className="font-bold">{item.quantity}×</span> {item.product.nameEn}</span>
+                    <span className="text-gray-500 tabular-nums">{(item.product.price * item.quantity).toFixed(2)} {currency}</span>
+                  </li>
+                ))}
+              </ul>
+              <div className="flex justify-between font-extrabold text-base border-t border-dashed border-gray-200 pt-2">
+                <span>Total</span>
+                <span className="text-emerald-600">{orderTotal.toFixed(2)} {currency}</span>
+              </div>
+              <p className="text-xs text-center text-gray-400">Show this to your waiter if needed · شكراً · Merci</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Photo share card — appears 10 min after order ── */}
+      <AnimatePresence>
+        {showPhotoCard && orderId && (
+          <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+            className="mx-4 mt-3 rounded-3xl overflow-hidden shadow-lg">
             <div className="bg-gradient-to-br from-purple-600 via-pink-500 to-rose-500 p-4 text-white">
               <div className="flex items-center justify-between">
                 <div>

@@ -31,6 +31,9 @@ export default function KitchenPage() {
   const [authed, setAuthed]     = useState(false)
   const [, setTick]             = useState(0)
   const socketRef               = useRef<Socket | null>(null)
+  // keep track of orderIds the kitchen already confirmed as DELIVERED
+  // so ghost re-emits of kds_new_order for the same orderId are ignored
+  const deliveredIds            = useRef<Set<string>>(new Set())
 
   function authHeader() { return { Authorization: `Bearer ${localStorage.getItem('token')}` } }
 
@@ -100,6 +103,8 @@ export default function KitchenPage() {
 
     // New order from customer → kds_room_ receives kds_new_order
     socket.on('kds_new_order', (ticket: KdsTicket) => {
+      // Skip if this orderId was already marked DELIVERED by this kitchen session
+      if (deliveredIds.current.has(ticket.orderId)) return
       try { new Audio('data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAA==').play() } catch {}
       setTickets(prev => {
         if (prev.find(t => t.orderId === ticket.orderId)) return prev
@@ -111,6 +116,7 @@ export default function KitchenPage() {
     // Status updates
     socket.on('kds_order_updated', ({ orderId, status }: { orderId: string; status: string }) => {
       if (['DELIVERED', 'COMPLETED', 'CANCELLED'].includes(status)) {
+        deliveredIds.current.add(orderId)
         setTickets(prev => prev.filter(t => t.orderId !== orderId))
       } else if (status === 'PENDING' || status === 'PREPARING') {
         const s = status
@@ -128,6 +134,7 @@ export default function KitchenPage() {
   }
 
   function markReady(orderId: string) {
+    deliveredIds.current.add(orderId)
     socketRef.current?.emit('kds_ready', { cafeId, orderId })
     setTickets(prev => prev.filter(t => t.orderId !== orderId))
   }
