@@ -1,10 +1,12 @@
+import dotenv from 'dotenv'
+dotenv.config()
+
 import express from 'express'
 import http from 'http'
 import cors from 'cors'
 import bodyParser from 'body-parser'
 import { Server as SocketIOServer } from 'socket.io'
 import next from 'next'
-import dotenv from 'dotenv'
 import rateLimit from 'express-rate-limit'
 
 import logger from './logger'
@@ -25,9 +27,6 @@ import { registerSocketHandlers } from './socket/handlers'
 import { startWeeklyBillingCron } from './cron/weeklyBilling'
 
 async function main() {
-  // load .env into process.env
-  dotenv.config()
-
   const dev = process.env.NODE_ENV !== 'production'
   const nextApp = next({ dev, dir: '.' })
   const handle = nextApp.getRequestHandler()
