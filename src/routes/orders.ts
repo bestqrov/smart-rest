@@ -166,27 +166,31 @@ router.patch('/api/orders/:orderId/status', authorizeAdmin, async (req: Request,
 
 // ─── POST /api/orders/:orderId/social-verified ────────────────────────────────
 
-router.post('/api/orders/:orderId/social-verified', authorizeAdmin, async (req: Request, res: Response) => {
+// Public — called by the customer browser after a successful Web Share (no auth token)
+router.post('/api/orders/:orderId/social-verified', async (req: Request, res: Response) => {
   try {
     const orderId = req.params.orderId as string
-    const cafeId = req.admin!.cafeId
 
     const order = await prisma.order.findUnique({
       where: { id: orderId },
       select: { id: true, cafeId: true, totalPrice: true }
     })
-    if (!order || order.cafeId !== cafeId) return res.status(404).json({ error: 'Order not found' })
+    if (!order) return res.status(404).json({ error: 'Order not found' })
+
+    // Idempotency guard: skip if fee already logged for this share
+    const alreadyLogged = await prisma.walletLog.findFirst({
+      where: { orderId, type: 'DEBT_ACC_SOCIAL' }
+    })
+    if (alreadyLogged) return res.json({ message: 'Already recorded.' })
 
     const cafe = await prisma.cafe.findUnique({
-      where: { id: cafeId },
+      where: { id: order.cafeId },
       select: { country: true, hasSocialShareAddon: true }
     })
-    if (!cafe?.hasSocialShareAddon) {
-      return res.status(403).json({ error: 'Social Share add-on is not active for this venue' })
-    }
+    if (!cafe?.hasSocialShareAddon) return res.json({ message: 'Add-on not active.' })
 
     await prisma.$transaction(async (tx) => {
-      await applyOrderFee(tx, cafeId, orderId, order.totalPrice, cafe.country, true)
+      await applyOrderFee(tx, order.cafeId, orderId, order.totalPrice, cafe.country, true)
     })
 
     return res.json({ message: 'Social share fee applied.' })

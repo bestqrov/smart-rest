@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, Suspense } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useParams, useSearchParams } from 'next/navigation'
 import { io as socketIO, Socket } from 'socket.io-client'
@@ -58,6 +58,14 @@ function getUpsells(cart: CartItem[], all: Product[]): Product[] {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function MenuPage() {
+  return (
+    <Suspense fallback={<Loader />}>
+      <MenuPageInner />
+    </Suspense>
+  )
+}
+
+function MenuPageInner() {
   const params = useParams()
   const searchParams = useSearchParams()
 

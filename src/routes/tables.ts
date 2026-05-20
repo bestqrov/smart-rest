@@ -286,4 +286,140 @@ router.get('/api/qr/session', validateSeatQR, (req: Request, res: Response) => {
   })
 })
 
+// ─── POST /api/tables/sync — idempotent sync: GC excess, upsert missing ──────
+
+router.post('/api/tables/sync', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const cafeId = req.admin!.cafeId
+    const { tableCount, seatsPerTable } = req.body as { tableCount: number; seatsPerTable: number }
+
+    if (!tableCount || !seatsPerTable || tableCount < 1 || seatsPerTable < 1) {
+      return res.status(400).json({ error: 'tableCount and seatsPerTable must be positive integers' })
+    }
+    if (tableCount > 100 || seatsPerTable > 20) {
+      return res.status(400).json({ error: 'Max 100 tables, 20 seats per table' })
+    }
+
+    // ── Pre-flight: identify what would be deleted ─────────────────────────
+    const allTables = await prisma.table.findMany({
+      where: { cafeId },
+      select: {
+        id: true,
+        tableNumber: true,
+        seats: { select: { id: true, seatNumber: true } }
+      }
+    })
+
+    const excessTables = allTables.filter(t => t.tableNumber > tableCount)
+    const remainingTables = allTables.filter(t => t.tableNumber <= tableCount)
+
+    const excessTableIds = excessTables.map(t => t.id)
+    const excessSeatIds: string[] = remainingTables.flatMap(t =>
+      t.seats.filter(s => s.seatNumber > seatsPerTable).map(s => s.id)
+    )
+
+    // ── Safety check: active unpaid orders on excess tables ────────────────
+    if (excessTableIds.length > 0) {
+      const blockedOrder = await prisma.order.findFirst({
+        where: {
+          cafeId,
+          tableId: { in: excessTableIds },
+          isPaid: false,
+          status: { notIn: ['CANCELLED', 'COMPLETED'] }
+        },
+        select: { id: true, tableId: true, seatId: true }
+      })
+      if (blockedOrder) {
+        const tbl = excessTables.find(t => t.id === blockedOrder.tableId)
+        const seat = tbl?.seats.find(s => s.id === blockedOrder.seatId)
+        return res.status(409).json({
+          error: `Cannot reduce tables because Table ${tbl?.tableNumber}${seat ? ` - Seat ${seat.seatNumber}` : ''} currently has an active unpaid order. Close it first.`
+        })
+      }
+    }
+
+    // ── Safety check: active unpaid orders on excess seats ─────────────────
+    if (excessSeatIds.length > 0) {
+      const blockedSeatOrder = await prisma.order.findFirst({
+        where: {
+          cafeId,
+          seatId: { in: excessSeatIds },
+          isPaid: false,
+          status: { notIn: ['CANCELLED', 'COMPLETED'] }
+        },
+        select: { id: true, tableId: true, seatId: true }
+      })
+      if (blockedSeatOrder) {
+        const tbl = remainingTables.find(t => t.id === blockedSeatOrder.tableId)
+        const seat = tbl?.seats.find(s => s.id === blockedSeatOrder.seatId)
+        return res.status(409).json({
+          error: `Cannot reduce seats because Table ${tbl?.tableNumber} - Seat ${seat?.seatNumber} currently has an active unpaid order. Close it first.`
+        })
+      }
+    }
+
+    // ── Transaction: GC then upsert ────────────────────────────────────────
+    const tables = await prisma.$transaction(async (tx) => {
+      // Step 1: delete excess tables + related records
+      if (excessTableIds.length > 0) {
+        await tx.seat.deleteMany({ where: { tableId: { in: excessTableIds } } })
+        await tx.billRequest.deleteMany({ where: { tableId: { in: excessTableIds } } })
+        await tx.waiterCall.deleteMany({ where: { tableId: { in: excessTableIds } } })
+        await tx.order.updateMany({
+          where: { cafeId, tableId: { in: excessTableIds } },
+          data: { tableId: null }
+        })
+        await tx.table.deleteMany({ where: { id: { in: excessTableIds }, cafeId } })
+      }
+
+      // Step 2: delete excess seats on remaining tables
+      if (excessSeatIds.length > 0) {
+        await tx.order.updateMany({
+          where: { cafeId, seatId: { in: excessSeatIds } },
+          data: { seatId: null }
+        })
+        await tx.seat.deleteMany({ where: { id: { in: excessSeatIds } } })
+      }
+
+      // Step 3: upsert tables 1..tableCount and their seats 1..seatsPerTable
+      for (let tNum = 1; tNum <= tableCount; tNum++) {
+        let table = await tx.table.findFirst({ where: { cafeId, tableNumber: tNum }, select: { id: true } })
+        if (!table) {
+          table = await tx.table.create({
+            data: { cafeId, tableNumber: tNum, qrToken: randomUUID() },
+            select: { id: true }
+          })
+        }
+        for (let sNum = 1; sNum <= seatsPerTable; sNum++) {
+          const exists = await tx.seat.findFirst({ where: { tableId: table.id, seatNumber: sNum } })
+          if (!exists) {
+            await tx.seat.create({ data: { cafeId, tableId: table.id, seatNumber: sNum, qrToken: randomUUID() } })
+          }
+        }
+      }
+
+      return tx.table.findMany({
+        where: { cafeId },
+        orderBy: { tableNumber: 'asc' },
+        select: {
+          id: true,
+          tableNumber: true,
+          isActive: true,
+          qrToken: true,
+          mergedIntoTableId: true,
+          mergedIntoTable: { select: { id: true, tableNumber: true } },
+          mergedTables: { select: { id: true, tableNumber: true } },
+          seats: { orderBy: { seatNumber: 'asc' }, select: { id: true, seatNumber: true, qrToken: true } }
+        }
+      })
+    })
+
+    logger.info({ msg: 'Tables synced', cafeId, tableCount, seatsPerTable })
+    return res.json({ message: `Synced to ${tableCount} tables × ${seatsPerTable} seats`, tables })
+  } catch (err) {
+    logger.error({ msg: 'POST /api/tables/sync error', err })
+    return res.status(500).json({ error: 'Table sync failed' })
+  }
+})
+
 export default router

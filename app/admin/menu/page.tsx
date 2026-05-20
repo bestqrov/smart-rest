@@ -23,6 +23,7 @@ export default function MenuPage() {
   const [catModal, setCatModal] = useState<{ open: boolean; data: typeof EMPTY_CAT; id?: number }>({ open: false, data: { ...EMPTY_CAT } })
   const [prdModal, setPrdModal] = useState<{ open: boolean; data: typeof EMPTY_PRD; id?: number }>({ open: false, data: { ...EMPTY_PRD } })
   const [saving, setSaving] = useState(false)
+  const [seeding, setSeeding] = useState(false)
   const [imgPreview, setImgPreview] = useState<string>('')
 
   function auth() { return { Authorization: `Bearer ${localStorage.getItem('token')}`, 'Content-Type': 'application/json' } }
@@ -99,6 +100,16 @@ export default function MenuPage() {
     reader.readAsDataURL(file)
   }
 
+  async function seedDemo() {
+    if (!confirm('هذا سيضيف قائمة تجريبية جاهزة (4 أقسام + 12 منتج). متابعة؟')) return
+    setSeeding(true)
+    const r = await fetch('/api/admin/menu/seed-demo', { method: 'POST', headers: auth() })
+    const body = await r.json()
+    if (!r.ok) alert(body.error || 'فشل')
+    else await load()
+    setSeeding(false)
+  }
+
   if (loading) return <div className="flex items-center justify-center h-64"><Loader2 className="w-7 h-7 animate-spin text-emerald-600" /></div>
 
   return (
@@ -106,6 +117,16 @@ export default function MenuPage() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-extrabold text-gray-900">إدارة المنيو</h1>
         <div className="flex gap-2">
+          {categories.length === 0 && (
+            <button
+              onClick={seedDemo}
+              disabled={seeding}
+              className="flex items-center gap-1.5 bg-amber-100 hover:bg-amber-200 text-amber-800 text-sm font-semibold px-3 py-2 rounded-xl transition-colors disabled:opacity-60"
+            >
+              {seeding ? <Loader2 className="w-4 h-4 animate-spin" /> : '✨'}
+              قائمة تجريبية
+            </button>
+          )}
           <TabBtn active={activeTab === 'products'} onClick={() => setActiveTab('products')}>المنتجات</TabBtn>
           <TabBtn active={activeTab === 'categories'} onClick={() => setActiveTab('categories')}>الفئات</TabBtn>
         </div>

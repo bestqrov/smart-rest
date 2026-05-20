@@ -92,6 +92,9 @@ router.post('/api/auth/register', async (req: Request, res: Response) => {
 
     const token = jwt.sign({ userId: user.id, cafeId: cafe.id }, JWT_SECRET, { expiresIn: TOKEN_EXPIRY })
 
+    // Seed demo menu in background — gives new accounts a working menu on first QR scan
+    seedDemoMenu(cafe.id).catch((e) => logger.warn({ msg: 'Demo menu seed failed', cafeId: cafe.id, err: e.message }))
+
     return res.status(201).json({
       token,
       userId: user.id,
@@ -177,6 +180,9 @@ router.post('/api/auth/quick-register', async (req: Request, res: Response) => {
       logger.info({ msg: 'Magic link (n8n not configured)', magicLink, phone: normalised })
     }
 
+    // Seed demo menu in background
+    seedDemoMenu(cafe.id).catch((e) => logger.warn({ msg: 'Demo menu seed failed (quick-register)', cafeId: cafe.id, err: e.message }))
+
     return res.status(201).json({
       message: 'Check your WhatsApp for the magic login link',
       subdomain,
@@ -211,5 +217,48 @@ router.get('/api/auth/magic', async (req: Request, res: Response) => {
     return res.status(500).json({ error: 'Magic link exchange failed' })
   }
 })
+
+// ─── seedDemoMenu — called after every new cafe creation ─────────────────────
+// Gives new accounts a ready-to-use menu so the QR scan shows content immediately.
+
+async function seedDemoMenu(cafeId: string): Promise<void> {
+  const cats = [
+    { nameEn: 'Hot Drinks',   nameAr: 'مشروبات ساخنة',   order: 1 },
+    { nameEn: 'Cold Drinks',  nameAr: 'مشروبات باردة',    order: 2 },
+    { nameEn: 'Main Dishes',  nameAr: 'الأطباق الرئيسية', order: 3 },
+    { nameEn: 'Desserts',     nameAr: 'الحلويات',          order: 4 },
+  ]
+
+  type P = { cat: string; nameEn: string; nameAr: string; price: number; desc: string }
+  const products: P[] = [
+    { cat: 'Hot Drinks',  nameEn: 'Espresso',            nameAr: 'إسبريسو',             price: 18,  desc: 'Strong single-shot espresso' },
+    { cat: 'Hot Drinks',  nameEn: 'Cappuccino',          nameAr: 'كابتشينو',             price: 28,  desc: 'Espresso with steamed milk foam' },
+    { cat: 'Hot Drinks',  nameEn: 'Moroccan Mint Tea',   nameAr: 'أتاي مغربي',          price: 22,  desc: 'Fresh mint green tea with sugar' },
+    { cat: 'Cold Drinks', nameEn: 'Fresh Orange Juice',  nameAr: 'عصير برتقال طازج',    price: 25,  desc: 'Freshly squeezed oranges' },
+    { cat: 'Cold Drinks', nameEn: 'Iced Latte',          nameAr: 'آيس لاتيه',           price: 35,  desc: 'Cold espresso over milk and ice' },
+    { cat: 'Cold Drinks', nameEn: 'Mineral Water',       nameAr: 'ماء معدني',            price: 12,  desc: 'Still or sparkling' },
+    { cat: 'Main Dishes', nameEn: 'Tajine Kefta',        nameAr: 'طاجين كفتة وبيض',     price: 90,  desc: 'Spiced meatballs in tomato sauce with egg' },
+    { cat: 'Main Dishes', nameEn: 'Chicken Couscous',    nameAr: 'كسكس بالدجاج',        price: 95,  desc: 'Traditional couscous with 7 vegetables' },
+    { cat: 'Main Dishes', nameEn: 'Chicken Burger',      nameAr: 'برغر دجاج',            price: 58,  desc: 'Crispy chicken fillet with coleslaw and fries' },
+    { cat: 'Main Dishes', nameEn: 'Harira Soup',         nameAr: 'حريرة',               price: 30,  desc: 'Classic tomato, lentil & chickpea soup' },
+    { cat: 'Desserts',    nameEn: 'Chebakia',            nameAr: 'شباكية',               price: 25,  desc: 'Honey sesame pastry with orange blossom' },
+    { cat: 'Desserts',    nameEn: 'Chocolate Lava Cake', nameAr: 'كيك الشوكولاتة',      price: 45,  desc: 'Warm dark chocolate cake with molten centre' },
+  ]
+
+  const catMap: Record<string, string> = {}
+  for (const c of cats) {
+    const created = await prisma.category.create({
+      data: { cafeId, nameEn: c.nameEn, nameAr: c.nameAr, order: c.order }
+    })
+    catMap[c.nameEn] = created.id
+  }
+  for (const p of products) {
+    const categoryId = catMap[p.cat]
+    if (!categoryId) continue
+    await prisma.product.create({
+      data: { categoryId, nameEn: p.nameEn, nameAr: p.nameAr, description: p.desc, price: p.price, isAvailable: true }
+    })
+  }
+}
 
 export default router

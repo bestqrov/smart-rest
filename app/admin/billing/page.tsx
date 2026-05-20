@@ -148,15 +148,15 @@ export default function BillingPage() {
           <div className="bg-violet-50 border border-violet-200 rounded-2xl p-4">
             <div className="flex items-center gap-2 mb-2">
               <Gift className="w-5 h-5 text-violet-600" />
-              <span className="font-bold text-violet-900 text-sm">تمديد التجربة</span>
+              <span className="font-bold text-violet-900 text-sm">تمديد التجربة — $5 USD</span>
             </div>
-            <p className="text-violet-700 text-xs mb-3">تمديد مرة واحدة مجانية لمدة 7 أيام إضافية.</p>
+            <p className="text-violet-700 text-xs mb-3">ادفع $5 مرة واحدة للحصول على 7 أيام إضافية 100% مجانية بدون عمولات. غير قابل للتكرار.</p>
             <button
               onClick={() => doAction('extend-trial')}
               disabled={!!action}
               className="w-full bg-violet-600 hover:bg-violet-700 text-white py-2 rounded-xl text-sm font-semibold transition-colors disabled:opacity-60"
             >
-              {action === 'extend-trial' ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'تمديد 7 أيام'}
+              {action === 'extend-trial' ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'تمديد مقابل $5'}
             </button>
           </div>
         )}

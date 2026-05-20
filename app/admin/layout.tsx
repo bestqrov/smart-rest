@@ -5,7 +5,8 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, UtensilsCrossed, QrCode, Share2,
-  CreditCard, LogOut, ChevronRight, Menu, X
+  CreditCard, LogOut, ChevronRight, Menu, X,
+  AlertTriangle, Loader2, Gift, Zap
 } from 'lucide-react'
 
 const NAV = [
@@ -16,20 +17,47 @@ const NAV = [
   { href: '/admin/billing',   icon: CreditCard,       labelAr: 'الفواتير',        labelFr: 'Billing' },
 ]
 
+type CafeState = {
+  name: string; subdomain: string; billingStatus: string
+  inTrial: boolean; trialEndsAt: string | null; hasExtendedTrial: boolean
+}
+
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router   = useRouter()
   const [open, setOpen]   = useState(false)
-  const [cafe, setCafe]   = useState<{ name: string; subdomain: string; billingStatus: string } | null>(null)
+  const [cafe, setCafe]   = useState<CafeState | null>(null)
+  const [gateAction, setGateAction] = useState<string | null>(null)
 
-  useEffect(() => {
+  function authHeader() { return { Authorization: `Bearer ${localStorage.getItem('token')}` } }
+
+  async function loadCafe() {
     const token = localStorage.getItem('token')
     if (!token) { router.push('/admin/login'); return }
-    fetch('/api/admin/cafe/profile', { headers: { Authorization: `Bearer ${token}` } })
-      .then((r) => r.ok ? r.json() : null)
-      .then((d) => d && setCafe({ name: d.businessName || d.name, subdomain: d.subdomain, billingStatus: d.billingStatus }))
-      .catch(() => {})
-  }, [router])
+    const [profile, finance] = await Promise.all([
+      fetch('/api/admin/cafe/profile', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.ok ? r.json() : null),
+      fetch('/api/finance/status',     { headers: { Authorization: `Bearer ${token}` } }).then(r => r.ok ? r.json() : null),
+    ])
+    if (profile) {
+      setCafe({
+        name: profile.businessName || profile.name,
+        subdomain: profile.subdomain,
+        billingStatus: profile.billingStatus,
+        inTrial: finance?.inTrial ?? false,
+        trialEndsAt: finance?.trialEndsAt ?? null,
+        hasExtendedTrial: profile.hasExtendedTrial ?? false
+      })
+    }
+  }
+
+  useEffect(() => { loadCafe() }, [router])
+
+  async function doGateAction(endpoint: string) {
+    setGateAction(endpoint)
+    await fetch(`/api/finance/${endpoint}`, { method: 'POST', headers: authHeader() })
+    setGateAction(null)
+    await loadCafe()
+  }
 
   function logout() {
     localStorage.removeItem('token')
@@ -188,6 +216,99 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <main className="flex-1 md:overflow-y-auto pt-14 md:pt-0">
         {children}
       </main>
+
+      {/* ── Billing lock gate ─────────────────────────────────────── */}
+      {cafe && pathname !== '/admin/billing' && <BillingGate cafe={cafe} doAction={doGateAction} actionInFlight={gateAction} />}
+    </div>
+  )
+}
+
+// ─── Billing Gate Overlay ─────────────────────────────────────────────────────
+
+function BillingGate({ cafe, doAction, actionInFlight }: {
+  cafe: CafeState
+  doAction: (endpoint: string) => Promise<void>
+  actionInFlight: string | null
+}) {
+  const trialJustExpired = !cafe.inTrial && cafe.billingStatus === 'GRACE_PERIOD'
+  const suspended        = cafe.billingStatus === 'SUSPENDED'
+
+  if (!trialJustExpired && !suspended) return null
+
+  return (
+    <div className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" dir="rtl">
+      <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 space-y-5">
+
+        {/* Header */}
+        <div className="text-center">
+          <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3">
+            <AlertTriangle className="w-7 h-7 text-red-500" />
+          </div>
+          <h2 className="text-xl font-extrabold text-gray-900">
+            {suspended ? 'حسابك موقوف' : 'انتهت فترتك التجريبية'}
+          </h2>
+          <p className="text-sm text-gray-500 mt-1">
+            {suspended
+              ? 'رصيدك سالب ولم يُسدَّد. اختر أحد الخيارين لاستعادة الخدمة.'
+              : 'أسبوع التجربة المجاني انتهى. اختر كيف تريد الاستمرار.'}
+          </p>
+        </div>
+
+        {/* Route A — Accept AI commission */}
+        <div className="border border-emerald-200 rounded-2xl p-4 bg-emerald-50">
+          <div className="flex items-center gap-2 mb-1">
+            <Zap className="w-5 h-5 text-emerald-600" />
+            <span className="font-bold text-emerald-900">المسار أ — الباقة الذكية (مجانية)</span>
+          </div>
+          <p className="text-xs text-emerald-700 mb-3 leading-relaxed">
+            نظام عمولة ذكي: تدفع رسوم رمزية فقط على كل طلب مكتمل. لا اشتراك شهري.
+            الرسوم تُحسب تلقائياً وتُسوَّى كل إثنين.
+          </p>
+          <button
+            onClick={() => doAction('accept-ai-package')}
+            disabled={!!actionInFlight}
+            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-xl text-sm font-bold transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+          >
+            {actionInFlight === 'accept-ai-package'
+              ? <Loader2 className="w-4 h-4 animate-spin" />
+              : <Zap className="w-4 h-4" />}
+            تفعيل الباقة الذكية
+          </button>
+        </div>
+
+        {/* Route B — $5 extension (only if not already used) */}
+        {!cafe.hasExtendedTrial && (
+          <div className="border border-violet-200 rounded-2xl p-4 bg-violet-50">
+            <div className="flex items-center gap-2 mb-1">
+              <Gift className="w-5 h-5 text-violet-600" />
+              <span className="font-bold text-violet-900">المسار ب — تمديد 7 أيام مجانية ($5)</span>
+            </div>
+            <p className="text-xs text-violet-700 mb-3 leading-relaxed">
+              ادفع 5 دولار مرة واحدة واستمتع بـ 7 أيام إضافية مجانية 100% بدون أي عمولات.
+              هذا الخيار متاح مرة واحدة فقط.
+            </p>
+            <button
+              onClick={() => doAction('extend-trial')}
+              disabled={!!actionInFlight}
+              className="w-full bg-violet-600 hover:bg-violet-700 text-white py-2.5 rounded-xl text-sm font-bold transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+            >
+              {actionInFlight === 'extend-trial'
+                ? <Loader2 className="w-4 h-4 animate-spin" />
+                : <Gift className="w-4 h-4" />}
+              تمديد مقابل $5
+            </button>
+          </div>
+        )}
+
+        {/* Link to billing page for settle-debt */}
+        {suspended && (
+          <p className="text-center text-xs text-gray-400">
+            إذا سددت الدين بالفعل،{' '}
+            <a href="/admin/billing" className="text-emerald-600 underline font-medium">اذهب لصفحة الفواتير</a>
+            {' '}لتأكيد التسوية.
+          </p>
+        )}
+      </div>
     </div>
   )
 }

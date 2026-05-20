@@ -7,11 +7,11 @@ import {
   RefreshCw, CheckCircle, Layers, Unlink
 } from 'lucide-react'
 
-type Seat = { seatNumber: number; qrToken: string }
+type Seat = { id: string; seatNumber: number; qrToken: string }
 type TableRow = {
-  id: number; tableNumber: number; seats: Seat[]
-  mergedIntoTableId: number | null
-  mergedIntoTable?: { id: number; tableNumber: number } | null
+  id: string; tableNumber: number; seats: Seat[]
+  mergedIntoTableId: string | null
+  mergedIntoTable?: { id: string; tableNumber: number } | null
 }
 
 export default function TablesPage() {
@@ -22,8 +22,9 @@ export default function TablesPage() {
   const [seatsPerTable, setSeatsPerTable] = useState(4)
   const [qrImages, setQrImages]   = useState<Record<string, string>>({})
   const [subdomain, setSubdomain] = useState('')
-  const [mergeSource, setMergeSource] = useState<number[]>([])
-  const [mergeTarget, setMergeTarget] = useState<number | null>(null)
+  const [mergeSource, setMergeSource] = useState<string[]>([])
+  const [mergeTarget, setMergeTarget] = useState<string | null>(null)
+  const [syncError, setSyncError] = useState<string | null>(null)
   const [merging, setMerging]     = useState(false)
   const printRef = useRef<HTMLDivElement>(null)
 
@@ -43,10 +44,11 @@ export default function TablesPage() {
   }
 
   async function renderQrCodes(data: TableRow[], sub = subdomain) {
+    const origin = typeof window !== 'undefined' ? window.location.origin : ''
     const imgs: Record<string, string> = {}
     for (const t of data) {
       for (const s of t.seats) {
-        const url = `https://${sub}.smartmenu.ma/${sub}/t/${t.tableNumber}/s/${s.seatNumber}?token=${s.qrToken}`
+        const url = `${origin}/${sub}/t/${t.tableNumber}/s/${s.seatNumber}?token=${s.qrToken}`
         try {
           imgs[s.qrToken] = await QRCode.toDataURL(url, { width: 200, margin: 1, color: { dark: '#064e3b', light: '#ffffff' } })
         } catch {}
@@ -77,13 +79,21 @@ export default function TablesPage() {
   }, [])
 
   async function generate() {
+    setSyncError(null)
     setGenerating(true)
-    const r = await fetch('/api/tables/generate', {
+    const r = await fetch('/api/tables/sync', {
       method: 'POST',
       headers: { ...authHeader(), 'Content-Type': 'application/json' },
       body: JSON.stringify({ tableCount, seatsPerTable })
     })
-    if (r.ok) await loadTables()
+    if (r.ok) {
+      const data = await r.json()
+      setTables(data.tables)
+      await renderQrCodes(data.tables, subdomain)
+    } else {
+      const body = await r.json().catch(() => ({}))
+      setSyncError(body.error || 'فشل المزامنة')
+    }
     setGenerating(false)
   }
 
@@ -100,7 +110,7 @@ export default function TablesPage() {
     setMerging(false)
   }
 
-  async function handleUnmerge(tableId: number) {
+  async function handleUnmerge(tableId: string) {
     await fetch('/api/tables/unmerge', {
       method: 'POST',
       headers: { ...authHeader(), 'Content-Type': 'application/json' },
@@ -109,7 +119,7 @@ export default function TablesPage() {
     await loadTables()
   }
 
-  function toggleMergeSource(id: number) {
+  function toggleMergeSource(id: string) {
     setMergeSource(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
   }
 
@@ -153,9 +163,10 @@ export default function TablesPage() {
 
       {/* ── Generate form ───────────────────────────────────────── */}
       <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-        <h2 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
-          <QrCode className="w-5 h-5 text-emerald-600" /> توليد طاولات + QR هجين
+        <h2 className="font-bold text-gray-800 mb-1 flex items-center gap-2">
+          <QrCode className="w-5 h-5 text-emerald-600" /> مزامنة الطاولات + QR
         </h2>
+        <p className="text-xs text-gray-400 mb-4">يضيف الطاولات/المقاعد الناقصة ويحذف الزائدة (مع الحفاظ على الـ QR الحالية)</p>
         <div className="flex flex-wrap gap-4 items-end">
           <div>
             <label className="text-xs text-gray-500 mb-1 block">عدد الطاولات</label>
@@ -178,8 +189,8 @@ export default function TablesPage() {
             disabled={generating}
             className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-semibold transition-colors disabled:opacity-60"
           >
-            {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <QrCode className="w-4 h-4" />}
-            توليد الآن
+            {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+            مزامنة
           </button>
           {tables.length > 0 && (
             <button
@@ -190,9 +201,12 @@ export default function TablesPage() {
             </button>
           )}
         </div>
-        {tables.length > 0 && (
+        {syncError && (
+          <p className="text-xs text-red-500 mt-3 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{syncError}</p>
+        )}
+        {tables.length > 0 && !syncError && (
           <p className="text-xs text-gray-400 mt-3">
-            {tables.length} طاولة · {tables.reduce((s, t) => s + t.seats.length, 0)} مقعد · الرابط: <span className="text-emerald-600">{subdomain}.smartmenu.ma/t/:n/s/:n?token=...</span>
+            {tables.length} طاولة · {tables.reduce((s, t) => s + t.seats.length, 0)} مقعد · الرابط: <span className="text-emerald-600">{typeof window !== 'undefined' ? window.location.origin : ''}/{subdomain}/t/:n/s/:n?token=...</span>
           </p>
         )}
       </div>
@@ -224,7 +238,7 @@ export default function TablesPage() {
               <select
                 className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm"
                 value={mergeTarget || ''}
-                onChange={e => setMergeTarget(Number(e.target.value))}
+                onChange={e => setMergeTarget(e.target.value || null)}
               >
                 <option value="">اختر الطاولة الرئيسية</option>
                 {tables.filter(t => !mergeSource.includes(t.id) && !t.mergedIntoTableId).map(t => (
