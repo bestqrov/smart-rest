@@ -17,6 +17,18 @@ enum OrderStatus {
   CANCELLED
 }
 
+enum OrderSource {
+  QR_CODE    // customer scanned table QR
+  POS_MANUAL // staff entered order via Mini POS
+}
+
+enum BillStatus {
+  OPENED          // table is active, no bill yet
+  BILL_REQUESTED  // customer / waiter requested the bill
+  CLOSED_PRINTED  // paid and receipt printed
+  CLOSED_VIRTUAL  // paid digitally, no print
+}
+
 enum PaymentMethod {
   CASH
   CARD
@@ -42,6 +54,17 @@ enum WalletLogType {
   TRIAL_EXTENSION
 }
 
+enum StaffRole {
+  CASHIER
+  WAITER
+  SUPERVISOR
+}
+
+enum ShiftStatus {
+  OPEN
+  CLOSED
+}
+
 // ─── Tenant / Cafe ────────────────────────────────────────────────────────────
 
 model Cafe {
@@ -64,15 +87,17 @@ model Cafe {
   billingStatus       BillingStatus @default(GRACE_PERIOD)
   hasSocialShareAddon Boolean       @default(false)
 
-  categories   Category[]
-  tables       Table[]
-  seats        Seat[]
-  orders       Order[]
-  billRequests BillRequest[]
-  users        User[]
-  waiterCalls  WaiterCall[]
-  walletLogs   WalletLog[]
-  billingTiers BillingTier[]
+  categories    Category[]
+  tables        Table[]
+  seats         Seat[]
+  orders        Order[]
+  billRequests  BillRequest[]
+  users         User[]
+  waiterCalls   WaiterCall[]
+  walletLogs    WalletLog[]
+  billingTiers  BillingTier[]
+  staff         Staff[]
+  cashierShifts CashierShift[]
 
 }
 
@@ -135,18 +160,20 @@ model Category {
 }
 
 model Product {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  categoryId  String   @db.ObjectId
-  category    Category @relation(fields: [categoryId], references: [id])
-  nameAr      String
-  nameEn      String
-  nameFr      String  @default("")
-  nameEs      String  @default("")
-  nameDe      String  @default("")
-  description String?
-  price       Float
-  imageUrl    String?
-  isAvailable Boolean @default(true)
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  categoryId     String   @db.ObjectId
+  category       Category @relation(fields: [categoryId], references: [id])
+  nameAr         String
+  nameEn         String
+  nameFr         String  @default("")
+  nameEs         String  @default("")
+  nameDe         String  @default("")
+  description    String?
+  price          Float
+  imageUrl       String?
+  isAvailable    Boolean @default(true)
+  // commission as a fraction of sale price (e.g. 0.05 = 5%)
+  commissionRate Float   @default(0.0)
 
   orderItems OrderItem[]
 
@@ -173,12 +200,22 @@ model Order {
   customerPhone   String?
   createdAt       DateTime      @default(now())
 
+  // ── Mini POS additions ──────────────────────────────────────────────────
+  orderSource  OrderSource @default(QR_CODE)
+  billStatus   BillStatus  @default(OPENED)
+  // staff member who entered the order manually (null for QR orders)
+  createdById  String?     @db.ObjectId
+  createdBy    Staff?      @relation(fields: [createdById], references: [id])
+
   items      OrderItem[]
   walletLogs WalletLog[]
 
   @@index([cafeId])
   @@index([tableId])
   @@index([seatId])
+  @@index([createdById])
+  @@index([orderSource])
+  @@index([billStatus])
 }
 
 model OrderItem {
@@ -189,6 +226,9 @@ model OrderItem {
   product   Product @relation(fields: [productId], references: [id])
   quantity  Int
   notes     String?
+  // snapshot of price and commission at time of order (immutable history)
+  unitPrice      Float @default(0)
+  commissionRate Float @default(0)
 
   @@index([orderId])
   @@index([productId])
@@ -265,4 +305,44 @@ model User {
   cafe         Cafe   @relation(fields: [cafeId], references: [id])
 
   @@index([cafeId])
+}
+
+// ─── Mini POS — Staff & Shifts ────────────────────────────────────────────────
+
+model Staff {
+  id       String    @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId   String    @db.ObjectId
+  cafe     Cafe      @relation(fields: [cafeId], references: [id])
+  name     String
+  role     StaffRole @default(WAITER)
+  // 4-digit PIN for fast POS login (stored hashed in application layer)
+  pinCode  String
+  isActive Boolean   @default(true)
+  createdAt DateTime @default(now())
+
+  orders        Order[]
+  cashierShifts CashierShift[]
+
+  @@index([cafeId])
+  @@index([role])
+}
+
+model CashierShift {
+  id         String      @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId     String      @db.ObjectId
+  cafe       Cafe        @relation(fields: [cafeId], references: [id])
+  staffId    String      @db.ObjectId
+  staff      Staff       @relation(fields: [staffId], references: [id])
+  status     ShiftStatus @default(OPEN)
+  startTime  DateTime    @default(now())
+  endTime    DateTime?
+  // cash in drawer at shift start
+  initialCash       Float @default(0)
+  // sum of all cash payments collected during the shift
+  totalCollectedCash Float @default(0)
+  notes      String?
+
+  @@index([cafeId])
+  @@index([staffId])
+  @@index([status])
 }
