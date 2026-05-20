@@ -3,23 +3,30 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   Share2, Instagram, Loader2, Save, Upload,
-  ToggleLeft, ToggleRight, Info, CheckCircle
+  ToggleLeft, ToggleRight, Info, CheckCircle, Facebook
 } from 'lucide-react'
 
-type SocialProfile = {
-  instagramHandle: string
-  snapchatHandle: string
-  logoUrl: string
+type SocialLinks = {
+  instagram: string
+  snapchat:  string
+  facebook:  string
+}
+
+type Profile = {
+  logoUrl:            string
   hasSocialShareAddon: boolean
+  socialLinks:        SocialLinks
 }
 
 export default function SocialPage() {
-  const [profile, setProfile] = useState<SocialProfile>({
-    instagramHandle: '', snapchatHandle: '', logoUrl: '', hasSocialShareAddon: false
+  const [profile, setProfile] = useState<Profile>({
+    logoUrl: '',
+    hasSocialShareAddon: false,
+    socialLinks: { instagram: '', snapchat: '', facebook: '' }
   })
-  const [loading, setLoading]   = useState(true)
-  const [saving, setSaving]     = useState(false)
-  const [saved, setSaved]       = useState(false)
+  const [loading, setLoading]       = useState(true)
+  const [saving, setSaving]         = useState(false)
+  const [saved, setSaved]           = useState(false)
   const [logoPreview, setLogoPreview] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -32,11 +39,15 @@ export default function SocialPage() {
       .then(r => r.ok ? r.json() : null)
       .then(d => {
         if (d) {
+          const sl = (d.socialLinks as Partial<SocialLinks>) || {}
           setProfile({
-            instagramHandle:    d.instagramHandle || '',
-            snapchatHandle:     d.snapchatHandle  || '',
-            logoUrl:            d.logoUrl         || '',
-            hasSocialShareAddon: d.hasSocialShareAddon || false
+            logoUrl:             d.logoUrl || '',
+            hasSocialShareAddon: d.hasSocialShareAddon || false,
+            socialLinks: {
+              instagram: sl.instagram || '',
+              snapchat:  sl.snapchat  || '',
+              facebook:  sl.facebook  || '',
+            }
           })
           if (d.logoUrl) setLogoPreview(d.logoUrl)
         }
@@ -56,12 +67,20 @@ export default function SocialPage() {
     reader.readAsDataURL(file)
   }
 
+  function setSocial(key: keyof SocialLinks, value: string) {
+    setProfile(p => ({ ...p, socialLinks: { ...p.socialLinks, [key]: value } }))
+  }
+
   async function save() {
     setSaving(true)
     await fetch('/api/admin/cafe/profile', {
       method: 'PUT',
       headers: { ...authHeader(), 'Content-Type': 'application/json' },
-      body: JSON.stringify(profile)
+      body: JSON.stringify({
+        logoUrl:             profile.logoUrl,
+        hasSocialShareAddon: profile.hasSocialShareAddon,
+        socialLinks:         profile.socialLinks,
+      })
     })
     setSaving(false); setSaved(true)
     setTimeout(() => setSaved(false), 2500)
@@ -83,33 +102,52 @@ export default function SocialPage() {
       <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 space-y-4">
         <h2 className="font-bold text-gray-800">حسابات التواصل الاجتماعي</h2>
 
+        {/* Instagram */}
         <div>
-          <label className="text-sm text-gray-600 mb-1 block flex items-center gap-1.5">
+          <label className="text-sm text-gray-600 mb-1 flex items-center gap-1.5">
             <Instagram className="w-4 h-4 text-pink-500" /> انستقرام
           </label>
           <div className="flex items-center border border-gray-200 rounded-xl overflow-hidden focus-within:border-emerald-400 transition-colors">
             <span className="px-3 text-gray-400 bg-gray-50 border-l border-gray-200 py-2.5 text-sm">@</span>
             <input
               type="text"
-              value={profile.instagramHandle}
-              onChange={e => setProfile(p => ({ ...p, instagramHandle: e.target.value }))}
+              value={profile.socialLinks.instagram}
+              onChange={e => setSocial('instagram', e.target.value)}
               placeholder="your_restaurant"
               className="flex-1 px-3 py-2.5 text-sm outline-none bg-white"
             />
           </div>
         </div>
 
+        {/* Snapchat */}
         <div>
-          <label className="text-sm text-gray-600 mb-1 block flex items-center gap-1.5">
+          <label className="text-sm text-gray-600 mb-1 flex items-center gap-1.5">
             <span className="text-yellow-500 font-bold text-sm">👻</span> سناب شات
           </label>
           <div className="flex items-center border border-gray-200 rounded-xl overflow-hidden focus-within:border-emerald-400 transition-colors">
             <span className="px-3 text-gray-400 bg-gray-50 border-l border-gray-200 py-2.5 text-sm">@</span>
             <input
               type="text"
-              value={profile.snapchatHandle}
-              onChange={e => setProfile(p => ({ ...p, snapchatHandle: e.target.value }))}
+              value={profile.socialLinks.snapchat}
+              onChange={e => setSocial('snapchat', e.target.value)}
               placeholder="your_restaurant"
+              className="flex-1 px-3 py-2.5 text-sm outline-none bg-white"
+            />
+          </div>
+        </div>
+
+        {/* Facebook */}
+        <div>
+          <label className="text-sm text-gray-600 mb-1 flex items-center gap-1.5">
+            <Facebook className="w-4 h-4 text-blue-600" /> فيسبوك
+          </label>
+          <div className="flex items-center border border-gray-200 rounded-xl overflow-hidden focus-within:border-emerald-400 transition-colors">
+            <span className="px-3 text-gray-400 bg-gray-50 border-l border-gray-200 py-2.5 text-sm select-none">facebook.com/</span>
+            <input
+              type="text"
+              value={profile.socialLinks.facebook}
+              onChange={e => setSocial('facebook', e.target.value)}
+              placeholder="your.restaurant.page"
               className="flex-1 px-3 py-2.5 text-sm outline-none bg-white"
             />
           </div>
@@ -169,8 +207,7 @@ export default function SocialPage() {
           >
             {profile.hasSocialShareAddon
               ? <ToggleRight className="w-10 h-10 text-emerald-600" />
-              : <ToggleLeft  className="w-10 h-10 text-gray-300" />
-            }
+              : <ToggleLeft  className="w-10 h-10 text-gray-300" />}
           </button>
         </div>
         {profile.hasSocialShareAddon && (
@@ -188,8 +225,8 @@ export default function SocialPage() {
           disabled={saving}
           className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-xl font-semibold transition-colors disabled:opacity-60"
         >
-          {saving   ? <Loader2 className="w-4 h-4 animate-spin" /> :
-           saved    ? <CheckCircle className="w-4 h-4" /> :
+          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> :
+           saved  ? <CheckCircle className="w-4 h-4" /> :
            <Save className="w-4 h-4" />}
           {saved ? 'تم الحفظ!' : 'حفظ التغييرات'}
         </button>
