@@ -1,6 +1,7 @@
 "use client"
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
@@ -185,9 +186,7 @@ export default function LandingPage() {
       <nav className="sticky top-0 z-40 bg-white/95 backdrop-blur shadow-sm border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-4 py-3.5 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-emerald-600 rounded-xl flex items-center justify-center shadow-sm">
-              <span className="text-white font-bold text-sm">SM</span>
-            </div>
+            <Image src="/assets/logo.png" alt="Smart Menu" width={36} height={36} className="rounded-xl shadow-sm" />
             <div>
               <span className="font-extrabold text-lg text-gray-900 tracking-tight">SmartMenu</span>
               <span className="hidden sm:inline text-xs text-emerald-600 font-medium ml-1">Pro</span>
@@ -672,9 +671,7 @@ export default function LandingPage() {
             {/* Brand */}
             <div className="col-span-2 md:col-span-1">
               <div className="flex items-center gap-2 mb-4">
-                <div className="w-9 h-9 bg-emerald-600 rounded-xl flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">SM</span>
-                </div>
+                <Image src="/assets/logo.png" alt="Smart Menu" width={36} height={36} className="rounded-xl" />
                 <span className="text-white font-extrabold text-lg">SmartMenu</span>
               </div>
               <p className="text-sm leading-relaxed mb-4" dir="rtl">منصة رقمية متكاملة لإدارة طلبات المطاعم والمقاهي في المغرب والخليج.</p>

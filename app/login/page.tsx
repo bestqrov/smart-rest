@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Loader2, UtensilsCrossed } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
+import Image from 'next/image'
 
 const DEMO_ACCOUNTS = [
   { label: 'Café de la Plage 🇲🇦', email: 'plage@demo.com',  password: 'demo1234' },
@@ -52,11 +53,8 @@ export default function LoginPage() {
 
         {/* Logo */}
         <div className="text-center">
-          <div className="inline-flex items-center justify-center w-14 h-14 bg-emerald-600 rounded-2xl mb-4">
-            <UtensilsCrossed className="w-7 h-7 text-white" />
-          </div>
-          <h1 className="text-2xl font-extrabold text-white">SmartMenu</h1>
-          <p className="text-gray-400 text-sm mt-1">لوحة تحكم المطعم</p>
+          <Image src="/assets/logo.png" alt="Smart Menu" width={140} height={140} className="mx-auto mb-2 drop-shadow-lg" />
+          <p className="text-gray-400 text-sm">لوحة تحكم المطعم</p>
         </div>
 
         {/* Demo accounts */}

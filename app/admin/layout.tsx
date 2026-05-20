@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, UtensilsCrossed, QrCode, Share2,
@@ -84,9 +85,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         {/* Logo */}
         <div className="px-5 py-5 border-b border-gray-800">
           <Link href="/admin/dashboard" className="flex items-center gap-2">
-            <div className="w-9 h-9 bg-emerald-600 rounded-lg flex items-center justify-center shrink-0">
-              <span className="text-white font-bold text-sm">SM</span>
-            </div>
+            <Image src="/assets/logo.png" alt="Smart Menu" width={36} height={36} className="rounded-lg shrink-0" />
             <div>
               <div className="text-white font-bold text-sm">SmartMenu</div>
               {cafe && <div className="text-gray-400 text-xs truncate">{cafe.subdomain}.smartmenu.ma</div>}
@@ -146,9 +145,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <Menu className="w-6 h-6" />
         </button>
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 bg-emerald-600 rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-xs">SM</span>
-          </div>
+          <Image src="/assets/logo.png" alt="Smart Menu" width={28} height={28} className="rounded-lg" />
           <span className="text-white font-bold text-sm">SmartMenu</span>
         </div>
         <div className="w-8" /> {/* spacer */}
@@ -161,9 +158,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <div className="relative bg-gray-900 w-72 h-full flex flex-col" dir="rtl">
             <div className="px-4 py-4 flex items-center justify-between border-b border-gray-800">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center">
-                  <span className="text-white font-bold text-xs">SM</span>
-                </div>
+                <Image src="/assets/logo.png" alt="Smart Menu" width={32} height={32} className="rounded-lg" />
                 <span className="text-white font-bold">SmartMenu</span>
               </div>
               <button onClick={() => setOpen(false)} className="text-gray-400 p-1">
