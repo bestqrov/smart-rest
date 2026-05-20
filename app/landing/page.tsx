@@ -200,11 +200,11 @@ export default function LandingPage() {
             <a href="#demo"       className="hover:text-emerald-700 transition-colors">Demo</a>
             <a href="#pricing"    className="hover:text-emerald-700 transition-colors">الأسعار</a>
             <a href="#contact"    className="hover:text-emerald-700 transition-colors">تواصل معنا</a>
-            <Link href="/admin/dashboard" className="hover:text-emerald-700 transition-colors">تسجيل الدخول</Link>
+            <Link href="/login" className="hover:text-emerald-700 transition-colors">تسجيل الدخول</Link>
           </div>
 
           <div className="hidden lg:flex items-center gap-3">
-            <Link href="/signup" className="border border-emerald-600 text-emerald-700 hover:bg-emerald-50 px-4 py-2 rounded-lg text-sm font-semibold transition-colors">
+            <Link href="/login" className="border border-emerald-600 text-emerald-700 hover:bg-emerald-50 px-4 py-2 rounded-lg text-sm font-semibold transition-colors">
               Connexion
             </Link>
             <Link href="/signup" className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-lg text-sm font-bold transition-all shadow-sm">
