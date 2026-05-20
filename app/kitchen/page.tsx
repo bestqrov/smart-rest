@@ -94,7 +94,7 @@ export default function KitchenPage() {
   useEffect(() => {
     if (!authed || !cafeId) return
     const token = localStorage.getItem('token')
-    const socket = socketIO(SOCKET_URL || window.location.origin, { auth: { token }, transports: ['websocket', 'polling'] })
+    const socket = socketIO(SOCKET_URL || window.location.origin, { auth: { token }, transports: ['polling', 'websocket'] })
     socketRef.current = socket
 
     socket.on('connect', () => {

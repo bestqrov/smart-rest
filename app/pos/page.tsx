@@ -279,7 +279,7 @@ export default function POSPage() {
     if (!posToken || !cafeId) return
     const socket = socketIO(SOCKET_URL || window.location.origin, {
       auth:       { token: posToken },
-      transports: ['websocket', 'polling']
+      transports: ['polling', 'websocket']
     })
     socketRef.current = socket
 

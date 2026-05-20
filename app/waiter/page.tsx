@@ -96,7 +96,7 @@ export default function WaiterPage() {
     if (!authed || !cafeId) return
     const socket = socketIO(SOCKET_URL || window.location.origin, {
       auth:       { token: tokenRef.current },
-      transports: ['websocket', 'polling']
+      transports: ['polling', 'websocket']
     })
     socketRef.current = socket
 

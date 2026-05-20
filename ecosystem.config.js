@@ -4,8 +4,8 @@ module.exports = {
       name: 'smart-menu-api',
       script: 'npm',
       args: 'start',
-      exec_mode: 'cluster',
-      instances: 'max',
+      exec_mode: 'fork',
+      instances: 1,
       merge_logs: true,
       restart_delay: 3000,
       env: {
