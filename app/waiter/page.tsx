@@ -52,6 +52,7 @@ export default function WaiterPage() {
   const [cafeId, setCafeId]       = useState('')
   const [authed, setAuthed]       = useState(false)
   const [isPOS, setIsPOS]         = useState(false)
+  const [connected, setConnected] = useState(false)
   const [, setTick]               = useState(0)
   const tokenRef                  = useRef('')
   const socketRef                 = useRef<Socket | null>(null)
@@ -93,17 +94,21 @@ export default function WaiterPage() {
   // ── socket ────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!authed || !cafeId) return
-    const socket = socketIO(SOCKET_URL, {
+    const socket = socketIO(SOCKET_URL || window.location.origin, {
       auth:       { token: tokenRef.current },
       transports: ['websocket', 'polling']
     })
     socketRef.current = socket
 
     socket.on('connect', () => {
+      setConnected(true)
       socket.emit('join', `room_${cafeId}`)
     })
 
+    socket.on('disconnect', () => setConnected(false))
+
     socket.on('connect_error', (err) => {
+      setConnected(false)
       console.error('Waiter socket connect_error', err.message)
     })
 
@@ -201,7 +206,12 @@ export default function WaiterPage() {
           <Image src="/assets/logo.png" alt="Smart Menu" width={32} height={32} className="rounded-lg" />
           <div>
             <h1 className="font-extrabold text-gray-900 leading-none">Waiter View</h1>
-            <p className="text-xs text-gray-400">Live floor status</p>
+            <p className="text-xs flex items-center gap-1">
+              <span className={`w-2 h-2 rounded-full inline-block ${connected ? 'bg-emerald-400 animate-pulse' : 'bg-red-400'}`} />
+              <span className={connected ? 'text-emerald-600' : 'text-red-500'}>
+                {connected ? 'Live' : 'Disconnected'}
+              </span>
+            </p>
           </div>
         </div>
         {totalAlerts > 0 && (

@@ -277,7 +277,7 @@ export default function POSPage() {
   // ── socket ──────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!posToken || !cafeId) return
-    const socket = socketIO(SOCKET_URL, {
+    const socket = socketIO(SOCKET_URL || window.location.origin, {
       auth:       { token: posToken },
       transports: ['websocket', 'polling']
     })

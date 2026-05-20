@@ -144,8 +144,9 @@ function MenuPageInner() {
 
   // ─── Socket ───────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!session || !SOCKET_URL) return
-    const socket = socketIO(SOCKET_URL, { transports: ['websocket', 'polling'] })
+    if (!session) return
+    // SOCKET_URL='' means same origin — valid in production (Express serves Next.js)
+    const socket = socketIO(SOCKET_URL || window.location.origin, { transports: ['websocket', 'polling'] })
     socketRef.current = socket
     socket.on('connect', () => {
       socket.emit('join_table_room', { cafeId: session.cafeId, tableId: session.tableId, seatToken: token })
