@@ -87,6 +87,13 @@ model Cafe {
   billingStatus       BillingStatus @default(GRACE_PERIOD)
   hasSocialShareAddon Boolean       @default(false)
 
+  // ── Smart subscription (set after trial analysis) ─────────────────────────
+  subscriptionTier  String?   // 'ECONOMY' | 'ADVANCED'
+  monthlyFee        Float?    // calculated monthly subscription amount
+  coffeeRefPrice    Float?    // reference coffee price (auto-detected or manual)
+  sandwichRefPrice  Float?    // reference sandwich price (auto-detected or manual)
+  weeklyOrderCount  Int?      // order count captured at last trial-end analysis
+
   categories    Category[]
   tables        Table[]
   seats         Seat[]
@@ -201,8 +208,9 @@ model Order {
   createdAt       DateTime      @default(now())
 
   // ── Mini POS additions ──────────────────────────────────────────────────
-  orderSource  OrderSource @default(QR_CODE)
-  billStatus   BillStatus  @default(OPENED)
+  orderSource     OrderSource @default(QR_CODE)
+  billStatus      BillStatus  @default(OPENED)
+  totalCommission Float       @default(0)
   // staff member who entered the order manually (null for QR orders)
   createdById  String?     @db.ObjectId
   createdBy    Staff?      @relation(fields: [createdById], references: [id])
@@ -325,6 +333,21 @@ model Staff {
 
   @@index([cafeId])
   @@index([role])
+}
+
+// ─── Magic-link verification tokens (expires after 15 min, checked in app) ───
+
+model VerificationToken {
+  id        String    @id @default(auto()) @map("_id") @db.ObjectId
+  email     String
+  token     String    @unique
+  cafeData  Json
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([email])
+  @@index([expiresAt])
 }
 
 model CashierShift {

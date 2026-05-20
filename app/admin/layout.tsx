@@ -7,7 +7,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, UtensilsCrossed, QrCode, Share2,
   CreditCard, LogOut, ChevronRight, Menu, X,
-  AlertTriangle, Loader2, Gift, Zap, ChefHat, Bell
+  AlertTriangle, Loader2, Gift, Zap, ChefHat, Bell, Monitor
 } from 'lucide-react'
 
 const NAV = [
@@ -19,8 +19,9 @@ const NAV = [
 ]
 
 const STAFF_LINKS = [
-  { href: '/kitchen', icon: ChefHat, labelAr: 'شاشة المطبخ', labelFr: 'Kitchen KDS' },
-  { href: '/waiter',  icon: Bell,    labelAr: 'شاشة النادل',  labelFr: 'Waiter View' },
+  { href: '/kitchen', icon: ChefHat,  labelAr: 'شاشة المطبخ', labelFr: 'Kitchen KDS' },
+  { href: '/waiter',  icon: Bell,     labelAr: 'شاشة النادل',  labelFr: 'Waiter View' },
+  { href: '/pos',     icon: Monitor,  labelAr: 'Mini POS',     labelFr: 'Mini POS' },
 ]
 
 type CafeState = {

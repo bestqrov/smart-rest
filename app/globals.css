@@ -3,3 +3,12 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ── Mini POS bill-requested pulsing border ── */
+@keyframes pos-pulse-border {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.8); border-color: rgb(239 68 68); }
+  50%       { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0);  border-color: rgb(252 165 165); }
+}
+.pos-pulse {
+  animation: pos-pulse-border 1s ease-in-out infinite;
+}

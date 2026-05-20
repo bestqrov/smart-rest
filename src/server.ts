@@ -23,6 +23,10 @@ import financeRouter from './routes/finance'
 import tablesRouter from './routes/tables'
 import menuAdminRouter from './routes/menuAdmin'
 import superadminRouter from './routes/superadmin'
+import posShiftRouter from './routes/pos/shift'
+import posOrdersRouter from './routes/pos/orders'
+import posCheckoutRouter from './routes/pos/checkout'
+import posTablesStatusRouter from './routes/pos/tablesStatus'
 import { registerSocketHandlers } from './socket/handlers'
 import { startWeeklyBillingCron } from './cron/weeklyBilling'
 
@@ -82,6 +86,10 @@ async function main() {
   app.use(tablesRouter)
   app.use(menuAdminRouter)
   app.use(superadminRouter)
+  app.use(posShiftRouter)
+  app.use(posOrdersRouter)
+  app.use(posCheckoutRouter)
+  app.use(posTablesStatusRouter)
 
   // health
   app.get('/health', (req, res) => res.json({ ok: true }))

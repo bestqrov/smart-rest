@@ -1,12 +1,63 @@
 import express, { Request, Response } from 'express'
 import jwt from 'jsonwebtoken'
+import crypto from 'crypto'
 import { hashPassword, verifyPassword } from '../auth/hash'
 import logger from '../logger'
 import { JWT_SECRET } from '../config'
 import prisma from '../prisma'
+import { sendMagicLink } from '../services/email'
+import { t, resolveLang, type Lang } from '../lib/i18n'
 
 const router = express.Router()
-const TOKEN_EXPIRY = '8h'
+const TOKEN_EXPIRY       = '8h'
+const MAGIC_EXPIRES_MS   = 15 * 60 * 1000          // 15 minutes
+const EMAIL_WHITELIST    = ['gmail.com', 'outlook.com', 'hotmail.com', 'yahoo.com', 'yahoo.fr', 'hotmail.fr', 'live.com', 'icloud.com']
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Extract domain from email, lowercase. */
+function emailDomain(email: string): string {
+  return email.split('@')[1]?.toLowerCase().trim() ?? ''
+}
+
+/** Return true when the email provider is on our whitelist. */
+function isWhitelistedEmail(email: string): boolean {
+  const domain = emailDomain(email)
+  if (!domain) return false
+  return EMAIL_WHITELIST.includes(domain)
+}
+
+/** Basic RFC-5322 sanity check (not a full regex — combined with whitelist). */
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
+
+function isValidEmail(email: string): boolean {
+  return EMAIL_RE.test(email.trim().toLowerCase())
+}
+
+/** Generate a cryptographically secure URL-safe token (32 bytes → 64 hex chars). */
+function generateSecureToken(): string {
+  return crypto.randomBytes(32).toString('hex')
+}
+
+/** Build a currency string from country. */
+function currencyFor(country: string): string {
+  const map: Record<string, string> = {
+    MA: 'MAD', SA: 'SAR', AE: 'AED', US: 'USD',
+    FR: 'EUR', ES: 'EUR', DE: 'EUR', GB: 'GBP'
+  }
+  return map[country.toUpperCase()] ?? 'MAD'
+}
+
+/** Derive a URL-safe subdomain slug from a café name. */
+function nameToSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 40) || 'my-cafe'
+}
 
 // ─── POST /api/auth/login ─────────────────────────────────────────────────────
 
@@ -219,6 +270,229 @@ router.get('/api/auth/magic', async (req: Request, res: Response) => {
     return res.json({ token: sessionToken, userId: payload.userId, cafeId: payload.cafeId })
   } catch (err) {
     return res.status(500).json({ error: 'Magic link exchange failed' })
+  }
+})
+
+// ─── POST /api/auth/magic-send ────────────────────────────────────────────────
+//
+// Step 1 of magic-link registration:
+//   1. Validate email whitelist (Gmail, Outlook, Hotmail, Yahoo only)
+//   2. Check for duplicate email / subdomain
+//   3. Create a VerificationToken with hashed token + cafe form data
+//   4. Send magic link email via Resend
+
+router.post('/api/auth/magic-send', async (req: Request, res: Response) => {
+  const lang: Lang = resolveLang(req.body?.lang ?? req.query['lang'] as string)
+
+  try {
+    const { email, cafeName, subdomain, country = 'MA' } = req.body as {
+      email:      string
+      cafeName:   string
+      subdomain:  string
+      country?:   string
+      lang?:      string
+    }
+
+    // ── Field presence ────────────────────────────────────────────────────────
+    if (!email || !cafeName || !subdomain) {
+      return res.status(400).json({ error: t('error_fields_required', lang) })
+    }
+
+    // ── Email format ──────────────────────────────────────────────────────────
+    const cleanEmail = email.trim().toLowerCase()
+    if (!isValidEmail(cleanEmail)) {
+      return res.status(422).json({ error: t('error_email_format', lang) })
+    }
+
+    // ── Whitelist check ───────────────────────────────────────────────────────
+    if (!isWhitelistedEmail(cleanEmail)) {
+      logger.warn({ msg: 'magic-send: rejected non-whitelisted provider', domain: emailDomain(cleanEmail) })
+      return res.status(422).json({ error: t('error_email_provider', lang) })
+    }
+
+    // ── Subdomain format ──────────────────────────────────────────────────────
+    const cleanSubdomain = subdomain.trim().toLowerCase()
+    if (!/^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$/.test(cleanSubdomain)) {
+      return res.status(422).json({ error: t('error_subdomain_format', lang) })
+    }
+
+    // ── Uniqueness checks ─────────────────────────────────────────────────────
+    const [existingUser, existingCafe] = await Promise.all([
+      prisma.user.findUnique({ where: { email: cleanEmail }, select: { id: true } }),
+      prisma.cafe.findUnique({ where: { subdomain: cleanSubdomain }, select: { id: true } })
+    ])
+
+    if (existingUser) return res.status(409).json({ error: t('error_email_taken', lang) })
+    if (existingCafe) return res.status(409).json({ error: t('error_subdomain_taken', lang) })
+
+    // ── Delete any pending (unused, non-expired) token for this email ─────────
+    // Rate-limit: one active token per email at a time
+    await prisma.verificationToken.deleteMany({
+      where: { email: cleanEmail, usedAt: null }
+    })
+
+    // ── Generate & store token ────────────────────────────────────────────────
+    const rawToken = generateSecureToken()
+    const expiresAt = new Date(Date.now() + MAGIC_EXPIRES_MS)
+
+    await prisma.verificationToken.create({
+      data: {
+        email:    cleanEmail,
+        token:    rawToken,
+        expiresAt,
+        cafeData: {
+          cafeName: cafeName.trim(),
+          subdomain: cleanSubdomain,
+          country:   country.toUpperCase(),
+          currency:  currencyFor(country),
+          lang
+        }
+      }
+    })
+
+    // ── Build and send magic link ─────────────────────────────────────────────
+    const base      = process.env.FRONTEND_URL ?? 'https://smartrestau.digima.cloud'
+    const magicLink = `${base}/api/auth/magic-verify?token=${rawToken}&lang=${lang}`
+
+    await sendMagicLink({ to: cleanEmail, magicLink, lang, cafeName: cafeName.trim() })
+
+    logger.info({ msg: 'magic-send: token issued', email: cleanEmail, lang })
+    return res.json({ sent: true, email: cleanEmail })
+  } catch (err) {
+    logger.error({ msg: 'magic-send error', err })
+    return res.status(500).json({ error: t('error_server', lang) })
+  }
+})
+
+// ─── GET /api/auth/magic-verify ───────────────────────────────────────────────
+//
+// Step 2 of magic-link registration:
+//   1. Look up the token (exact hex match)
+//   2. Reject if expired or already used
+//   3. Create Cafe + User in a transaction
+//   4. Mark token as used
+//   5. Issue 8h session JWT and redirect to /admin/dashboard
+
+router.get('/api/auth/magic-verify', async (req: Request, res: Response) => {
+  const lang: Lang  = resolveLang(req.query['lang'] as string)
+  const rawToken    = (req.query['token'] as string ?? '').trim()
+
+  // Accept both GET (redirect from email) and return JSON for AJAX callers
+  const wantsJson   = req.headers.accept?.includes('application/json') ?? false
+
+  function fail(status: number, msg: string) {
+    if (wantsJson) return res.status(status).json({ error: msg })
+    const base = process.env.FRONTEND_URL ?? 'https://smartrestau.digima.cloud'
+    return res.redirect(`${base}/signup?verifyError=${encodeURIComponent(msg)}&lang=${lang}`)
+  }
+
+  try {
+    if (!rawToken || rawToken.length !== 64 || !/^[a-f0-9]+$/.test(rawToken)) {
+      return fail(400, t('error_token_invalid', lang))
+    }
+
+    // ── Fetch token record ─────────────────────────────────────────────────────
+    const record = await prisma.verificationToken.findUnique({
+      where: { token: rawToken }
+    })
+
+    if (!record) return fail(401, t('error_token_invalid', lang))
+
+    // ── Used check ─────────────────────────────────────────────────────────────
+    if (record.usedAt !== null) return fail(401, t('error_token_used', lang))
+
+    // ── Expiry check ───────────────────────────────────────────────────────────
+    if (new Date() > record.expiresAt) {
+      await prisma.verificationToken.delete({ where: { id: record.id } })
+      return fail(401, t('error_token_invalid', lang))
+    }
+
+    // ── Extract stored cafe data ───────────────────────────────────────────────
+    const cafeData = record.cafeData as {
+      cafeName:  string
+      subdomain: string
+      country:   string
+      currency:  string
+      lang:      Lang
+    }
+
+    // ── Final uniqueness guard (race condition protection) ─────────────────────
+    const [dupUser, dupCafe] = await Promise.all([
+      prisma.user.findUnique({ where: { email: record.email }, select: { id: true } }),
+      prisma.cafe.findUnique({ where: { subdomain: cafeData.subdomain }, select: { id: true } })
+    ])
+
+    if (dupUser) return fail(409, t('error_email_taken', lang))
+    if (dupCafe) return fail(409, t('error_subdomain_taken', lang))
+
+    // ── Create Cafe + User in atomic transaction ────────────────────────────────
+    const trialEndsAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+
+    const { user, cafe } = await prisma.$transaction(async (tx) => {
+      const cafe = await tx.cafe.create({
+        data: {
+          name:          cafeData.cafeName,
+          businessName:  cafeData.cafeName,
+          subdomain:     cafeData.subdomain,
+          country:       cafeData.country,
+          currency:      cafeData.currency,
+          trialEndsAt,
+          billingStatus: 'GRACE_PERIOD',
+          isActive:      true
+        }
+      })
+
+      // No password — magic-link only account.
+      // Store a random irreversible hash so the NOT NULL constraint is satisfied.
+      const placeholderHash = await hashPassword(
+        crypto.randomBytes(24).toString('base64')
+      )
+      const user = await tx.user.create({
+        data: { email: record.email, passwordHash: placeholderHash, cafeId: cafe.id }
+      })
+
+      return { user, cafe }
+    })
+
+    // ── Mark token as used (single-use guarantee) ──────────────────────────────
+    await prisma.verificationToken.update({
+      where: { id: record.id },
+      data:  { usedAt: new Date() }
+    })
+
+    // ── Seed demo menu in background ───────────────────────────────────────────
+    seedDemoMenu(cafe.id).catch(e =>
+      logger.warn({ msg: 'Demo menu seed failed (magic-verify)', cafeId: cafe.id, err: e.message })
+    )
+
+    // ── Issue 8h session token ─────────────────────────────────────────────────
+    const sessionToken = jwt.sign(
+      { userId: user.id, cafeId: cafe.id, subdomain: cafe.subdomain },
+      JWT_SECRET,
+      { expiresIn: TOKEN_EXPIRY }
+    )
+
+    logger.info({ msg: 'magic-verify: account created', email: record.email, cafeId: cafe.id })
+
+    if (wantsJson) {
+      return res.json({
+        token:       sessionToken,
+        userId:      user.id,
+        cafeId:      cafe.id,
+        subdomain:   cafe.subdomain,
+        trialEndsAt,
+        lang
+      })
+    }
+
+    // Browser redirect — embed token in query so the dashboard page picks it up
+    const base = process.env.FRONTEND_URL ?? 'https://smartrestau.digima.cloud'
+    return res.redirect(
+      `${base}/verify-success?token=${sessionToken}&cafeId=${cafe.id}&subdomain=${cafe.subdomain}&lang=${lang}`
+    )
+  } catch (err) {
+    logger.error({ msg: 'magic-verify error', err })
+    return fail(500, t('error_server', lang))
   }
 })
 
