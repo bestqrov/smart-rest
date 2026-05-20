@@ -1,25 +1,48 @@
 /**
- * Email service — magic link delivery via Resend.
- * Falls back to console logging when RESEND_API_KEY is not set (local dev).
+ * Email service — magic link delivery via Gmail SMTP (Nodemailer).
+ * Falls back to console logging when credentials are not set (local dev).
  *
  * Add to .env:
- *   RESEND_API_KEY=re_xxxxxxxxxxxxx
- *   EMAIL_FROM=Smart Resto <noreply@yourdomain.com>
+ *   GMAIL_USER=youraddress@gmail.com
+ *   GMAIL_APP_PASSWORD=xxxx xxxx xxxx xxxx   ← 16-char Google App Password
+ *
+ * How to get an App Password:
+ *   Google Account → Security → 2-Step Verification → App passwords
+ *   (2FA must be enabled first)
  */
 
-import { Resend } from 'resend'
+import nodemailer from 'nodemailer'
 import logger from '../logger'
 import { t, type Lang, isRTL } from '../lib/i18n'
 
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
-const FROM   = process.env.EMAIL_FROM ?? 'Smart Resto <noreply@smartrestau.digima.cloud>'
+// ─── Transporter (singleton) ──────────────────────────────────────────────────
 
-// ─── HTML template (bilingual RTL/LTR aware) ──────────────────────────────────
+function createTransporter() {
+  const user = process.env.GMAIL_USER
+  const pass = process.env.GMAIL_APP_PASSWORD
+
+  if (!user || !pass) return null
+
+  return nodemailer.createTransport({
+    service: 'gmail',
+    auth: { type: 'login', user, pass }
+  })
+}
+
+const transporter = createTransporter()
+const FROM_NAME   = process.env.EMAIL_FROM_NAME ?? 'Smart Resto'
+const FROM_EMAIL  = process.env.GMAIL_USER      ?? 'noreply@smartrestau.digima.cloud'
+const FROM        = `${FROM_NAME} <${FROM_EMAIL}>`
+
+// ─── HTML template (RTL/LTR aware) ───────────────────────────────────────────
 
 function buildEmailHtml(magicLink: string, lang: Lang, cafeName: string): string {
-  const dir       = isRTL(lang) ? 'rtl' : 'ltr'
-  const align     = isRTL(lang) ? 'right' : 'left'
-  const btnAlign  = 'center'
+  const dir      = isRTL(lang) ? 'rtl' : 'ltr'
+  const align    = isRTL(lang) ? 'right' : 'left'
+  const fallback = lang === 'ar' ? 'أو انسخ هذا الرابط:'
+                 : lang === 'fr' ? 'Ou copiez ce lien :'
+                 : lang === 'es' ? 'O copia este enlace:'
+                 :                 'Or copy this link:'
 
   return `<!DOCTYPE html>
 <html lang="${lang}" dir="${dir}">
@@ -29,7 +52,7 @@ function buildEmailHtml(magicLink: string, lang: Lang, cafeName: string): string
   <title>${t('email_subject', lang)}</title>
 </head>
 <body style="margin:0;padding:0;background:#f4f4f5;font-family:system-ui,-apple-system,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="min-height:100vh;background:#f4f4f5;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f5;min-height:100vh;">
     <tr><td align="center" style="padding:40px 16px;">
       <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
 
@@ -37,7 +60,7 @@ function buildEmailHtml(magicLink: string, lang: Lang, cafeName: string): string
         <tr>
           <td style="background:linear-gradient(135deg,#f59e0b,#d97706);padding:36px 40px;text-align:center;">
             <div style="font-size:32px;margin-bottom:8px;">☾</div>
-            <div style="color:#ffffff;font-size:22px;font-weight:800;letter-spacing:-0.5px;">Smart Resto</div>
+            <div style="color:#ffffff;font-size:22px;font-weight:800;">Smart Resto</div>
             <div style="color:#fef3c7;font-size:13px;margin-top:4px;">${t('brand_tagline', lang)}</div>
           </td>
         </tr>
@@ -51,11 +74,11 @@ function buildEmailHtml(magicLink: string, lang: Lang, cafeName: string): string
             </p>
             <p style="margin:0 0 32px;color:#9ca3af;font-size:13px;">${t('email_expire_note', lang)}</p>
 
-            <!-- CTA Button -->
+            <!-- CTA -->
             <table width="100%" cellpadding="0" cellspacing="0">
-              <tr><td style="text-align:${btnAlign};">
+              <tr><td style="text-align:center;">
                 <a href="${magicLink}"
-                   style="display:inline-block;background:linear-gradient(135deg,#f59e0b,#d97706);color:#ffffff;font-size:16px;font-weight:800;text-decoration:none;padding:16px 40px;border-radius:14px;letter-spacing:0.2px;">
+                   style="display:inline-block;background:linear-gradient(135deg,#f59e0b,#d97706);color:#ffffff;font-size:16px;font-weight:800;text-decoration:none;padding:16px 40px;border-radius:14px;">
                   ${t('email_cta', lang)}
                 </a>
               </td></tr>
@@ -63,7 +86,7 @@ function buildEmailHtml(magicLink: string, lang: Lang, cafeName: string): string
 
             <!-- Fallback URL -->
             <p style="margin:28px 0 0;color:#9ca3af;font-size:12px;word-break:break-all;text-align:${align};">
-              ${lang === 'ar' ? 'أو انسخ هذا الرابط:' : lang === 'fr' ? 'Ou copiez ce lien :' : lang === 'es' ? 'O copia este enlace:' : 'Or copy this link:'}<br/>
+              ${fallback}<br/>
               <a href="${magicLink}" style="color:#f59e0b;">${magicLink}</a>
             </p>
           </td>
@@ -72,9 +95,7 @@ function buildEmailHtml(magicLink: string, lang: Lang, cafeName: string): string
         <!-- Footer -->
         <tr>
           <td style="background:#f9fafb;border-top:1px solid #f3f4f6;padding:24px 40px;text-align:center;">
-            <p style="margin:0;color:#9ca3af;font-size:12px;line-height:1.6;">
-              ${t('email_ignore', lang)}
-            </p>
+            <p style="margin:0;color:#9ca3af;font-size:12px;line-height:1.6;">${t('email_ignore', lang)}</p>
           </td>
         </tr>
 
@@ -98,10 +119,9 @@ export async function sendMagicLink({ to, magicLink, lang, cafeName = '' }: Send
   const subject = t('email_subject', lang)
   const html    = buildEmailHtml(magicLink, lang, cafeName)
 
-  if (!resend) {
-    // Development fallback — log to console
+  if (!transporter) {
     logger.info({
-      msg:       '📧 [DEV] Magic link (RESEND_API_KEY not set — link logged here)',
+      msg:       '📧 [DEV] Magic link — GMAIL_USER / GMAIL_APP_PASSWORD not set, logging link here',
       to,
       magicLink,
       lang
@@ -109,17 +129,6 @@ export async function sendMagicLink({ to, magicLink, lang, cafeName = '' }: Send
     return
   }
 
-  const { error } = await resend.emails.send({
-    from:    FROM,
-    to:      [to],
-    subject,
-    html
-  })
-
-  if (error) {
-    logger.error({ msg: 'Resend send error', to, error })
-    throw new Error(`Email delivery failed: ${error.message}`)
-  }
-
-  logger.info({ msg: 'Magic link sent', to, lang })
+  await transporter.sendMail({ from: FROM, to, subject, html })
+  logger.info({ msg: 'Magic link sent via Gmail', to, lang })
 }
