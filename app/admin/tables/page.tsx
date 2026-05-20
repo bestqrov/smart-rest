@@ -60,12 +60,8 @@ export default function TablesPage() {
   useEffect(() => {
     ;(async () => {
       const token = localStorage.getItem('token')
-      let sub = ''
-      try {
-        const p = JSON.parse(atob(token!.split('.')[1]))
-        sub = p.subdomain || ''
-        setSubdomain(sub)
-      } catch {}
+      const sub   = localStorage.getItem('subdomain') || ''
+      setSubdomain(sub)
       setLoading(true)
       const r = await fetch('/api/tables', { headers: { Authorization: `Bearer ${token}` } })
       if (r.ok) {

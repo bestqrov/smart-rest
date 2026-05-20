@@ -15,14 +15,18 @@ router.post('/api/auth/login', async (req: Request, res: Response) => {
     const { email, password } = req.body as { email: string; password: string }
     if (!email || !password) return res.status(400).json({ error: 'Email and password are required' })
 
-    const user = await prisma.user.findUnique({ where: { email } })
+    const user = await prisma.user.findUnique({
+      where: { email },
+      include: { cafe: { select: { subdomain: true } } }
+    })
     if (!user) return res.status(401).json({ error: 'Invalid credentials' })
 
     const ok = await verifyPassword(password, user.passwordHash)
     if (!ok) return res.status(401).json({ error: 'Invalid credentials' })
 
-    const token = jwt.sign({ userId: user.id, cafeId: user.cafeId }, JWT_SECRET, { expiresIn: TOKEN_EXPIRY })
-    return res.json({ token, userId: user.id, cafeId: user.cafeId })
+    const subdomain = user.cafe?.subdomain ?? ''
+    const token = jwt.sign({ userId: user.id, cafeId: user.cafeId, subdomain }, JWT_SECRET, { expiresIn: TOKEN_EXPIRY })
+    return res.json({ token, userId: user.id, cafeId: user.cafeId, subdomain })
   } catch (err) {
     logger.error({ msg: 'Login error', err })
     return res.status(500).json({ error: 'Login failed' })

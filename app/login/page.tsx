@@ -29,8 +29,9 @@ export default function LoginPage() {
       })
       const data = await res.json()
       if (!res.ok) { setError(data.error || 'Login failed'); return }
-      localStorage.setItem('token',  data.token)
-      localStorage.setItem('cafeId', data.cafeId)
+      localStorage.setItem('token',     data.token)
+      localStorage.setItem('cafeId',    data.cafeId)
+      localStorage.setItem('subdomain', data.subdomain ?? '')
       router.push('/admin/dashboard')
     } catch {
       setError('Network error — is the server running?')
