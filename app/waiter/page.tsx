@@ -6,7 +6,7 @@ import Image from 'next/image'
 
 const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || ''
 
-type WaiterCall  = { id: string; tableId: string; type: string; message?: string | null; createdAt: string; tableNumber?: number }
+type WaiterCall  = { id: string; tableId: string; tableNumber?: number; type: string; message?: string | null; createdAt: string }
 type NewOrder    = { orderId: string; mergeLabel: string; totalPrice: string; createdAt: string }
 type ReadyOrder  = {
   id: string; createdAt: string
@@ -15,7 +15,7 @@ type ReadyOrder  = {
   seat: { seatNumber: number } | null
   items: { id: string; quantity: number; product: { nameEn: string } }[]
 }
-type BillRequest = { id: string; tableId: string; createdAt: string; tableNumber?: number }
+type BillRequest = { id: string; tableId: string; tableNumber?: number; createdAt: string }
 
 const CALL_ICONS: Record<string, string> = {
   WATER: '🧊', QUESTION: '❓', CLEAN: '🧹', BILL: '💳', OTHER: '🔔'
@@ -26,6 +26,24 @@ function elapsed(iso: string) {
   return m < 1 ? 'just now' : `${m}m ago`
 }
 
+// ─── resolve token: prefer posToken (staff), fall back to admin token ──────────
+
+function resolveToken(): { token: string; isPOS: boolean } | null {
+  try {
+    const posToken = localStorage.getItem('posToken')
+    if (posToken) {
+      const p = JSON.parse(atob(posToken.split('.')[1]))
+      if (p.staffId && p.cafeId) return { token: posToken, isPOS: true }
+    }
+    const adminToken = localStorage.getItem('token')
+    if (adminToken) {
+      const p = JSON.parse(atob(adminToken.split('.')[1]))
+      if (p.cafeId) return { token: adminToken, isPOS: false }
+    }
+  } catch {}
+  return null
+}
+
 export default function WaiterPage() {
   const [newOrders, setNewOrders] = useState<NewOrder[]>([])
   const [calls, setCalls]         = useState<WaiterCall[]>([])
@@ -33,31 +51,33 @@ export default function WaiterPage() {
   const [bills, setBills]         = useState<BillRequest[]>([])
   const [cafeId, setCafeId]       = useState('')
   const [authed, setAuthed]       = useState(false)
+  const [isPOS, setIsPOS]         = useState(false)
   const [, setTick]               = useState(0)
+  const tokenRef                  = useRef('')
   const socketRef                 = useRef<Socket | null>(null)
 
-  function authHeader() { return { Authorization: `Bearer ${localStorage.getItem('token')}` } }
+  function authHeader() { return { Authorization: `Bearer ${tokenRef.current}` } }
 
-  // ── boot ──────────────────────────────────────────────────────────────────
+  // ── boot: try posToken then admin token ──────────────────────────────────
   useEffect(() => {
-    const token = localStorage.getItem('token')
-    if (!token) { window.location.href = '/login'; return }
-    try {
-      const p = JSON.parse(atob(token.split('.')[1]))
-      setCafeId(p.cafeId)
-      setAuthed(true)
-    } catch { window.location.href = '/login' }
+    const resolved = resolveToken()
+    if (!resolved) { window.location.href = '/login'; return }
+    const payload = JSON.parse(atob(resolved.token.split('.')[1]))
+    tokenRef.current = resolved.token
+    setCafeId(payload.cafeId)
+    setIsPOS(resolved.isPOS)
+    setAuthed(true)
   }, [])
 
-  // ── load initial data ─────────────────────────────────────────────────────
-  async function loadData() {
-    const delivered = await fetch('/api/orders?status=DELIVERED', { headers: authHeader() })
-      .then(r => r.ok ? r.json() : [])
-    setReady((delivered as ReadyOrder[]).sort((a, b) =>
+  // ── load initial "ready to serve" orders ─────────────────────────────────
+  async function loadReady() {
+    const endpoint = isPOS ? '/api/pos/waiter/ready' : '/api/orders?status=DELIVERED'
+    const orders = await fetch(endpoint, { headers: authHeader() }).then(r => r.ok ? r.json() : [])
+    setReady((orders as ReadyOrder[]).sort((a, b) =>
       new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()))
   }
 
-  useEffect(() => { if (authed) loadData() }, [authed])
+  useEffect(() => { if (authed) loadReady() }, [authed, isPOS])
 
   // ── clock tick ────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -73,20 +93,32 @@ export default function WaiterPage() {
   // ── socket ────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!authed || !cafeId) return
-    const token = localStorage.getItem('token')
-    const socket = socketIO(SOCKET_URL, { auth: { token }, transports: ['websocket', 'polling'] })
+    const socket = socketIO(SOCKET_URL, {
+      auth:       { token: tokenRef.current },
+      transports: ['websocket', 'polling']
+    })
     socketRef.current = socket
 
-    socket.on('connect', () => socket.emit('join', `room_${cafeId}`))
+    socket.on('connect', () => {
+      socket.emit('join', `room_${cafeId}`)
+    })
 
-    // ── Customer placed an order → notify waiter immediately
+    socket.on('connect_error', (err) => {
+      console.error('Waiter socket connect_error', err.message)
+    })
+
+    socket.on('error', (e: any) => {
+      console.error('Waiter socket error', e)
+    })
+
+    // Customer placed an order → notify waiter immediately
     socket.on('new_order', (o: { orderId: string; mergeLabel: string; totalPrice: string }) => {
       vibrate()
       const incoming: NewOrder = { ...o, createdAt: new Date().toISOString() }
       setNewOrders(prev => [incoming, ...prev.filter(x => x.orderId !== o.orderId)])
     })
 
-    // ── Waiter calls from customer
+    // Waiter calls from customer
     socket.on('waiter_called', (c: WaiterCall) => {
       vibrate()
       setCalls(prev => [c, ...prev.filter(x => x.id !== c.id)])
@@ -96,18 +128,18 @@ export default function WaiterPage() {
       setCalls(prev => prev.filter(c => c.id !== id))
     })
 
-    // ── Bill request from customer
+    // Bill request from customer
     socket.on('bill_requested', (b: BillRequest) => {
       vibrate()
       setBills(prev => [b, ...prev.filter(x => x.id !== b.id)])
     })
 
-    // ── Kitchen marked order ready (DELIVERED) → fetch fresh delivered list
+    // Kitchen marked order ready (DELIVERED) → refresh ready list
     socket.on('kds_order_updated', (p: { orderId: string; status: string }) => {
       if (p.status === 'DELIVERED') {
-        // remove from new orders, add to ready
         setNewOrders(prev => prev.filter(o => o.orderId !== p.orderId))
-        fetch('/api/orders?status=DELIVERED', { headers: authHeader() })
+        const endpoint = isPOS ? '/api/pos/waiter/ready' : '/api/orders?status=DELIVERED'
+        fetch(endpoint, { headers: authHeader() })
           .then(r => r.ok ? r.json() : [])
           .then((orders: ReadyOrder[]) =>
             setReady(orders.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()))
@@ -127,7 +159,7 @@ export default function WaiterPage() {
     })
 
     return () => { socket.disconnect() }
-  }, [authed, cafeId, vibrate])
+  }, [authed, cafeId, isPOS, vibrate])
 
   // ── actions ───────────────────────────────────────────────────────────────
   function ackCall(callId: string) {
@@ -136,10 +168,16 @@ export default function WaiterPage() {
   }
 
   async function markServed(orderId: string) {
-    await fetch(`/api/orders/${orderId}/status`, {
-      method: 'PATCH',
+    const endpoint = isPOS
+      ? `/api/pos/waiter/orders/${orderId}/served`
+      : `/api/orders/${orderId}/status`
+    const body = isPOS
+      ? undefined
+      : JSON.stringify({ status: 'COMPLETED' })
+    await fetch(endpoint, {
+      method:  'PATCH',
       headers: { ...authHeader(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: 'COMPLETED' })
+      body
     })
     setReady(prev => prev.filter(o => o.id !== orderId))
   }
@@ -175,7 +213,7 @@ export default function WaiterPage() {
 
       <div className="max-w-lg mx-auto p-3 space-y-4 pb-12">
 
-        {/* ── New Orders (incoming from kitchen) ── */}
+        {/* ── New Orders ── */}
         {newOrders.length > 0 && (
           <Section title="🆕 New Orders" count={newOrders.length} color="blue">
             {newOrders.map(o => (

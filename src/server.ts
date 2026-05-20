@@ -27,6 +27,7 @@ import posShiftRouter from './routes/pos/shift'
 import posOrdersRouter from './routes/pos/orders'
 import posCheckoutRouter from './routes/pos/checkout'
 import posTablesStatusRouter from './routes/pos/tablesStatus'
+import posWaiterRouter from './routes/pos/waiter'
 import { registerSocketHandlers } from './socket/handlers'
 import { startWeeklyBillingCron } from './cron/weeklyBilling'
 
@@ -90,6 +91,7 @@ async function main() {
   app.use(posOrdersRouter)
   app.use(posCheckoutRouter)
   app.use(posTablesStatusRouter)
+  app.use(posWaiterRouter)
 
   // health
   app.get('/health', (req, res) => res.json({ ok: true }))
