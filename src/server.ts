@@ -27,6 +27,11 @@ import { registerSocketHandlers } from './socket/handlers'
 import { startWeeklyBillingCron } from './cron/weeklyBilling'
 
 async function main() {
+  if (process.env.DEMO_SEED === 'true') {
+    const { default: seed } = await import('../prisma/seed')
+    await seed()
+  }
+
   const dev = process.env.NODE_ENV !== 'production'
   const nextApp = next({ dev, dir: '.' })
   const handle = nextApp.getRequestHandler()

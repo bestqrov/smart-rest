@@ -291,6 +291,11 @@ async function main() {
   console.log('\n🎉 All 3 cafes seeded.')
 }
 
-main()
-  .catch((e) => { console.error('Seed error:', e); process.exit(1) })
-  .finally(() => prisma.$disconnect())
+export default main
+
+// Run directly via ts-node
+if (require.main === module) {
+  main()
+    .catch((e) => { console.error('Seed error:', e); process.exit(1) })
+    .finally(() => prisma.$disconnect())
+}

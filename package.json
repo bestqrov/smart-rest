@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "build": "prisma generate && next build",
-    "start": "prisma db push && ([ \"$DEMO_SEED\" = \"true\" ] && ts-node prisma/seed.ts || true) && ts-node --transpile-only src/server.ts",
+    "start": "prisma db push && ts-node --transpile-only src/server.ts",
     "dev": "ts-node --transpile-only src/server.ts",
     "smoke": "ts-node scripts/smoke.ts",
     "seed": "ts-node prisma/seed.ts",
