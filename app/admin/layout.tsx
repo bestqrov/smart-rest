@@ -33,7 +33,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   async function loadCafe() {
     const token = localStorage.getItem('token')
-    if (!token) { router.push('/admin/login'); return }
+    if (!token) { router.push('/login'); return }
     const [profile, finance] = await Promise.all([
       fetch('/api/admin/cafe/profile', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.ok ? r.json() : null),
       fetch('/api/finance/status',     { headers: { Authorization: `Bearer ${token}` } }).then(r => r.ok ? r.json() : null),
