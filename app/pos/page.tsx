@@ -148,9 +148,9 @@ export default function POSPage() {
   const [cafeName,  setCafeName]  = useState('Café')
 
   // PIN login form
-  const [pinInput,  setPinInput]  = useState('')
-  const [cafeInput, setCafeInput] = useState('')
-  const [loginErr,  setLoginErr]  = useState('')
+  const [pinInput,       setPinInput]       = useState('')
+  const [subdomainInput, setSubdomainInput] = useState('')
+  const [loginErr,       setLoginErr]       = useState('')
   const [logging,   setLogging]   = useState(false)
 
   // tables
@@ -204,14 +204,15 @@ export default function POSPage() {
       const res = await fetch('/api/pos/shift', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cafeId: cafeInput.trim(), pinCode: pinInput.trim(), action: 'login' })
+        body: JSON.stringify({ subdomain: subdomainInput.trim(), pinCode: pinInput.trim(), action: 'login' })
       })
       const data = await res.json()
       if (!res.ok) { setLoginErr(data.error ?? 'Login failed'); return }
+      const payload = JSON.parse(atob(data.token.split('.')[1]))
       localStorage.setItem('posToken', data.token)
-      localStorage.setItem('cafeId',   cafeInput.trim())
+      localStorage.setItem('cafeId',   payload.cafeId)
       setPosToken(data.token)
-      setCafeId(cafeInput.trim())
+      setCafeId(payload.cafeId)
       setStaff(data.staff)
       setPinInput('')
     } catch {
@@ -376,12 +377,12 @@ export default function POSPage() {
           </div>
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Cafe ID</label>
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Subdomain</label>
               <input
                 type="text"
-                value={cafeInput}
-                onChange={e => setCafeInput(e.target.value)}
-                placeholder="your-cafe-id"
+                value={subdomainInput}
+                onChange={e => setSubdomainInput(e.target.value)}
+                placeholder="plage / najd / khalij"
                 className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
                 required
               />
@@ -391,10 +392,9 @@ export default function POSPage() {
               <input
                 type="password"
                 inputMode="numeric"
-                pattern="[0-9]*"
                 maxLength={6}
                 value={pinInput}
-                onChange={e => setPinInput(e.target.value)}
+                onChange={e => setPinInput(e.target.value.replace(/\D/g, '').slice(0, 6))}
                 placeholder="••••"
                 className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl text-center text-2xl tracking-[0.5em] font-bold focus:outline-none focus:ring-2 focus:ring-amber-400"
                 required

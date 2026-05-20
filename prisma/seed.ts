@@ -221,6 +221,26 @@ async function upsertCafe(data: {
   return cafe
 }
 
+// Demo staff: cashier PIN 1234 · waiter PIN 2222 · supervisor PIN 3333
+const DEMO_STAFF = [
+  { name: 'Demo Cashier',    role: 'CASHIER'    as const, pin: '1234' },
+  { name: 'Demo Waiter',     role: 'WAITER'     as const, pin: '2222' },
+  { name: 'Demo Supervisor', role: 'SUPERVISOR' as const, pin: '3333' },
+]
+
+async function upsertDemoStaff(cafeId: string) {
+  for (const s of DEMO_STAFF) {
+    const exists = await prisma.staff.findFirst({ where: { cafeId, name: s.name } })
+    if (!exists) {
+      const pinCode = await bcrypt.hash(s.pin, 10)
+      await prisma.staff.create({ data: { cafeId, name: s.name, role: s.role, pinCode, isActive: true } })
+      console.log(`  🪪 Staff created: ${s.name} (PIN: ${s.pin})`)
+    } else {
+      console.log(`  🪪 Staff exists:  ${s.name}`)
+    }
+  }
+}
+
 async function upsertMenu(cafeId: string, cats: CatDef[], products: PrdDef[]) {
   const catMap: Record<string, string> = {}
   for (const c of cats) {
@@ -273,6 +293,7 @@ async function main() {
   const maStats = await upsertMenu(maCafe.id, MA_CATS, MA_PRODUCTS)
   console.log(`  ✅ ${maStats.cats} categories · ${maStats.products} products`)
   await upsertTablesAndSeats(maCafe.id, 'plage')
+  await upsertDemoStaff(maCafe.id)
 
   // ── 🇸🇦 Saudi Arabia ──────────────────────────────────────────────────────────
   console.log('\n🇸🇦  Saudi Arabia — مطعم نجد الأصيل (Riyadh)')
@@ -280,6 +301,7 @@ async function main() {
   const saStats = await upsertMenu(saCafe.id, SA_CATS, SA_PRODUCTS)
   console.log(`  ✅ ${saStats.cats} categories · ${saStats.products} products`)
   await upsertTablesAndSeats(saCafe.id, 'najd')
+  await upsertDemoStaff(saCafe.id)
 
   // ── 🇦🇪 UAE ───────────────────────────────────────────────────────────────────
   console.log('\n🇦🇪  UAE — مطعم الخليج (Dubai)')
@@ -287,6 +309,7 @@ async function main() {
   const aeStats = await upsertMenu(aeCafe.id, AE_CATS, AE_PRODUCTS)
   console.log(`  ✅ ${aeStats.cats} categories · ${aeStats.products} products`)
   await upsertTablesAndSeats(aeCafe.id, 'khalij')
+  await upsertDemoStaff(aeCafe.id)
 
   console.log('\n🎉 All 3 cafes seeded.')
 }

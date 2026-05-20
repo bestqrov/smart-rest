@@ -47,16 +47,32 @@ async function validatePin(cafeId: string, pinCode: string) {
 
 router.post('/api/pos/shift', async (req: Request, res: Response) => {
   try {
-    const { cafeId, pinCode, action, initialCash, notes } = req.body as {
-      cafeId:       string
+    const { cafeId: rawCafeId, subdomain, pinCode, action, initialCash, notes } = req.body as {
+      cafeId?:      string
+      subdomain?:   string   // convenience alias — resolved to cafeId below
       pinCode:      string
       action:       'login' | 'open' | 'close' | 'status'
       initialCash?: number
       notes?:       string
     }
 
-    if (!cafeId || !action) {
-      return res.status(400).json({ error: 'cafeId and action are required' })
+    if (!action) {
+      return res.status(400).json({ error: 'action is required' })
+    }
+
+    // Resolve cafeId: accept either the ObjectID or a human-readable subdomain
+    let cafeId = rawCafeId ?? ''
+    if (!cafeId && subdomain) {
+      const cafe = await prisma.cafe.findUnique({
+        where:  { subdomain: subdomain.trim().toLowerCase() },
+        select: { id: true }
+      })
+      if (!cafe) return res.status(404).json({ error: 'Cafe not found for this subdomain' })
+      cafeId = cafe.id
+    }
+
+    if (!cafeId) {
+      return res.status(400).json({ error: 'cafeId or subdomain is required' })
     }
 
     // ── "status" — authenticated staff checks their current shift ─────────────
