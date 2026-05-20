@@ -7,7 +7,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, UtensilsCrossed, QrCode, Share2,
   CreditCard, LogOut, ChevronRight, Menu, X,
-  AlertTriangle, Loader2, Gift, Zap
+  AlertTriangle, Loader2, Gift, Zap, ChefHat, Bell
 } from 'lucide-react'
 
 const NAV = [
@@ -16,6 +16,11 @@ const NAV = [
   { href: '/admin/tables',    icon: QrCode,           labelAr: 'الطاولات & QR',  labelFr: 'Tables' },
   { href: '/admin/social',    icon: Share2,           labelAr: 'التسويق الذكي',  labelFr: 'Social' },
   { href: '/admin/billing',   icon: CreditCard,       labelAr: 'الفواتير',        labelFr: 'Billing' },
+]
+
+const STAFF_LINKS = [
+  { href: '/kitchen', icon: ChefHat, labelAr: 'شاشة المطبخ', labelFr: 'Kitchen KDS' },
+  { href: '/waiter',  icon: Bell,    labelAr: 'شاشة النادل',  labelFr: 'Waiter View' },
 ]
 
 type CafeState = {
@@ -126,6 +131,27 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             )
           })}
         </nav>
+
+        {/* Staff screens */}
+        <div className="px-3 pb-3 border-t border-gray-800 pt-3">
+          <p className="text-xs text-gray-600 uppercase tracking-widest px-2 mb-2">Staff Screens</p>
+          {STAFF_LINKS.map(item => (
+            <a
+              key={item.href}
+              href={item.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-white transition-colors group mb-1"
+            >
+              <item.icon className="w-4 h-4 shrink-0" />
+              <div className="flex flex-col">
+                <span className="text-xs font-medium">{item.labelAr}</span>
+                <span className="text-xs opacity-50">{item.labelFr}</span>
+              </div>
+              <span className="text-gray-700 text-xs mr-auto group-hover:text-gray-500">↗</span>
+            </a>
+          ))}
+        </div>
 
         {/* Logout */}
         <div className="px-3 py-4 border-t border-gray-800">
