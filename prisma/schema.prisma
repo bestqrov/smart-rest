@@ -112,18 +112,19 @@ model Cafe {
   sandwichRefPrice  Float?    // reference sandwich price (auto-detected or manual)
   weeklyOrderCount  Int?      // order count captured at last trial-end analysis
 
-  categories    Category[]
-  tables        Table[]
-  seats         Seat[]
-  orders        Order[]
-  billRequests  BillRequest[]
-  users         User[]
-  waiterCalls   WaiterCall[]
-  walletLogs    WalletLog[]
-  billingTiers  BillingTier[]
-  staff         Staff[]
-  cashierShifts CashierShift[]
-  waiterShifts  WaiterShift[]
+  categories     Category[]
+  tables         Table[]
+  seats          Seat[]
+  orders         Order[]
+  billRequests   BillRequest[]
+  users          User[]
+  waiterCalls    WaiterCall[]
+  walletLogs     WalletLog[]
+  billingTiers   BillingTier[]
+  staff          Staff[]
+  cashierShifts  CashierShift[]
+  waiterShifts   WaiterShift[]
+  waiterQRTokens WaiterQRToken[]
 
 }
 
@@ -413,6 +414,21 @@ model CashierShift {
   @@index([cafeId])
   @@index([staffId])
   @@index([status])
+}
+
+// ─── Waiter QR Login Tokens ───────────────────────────────────────────────────
+
+model WaiterQRToken {
+  id        String    @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId    String    @db.ObjectId
+  cafe      Cafe      @relation(fields: [cafeId], references: [id])
+  token     String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([cafeId])
+  @@index([expiresAt])
 }
 
 // ─── Waiter Shifts ────────────────────────────────────────────────────────────
