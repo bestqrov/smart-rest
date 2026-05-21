@@ -1,49 +1,17 @@
 /**
- * Email service — magic link delivery via Resend SMTP.
- * Falls back to console logging when SMTP env vars are not set (local dev).
- *
- * Required .env vars:
- *   SMTP_HOST=smtp.resend.com
- *   SMTP_PORT=465
- *   SMTP_USER=resend
- *   SMTP_PASS=re_xxxxxxxxxxxxxxxxxxxx
- *   RESEND_FROM=Smart Resto <noreply@yourdomain.com>
+ * Email service — magic link delivery via Resend REST API.
+ * Required .env: RESEND_API_KEY, RESEND_FROM
  */
 
-import nodemailer from 'nodemailer'
 import logger from '../logger'
 import { t, type Lang, isRTL } from '../lib/i18n'
 
-// ─── Transport (singleton) ────────────────────────────────────────────────────
+const API_KEY = process.env.RESEND_API_KEY ?? process.env.SMTP_PASS ?? ''
+const FROM    = process.env.RESEND_FROM ?? 'Smart Resto <noreply@smartrestau.digima.cloud>'
 
-const {
-  SMTP_HOST = 'smtp.resend.com',
-  SMTP_PORT = '465',
-  SMTP_USER = 'resend',
-  SMTP_PASS,
-  RESEND_FROM = 'Smart Resto <noreply@smartrestau.digima.cloud>',
-} = process.env
+logger.info({ msg: '📧 Resend API config', from: FROM, keySet: !!API_KEY })
 
-const transporter = SMTP_PASS
-  ? nodemailer.createTransport({
-      host: SMTP_HOST,
-      port: Number(SMTP_PORT),
-      secure: Number(SMTP_PORT) === 465,
-      auth: { user: SMTP_USER, pass: SMTP_PASS },
-    })
-  : null
-
-// Log SMTP config on startup so we can see what the server loaded
-logger.info({
-  msg: '📧 Email transport config',
-  host: SMTP_HOST,
-  port: SMTP_PORT,
-  user: SMTP_USER,
-  passSet: !!SMTP_PASS,
-  from: RESEND_FROM,
-})
-
-// ─── HTML template (RTL/LTR aware) ───────────────────────────────────────────
+// ─── HTML template ────────────────────────────────────────────────────────────
 
 function buildEmailHtml(magicLink: string, lang: Lang, cafeName: string): string {
   const dir      = isRTL(lang) ? 'rtl' : 'ltr'
@@ -65,7 +33,6 @@ function buildEmailHtml(magicLink: string, lang: Lang, cafeName: string): string
     <tr><td align="center" style="padding:40px 16px;">
       <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
 
-        <!-- Header -->
         <tr>
           <td style="background:linear-gradient(135deg,#f59e0b,#d97706);padding:36px 40px;text-align:center;">
             <div style="font-size:32px;margin-bottom:8px;">☾</div>
@@ -74,7 +41,6 @@ function buildEmailHtml(magicLink: string, lang: Lang, cafeName: string): string
           </td>
         </tr>
 
-        <!-- Body -->
         <tr>
           <td style="padding:40px;text-align:${align};">
             <h1 style="margin:0 0 12px;font-size:22px;font-weight:800;color:#111827;">${t('email_greeting', lang)}</h1>
@@ -82,8 +48,6 @@ function buildEmailHtml(magicLink: string, lang: Lang, cafeName: string): string
               ${cafeName ? `<strong style="color:#111827;">${cafeName}</strong> — ` : ''}${t('email_body', lang)}
             </p>
             <p style="margin:0 0 32px;color:#9ca3af;font-size:13px;">${t('email_expire_note', lang)}</p>
-
-            <!-- CTA -->
             <table width="100%" cellpadding="0" cellspacing="0">
               <tr><td style="text-align:center;">
                 <a href="${magicLink}"
@@ -92,8 +56,6 @@ function buildEmailHtml(magicLink: string, lang: Lang, cafeName: string): string
                 </a>
               </td></tr>
             </table>
-
-            <!-- Fallback URL -->
             <p style="margin:28px 0 0;color:#9ca3af;font-size:12px;word-break:break-all;text-align:${align};">
               ${fallback}<br/>
               <a href="${magicLink}" style="color:#f59e0b;">${magicLink}</a>
@@ -101,7 +63,6 @@ function buildEmailHtml(magicLink: string, lang: Lang, cafeName: string): string
           </td>
         </tr>
 
-        <!-- Footer -->
         <tr>
           <td style="background:#f9fafb;border-top:1px solid #f3f4f6;padding:24px 40px;text-align:center;">
             <p style="margin:0;color:#9ca3af;font-size:12px;line-height:1.6;">${t('email_ignore', lang)}</p>
@@ -128,22 +89,26 @@ export async function sendMagicLink({ to, magicLink, lang, cafeName = '' }: Send
   const subject = t('email_subject', lang)
   const html    = buildEmailHtml(magicLink, lang, cafeName)
 
-  if (!transporter) {
-    logger.info({
-      msg:       '📧 [DEV] Magic link — SMTP_PASS not set, logging link here',
-      to,
-      magicLink,
-      lang,
-    })
+  if (!API_KEY) {
+    logger.info({ msg: '📧 [DEV] No API key — logging magic link', to, magicLink })
     return
   }
 
-  try {
-    const info = await transporter.sendMail({ from: RESEND_FROM, to, subject, html })
-    logger.info({ msg: 'Magic link sent via SMTP', to, lang, messageId: info.messageId })
-  } catch (err: unknown) {
-    const e = err as Record<string, unknown>
-    logger.error({ msg: 'SMTP sendMail failed', to, code: e['code'], response: e['response'], err })
-    throw err
+  const res = await fetch('https://api.resend.com/emails', {
+    method:  'POST',
+    headers: {
+      'Authorization': `Bearer ${API_KEY}`,
+      'Content-Type':  'application/json',
+    },
+    body: JSON.stringify({ from: FROM, to, subject, html }),
+  })
+
+  const data = await res.json() as Record<string, unknown>
+
+  if (!res.ok) {
+    logger.error({ msg: 'Resend API error', status: res.status, data, to })
+    throw new Error(`Resend error ${res.status}: ${JSON.stringify(data)}`)
   }
+
+  logger.info({ msg: '✅ Magic link sent via Resend API', to, lang, id: data['id'] })
 }
