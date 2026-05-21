@@ -109,6 +109,7 @@ function SignupInner() {
   const [manualSub, setManualSub] = useState(false)
   const [loading, setLoading]     = useState(false)
   const [error,   setError]       = useState<string | null>(null)
+  const [emailTaken, setEmailTaken] = useState(false)
   const [sent,    setSent]        = useState(false)
   const [sentEmail, setSentEmail] = useState('')
 
@@ -128,6 +129,7 @@ function SignupInner() {
     if (name === 'subdomain') setManualSub(true)
     setForm(f => ({ ...f, [name]: value }))
     setError(null)
+    setEmailTaken(false)
   }
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
@@ -152,7 +154,14 @@ function SignupInner() {
         body:    JSON.stringify({ ...form, lang })
       })
       const data = await res.json()
-      if (!res.ok) { setError(data.error ?? tx('err_fields', lang)); return }
+      if (!res.ok) {
+        if (res.status === 409 && data.error?.toLowerCase().includes('email')) {
+          setEmailTaken(true)
+          return
+        }
+        setError(data.error ?? tx('err_fields', lang))
+        return
+      }
       setSentEmail(form.email.trim().toLowerCase())
       setSent(true)
     } catch {
@@ -310,8 +319,35 @@ function SignupInner() {
             </select>
           </div>
 
-          {/* Error message */}
-          {error && (
+          {/* Email already taken — show login prompt */}
+          {emailTaken && (
+            <div className={`bg-amber-50 border border-amber-300 rounded-xl px-4 py-4 text-sm ${isRTL ? 'text-right' : 'text-left'}`}>
+              <p className="font-semibold text-amber-800 mb-2">
+                {lang === 'ar' ? '⚠️ هذا البريد الإلكتروني مسجل مسبقاً'
+                 : lang === 'fr' ? '⚠️ Cet e-mail est déjà enregistré'
+                 : lang === 'es' ? '⚠️ Este correo ya está registrado'
+                 : '⚠️ This email already has an account'}
+              </p>
+              <p className="text-amber-700 mb-3">
+                {lang === 'ar' ? 'يرجى تسجيل الدخول للوصول إلى لوحة التحكم.'
+                 : lang === 'fr' ? 'Veuillez vous connecter pour accéder à votre tableau de bord.'
+                 : lang === 'es' ? 'Por favor inicia sesión para acceder a tu panel.'
+                 : 'Please log in to access your dashboard.'}
+              </p>
+              <Link
+                href={`/login?lang=${lang}`}
+                className="inline-block bg-amber-500 hover:bg-amber-400 text-white font-bold px-5 py-2 rounded-xl transition-colors text-sm"
+              >
+                {lang === 'ar' ? 'تسجيل الدخول ←'
+                 : lang === 'fr' ? 'Se connecter →'
+                 : lang === 'es' ? 'Iniciar sesión →'
+                 : 'Log in →'}
+              </Link>
+            </div>
+          )}
+
+          {/* Generic error message */}
+          {error && !emailTaken && (
             <div className={`bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm ${isRTL ? 'text-right' : 'text-left'}`}>
               {error}
             </div>
