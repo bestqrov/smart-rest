@@ -250,6 +250,27 @@ router.post('/api/admin/menu/seed-demo', authorizeAdmin, async (req: Request, re
   }
 })
 
+// ─── GET /api/admin/staff — list all staff for this cafe ─────────────────────
+
+router.get('/api/admin/staff', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const cafeId = req.admin!.cafeId
+    const staff = await prisma.staff.findMany({
+      where:   { cafeId, isActive: true },
+      select: {
+        id: true, name: true, role: true, shiftStatus: true,
+        clockInTime: true, isActive: true,
+        assignedTables: { select: { id: true, tableNumber: true, zone: true } },
+      },
+      orderBy: [{ shiftStatus: 'asc' }, { name: 'asc' }],
+    })
+    return res.json({ waiters: staff })
+  } catch (err) {
+    logger.error({ msg: 'GET /api/admin/staff error', err })
+    return res.status(500).json({ error: 'Failed to fetch staff' })
+  }
+})
+
 // ─── POST /api/admin/staff — create a new staff member ────────────────────────
 
 router.post('/api/admin/staff', authorizeAdmin, async (req: Request, res: Response) => {

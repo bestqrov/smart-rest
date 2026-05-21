@@ -182,7 +182,7 @@ export default function AdminStaffPage() {
 
   // ── Fetch staff ─────────────────────────────────────────────────────────────
   const fetchStaff = useCallback(async () => {
-    const res = await fetch('/api/pos/waiters/status', { headers: authHeader() })
+    const res = await fetch('/api/admin/staff', { headers: authHeader() })
     if (!res.ok) return
     const data = await res.json()
     setStaff(data.waiters ?? [])
