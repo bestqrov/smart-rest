@@ -112,3 +112,23 @@ export async function sendMagicLink({ to, magicLink, lang, cafeName = '' }: Send
 
   logger.info({ msg: '✅ Magic link sent via Resend API', to, lang, id: data['id'] })
 }
+
+// ─── Generic transactional email ─────────────────────────────────────────────
+
+export async function sendEmail(to: string, subject: string, html: string): Promise<void> {
+  if (!API_KEY) {
+    logger.info({ msg: '📧 [DEV] No API key — skipping email', to, subject })
+    return
+  }
+  const res = await fetch('https://api.resend.com/emails', {
+    method:  'POST',
+    headers: { 'Authorization': `Bearer ${API_KEY}`, 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ from: FROM, to, subject, html }),
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    logger.error({ msg: 'sendEmail Resend error', status: res.status, data })
+    throw new Error(`sendEmail failed: ${res.status}`)
+  }
+  logger.info({ msg: '✅ Generic email sent', to, subject })
+}

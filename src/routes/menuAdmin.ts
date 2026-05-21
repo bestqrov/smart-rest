@@ -191,7 +191,8 @@ router.get('/api/admin/cafe/profile', authorizeAdmin, async (req: Request, res: 
         socialLinks: true, hasSocialShareAddon: true, isActive: true,
         walletBalance: true, billingStatus: true, trialEndsAt: true,
         hasExtendedTrial: true, totalSeats: true, isProfileComplete: true,
-        coffeeRefPrice: true, sandwichRefPrice: true
+        coffeeRefPrice: true, sandwichRefPrice: true,
+        monthlyFee: true, subscriptionTier: true
       }
     })
     return res.json(cafe)
@@ -311,7 +312,7 @@ router.post('/api/admin/onboarding', authorizeAdmin, async (req: Request, res: R
   try {
     const cafeId = req.admin!.cafeId
     const {
-      businessName, logoUrl, currency,
+      businessName, logoUrl, currency, country,
       coffeeRefPrice, sandwichRefPrice,
       zones,
       managerName, managerPin,
@@ -319,6 +320,7 @@ router.post('/api/admin/onboarding', authorizeAdmin, async (req: Request, res: R
       businessName:      string
       logoUrl?:          string
       currency:          string
+      country?:          string
       coffeeRefPrice:    number
       sandwichRefPrice:  number
       zones:             { name: string; tableCount: number }[]
@@ -342,12 +344,13 @@ router.post('/api/admin/onboarding', authorizeAdmin, async (req: Request, res: R
     await prisma.cafe.update({
       where: { id: cafeId },
       data: {
-        businessName:    businessName.trim(),
-        name:            businessName.trim(),
-        currency:        currency.trim().toUpperCase(),
-        coffeeRefPrice:  Number(coffeeRefPrice),
+        businessName:     businessName.trim(),
+        name:             businessName.trim(),
+        currency:         currency.trim().toUpperCase(),
+        ...(country ? { country: country.trim().toUpperCase() } : {}),
+        coffeeRefPrice:   Number(coffeeRefPrice),
         sandwichRefPrice: Number(sandwichRefPrice),
-        totalSeats:      totalTables,
+        totalSeats:       totalTables,
         ...(logoUrl ? { logoUrl: logoUrl.trim() } : {}),
         isProfileComplete: true,
       },

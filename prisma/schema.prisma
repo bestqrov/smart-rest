@@ -125,8 +125,9 @@ model Cafe {
   staff          Staff[]
   cashierShifts  CashierShift[]
   waiterShifts   WaiterShift[]
-  waiterQRTokens WaiterQRToken[]
-  expenses       Expense[]
+  waiterQRTokens  WaiterQRToken[]
+  expenses        Expense[]
+  paymentRequests PaymentRequest[]
 
 }
 
@@ -463,4 +464,25 @@ model WaiterShift {
   @@index([cafeId])
   @@index([staffId])
   @@index([clockIn])
+}
+
+// ─── Payment Requests (Superadmin Payment Gateway) ────────────────────────────
+
+model PaymentRequest {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId     String   @db.ObjectId
+  cafe       Cafe     @relation(fields: [cafeId], references: [id])
+  amount     Float
+  currency   String
+  method     String            // BANK_TRANSFER | WESTERN_UNION | PAYPAL
+  reference  String
+  proofNote  String?
+  status     String   @default("PENDING")  // PENDING | CONFIRMED | REJECTED
+  reviewNote String?
+  createdAt  DateTime @default(now())
+  reviewedAt DateTime?
+
+  @@index([cafeId])
+  @@index([status])
+  @@index([createdAt])
 }

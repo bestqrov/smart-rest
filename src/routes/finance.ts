@@ -13,7 +13,11 @@ router.get('/api/finance/status', authorizeAdmin, async (req: Request, res: Resp
     const cafeId = req.admin!.cafeId
     const cafe = await prisma.cafe.findUnique({
       where: { id: cafeId },
-      select: { walletBalance: true, billingStatus: true, isActive: true, trialEndsAt: true, hasExtendedTrial: true, hasSocialShareAddon: true, currency: true, country: true }
+      select: {
+        walletBalance: true, billingStatus: true, isActive: true,
+        trialEndsAt: true, hasExtendedTrial: true, hasSocialShareAddon: true,
+        currency: true, country: true, monthlyFee: true, subscriptionTier: true,
+      }
     })
     if (!cafe) return res.status(404).json({ error: 'Cafe not found' })
 
@@ -162,6 +166,104 @@ router.post('/api/finance/regenerate-package', authorizeAdmin, async (req: Reque
   } catch (err) {
     logger.error({ msg: 'POST /api/finance/regenerate-package error', err })
     return res.status(500).json({ error: 'Failed to regenerate package' })
+  }
+})
+
+// ─── GET /api/finance/subscription-invoice ───────────────────────────────────
+// Returns the computed monthly fee in local currency for the payment gate.
+
+router.get('/api/finance/subscription-invoice', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const cafeId = req.admin!.cafeId
+    const cafe = await prisma.cafe.findUnique({
+      where:  { id: cafeId },
+      select: { monthlyFee: true, subscriptionTier: true, currency: true, businessName: true, country: true, coffeeRefPrice: true, sandwichRefPrice: true }
+    })
+    if (!cafe) return res.status(404).json({ error: 'Cafe not found' })
+
+    let amount = cafe.monthlyFee ?? 0
+    let tier   = cafe.subscriptionTier ?? null
+
+    // If fee not yet computed, derive it on-the-fly without persisting
+    if (amount <= 0 && (cafe.coffeeRefPrice ?? 0) > 0 && (cafe.sandwichRefPrice ?? 0) > 0) {
+      const { computeSmartSubscription } = await import('../services/smartBilling')
+      const result = await computeSmartSubscription(cafeId)
+      amount = result.monthlyFee
+      tier   = result.tier
+    }
+
+    return res.json({ amount, currency: cafe.currency, tier, businessName: cafe.businessName, country: cafe.country })
+  } catch (err) {
+    logger.error({ msg: 'GET /api/finance/subscription-invoice error', err })
+    return res.status(500).json({ error: 'Failed' })
+  }
+})
+
+// ─── POST /api/finance/payment-request ───────────────────────────────────────
+// Client submits payment proof. Notifies super admin via email.
+
+router.post('/api/finance/payment-request', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const cafeId = req.admin!.cafeId
+    const { method, reference, proofNote, amount, currency } = req.body as {
+      method: string; reference: string; proofNote?: string; amount?: number; currency?: string
+    }
+
+    const VALID_METHODS = ['BANK_TRANSFER', 'WESTERN_UNION', 'PAYPAL']
+    if (!VALID_METHODS.includes(method)) return res.status(400).json({ error: 'Invalid method' })
+    if (!reference?.trim())              return res.status(400).json({ error: 'reference required' })
+
+    const cafe = await prisma.cafe.findUnique({
+      where:  { id: cafeId },
+      select: { businessName: true, subdomain: true, monthlyFee: true, currency: true }
+    })
+    if (!cafe) return res.status(404).json({ error: 'Cafe not found' })
+
+    const finalAmount   = Number(amount)   || cafe.monthlyFee || 0
+    const finalCurrency = currency?.trim() || cafe.currency
+
+    // Upsert: update existing PENDING request or create new one
+    const existing = await prisma.paymentRequest.findFirst({ where: { cafeId, status: 'PENDING' } })
+    const payload = {
+      amount:    finalAmount,
+      currency:  finalCurrency,
+      method,
+      reference: reference.trim(),
+      proofNote: proofNote?.trim() || null,
+    }
+    const payReq = existing
+      ? await prisma.paymentRequest.update({ where: { id: existing.id }, data: payload })
+      : await prisma.paymentRequest.create({ data: { cafeId, ...payload } })
+
+    // Notify super admin
+    try {
+      const { sendEmail } = await import('../services/email')
+      const superAdminEmail = process.env.SUPERADMIN_EMAIL || 'advicermano@gmail.com'
+      const methodLabel = method === 'BANK_TRANSFER' ? 'Bank Transfer' : method === 'WESTERN_UNION' ? 'Western Union' : 'PayPal'
+      await sendEmail(
+        superAdminEmail,
+        `💰 Payment Request — ${cafe.businessName} — ${finalAmount} ${finalCurrency}`,
+        `<div style="font-family:system-ui,sans-serif;padding:24px;background:#f9fafb;border-radius:12px;max-width:560px;">
+          <h2 style="color:#111827;margin:0 0 16px;">New Payment Request</h2>
+          <table style="width:100%;border-collapse:collapse;">
+            <tr><td style="padding:6px 0;color:#6b7280;">Cafe:</td><td style="font-weight:600;">${cafe.businessName} (${cafe.subdomain})</td></tr>
+            <tr><td style="padding:6px 0;color:#6b7280;">Amount:</td><td style="font-weight:700;color:#059669;font-size:18px;">${finalAmount} ${finalCurrency}</td></tr>
+            <tr><td style="padding:6px 0;color:#6b7280;">Method:</td><td>${methodLabel}</td></tr>
+            <tr><td style="padding:6px 0;color:#6b7280;">Reference:</td><td style="font-family:monospace;background:#f3f4f6;padding:4px 8px;border-radius:6px;">${reference.trim()}</td></tr>
+            ${proofNote ? `<tr><td style="padding:6px 0;color:#6b7280;">Note:</td><td>${proofNote}</td></tr>` : ''}
+          </table>
+          <p style="margin:16px 0 0;color:#6b7280;font-size:13px;">Confirm via: PATCH /api/superadmin/payment-requests/${payReq.id}/confirm</p>
+        </div>`
+      )
+    } catch (emailErr) {
+      logger.warn({ msg: 'Payment notification email failed', emailErr })
+    }
+
+    logger.info({ msg: 'Payment request created', id: payReq.id, cafeId, method, finalAmount, finalCurrency })
+    return res.status(201).json({ id: payReq.id, status: payReq.status })
+  } catch (err) {
+    logger.error({ msg: 'POST /api/finance/payment-request error', err })
+    return res.status(500).json({ error: 'Failed' })
   }
 })
 

@@ -355,6 +355,93 @@ router.get('/api/superadmin/tenants/rich', requireSuperAdmin, async (req: Reques
   }
 })
 
+// ─── Payment Requests — list / confirm / reject ───────────────────────────────
+
+router.get('/api/superadmin/payment-requests', requireSuperAdmin, async (req: Request, res: Response) => {
+  try {
+    const status = req.query['status'] as string | undefined
+    const page   = Math.max(1, Number(req.query['page'])  || 1)
+    const limit  = Math.min(50, Number(req.query['limit']) || 20)
+
+    const where = status ? { status } : {}
+
+    const [total, requests] = await Promise.all([
+      prisma.paymentRequest.count({ where }),
+      prisma.paymentRequest.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+        include: {
+          cafe: { select: { id: true, businessName: true, subdomain: true, country: true, currency: true } }
+        }
+      })
+    ])
+
+    return res.json({ total, page, pages: Math.ceil(total / limit), requests })
+  } catch (err) {
+    logger.error({ msg: 'GET payment-requests error', err })
+    return res.status(500).json({ error: 'Failed' })
+  }
+})
+
+router.patch('/api/superadmin/payment-requests/:id/confirm', requireSuperAdmin, async (req: Request, res: Response) => {
+  try {
+    const id         = req.params['id'] as string
+    const reviewNote = (req.body as { reviewNote?: string }).reviewNote
+
+    const payReq = await prisma.paymentRequest.findUnique({
+      where:   { id },
+      include: { cafe: { select: { id: true, walletBalance: true, businessName: true } } }
+    })
+    if (!payReq) return res.status(404).json({ error: 'Not found' })
+
+    await prisma.$transaction(async (tx) => {
+      await tx.paymentRequest.update({
+        where: { id },
+        data:  { status: 'CONFIRMED', reviewedAt: new Date(), reviewNote: reviewNote?.trim() || null }
+      })
+      await tx.cafe.update({
+        where: { id: payReq.cafeId },
+        data:  { isActive: true, billingStatus: 'COLLECTING_DEBT', walletBalance: 0 }
+      })
+      await tx.walletLog.create({
+        data: {
+          cafeId:          payReq.cafeId,
+          amount:          payReq.amount,
+          type:            'PAYMENT_SETTLEMENT',
+          previousBalance: payReq.cafe.walletBalance,
+          newBalance:      0,
+        }
+      })
+    })
+
+    logger.info({ msg: 'Payment confirmed — cafe reactivated', id, cafeId: payReq.cafeId })
+    return res.json({ ok: true })
+  } catch (err) {
+    logger.error({ msg: 'PATCH payment-requests/:id/confirm error', err })
+    return res.status(500).json({ error: 'Failed' })
+  }
+})
+
+router.patch('/api/superadmin/payment-requests/:id/reject', requireSuperAdmin, async (req: Request, res: Response) => {
+  try {
+    const id         = req.params['id'] as string
+    const reviewNote = (req.body as { reviewNote?: string }).reviewNote
+
+    await prisma.paymentRequest.update({
+      where: { id },
+      data:  { status: 'REJECTED', reviewedAt: new Date(), reviewNote: reviewNote?.trim() || null }
+    })
+
+    logger.info({ msg: 'Payment rejected', id })
+    return res.json({ ok: true })
+  } catch (err) {
+    logger.error({ msg: 'PATCH payment-requests/:id/reject error', err })
+    return res.status(500).json({ error: 'Failed' })
+  }
+})
+
 // ─── GET /api/superadmin/webhooks/expiring-tomorrow ──────────────────────────
 // n8n / Evolution API hook — returns trials expiring in the next 24h with fees.
 // Protected by same superadmin secret (or a dedicated webhook token).
