@@ -28,10 +28,20 @@ const transporter = SMTP_PASS
   ? nodemailer.createTransport({
       host: SMTP_HOST,
       port: Number(SMTP_PORT),
-      secure: Number(SMTP_PORT) === 465,   // TLS on port 465, STARTTLS on 587
+      secure: Number(SMTP_PORT) === 465,
       auth: { user: SMTP_USER, pass: SMTP_PASS },
     })
   : null
+
+// Log SMTP config on startup so we can see what the server loaded
+logger.info({
+  msg: '📧 Email transport config',
+  host: SMTP_HOST,
+  port: SMTP_PORT,
+  user: SMTP_USER,
+  passSet: !!SMTP_PASS,
+  from: RESEND_FROM,
+})
 
 // ─── HTML template (RTL/LTR aware) ───────────────────────────────────────────
 
@@ -128,6 +138,12 @@ export async function sendMagicLink({ to, magicLink, lang, cafeName = '' }: Send
     return
   }
 
-  await transporter.sendMail({ from: RESEND_FROM, to, subject, html })
-  logger.info({ msg: 'Magic link sent via SMTP', to, lang })
+  try {
+    const info = await transporter.sendMail({ from: RESEND_FROM, to, subject, html })
+    logger.info({ msg: 'Magic link sent via SMTP', to, lang, messageId: info.messageId })
+  } catch (err: unknown) {
+    const e = err as Record<string, unknown>
+    logger.error({ msg: 'SMTP sendMail failed', to, code: e['code'], response: e['response'], err })
+    throw err
+  }
 }

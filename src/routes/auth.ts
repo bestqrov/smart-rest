@@ -367,6 +367,24 @@ router.post('/api/auth/magic-send', async (req: Request, res: Response) => {
   }
 })
 
+// ─── GET /api/auth/test-email ─────────────────────────────────────────────────
+// Superadmin-only: sends a test email to verify SMTP is working.
+// Usage: GET /api/auth/test-email?to=you@gmail.com&secret=YOUR_SUPERADMIN_SECRET
+
+router.get('/api/auth/test-email', async (req: Request, res: Response) => {
+  if (req.query['secret'] !== process.env.SUPERADMIN_SECRET) {
+    return res.status(403).json({ error: 'Forbidden' })
+  }
+  const to = (req.query['to'] as string) || 'advicermano@gmail.com'
+  try {
+    await sendMagicLink({ to, magicLink: 'https://smartrestau.digima.cloud', lang: 'en', cafeName: 'Test Cafe' })
+    return res.json({ ok: true, to })
+  } catch (err: unknown) {
+    const e = err as Record<string, unknown>
+    return res.status(500).json({ error: String(e['message'] ?? err), code: e['code'], response: e['response'] })
+  }
+})
+
 // ─── GET /api/auth/magic-verify ───────────────────────────────────────────────
 //
 // Step 2 of magic-link registration:
