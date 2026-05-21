@@ -1,24 +1,37 @@
 /**
- * Email service — magic link delivery via Resend.
- * Falls back to console logging when RESEND_API_KEY is not set (local dev).
+ * Email service — magic link delivery via Resend SMTP.
+ * Falls back to console logging when SMTP env vars are not set (local dev).
  *
- * Add to .env:
- *   RESEND_API_KEY=re_xxxxxxxxxxxxxxxxxxxx
+ * Required .env vars:
+ *   SMTP_HOST=smtp.resend.com
+ *   SMTP_PORT=465
+ *   SMTP_USER=resend
+ *   SMTP_PASS=re_xxxxxxxxxxxxxxxxxxxx
  *   RESEND_FROM=Smart Resto <noreply@yourdomain.com>
- *
- * The "from" address domain must be verified in your Resend dashboard.
  */
 
-import { Resend } from 'resend'
+import nodemailer from 'nodemailer'
 import logger from '../logger'
 import { t, type Lang, isRTL } from '../lib/i18n'
 
-// ─── Client (singleton) ───────────────────────────────────────────────────────
+// ─── Transport (singleton) ────────────────────────────────────────────────────
 
-const apiKey = process.env.RESEND_API_KEY
-const resend  = apiKey ? new Resend(apiKey) : null
+const {
+  SMTP_HOST = 'smtp.resend.com',
+  SMTP_PORT = '465',
+  SMTP_USER = 'resend',
+  SMTP_PASS,
+  RESEND_FROM = 'Smart Resto <noreply@smartrestau.digima.cloud>',
+} = process.env
 
-const FROM = process.env.RESEND_FROM ?? 'Smart Resto <noreply@smartrestau.digima.cloud>'
+const transporter = SMTP_PASS
+  ? nodemailer.createTransport({
+      host: SMTP_HOST,
+      port: Number(SMTP_PORT),
+      secure: Number(SMTP_PORT) === 465,   // TLS on port 465, STARTTLS on 587
+      auth: { user: SMTP_USER, pass: SMTP_PASS },
+    })
+  : null
 
 // ─── HTML template (RTL/LTR aware) ───────────────────────────────────────────
 
@@ -105,9 +118,9 @@ export async function sendMagicLink({ to, magicLink, lang, cafeName = '' }: Send
   const subject = t('email_subject', lang)
   const html    = buildEmailHtml(magicLink, lang, cafeName)
 
-  if (!resend) {
+  if (!transporter) {
     logger.info({
-      msg:       '📧 [DEV] Magic link — RESEND_API_KEY not set, logging link here',
+      msg:       '📧 [DEV] Magic link — SMTP_PASS not set, logging link here',
       to,
       magicLink,
       lang,
@@ -115,8 +128,6 @@ export async function sendMagicLink({ to, magicLink, lang, cafeName = '' }: Send
     return
   }
 
-  const { error } = await resend.emails.send({ from: FROM, to, subject, html })
-  if (error) throw new Error(`Resend error: ${error.message}`)
-
-  logger.info({ msg: 'Magic link sent via Resend', to, lang })
+  await transporter.sendMail({ from: RESEND_FROM, to, subject, html })
+  logger.info({ msg: 'Magic link sent via SMTP', to, lang })
 }
