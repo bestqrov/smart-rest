@@ -1,38 +1,24 @@
 /**
- * Email service — magic link delivery via Gmail SMTP (Nodemailer).
- * Falls back to console logging when credentials are not set (local dev).
+ * Email service — magic link delivery via Resend.
+ * Falls back to console logging when RESEND_API_KEY is not set (local dev).
  *
  * Add to .env:
- *   GMAIL_USER=youraddress@gmail.com
- *   GMAIL_APP_PASSWORD=xxxx xxxx xxxx xxxx   ← 16-char Google App Password
+ *   RESEND_API_KEY=re_xxxxxxxxxxxxxxxxxxxx
+ *   RESEND_FROM=Smart Resto <noreply@yourdomain.com>
  *
- * How to get an App Password:
- *   Google Account → Security → 2-Step Verification → App passwords
- *   (2FA must be enabled first)
+ * The "from" address domain must be verified in your Resend dashboard.
  */
 
-import nodemailer from 'nodemailer'
+import { Resend } from 'resend'
 import logger from '../logger'
 import { t, type Lang, isRTL } from '../lib/i18n'
 
-// ─── Transporter (singleton) ──────────────────────────────────────────────────
+// ─── Client (singleton) ───────────────────────────────────────────────────────
 
-function createTransporter() {
-  const user = process.env.GMAIL_USER
-  const pass = process.env.GMAIL_APP_PASSWORD
+const apiKey = process.env.RESEND_API_KEY
+const resend  = apiKey ? new Resend(apiKey) : null
 
-  if (!user || !pass) return null
-
-  return nodemailer.createTransport({
-    service: 'gmail',
-    auth: { type: 'login', user, pass }
-  })
-}
-
-const transporter = createTransporter()
-const FROM_NAME   = process.env.EMAIL_FROM_NAME ?? 'Smart Resto'
-const FROM_EMAIL  = process.env.GMAIL_USER      ?? 'noreply@smartrestau.digima.cloud'
-const FROM        = `${FROM_NAME} <${FROM_EMAIL}>`
+const FROM = process.env.RESEND_FROM ?? 'Smart Resto <noreply@smartrestau.digima.cloud>'
 
 // ─── HTML template (RTL/LTR aware) ───────────────────────────────────────────
 
@@ -119,16 +105,18 @@ export async function sendMagicLink({ to, magicLink, lang, cafeName = '' }: Send
   const subject = t('email_subject', lang)
   const html    = buildEmailHtml(magicLink, lang, cafeName)
 
-  if (!transporter) {
+  if (!resend) {
     logger.info({
-      msg:       '📧 [DEV] Magic link — GMAIL_USER / GMAIL_APP_PASSWORD not set, logging link here',
+      msg:       '📧 [DEV] Magic link — RESEND_API_KEY not set, logging link here',
       to,
       magicLink,
-      lang
+      lang,
     })
     return
   }
 
-  await transporter.sendMail({ from: FROM, to, subject, html })
-  logger.info({ msg: 'Magic link sent via Gmail', to, lang })
+  const { error } = await resend.emails.send({ from: FROM, to, subject, html })
+  if (error) throw new Error(`Resend error: ${error.message}`)
+
+  logger.info({ msg: 'Magic link sent via Resend', to, lang })
 }
