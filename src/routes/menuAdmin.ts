@@ -250,4 +250,30 @@ router.post('/api/admin/menu/seed-demo', authorizeAdmin, async (req: Request, re
   }
 })
 
+// ─── POST /api/admin/staff — create a new staff member ────────────────────────
+
+router.post('/api/admin/staff', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const cafeId = req.admin!.cafeId
+    const { name, role, pinCode } = req.body as { name: string; role: string; pinCode: string }
+
+    if (!name?.trim())          return res.status(400).json({ error: 'name is required' })
+    if (!/^\d{4}$/.test(pinCode)) return res.status(400).json({ error: 'pinCode must be exactly 4 digits' })
+    if (!['WAITER','CASHIER','SUPERVISOR'].includes(role)) return res.status(400).json({ error: 'invalid role' })
+
+    const bcrypt = await import('bcrypt')
+    const hashed = await bcrypt.default.hash(pinCode, 10)
+
+    const staff = await prisma.staff.create({
+      data: { cafeId, name: name.trim(), role: role as any, pinCode: hashed, isActive: true },
+      select: { id: true, name: true, role: true, shiftStatus: true },
+    })
+    logger.info({ msg: 'staff created', staffId: staff.id, cafeId })
+    return res.status(201).json(staff)
+  } catch (err) {
+    logger.error({ msg: 'POST /api/admin/staff error', err })
+    return res.status(500).json({ error: 'Failed to create staff member' })
+  }
+})
+
 export default router

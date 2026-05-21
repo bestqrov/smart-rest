@@ -146,12 +146,14 @@ export default function POSPage() {
   const [staff,     setStaff]     = useState<Staff | null>(null)
   const [cafeId,    setCafeId]    = useState('')
   const [cafeName,  setCafeName]  = useState('Café')
+  const [cafeLogoUrl, setCafeLogoUrl] = useState<string | null>(null)
 
-  // PIN login form
+  // PIN login form — subdomain auto-detected from hostname
   const [pinInput,       setPinInput]       = useState('')
   const [subdomainInput, setSubdomainInput] = useState('')
   const [loginErr,       setLoginErr]       = useState('')
-  const [logging,   setLogging]   = useState(false)
+  const [logging,        setLogging]        = useState(false)
+  const [loadingCafe,    setLoadingCafe]    = useState(false)
 
   // tables
   const [tables,    setTables]    = useState<PosTable[]>([])
@@ -195,6 +197,26 @@ export default function POSPage() {
     }
   }, [])
 
+  // ── Auto-detect subdomain from hostname, then fetch cafe branding ──────────
+  useEffect(() => {
+    const hostname = window.location.hostname   // e.g. "plage.smartrestau.digima.cloud"
+    const parts    = hostname.split('.')
+    // subdomain exists when there are 3+ parts and the first part isn't "www"
+    const detected = parts.length >= 3 && parts[0] !== 'www' ? parts[0] : ''
+    const saved    = localStorage.getItem('posLastSubdomain') ?? ''
+    const sub      = detected || saved
+    if (sub) setSubdomainInput(sub)
+
+    if (!sub) return
+    setLoadingCafe(true)
+    fetch(`/api/public/cafe/${sub}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (d) { setCafeName(d.name); setCafeLogoUrl(d.logoUrl ?? null) }
+      })
+      .finally(() => setLoadingCafe(false))
+  }, [])
+
   // ── PIN login ───────────────────────────────────────────────────────────────
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
@@ -209,8 +231,9 @@ export default function POSPage() {
       const data = await res.json()
       if (!res.ok) { setLoginErr(data.error ?? 'Login failed'); return }
       const payload = JSON.parse(atob(data.token.split('.')[1]))
-      localStorage.setItem('posToken', data.token)
-      localStorage.setItem('cafeId',   payload.cafeId)
+      localStorage.setItem('posToken',         data.token)
+      localStorage.setItem('cafeId',           payload.cafeId)
+      localStorage.setItem('posLastSubdomain', subdomainInput.trim())
       setPosToken(data.token)
       setCafeId(payload.cafeId)
       setStaff(data.staff)
@@ -368,25 +391,58 @@ export default function POSPage() {
   // ── PIN login screen ────────────────────────────────────────────────────────
   if (!posToken) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
-        <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-8">
+      <div className="relative min-h-screen bg-gray-950 flex items-center justify-center p-4 overflow-hidden">
+        {/* Watermark background logo */}
+        {cafeLogoUrl && (
+          <div
+            className="absolute inset-0 bg-center bg-no-repeat bg-contain opacity-[0.04] pointer-events-none"
+            style={{ backgroundImage: `url(${cafeLogoUrl})`, filter: 'blur(2px)' }}
+          />
+        )}
+
+        <div className="relative z-10 bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl w-full max-w-sm p-8">
+          {/* Cafe branding */}
           <div className="flex flex-col items-center mb-8">
-            <Image src="/assets/logo.png" alt="Smart Menu" width={56} height={56} className="rounded-2xl mb-3" />
-            <h1 className="text-xl font-extrabold text-gray-900">Mini POS</h1>
-            <p className="text-sm text-gray-400">Enter your PIN to open the cashier</p>
+            {loadingCafe ? (
+              <div className="w-16 h-16 rounded-2xl bg-gray-100 animate-pulse mb-3" />
+            ) : cafeLogoUrl ? (
+              <img src={cafeLogoUrl} alt={cafeName} className="w-16 h-16 rounded-2xl object-cover shadow mb-3" />
+            ) : (
+              <div className="w-16 h-16 rounded-2xl bg-amber-500 flex items-center justify-center mb-3 text-3xl shadow">☕</div>
+            )}
+            <h1 className="text-xl font-extrabold text-gray-900">{cafeName}</h1>
+            <p className="text-sm text-gray-400 mt-0.5">Mini POS — Staff Login</p>
           </div>
+
           <form onSubmit={handleLogin} className="space-y-4">
-            <div>
-              <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Subdomain</label>
-              <input
-                type="text"
-                value={subdomainInput}
-                onChange={e => setSubdomainInput(e.target.value)}
-                placeholder="plage / najd / khalij"
-                className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
-                required
-              />
-            </div>
+            {/* Subdomain — hidden if auto-detected, shown as small editable field otherwise */}
+            {!subdomainInput ? (
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Cafe ID</label>
+                <input
+                  type="text"
+                  value={subdomainInput}
+                  onChange={e => {
+                    setSubdomainInput(e.target.value)
+                    setLoginErr('')
+                    if (e.target.value.length > 2) {
+                      fetch(`/api/public/cafe/${e.target.value.trim().toLowerCase()}`)
+                        .then(r => r.ok ? r.json() : null)
+                        .then(d => { if (d) { setCafeName(d.name); setCafeLogoUrl(d.logoUrl ?? null) } })
+                    }
+                  }}
+                  placeholder="cafe-subdomain"
+                  className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  required
+                />
+              </div>
+            ) : (
+              <div className="flex items-center justify-between px-3 py-2 bg-amber-50 rounded-xl border border-amber-200">
+                <span className="text-xs text-amber-700 font-medium">📍 {subdomainInput}</span>
+                <button type="button" onClick={() => setSubdomainInput('')} className="text-xs text-gray-400 hover:text-gray-600 underline">change</button>
+              </div>
+            )}
+
             <div>
               <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">PIN Code</label>
               <input
@@ -398,12 +454,15 @@ export default function POSPage() {
                 placeholder="••••"
                 className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl text-center text-2xl tracking-[0.5em] font-bold focus:outline-none focus:ring-2 focus:ring-amber-400"
                 required
+                autoFocus
               />
             </div>
+
             {loginErr && <p className="text-red-500 text-sm text-center">{loginErr}</p>}
+
             <button
               type="submit"
-              disabled={logging}
+              disabled={logging || !subdomainInput}
               className="w-full bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white font-bold py-3.5 rounded-xl transition-all active:scale-95 text-base"
             >
               {logging ? 'Logging in…' : 'Login →'}

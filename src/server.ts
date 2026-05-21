@@ -34,6 +34,8 @@ import reviewsRouter from './routes/reviews'
 import waiterShiftsRouter from './routes/pos/waiterShifts'
 import waitersPerfRouter from './routes/adminWaitersPerf'
 import waiterQRRouter from './routes/waiterQR'
+import publicCafeRouter from './routes/publicCafe'
+import adminExpensesRouter from './routes/adminExpenses'
 import { registerSocketHandlers } from './socket/handlers'
 import { startWeeklyBillingCron } from './cron/weeklyBilling'
 
@@ -104,6 +106,8 @@ async function main() {
   app.use(waiterShiftsRouter)
   app.use(waitersPerfRouter)
   app.use(waiterQRRouter)
+  app.use(publicCafeRouter)
+  app.use(adminExpensesRouter)
 
   // health
   app.get('/health', (req, res) => res.json({ ok: true }))

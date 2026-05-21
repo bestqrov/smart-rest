@@ -5,7 +5,8 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianG
 import { io, Socket } from 'socket.io-client'
 import {
   TrendingUp, ShoppingBag, Users, Clock,
-  Bell, CheckCheck, Wallet, AlertTriangle, Loader2
+  Bell, CheckCheck, Wallet, AlertTriangle, Loader2,
+  ChefHat, Heart, Activity
 } from 'lucide-react'
 
 type WaiterCall = { id: number; tableId: number; type: string; message?: string; createdAt: string }
@@ -99,7 +100,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* ── KPI cards ─────────────────────────────────────────────── */}
+      {/* ── KPI cards row 1 ───────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <KpiCard
           icon={TrendingUp} color="emerald"
@@ -112,7 +113,22 @@ export default function DashboardPage() {
           sub={`متوسط: ${Number(stats.aov).toFixed(0)} ${currency}`}
         />
         <KpiCard
-          icon={Users} color="violet"
+          icon={Activity} color="orange"
+          label="طلبات نشطة الآن" value={String(stats.activeOrders ?? 0)}
+          sub="قيد التحضير أو انتظار"
+          pulse={stats.activeOrders > 0}
+        />
+        <KpiCard
+          icon={ChefHat} color="violet"
+          label="عمال حاضرون" value={String(stats.activeStaff ?? 0)}
+          sub="في وردية نشطة الآن"
+        />
+      </div>
+
+      {/* ── KPI cards row 2 ───────────────────────────────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <KpiCard
+          icon={Users} color="sky"
           label="زبناء جدد" value={String(stats.newCustomers)}
           sub="آخر 30 يوم"
         />
@@ -121,6 +137,20 @@ export default function DashboardPage() {
           label="الرصيد" value={`${bal.toFixed(2)} ${currency}`}
           sub={billing?.inTrial ? 'فترة تجريبية' : billing?.billingStatus === 'SUSPENDED' ? '⚠ موقوف' : 'نشط'}
         />
+        <div className="col-span-2 bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+          <h3 className="font-bold text-gray-800 mb-2 flex items-center gap-2 text-sm">
+            <Heart className="w-4 h-4 text-rose-500" /> الأكثر إعجاباً
+          </h3>
+          <div className="flex flex-wrap gap-2">
+            {(stats.mostLiked ?? []).slice(0,5).map((p: any) => (
+              <div key={p.id} className="flex items-center gap-1.5 bg-rose-50 border border-rose-100 rounded-xl px-3 py-1.5">
+                <span className="text-xs font-semibold text-rose-700 truncate max-w-[100px]">{p.nameAr || p.nameEn}</span>
+                <span className="text-xs text-rose-400">❤ {p.likesCount}</span>
+              </div>
+            ))}
+            {(stats.mostLiked ?? []).length === 0 && <span className="text-xs text-gray-400">لا توجد بيانات بعد</span>}
+          </div>
+        </div>
       </div>
 
       {/* ── Charts row ────────────────────────────────────────────── */}
@@ -210,19 +240,21 @@ export default function DashboardPage() {
   )
 }
 
-function KpiCard({ icon: Icon, color, label, value, sub }: {
-  icon: any; color: string; label: string; value: string; sub: string
+function KpiCard({ icon: Icon, color, label, value, sub, pulse }: {
+  icon: any; color: string; label: string; value: string; sub: string; pulse?: boolean
 }) {
   const colors: Record<string, string> = {
     emerald: 'bg-emerald-50 text-emerald-600',
     blue:    'bg-blue-50   text-blue-600',
+    sky:     'bg-sky-50    text-sky-600',
     violet:  'bg-violet-50 text-violet-600',
-    red:     'bg-red-50    text-red-600'
+    orange:  'bg-orange-50 text-orange-600',
+    red:     'bg-red-50    text-red-600',
   }
   return (
-    <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+    <div className={`bg-white rounded-2xl p-4 shadow-sm border transition-shadow hover:shadow-md ${pulse ? 'border-orange-200' : 'border-gray-100'}`}>
       <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 ${colors[color]}`}>
-        <Icon className="w-5 h-5" />
+        <Icon className={`w-5 h-5 ${pulse ? 'animate-pulse' : ''}`} />
       </div>
       <div className="text-xs text-gray-400 mb-0.5">{label}</div>
       <div className="text-xl font-extrabold text-gray-900 leading-tight">{value}</div>

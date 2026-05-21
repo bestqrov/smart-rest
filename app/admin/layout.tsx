@@ -7,15 +7,18 @@ import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, UtensilsCrossed, QrCode, Share2,
   CreditCard, LogOut, ChevronRight, Menu, X,
-  AlertTriangle, Loader2, Gift, Zap, ChefHat, Bell, Monitor
+  AlertTriangle, Loader2, Gift, Zap, ChefHat, Bell, Monitor,
+  Users, BarChart3
 } from 'lucide-react'
 
 const NAV = [
-  { href: '/admin/dashboard', icon: LayoutDashboard, labelAr: 'لوحة التحكم',   labelFr: 'Dashboard' },
-  { href: '/admin/menu',      icon: UtensilsCrossed,  labelAr: 'إدارة المنيو',   labelFr: 'Menu' },
-  { href: '/admin/tables',    icon: QrCode,           labelAr: 'الطاولات & QR',  labelFr: 'Tables' },
-  { href: '/admin/social',    icon: Share2,           labelAr: 'التسويق الذكي',  labelFr: 'Social' },
-  { href: '/admin/billing',   icon: CreditCard,       labelAr: 'الفواتير',        labelFr: 'Billing' },
+  { href: '/admin/dashboard',  icon: LayoutDashboard, labelAr: 'لوحة التحكم',       labelFr: 'Dashboard' },
+  { href: '/admin/menu',       icon: UtensilsCrossed,  labelAr: 'إدارة المنيو',       labelFr: 'Menu' },
+  { href: '/admin/tables',     icon: QrCode,           labelAr: 'الطاولات & QR',      labelFr: 'Tables' },
+  { href: '/admin/staff',      icon: Users,            labelAr: 'الكادر البشري',      labelFr: 'Staff' },
+  { href: '/admin/financials', icon: BarChart3,        labelAr: 'المالية والتقارير',  labelFr: 'Finances' },
+  { href: '/admin/social',     icon: Share2,           labelAr: 'التسويق الذكي',      labelFr: 'Social' },
+  { href: '/admin/billing',    icon: CreditCard,       labelAr: 'الفواتير',            labelFr: 'Billing' },
 ]
 
 const STAFF_LINKS = [

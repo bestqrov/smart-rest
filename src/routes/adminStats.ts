@@ -101,7 +101,25 @@ router.get('/api/admin/stats', authorizeAdmin, async (req: Request, res: Respons
     // Recently completed orders
     const recentCompleted = await prisma.order.findMany({ where: { cafeId, status: 'COMPLETED' }, orderBy: { createdAt: 'desc' }, take: 10 })
 
-    return res.json({ revenue, top, peakHours, aov: Number(aov), dailySales, ordersCountToday, newCustomers, recentCompleted })
+    // Active orders (PENDING or PREPARING)
+    const activeOrders = await prisma.order.count({
+      where: { cafeId, status: { in: ['PENDING', 'PREPARING'] } },
+    })
+
+    // Active staff on shift right now
+    const activeStaff = await prisma.staff.count({
+      where: { cafeId, isActive: true, shiftStatus: 'ACTIVE' },
+    })
+
+    // Most liked products (top 5 by likesCount)
+    const mostLiked = await prisma.product.findMany({
+      where:   { category: { cafeId } },
+      orderBy: { likesCount: 'desc' },
+      take:    5,
+      select:  { id: true, nameAr: true, nameEn: true, nameFr: true, likesCount: true, imageUrl: true },
+    })
+
+    return res.json({ revenue, top, peakHours, aov: Number(aov), dailySales, ordersCountToday, newCustomers, recentCompleted, activeOrders, activeStaff, mostLiked })
   } catch (err) {
     logger.error({ msg: 'admin stats error', err })
     return res.status(500).json({ error: 'Failed to fetch stats' })

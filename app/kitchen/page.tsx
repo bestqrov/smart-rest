@@ -426,62 +426,75 @@ function TicketCard({ ticket, action, label, seat, justNow, minAgo, urgent, isRT
   onAction: () => void
 }) {
   const min      = elapsedMin(ticket.createdAt)
-  const isUrgent = min >= 8
-  const items    = ticket.seatGroups.flatMap(sg => sg.items)
-  const seatNum  = ticket.seatGroups[0]?.seatNumber
+  // Wait-time urgency tiers
+  const tier = min >= 12 ? 'critical' : min >= 7 ? 'warning' : min >= 4 ? 'caution' : 'fresh'
+  const tierStyles = {
+    fresh:    'bg-gray-900 border-gray-700',
+    caution:  'bg-yellow-950/60 border-yellow-700/60',
+    warning:  'bg-orange-950/70 border-orange-600 ring-1 ring-orange-500/40',
+    critical: 'bg-red-950/80 border-red-500 ring-2 ring-red-500/60 animate-[pulse_2s_ease-in-out_infinite]',
+  }
+  const timerStyles = {
+    fresh:    'text-gray-500',
+    caution:  'text-yellow-400',
+    warning:  'text-orange-400 font-bold',
+    critical: 'text-red-400 font-bold animate-pulse',
+  }
+  const items   = ticket.seatGroups.flatMap(sg => sg.items)
+  const seatNum = ticket.seatGroups[0]?.seatNumber
 
   return (
-    <div className={`rounded-2xl border p-4 space-y-3 ${
-      action === 'accept' ? 'bg-gray-900 border-red-800/50' : 'bg-gray-900 border-amber-800/50'
-    } ${isUrgent ? 'ring-1 ring-red-500/60 border-red-500' : ''}`}>
+    <div className={`rounded-2xl border p-4 space-y-3 transition-all ${tierStyles[tier]}`}>
 
       {/* Header row */}
       <div className={`flex items-center justify-between ${isRTL ? 'flex-row-reverse' : ''}`}>
-        <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+        <span className={`text-sm font-bold px-3 py-1 rounded-full ${
           action === 'accept' ? 'bg-red-500/20 text-red-300' : 'bg-amber-500/20 text-amber-300'
         }`}>
           {ticket.mergeLabel}{seatNum != null ? ` · ${seat} ${seatNum}` : ''}
         </span>
         <div className={`flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
-          {isUrgent && (
-            <span className="text-xs text-red-400 font-bold animate-pulse flex items-center gap-1">
-              <AlertTriangle className="w-3.5 h-3.5" /> {urgent}
+          {tier === 'critical' && (
+            <span className="text-sm text-red-400 font-bold animate-pulse flex items-center gap-1">
+              <AlertTriangle className="w-4 h-4" /> {urgent}
             </span>
           )}
-          <span className={`text-xs font-medium flex items-center gap-1 ${
-            min >= 10 ? 'text-red-400' : min >= 5 ? 'text-amber-400' : 'text-gray-500'
-          }`}>
-            <Clock className="w-3 h-3" />
+          <span className={`text-sm flex items-center gap-1.5 ${timerStyles[tier]}`}>
+            <Clock className="w-4 h-4" />
             {min === 0 ? justNow : minAgo(min)}
           </span>
         </div>
       </div>
 
-      {/* Items list */}
-      <ul className="space-y-1.5">
+      {/* Items list — larger text for readability from distance */}
+      <ul className="space-y-2">
         {items.map((item, i) => (
-          <li key={i} className={`flex items-start gap-2 ${isRTL ? 'flex-row-reverse text-right' : ''}`}>
-            <span className="bg-gray-800 text-white text-xs font-bold w-7 h-6 rounded flex items-center justify-center shrink-0">
+          <li key={i} className={`flex items-start gap-3 ${isRTL ? 'flex-row-reverse text-right' : ''}`}>
+            <span className={`text-base font-black w-9 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+              tier === 'critical' ? 'bg-red-800 text-red-200'
+              : tier === 'warning' ? 'bg-orange-800 text-orange-200'
+              : 'bg-gray-700 text-white'
+            }`}>
               {item.quantity}×
             </span>
             <div>
-              <p className="text-sm font-semibold leading-tight">{item.productName}</p>
-              {item.notes && <p className="text-xs text-amber-400 mt-0.5">{item.notes}</p>}
+              <p className="text-base font-bold leading-tight">{item.productName}</p>
+              {item.notes && <p className="text-sm text-amber-400 mt-0.5 font-medium">⚠ {item.notes}</p>}
             </div>
           </li>
         ))}
       </ul>
 
-      {/* Action button */}
+      {/* Action button — larger for readability */}
       <button
         onClick={onAction}
-        className={`w-full py-3 rounded-xl font-bold text-sm active:scale-95 transition-all flex items-center justify-center gap-2 ${
+        className={`w-full py-3.5 rounded-xl font-bold text-base active:scale-95 transition-all flex items-center justify-center gap-2 ${
           action === 'accept'
             ? 'bg-red-500 hover:bg-red-400 text-white'
             : 'bg-emerald-500 hover:bg-emerald-400 text-white'
         }`}
       >
-        {action === 'accept' ? <CheckCircle2 className="w-4 h-4" /> : <Bell className="w-4 h-4" />}
+        {action === 'accept' ? <CheckCircle2 className="w-5 h-5" /> : <Bell className="w-5 h-5" />}
         {label}
       </button>
     </div>

@@ -125,6 +125,7 @@ model Cafe {
   cashierShifts  CashierShift[]
   waiterShifts   WaiterShift[]
   waiterQRTokens WaiterQRToken[]
+  expenses       Expense[]
 
 }
 
@@ -429,6 +430,22 @@ model WaiterQRToken {
 
   @@index([cafeId])
   @@index([expiresAt])
+}
+
+// ─── Daily Expenses ───────────────────────────────────────────────────────────
+
+model Expense {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId      String   @db.ObjectId
+  cafe        Cafe     @relation(fields: [cafeId], references: [id])
+  amount      Float
+  category    String   // supplies | utilities | wages | rent | other
+  description String
+  date        DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  @@index([cafeId])
+  @@index([date])
 }
 
 // ─── Waiter Shifts ────────────────────────────────────────────────────────────
