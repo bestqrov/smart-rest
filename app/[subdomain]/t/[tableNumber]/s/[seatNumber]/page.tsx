@@ -67,6 +67,10 @@ const T = {
     likeLabel: 'Like',
     shareLabel: 'Share',
     kcal: 'kcal',
+    requestBill: '💳 Request the Bill',
+    choosePayMethod: 'How would you like to pay?',
+    waiterWithBill: '🛎️ Waiter is on the way with your bill!',
+    sharedDone: '✅ Photo shared! Enjoy your meal.',
   },
   ar: {
     menu: 'القائمة', table: 'طاولة', seat: 'مقعد', search: 'ابحث في القائمة…',
@@ -126,6 +130,10 @@ const T = {
     likeLabel: 'إعجاب',
     shareLabel: 'مشاركة',
     kcal: 'سعرة',
+    requestBill: '💳 طلب الفاتورة والدفع',
+    choosePayMethod: 'كيف تريد أن تدفع؟',
+    waiterWithBill: '🛎️ النادل في طريقه إليك بالحساب!',
+    sharedDone: '✅ تمت المشاركة! استمتع بوجبتك.',
   },
   fr: {
     menu: 'Menu', table: 'Table', seat: 'Place', search: 'Rechercher…',
@@ -185,6 +193,10 @@ const T = {
     likeLabel: 'J\'aime',
     shareLabel: 'Partager',
     kcal: 'kcal',
+    requestBill: '💳 Demander l\'addition',
+    choosePayMethod: 'Comment souhaitez-vous payer ?',
+    waiterWithBill: '🛎️ Le serveur arrive avec l\'addition !',
+    sharedDone: '✅ Photo partagée ! Bon appétit.',
   },
   es: {
     menu: 'Menú', table: 'Mesa', seat: 'Asiento', search: 'Buscar en el menú…',
@@ -244,6 +256,10 @@ const T = {
     likeLabel: 'Me gusta',
     shareLabel: 'Compartir',
     kcal: 'kcal',
+    requestBill: '💳 Pedir la cuenta',
+    choosePayMethod: '¿Cómo deseas pagar?',
+    waiterWithBill: '🛎️ ¡El mesero viene con la cuenta!',
+    sharedDone: '✅ ¡Foto compartida! Disfruta tu comida.',
   },
 } as const
 
@@ -261,6 +277,9 @@ type Toast    = { id: number; message: string; type: 'success' | 'info' | 'error
 type OrderStatus = 'PENDING' | 'PREPARING' | 'DELIVERED' | null
 
 const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || ''
+
+// Auto-transition to Bon Appétit after this delay if socket hasn't fired (ms)
+const PREPARE_TIMEOUT_MS = 8 * 60 * 1000 // 8 minutes — adjust as needed
 
 function getSessionId(): string {
   const KEY = 'sm_session_id'
@@ -371,6 +390,11 @@ function MenuPageInner() {
   const [toasts, setToasts]           = useState<Toast[]>([])
   const [lang, setLangState]          = useState<Lang>('en')
 
+  // ── Photo share / bill state ──────────────────────────────────────────────
+  const [hasShared, setHasShared]           = useState(false)
+  const [showPayModal, setShowPayModal]     = useState(false)
+  const [billRequested, setBillRequested]   = useState(false)
+
   // ── Like / review state ───────────────────────────────────────────────────
   const [likedProducts, setLikedProducts]   = useState<Record<string, boolean>>({})
   const [localLikeCounts, setLocalLikeCounts] = useState<Record<string, number>>({})
@@ -386,12 +410,13 @@ function MenuPageInner() {
   const [photoFiltered, setPhotoFiltered]   = useState<string | null>(null)
   const [photoLoading, setPhotoLoading]     = useState(false)
 
-  const socketRef    = useRef<Socket | null>(null)
-  const videoRef     = useRef<HTMLVideoElement>(null)
-  const canvasRef    = useRef<HTMLCanvasElement>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const toastIdRef   = useRef(0)
-  const catBarRef    = useRef<HTMLDivElement>(null)
+  const socketRef       = useRef<Socket | null>(null)
+  const videoRef        = useRef<HTMLVideoElement>(null)
+  const canvasRef       = useRef<HTMLCanvasElement>(null)
+  const fileInputRef    = useRef<HTMLInputElement>(null)
+  const toastIdRef      = useRef(0)
+  const catBarRef       = useRef<HTMLDivElement>(null)
+  const prepareTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const tr    = T[lang]
   const isRTL = lang === 'ar'
@@ -460,6 +485,8 @@ function MenuPageInner() {
         setOrderTotal(saved.total ?? 0)
         setOrderConfirmedAt(saved.confirmedAt)
         if (saved.orderStatus) setOrderStatus(saved.orderStatus)
+        if (saved.hasShared)     setHasShared(true)
+        if (saved.billRequested) setBillRequested(true)
       }
     } catch {}
   }, [session])
@@ -501,6 +528,27 @@ function MenuPageInner() {
 
     return () => { socket.disconnect() }
   }, [session, token, toast, tr])
+
+  // ── Smart transition timer ────────────────────────────────────────────────
+  // If the order stays in PENDING or PREPARING longer than PREPARE_TIMEOUT_MS,
+  // auto-open the Bon Appétit screen so the customer isn't stuck waiting.
+  useEffect(() => {
+    if (orderStatus === 'PENDING' || orderStatus === 'PREPARING') {
+      if (prepareTimerRef.current) clearTimeout(prepareTimerRef.current)
+      prepareTimerRef.current = setTimeout(() => {
+        setShowBonAppetit(true)
+      }, PREPARE_TIMEOUT_MS)
+    } else {
+      // DELIVERED or null — clear any pending timer (socket already handled it)
+      if (prepareTimerRef.current) {
+        clearTimeout(prepareTimerRef.current)
+        prepareTimerRef.current = null
+      }
+    }
+    return () => {
+      if (prepareTimerRef.current) clearTimeout(prepareTimerRef.current)
+    }
+  }, [orderStatus])
 
   // ── Cart persistence ──────────────────────────────────────────────────────
   useEffect(() => { saveCart(cart) }, [cart])
@@ -583,6 +631,20 @@ function MenuPageInner() {
     // Show review modal when customer requests bill payment
     if ((type === 'pay_cash' || type === 'pay_tpe') && orderId && !reviewDone) {
       setTimeout(() => setShowReview(true), 600)
+    }
+  }
+
+  // ── Bill payment request (from Bon Appétit screen pay modal) ─────────────
+  const requestBill = async (method: 'pay_cash' | 'pay_tpe') => {
+    setShowPayModal(false)
+    await notifyWaiter(method)
+    setBillRequested(true)
+    if (session) {
+      const key = `sm_order_${session.seatId}`
+      try {
+        const saved = JSON.parse(localStorage.getItem(key) || '{}')
+        localStorage.setItem(key, JSON.stringify({ ...saved, billRequested: true }))
+      } catch {}
     }
   }
 
@@ -730,11 +792,20 @@ function MenuPageInner() {
       if (navigator.canShare?.({ files: [file] })) {
         await navigator.share({ files: [file], title: `${cafeName} ✨`, text: '#SmartMenu #FoodVibes' })
         if (orderId) fetch(`/api/orders/${orderId}/social-verified`, { method: 'POST', headers: { 'Content-Type': 'application/json' } }).catch(() => {})
-        toast(tr.sharedMsg, 'success')
       } else {
         const a = document.createElement('a'); a.href = photoFiltered; a.download = 'my-plate.jpg'; a.click()
         toast(tr.downloadedMsg, 'info')
       }
+      // Mark shared — hide camera card for this session
+      setHasShared(true)
+      if (session) {
+        const key = `sm_order_${session.seatId}`
+        try {
+          const saved = JSON.parse(localStorage.getItem(key) || '{}')
+          localStorage.setItem(key, JSON.stringify({ ...saved, hasShared: true }))
+        } catch {}
+      }
+      toast(tr.sharedDone, 'success')
     } catch (err: any) { if (err?.name !== 'AbortError') toast('Could not share', 'error') }
   }
 
@@ -831,30 +902,56 @@ function MenuPageInner() {
 
             {/* Default Bon Appétit screen */}
             {cameraMode === 'idle' && !photoLoading && (
-              <div className="flex-1 flex flex-col items-center justify-center text-center px-8 gap-6">
+              <div className="flex-1 flex flex-col items-center justify-center text-center px-6 gap-5 overflow-y-auto py-6">
                 <motion.div
                   initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
                   transition={{ type: 'spring', stiffness: 200, damping: 15 }}
-                  className="text-8xl mb-2">🍽️</motion.div>
+                  className="text-7xl">🍽️</motion.div>
 
                 <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }}>
-                  <h1 className="font-extrabold text-3xl text-gray-900 mb-2">{tr.bonAppetit}</h1>
-                  <p className="text-gray-500 text-base">{tr.bonSub}</p>
+                  <h1 className="font-extrabold text-3xl text-gray-900 mb-1">{tr.bonAppetit}</h1>
+                  <p className="text-gray-500 text-sm">{tr.bonSub}</p>
                 </motion.div>
 
-                {/* Photo prompt */}
-                <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.4 }}
-                  className="w-full bg-gradient-to-br from-purple-600 via-pink-500 to-rose-500 rounded-3xl p-5 text-white shadow-xl">
-                  <p className="font-bold text-lg mb-1">{tr.photoPrompt}</p>
-                  <p className="text-sm opacity-80 mb-4">{tr.photoSub}</p>
-                  <motion.button whileTap={{ scale: 0.95 }} onClick={startCamera}
-                    className="w-full bg-white text-purple-700 font-bold py-3.5 rounded-2xl text-base shadow-md">
-                    {tr.openCamera}
-                  </motion.button>
+                {/* Photo prompt — hidden after share */}
+                {!hasShared && (
+                  <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.35 }}
+                    className="w-full bg-gradient-to-br from-purple-600 via-pink-500 to-rose-500 rounded-3xl p-5 text-white shadow-xl">
+                    <p className="font-bold text-lg mb-1">{tr.photoPrompt}</p>
+                    <p className="text-sm opacity-80 mb-4">{tr.photoSub}</p>
+                    <motion.button whileTap={{ scale: 0.95 }} onClick={startCamera}
+                      className="w-full bg-white text-purple-700 font-bold py-3.5 rounded-2xl text-base shadow-md">
+                      {tr.openCamera}
+                    </motion.button>
+                  </motion.div>
+                )}
+
+                {/* Photo shared confirmation */}
+                {hasShared && (
+                  <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+                    className="w-full bg-emerald-50 border border-emerald-200 rounded-3xl p-4 text-center">
+                    <p className="text-emerald-700 font-bold text-sm">{tr.sharedDone}</p>
+                  </motion.div>
+                )}
+
+                {/* Request Bill button / confirmation */}
+                <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.5 }}
+                  className="w-full">
+                  {billRequested ? (
+                    <div className="w-full bg-amber-50 border-2 border-amber-300 rounded-3xl p-5 text-center">
+                      <p className="text-3xl mb-2">🛎️</p>
+                      <p className="font-extrabold text-amber-800 text-base">{tr.waiterWithBill}</p>
+                    </div>
+                  ) : (
+                    <motion.button whileTap={{ scale: 0.97 }} onClick={() => setShowPayModal(true)}
+                      className="w-full bg-gray-900 text-white rounded-3xl py-5 font-extrabold text-lg shadow-2xl">
+                      {tr.requestBill}
+                    </motion.button>
+                  )}
                 </motion.div>
 
                 {/* Back to menu */}
-                <motion.button initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }}
+                <motion.button initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.65 }}
                   onClick={() => setShowBonAppetit(false)}
                   className="text-gray-400 text-sm underline underline-offset-2">
                   {tr.orderMore} →
@@ -978,10 +1075,23 @@ function MenuPageInner() {
 
               {/* Bon Appétit trigger if delivered and overlay closed */}
               {orderStatus === 'DELIVERED' && !showBonAppetit && (
-                <button onClick={() => setShowBonAppetit(true)}
-                  className="w-full bg-gradient-to-r from-amber-400 to-orange-400 text-white font-bold py-2.5 rounded-xl text-sm shadow-md active:scale-95 transition-all">
-                  🍽️ {tr.bonAppetit}
-                </button>
+                <div className="flex gap-2">
+                  <button onClick={() => setShowBonAppetit(true)}
+                    className="flex-1 bg-gradient-to-r from-amber-400 to-orange-400 text-white font-bold py-2.5 rounded-xl text-sm shadow-md active:scale-95 transition-all">
+                    🍽️ {tr.bonAppetit}
+                  </button>
+                  {!billRequested && (
+                    <button onClick={() => setShowPayModal(true)}
+                      className="flex-1 bg-gray-900 text-white font-bold py-2.5 rounded-xl text-sm shadow-md active:scale-95 transition-all">
+                      {tr.requestBill}
+                    </button>
+                  )}
+                  {billRequested && (
+                    <div className="flex-1 bg-amber-50 border border-amber-300 rounded-xl py-2.5 text-center text-amber-700 font-bold text-xs">
+                      🛎️ {tr.waiterWithBill}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           </motion.div>
@@ -1106,6 +1216,31 @@ function MenuPageInner() {
             className="flex-1 border-2 border-gray-200 text-gray-600 rounded-2xl py-3.5 font-semibold text-sm">{tr.skip}</button>
           <motion.button whileTap={{ scale: 0.97 }} onClick={() => { setShowAI(false); handlePlaceOrder() }}
             className="flex-[2] bg-gray-900 text-white rounded-2xl py-3.5 font-bold text-sm shadow-md">{tr.placeOrder}</motion.button>
+        </div>
+      </Sheet>
+
+      {/* ── Pay method modal ── */}
+      <Sheet open={showPayModal} onClose={() => setShowPayModal(false)} title={tr.choosePayMethod} isRTL={isRTL}>
+        <div className="space-y-3 pb-2">
+          <motion.button whileTap={{ scale: 0.97 }} onClick={() => requestBill('pay_cash')}
+            className="w-full flex items-center gap-4 bg-emerald-50 border-2 border-emerald-200 active:bg-emerald-100 rounded-2xl px-5 py-4 text-left transition-colors">
+            <span className="text-4xl flex-shrink-0">💵</span>
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-gray-900 text-base">{tr.payCash}</p>
+              <p className="text-sm text-gray-400 mt-0.5">{tr.payCashSub}</p>
+            </div>
+            <span className="text-gray-300 text-2xl flex-shrink-0">›</span>
+          </motion.button>
+
+          <motion.button whileTap={{ scale: 0.97 }} onClick={() => requestBill('pay_tpe')}
+            className="w-full flex items-center gap-4 bg-blue-50 border-2 border-blue-200 active:bg-blue-100 rounded-2xl px-5 py-4 text-left transition-colors">
+            <span className="text-4xl flex-shrink-0">💳</span>
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-gray-900 text-base">{tr.payCard}</p>
+              <p className="text-sm text-gray-400 mt-0.5">{tr.payCardSub}</p>
+            </div>
+            <span className="text-gray-300 text-2xl flex-shrink-0">›</span>
+          </motion.button>
         </div>
       </Sheet>
 
