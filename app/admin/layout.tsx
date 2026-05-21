@@ -49,6 +49,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       fetch('/api/finance/status',     { headers: { Authorization: `Bearer ${token}` } }).then(r => r.ok ? r.json() : null),
     ])
     if (profile) {
+      // Redirect to onboarding wizard if setup not complete
+      if (!profile.isProfileComplete && !pathname.startsWith('/admin/onboarding')) {
+        router.replace('/admin/onboarding')
+        return
+      }
       setCafe({
         name: profile.businessName || profile.name,
         subdomain: profile.subdomain,
@@ -60,7 +65,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
   }
 
-  useEffect(() => { loadCafe() }, [router])
+  useEffect(() => { loadCafe() }, [router, pathname])
 
   async function doGateAction(endpoint: string) {
     setGateAction(endpoint)

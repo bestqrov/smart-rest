@@ -190,7 +190,8 @@ router.get('/api/admin/cafe/profile', authorizeAdmin, async (req: Request, res: 
         country: true, currency: true, logoUrl: true, lat: true, lng: true,
         socialLinks: true, hasSocialShareAddon: true, isActive: true,
         walletBalance: true, billingStatus: true, trialEndsAt: true,
-        hasExtendedTrial: true, totalSeats: true
+        hasExtendedTrial: true, totalSeats: true, isProfileComplete: true,
+        coffeeRefPrice: true, sandwichRefPrice: true
       }
     })
     return res.json(cafe)
@@ -294,6 +295,106 @@ router.post('/api/admin/staff', authorizeAdmin, async (req: Request, res: Respon
   } catch (err) {
     logger.error({ msg: 'POST /api/admin/staff error', err })
     return res.status(500).json({ error: 'Failed to create staff member' })
+  }
+})
+
+// ─── POST /api/admin/onboarding — complete initial setup ─────────────────────
+//
+// Body: {
+//   businessName, logoUrl?, currency,
+//   coffeeRefPrice, sandwichRefPrice,
+//   zones: [{ name, tableCount }],
+//   managerName, managerPin (4 digits)
+// }
+
+router.post('/api/admin/onboarding', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const cafeId = req.admin!.cafeId
+    const {
+      businessName, logoUrl, currency,
+      coffeeRefPrice, sandwichRefPrice,
+      zones,
+      managerName, managerPin,
+    } = req.body as {
+      businessName:      string
+      logoUrl?:          string
+      currency:          string
+      coffeeRefPrice:    number
+      sandwichRefPrice:  number
+      zones:             { name: string; tableCount: number }[]
+      managerName:       string
+      managerPin:        string
+    }
+
+    if (!businessName?.trim())                return res.status(400).json({ error: 'businessName is required' })
+    if (!currency?.trim())                    return res.status(400).json({ error: 'currency is required' })
+    if (!coffeeRefPrice || coffeeRefPrice < 0) return res.status(400).json({ error: 'coffeeRefPrice is required' })
+    if (!sandwichRefPrice || sandwichRefPrice < 0) return res.status(400).json({ error: 'sandwichRefPrice is required' })
+    if (!zones?.length)                       return res.status(400).json({ error: 'At least one zone is required' })
+    if (!managerName?.trim())                 return res.status(400).json({ error: 'managerName is required' })
+    if (!/^\d{4}$/.test(managerPin))          return res.status(400).json({ error: 'managerPin must be 4 digits' })
+
+    const bcrypt = await import('bcrypt')
+    const { randomUUID } = await import('crypto')
+
+    // ── 1. Update cafe profile ─────────────────────────────────────────────────
+    const totalTables = zones.reduce((s, z) => s + z.tableCount, 0)
+    await prisma.cafe.update({
+      where: { id: cafeId },
+      data: {
+        businessName:    businessName.trim(),
+        name:            businessName.trim(),
+        currency:        currency.trim().toUpperCase(),
+        coffeeRefPrice:  Number(coffeeRefPrice),
+        sandwichRefPrice: Number(sandwichRefPrice),
+        totalSeats:      totalTables,
+        ...(logoUrl ? { logoUrl: logoUrl.trim() } : {}),
+        isProfileComplete: true,
+      },
+    })
+
+    // ── 2. Create tables per zone (skip if tables already exist) ──────────────
+    const existingTables = await prisma.table.count({ where: { cafeId } })
+    if (existingTables === 0) {
+      let tableNumber = 1
+      await prisma.$transaction(async tx => {
+        for (const zone of zones) {
+          for (let i = 0; i < zone.tableCount; i++) {
+            await tx.table.create({
+              data: {
+                cafeId,
+                tableNumber: tableNumber++,
+                zone:        zone.name.trim(),
+                qrToken:     randomUUID(),
+              },
+            })
+          }
+        }
+      })
+    }
+
+    // ── 3. Create manager staff (idempotent — skip if SUPERVISOR already exists) ─
+    const existingSupervisor = await prisma.staff.findFirst({
+      where: { cafeId, role: 'SUPERVISOR' },
+    })
+    if (!existingSupervisor) {
+      const hashed = await bcrypt.default.hash(managerPin, 10)
+      await prisma.staff.create({
+        data: {
+          cafeId,
+          name:     managerName.trim(),
+          role:     'SUPERVISOR',
+          pinCode:  hashed,
+          isActive: true,
+        },
+      })
+    }
+
+    logger.info({ msg: 'onboarding complete', cafeId, totalTables })
+    return res.json({ success: true, totalTables })
+  } catch (err) {
+    logger.error({ msg: 'POST /api/admin/onboarding error', err })
+    return res.status(500).json({ error: 'Onboarding failed' })
   }
 })
 

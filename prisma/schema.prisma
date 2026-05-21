@@ -99,6 +99,7 @@ model Cafe {
   socialLinks  Json?
 
   isActive            Boolean       @default(true)
+  isProfileComplete   Boolean       @default(false)
   walletBalance       Float         @default(0.0)
   trialEndsAt         DateTime?
   hasExtendedTrial    Boolean       @default(false)
