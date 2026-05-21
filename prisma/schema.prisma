@@ -78,6 +78,11 @@ enum ShiftStatus {
   CLOSED
 }
 
+enum WaiterDutyStatus {
+  ACTIVE
+  OFF_DUTY
+}
+
 // ─── Tenant / Cafe ────────────────────────────────────────────────────────────
 
 model Cafe {
@@ -118,6 +123,7 @@ model Cafe {
   billingTiers  BillingTier[]
   staff         Staff[]
   cashierShifts CashierShift[]
+  waiterShifts  WaiterShift[]
 
 }
 
@@ -130,6 +136,11 @@ model Table {
   tableNumber Int
   qrToken     String  @unique
   isActive    Boolean @default(true)
+  zone        String?
+
+  // Waiter currently serving this table (cleared when bill is closed)
+  assignedWaiterId String? @db.ObjectId
+  assignedWaiter   Staff?  @relation("TableWaiterAssignment", fields: [assignedWaiterId], references: [id])
 
   mergedIntoTableId String? @db.ObjectId
   mergedIntoTable   Table?  @relation("TableMerge", fields: [mergedIntoTableId], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -144,6 +155,7 @@ model Table {
   @@unique([cafeId, tableNumber])
   @@index([cafeId])
   @@index([mergedIntoTableId])
+  @@index([assignedWaiterId])
 }
 
 model Seat {
@@ -227,8 +239,12 @@ model Order {
   billStatus      BillStatus  @default(OPENED)
   totalCommission Float       @default(0)
   // staff member who entered the order manually (null for QR orders)
-  createdById  String?     @db.ObjectId
-  createdBy    Staff?      @relation(fields: [createdById], references: [id])
+  createdById  String? @db.ObjectId
+  createdBy    Staff?  @relation("OrderCreatedBy", fields: [createdById], references: [id])
+
+  // Waiter who claimed/served this order (set when they acknowledge the notification)
+  assignedWaiterId String? @db.ObjectId
+  assignedWaiter   Staff?  @relation("OrderWaiterAssignment", fields: [assignedWaiterId], references: [id])
 
   // Active waiter notification state (isActive=true = POS should alert)
   waiterNotification WaiterNotification?
@@ -242,6 +258,7 @@ model Order {
   @@index([tableId])
   @@index([seatId])
   @@index([createdById])
+  @@index([assignedWaiterId])
   @@index([orderSource])
   @@index([billStatus])
 }
@@ -348,11 +365,19 @@ model Staff {
   isActive Boolean   @default(true)
   createdAt DateTime @default(now())
 
-  orders        Order[]
-  cashierShifts CashierShift[]
+  // Waiter shift state (updated on clock-in / clock-out)
+  shiftStatus WaiterDutyStatus @default(OFF_DUTY)
+  clockInTime DateTime?
+
+  orders         Order[]       @relation("OrderCreatedBy")
+  assignedOrders Order[]       @relation("OrderWaiterAssignment")
+  assignedTables Table[]       @relation("TableWaiterAssignment")
+  cashierShifts  CashierShift[]
+  waiterShifts   WaiterShift[]
 
   @@index([cafeId])
   @@index([role])
+  @@index([shiftStatus])
 }
 
 // ─── Magic-link verification tokens (expires after 15 min, checked in app) ───
@@ -388,4 +413,20 @@ model CashierShift {
   @@index([cafeId])
   @@index([staffId])
   @@index([status])
+}
+
+// ─── Waiter Shifts ────────────────────────────────────────────────────────────
+
+model WaiterShift {
+  id       String    @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId   String    @db.ObjectId
+  cafe     Cafe      @relation(fields: [cafeId], references: [id])
+  staffId  String    @db.ObjectId
+  staff    Staff     @relation(fields: [staffId], references: [id])
+  clockIn  DateTime  @default(now())
+  clockOut DateTime?
+
+  @@index([cafeId])
+  @@index([staffId])
+  @@index([clockIn])
 }
