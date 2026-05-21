@@ -171,6 +171,7 @@ export function registerSocketHandlers(io: SocketIOServer) {
     })
 
     // ── kds_ack_order — kitchen confirms order → PREPARING ───────────────────
+    // Multi-tenancy guard: admin.cafeId must match the payload cafeId.
     socket.on('kds_ack_order', async (payload: { cafeId: string; orderId: string }) => {
       try {
         const { cafeId, orderId } = payload
@@ -180,6 +181,7 @@ export function registerSocketHandlers(io: SocketIOServer) {
         const order = await prisma.order.findUnique({
           where: { id: orderId }, select: { cafeId: true, tableId: true, status: true }
         })
+        // Double-check DB cafeId to prevent cross-tenant mutation via crafted payloads
         if (!order || order.cafeId !== cafeId || order.status !== 'PENDING') return
 
         await prisma.order.update({ where: { id: orderId }, data: { status: 'PREPARING' } })
@@ -187,6 +189,7 @@ export function registerSocketHandlers(io: SocketIOServer) {
         const update = { orderId, status: 'PREPARING', tableId: order.tableId }
         io.to(`room_${cafeId}`).emit('order_status_updated', update)
         io.to(`kds_room_${cafeId}`).emit('kds_order_updated', update)
+        // Inform the customer so they see "your order is being prepared"
         if (order.tableId) {
           io.to(`table_room_${cafeId}_${order.tableId}`).emit('your_order_updated', update)
         }
@@ -196,6 +199,8 @@ export function registerSocketHandlers(io: SocketIOServer) {
     })
 
     // ── kds_ready — kitchen marks order ready → DELIVERED ───────────────────
+    // Multi-tenancy guard: admin.cafeId must match payload cafeId.
+    // Emits waiter_order_ready so the POS waiter UI can alert with beep/flash.
     socket.on('kds_ready', async (payload: { cafeId: string; orderId: string }) => {
       try {
         const { cafeId, orderId } = payload
@@ -205,6 +210,7 @@ export function registerSocketHandlers(io: SocketIOServer) {
         const order = await prisma.order.findUnique({
           where: { id: orderId }, select: { cafeId: true, tableId: true, status: true }
         })
+        // Double-check DB cafeId to prevent cross-tenant mutation via crafted payloads
         if (!order || order.cafeId !== cafeId || order.status !== 'PREPARING') return
 
         await prisma.order.update({ where: { id: orderId }, data: { status: 'DELIVERED' } })
@@ -212,9 +218,15 @@ export function registerSocketHandlers(io: SocketIOServer) {
         const update = { orderId, status: 'DELIVERED', tableId: order.tableId }
         io.to(`room_${cafeId}`).emit('order_status_updated', update)
         io.to(`kds_room_${cafeId}`).emit('kds_order_updated', update)
+        // Inform the customer their order is ready
         if (order.tableId) {
           io.to(`table_room_${cafeId}_${order.tableId}`).emit('your_order_updated', update)
         }
+        // Dedicated event for the waiter POS to trigger audio/visual alert
+        io.to(`room_${cafeId}`).emit('waiter_order_ready', {
+          orderId,
+          tableId: order.tableId
+        })
       } catch (err) {
         logger.error({ msg: 'kds_ready error', err, payload })
       }

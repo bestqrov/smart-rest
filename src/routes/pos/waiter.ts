@@ -70,4 +70,52 @@ router.patch('/api/pos/waiter/orders/:id/served', authorizePOS, async (req: Requ
   }
 })
 
+// ─── PATCH /api/waiter/notifications/ack ─────────────────────────────────────
+// Waiter dismisses an active notification (stops the POS beep/flash).
+// Body: { orderId }   — clears waiterNotification.isActive on that specific order.
+
+router.patch('/api/waiter/notifications/ack', authorizePOS, async (req: Request, res: Response) => {
+  try {
+    const { cafeId } = req.staff!
+    const { orderId } = req.body as { orderId?: string }
+
+    if (!orderId) return res.status(400).json({ error: 'orderId is required' })
+
+    const order = await prisma.order.findUnique({
+      where:  { id: orderId },
+      select: { cafeId: true, tableId: true, waiterNotification: true }
+    })
+    if (!order)              return res.status(404).json({ error: 'Order not found' })
+    if (order.cafeId !== cafeId) return res.status(403).json({ error: 'Forbidden' })
+
+    // Preserve the notification type; only toggle isActive off
+    const prevType = order.waiterNotification?.type ?? 'none'
+
+    await prisma.order.update({
+      where: { id: orderId },
+      data:  {
+        waiterNotification: {
+          type:     prevType,
+          isActive: false
+        }
+      }
+    })
+
+    const io = req.app.get('io') as SocketIOServer | undefined
+    if (io) {
+      io.to(`room_${cafeId}`).emit('waiter_notification_acked', {
+        orderId,
+        tableId:  order.tableId,
+        type:     prevType,
+        isActive: false
+      })
+    }
+
+    return res.json({ orderId, isActive: false })
+  } catch (err) {
+    logger.error({ msg: 'PATCH /api/waiter/notifications/ack error', err })
+    return res.status(500).json({ error: 'Failed to acknowledge notification' })
+  }
+})
+
 export default router

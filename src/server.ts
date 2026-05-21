@@ -28,6 +28,9 @@ import posOrdersRouter from './routes/pos/orders'
 import posCheckoutRouter from './routes/pos/checkout'
 import posTablesStatusRouter from './routes/pos/tablesStatus'
 import posWaiterRouter from './routes/pos/waiter'
+import kitchenRouter from './routes/kitchen'
+import productInteractionsRouter from './routes/productInteractions'
+import reviewsRouter from './routes/reviews'
 import { registerSocketHandlers } from './socket/handlers'
 import { startWeeklyBillingCron } from './cron/weeklyBilling'
 
@@ -92,6 +95,9 @@ async function main() {
   app.use(posCheckoutRouter)
   app.use(posTablesStatusRouter)
   app.use(posWaiterRouter)
+  app.use(kitchenRouter)
+  app.use(productInteractionsRouter)
+  app.use(reviewsRouter)
 
   // health
   app.get('/health', (req, res) => res.json({ ok: true }))

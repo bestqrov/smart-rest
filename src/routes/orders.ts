@@ -164,6 +164,90 @@ router.patch('/api/orders/:orderId/status', authorizeAdmin, async (req: Request,
   }
 })
 
+// ─── PATCH /api/orders/:orderId/notify-waiter ────────────────────────────────
+// Public endpoint — customer signals the waiter (call, pay cash, pay by TPE).
+// Validates ownership via seatToken or tableToken to prevent cross-table abuse.
+
+router.patch('/api/orders/:orderId/notify-waiter', async (req: Request, res: Response) => {
+  try {
+    const orderId                        = req.params.orderId as string
+    const { type, seatToken, tableToken } = req.body as {
+      type:        string
+      seatToken?:  string
+      tableToken?: string
+    }
+
+    const VALID_TYPES = ['call_waiter', 'pay_cash', 'pay_tpe'] as const
+    type NotifType = typeof VALID_TYPES[number]
+
+    if (!VALID_TYPES.includes(type as NotifType)) {
+      return res.status(400).json({ error: 'type must be call_waiter, pay_cash, or pay_tpe' })
+    }
+    if (!seatToken && !tableToken) {
+      return res.status(400).json({ error: 'Provide seatToken or tableToken for ownership validation' })
+    }
+
+    const order = await prisma.order.findUnique({
+      where:  { id: orderId },
+      select: { cafeId: true, tableId: true, status: true }
+    })
+    if (!order) return res.status(404).json({ error: 'Order not found' })
+
+    if (['COMPLETED', 'CANCELLED'].includes(order.status)) {
+      return res.status(422).json({ error: 'Cannot notify for a closed order' })
+    }
+
+    // ── Ownership check ──────────────────────────────────────────────────────
+    if (seatToken) {
+      const seat = await prisma.seat.findUnique({
+        where:  { qrToken: seatToken },
+        select: { tableId: true }
+      })
+      if (!seat || seat.tableId !== order.tableId) {
+        return res.status(403).json({ error: 'Forbidden: seat does not belong to this order table' })
+      }
+    } else {
+      const table = await prisma.table.findUnique({
+        where:  { qrToken: tableToken! },
+        select: { id: true }
+      })
+      if (!table || table.id !== order.tableId) {
+        return res.status(403).json({ error: 'Forbidden: table token mismatch' })
+      }
+    }
+
+    // ── Persist notification state on the order ──────────────────────────────
+    await prisma.order.update({
+      where: { id: orderId },
+      data:  { waiterNotification: { type: type as NotifType, isActive: true } }
+    })
+
+    // ── Fetch table number for the socket payload ─────────────────────────────
+    const tableRow = order.tableId
+      ? await prisma.table.findUnique({
+          where:  { id: order.tableId },
+          select: { tableNumber: true }
+        })
+      : null
+
+    const io = req.app.get('io') as SocketIOServer | undefined
+    if (io) {
+      io.to(`room_${order.cafeId}`).emit('waiter_notification', {
+        orderId,
+        tableId:     order.tableId,
+        tableNumber: tableRow?.tableNumber ?? null,
+        type,
+        isActive:    true
+      })
+    }
+
+    return res.json({ orderId, type, isActive: true })
+  } catch (err) {
+    logger.error({ msg: 'PATCH /api/orders/notify-waiter error', err })
+    return res.status(500).json({ error: 'Failed to notify waiter' })
+  }
+})
+
 // ─── POST /api/orders/:orderId/social-verified ────────────────────────────────
 
 // Public — called by the customer browser after a successful Web Share (no auth token)

@@ -41,6 +41,19 @@ enum WaiterCallType {
   QUESTION
 }
 
+enum WaiterNotifType {
+  none
+  call_waiter
+  pay_cash
+  pay_tpe
+}
+
+// Embedded document — current active notification on an Order
+type WaiterNotification {
+  type     WaiterNotifType @default(none)
+  isActive Boolean         @default(false)
+}
+
 enum BillingStatus {
   GRACE_PERIOD
   COLLECTING_DEBT
@@ -181,6 +194,8 @@ model Product {
   isAvailable    Boolean @default(true)
   // commission as a fraction of sale price (e.g. 0.05 = 5%)
   commissionRate Float   @default(0.0)
+  calories       Int?
+  likesCount     Int     @default(0)
 
   orderItems OrderItem[]
 
@@ -214,6 +229,11 @@ model Order {
   // staff member who entered the order manually (null for QR orders)
   createdById  String?     @db.ObjectId
   createdBy    Staff?      @relation(fields: [createdById], references: [id])
+
+  // Active waiter notification state (isActive=true = POS should alert)
+  waiterNotification WaiterNotification?
+  rating             Int?
+  reviewText         String?
 
   items      OrderItem[]
   walletLogs WalletLog[]

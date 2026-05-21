@@ -138,6 +138,15 @@ export async function emitKdsTicket(io: SocketIOServer, orderId: string): Promis
 }
 
 // ─── emitOrderStatusUpdate ────────────────────────────────────────────────────
+// Broadcasts an order status change to all relevant rooms.
+//
+// Room targeting per status (multi-tenant: all rooms are scoped to cafeId):
+//   room_{cafeId}        → admin dashboard + POS waiter
+//   kds_room_{cafeId}    → kitchen display
+//   table_room_*         → customer device (PREPARING / DELIVERED only)
+//
+// Extra event when status = DELIVERED (kitchen done):
+//   waiter_order_ready → emitted to room_{cafeId} so POS waiter shows a badge
 
 export function emitOrderStatusUpdate(
   io: SocketIOServer,
@@ -147,7 +156,17 @@ export function emitOrderStatusUpdate(
   tableId: string | null
 ): void {
   const payload = { orderId, status, tableId }
+
   io.to(`room_${cafeId}`).emit('order_status_updated', payload)
   io.to(`kds_room_${cafeId}`).emit('kds_order_updated', payload)
-  if (tableId) io.to(`table_room_${cafeId}_${tableId}`).emit('your_order_updated', payload)
+
+  // Notify customer so they see "preparing…" / "ready!" feedback
+  if (tableId && (status === 'PREPARING' || status === 'DELIVERED')) {
+    io.to(`table_room_${cafeId}_${tableId}`).emit('your_order_updated', payload)
+  }
+
+  // Dedicated waiter alert when kitchen marks an order ready to serve
+  if (status === 'DELIVERED') {
+    io.to(`room_${cafeId}`).emit('waiter_order_ready', { orderId, tableId })
+  }
 }
