@@ -18,49 +18,29 @@ type CountryEntry = {
 }
 
 const COUNTRIES: CountryEntry[] = [
-  // ── Priority markets ───────────────────────────────────────────────────────
-  { code: 'MA', flag: '🇲🇦', currency: 'MAD', name: { ar: 'المغرب',          fr: 'Maroc',              en: 'Morocco',        es: 'Marruecos'        } },
-  { code: 'SN', flag: '🇸🇳', currency: 'XOF', name: { ar: 'السنغال',         fr: 'Sénégal',            en: 'Senegal',        es: 'Senegal'          } },
-  { code: 'CI', flag: '🇨🇮', currency: 'XOF', name: { ar: "كوت ديفوار",      fr: "Côte d'Ivoire",      en: "Côte d'Ivoire",  es: 'Costa de Marfil'  } },
-  { code: 'GA', flag: '🇬🇦', currency: 'XAF', name: { ar: 'الغابون',         fr: 'Gabon',              en: 'Gabon',          es: 'Gabón'            } },
-  { code: 'CM', flag: '🇨🇲', currency: 'XAF', name: { ar: 'الكاميرون',       fr: 'Cameroun',           en: 'Cameroon',       es: 'Camerún'          } },
-  { code: 'KE', flag: '🇰🇪', currency: 'KES', name: { ar: 'كينيا',           fr: 'Kenya',              en: 'Kenya',          es: 'Kenia'            } },
-  // ── Gulf ───────────────────────────────────────────────────────────────────
-  { code: 'SA', flag: '🇸🇦', currency: 'SAR', name: { ar: 'السعودية',        fr: 'Arabie Saoudite',    en: 'Saudi Arabia',   es: 'Arabia Saudí'     } },
-  { code: 'AE', flag: '🇦🇪', currency: 'AED', name: { ar: 'الإمارات',        fr: 'Émirats Arabes',     en: 'UAE',            es: 'EAU'              } },
-  { code: 'QA', flag: '🇶🇦', currency: 'QAR', name: { ar: 'قطر',             fr: 'Qatar',              en: 'Qatar',          es: 'Catar'            } },
-  { code: 'KW', flag: '🇰🇼', currency: 'KWD', name: { ar: 'الكويت',          fr: 'Koweït',             en: 'Kuwait',         es: 'Kuwait'           } },
-  { code: 'BH', flag: '🇧🇭', currency: 'BHD', name: { ar: 'البحرين',         fr: 'Bahreïn',            en: 'Bahrain',        es: 'Baréin'           } },
-  { code: 'OM', flag: '🇴🇲', currency: 'OMR', name: { ar: 'عُمان',           fr: 'Oman',               en: 'Oman',           es: 'Omán'             } },
-  // ── North Africa & Levant ──────────────────────────────────────────────────
-  { code: 'EG', flag: '🇪🇬', currency: 'EGP', name: { ar: 'مصر',             fr: 'Égypte',             en: 'Egypt',          es: 'Egipto'           } },
-  { code: 'TN', flag: '🇹🇳', currency: 'TND', name: { ar: 'تونس',            fr: 'Tunisie',            en: 'Tunisia',        es: 'Túnez'            } },
-  { code: 'DZ', flag: '🇩🇿', currency: 'DZD', name: { ar: 'الجزائر',         fr: 'Algérie',            en: 'Algeria',        es: 'Argelia'          } },
-  { code: 'LY', flag: '🇱🇾', currency: 'LYD', name: { ar: 'ليبيا',           fr: 'Libye',              en: 'Libya',          es: 'Libia'            } },
-  { code: 'JO', flag: '🇯🇴', currency: 'JOD', name: { ar: 'الأردن',          fr: 'Jordanie',           en: 'Jordan',         es: 'Jordania'         } },
-  { code: 'IQ', flag: '🇮🇶', currency: 'IQD', name: { ar: 'العراق',          fr: 'Irak',               en: 'Iraq',           es: 'Irak'             } },
-  { code: 'MR', flag: '🇲🇷', currency: 'MRU', name: { ar: 'موريتانيا',       fr: 'Mauritanie',         en: 'Mauritania',     es: 'Mauritania'       } },
-  // ── West & Central Africa ─────────────────────────────────────────────────
-  { code: 'ML', flag: '🇲🇱', currency: 'XOF', name: { ar: 'مالي',            fr: 'Mali',               en: 'Mali',           es: 'Mali'             } },
-  { code: 'BF', flag: '🇧🇫', currency: 'XOF', name: { ar: 'بوركينا فاسو',    fr: 'Burkina Faso',       en: 'Burkina Faso',   es: 'Burkina Faso'     } },
-  { code: 'GN', flag: '🇬🇳', currency: 'GNF', name: { ar: 'غينيا',           fr: 'Guinée',             en: 'Guinea',         es: 'Guinea'           } },
-  { code: 'TG', flag: '🇹🇬', currency: 'XOF', name: { ar: 'توغو',            fr: 'Togo',               en: 'Togo',           es: 'Togo'             } },
-  { code: 'BJ', flag: '🇧🇯', currency: 'XOF', name: { ar: 'بنين',            fr: 'Bénin',              en: 'Benin',          es: 'Benín'            } },
-  { code: 'NE', flag: '🇳🇪', currency: 'XOF', name: { ar: 'النيجر',          fr: 'Niger',              en: 'Niger',          es: 'Níger'            } },
-  { code: 'TD', flag: '🇹🇩', currency: 'XAF', name: { ar: 'تشاد',            fr: 'Tchad',              en: 'Chad',           es: 'Chad'             } },
-  { code: 'CG', flag: '🇨🇬', currency: 'XAF', name: { ar: 'الكونغو',         fr: 'Congo',              en: 'Congo',          es: 'Congo'            } },
-  { code: 'GQ', flag: '🇬🇶', currency: 'XAF', name: { ar: 'غينيا الاستوائية',fr: 'Guinée Équatoriale', en: 'Eq. Guinea',     es: 'Guinea Ecuatorial'} },
-  { code: 'CF', flag: '🇨🇫', currency: 'XAF', name: { ar: 'أفريقيا الوسطى', fr: 'Rép. Centrafricaine', en: 'CAR',           es: 'Rep. Centroafricana'} },
-  // ── East Africa ────────────────────────────────────────────────────────────
-  { code: 'TZ', flag: '🇹🇿', currency: 'TZS', name: { ar: 'تنزانيا',         fr: 'Tanzanie',           en: 'Tanzania',       es: 'Tanzania'         } },
-  { code: 'UG', flag: '🇺🇬', currency: 'UGX', name: { ar: 'أوغندا',          fr: 'Ouganda',            en: 'Uganda',         es: 'Uganda'           } },
-  { code: 'RW', flag: '🇷🇼', currency: 'RWF', name: { ar: 'رواندا',           fr: 'Rwanda',             en: 'Rwanda',         es: 'Ruanda'           } },
-  // ── Europe ─────────────────────────────────────────────────────────────────
-  { code: 'FR', flag: '🇫🇷', currency: 'EUR', name: { ar: 'فرنسا',           fr: 'France',             en: 'France',         es: 'Francia'          } },
-  { code: 'ES', flag: '🇪🇸', currency: 'EUR', name: { ar: 'إسبانيا',         fr: 'Espagne',            en: 'Spain',          es: 'España'           } },
-  { code: 'BE', flag: '🇧🇪', currency: 'EUR', name: { ar: 'بلجيكا',          fr: 'Belgique',           en: 'Belgium',        es: 'Bélgica'          } },
-  { code: 'NL', flag: '🇳🇱', currency: 'EUR', name: { ar: 'هولندا',          fr: 'Pays-Bas',           en: 'Netherlands',    es: 'Países Bajos'     } },
-  { code: 'GB', flag: '🇬🇧', currency: 'GBP', name: { ar: 'المملكة المتحدة', fr: 'Royaume-Uni',        en: 'UK',             es: 'Reino Unido'      } },
+  // ── شمال إفريقيا والمغرب العربي ───────────────────────────────────────────
+  { code: 'MA', flag: '🇲🇦', currency: 'MAD', name: { ar: 'المغرب',     fr: 'Maroc',      en: 'Morocco',    es: 'Marruecos'  } },
+  { code: 'DZ', flag: '🇩🇿', currency: 'DZD', name: { ar: 'الجزائر',    fr: 'Algérie',    en: 'Algeria',    es: 'Argelia'    } },
+  { code: 'TN', flag: '🇹🇳', currency: 'TND', name: { ar: 'تونس',       fr: 'Tunisie',    en: 'Tunisia',    es: 'Túnez'      } },
+  { code: 'LY', flag: '🇱🇾', currency: 'LYD', name: { ar: 'ليبيا',      fr: 'Libye',      en: 'Libya',      es: 'Libia'      } },
+  { code: 'MR', flag: '🇲🇷', currency: 'MRU', name: { ar: 'موريتانيا',  fr: 'Mauritanie', en: 'Mauritania', es: 'Mauritania' } },
+  // ── الشرق الأوسط ومصر ─────────────────────────────────────────────────────
+  { code: 'EG', flag: '🇪🇬', currency: 'EGP', name: { ar: 'مصر',        fr: 'Égypte',     en: 'Egypt',      es: 'Egipto'     } },
+  { code: 'JO', flag: '🇯🇴', currency: 'JOD', name: { ar: 'الأردن',     fr: 'Jordanie',   en: 'Jordan',     es: 'Jordania'   } },
+  { code: 'SY', flag: '🇸🇾', currency: 'SYP', name: { ar: 'سوريا',      fr: 'Syrie',      en: 'Syria',      es: 'Siria'      } },
+  { code: 'IQ', flag: '🇮🇶', currency: 'IQD', name: { ar: 'العراق',     fr: 'Irak',       en: 'Iraq',       es: 'Irak'       } },
+  // ── دول الخليج العربي ─────────────────────────────────────────────────────
+  { code: 'KW', flag: '🇰🇼', currency: 'KWD', name: { ar: 'الكويت',     fr: 'Koweït',     en: 'Kuwait',     es: 'Kuwait'     } },
+  { code: 'SA', flag: '🇸🇦', currency: 'SAR', name: { ar: 'السعودية',   fr: 'Arabie Saoudite', en: 'Saudi Arabia', es: 'Arabia Saudí' } },
+  { code: 'QA', flag: '🇶🇦', currency: 'QAR', name: { ar: 'قطر',        fr: 'Qatar',      en: 'Qatar',      es: 'Catar'      } },
+  { code: 'AE', flag: '🇦🇪', currency: 'AED', name: { ar: 'الإمارات',   fr: 'Émirats Arabes Unis', en: 'UAE', es: 'EAU'      } },
+  { code: 'BH', flag: '🇧🇭', currency: 'BHD', name: { ar: 'البحرين',    fr: 'Bahreïn',    en: 'Bahrain',    es: 'Baréin'     } },
+  { code: 'OM', flag: '🇴🇲', currency: 'OMR', name: { ar: 'سلطنة عُمان',fr: 'Oman',       en: 'Oman',       es: 'Omán'       } },
+  // ── غرب وشرق إفريقيا ──────────────────────────────────────────────────────
+  { code: 'SN', flag: '🇸🇳', currency: 'XOF', name: { ar: 'السنغال',    fr: 'Sénégal',    en: 'Senegal',    es: 'Senegal'    } },
+  { code: 'CI', flag: '🇨🇮', currency: 'XOF', name: { ar: 'كوت ديفوار', fr: "Côte d'Ivoire", en: "Côte d'Ivoire", es: 'Costa de Marfil' } },
+  { code: 'GA', flag: '🇬🇦', currency: 'XAF', name: { ar: 'الغابون',    fr: 'Gabon',      en: 'Gabon',      es: 'Gabón'      } },
+  { code: 'KE', flag: '🇰🇪', currency: 'KES', name: { ar: 'كينيا',      fr: 'Kenya',      en: 'Kenya',      es: 'Kenia'      } },
 ]
 
 const COUNTRY_MAP: Record<string, CountryEntry> = Object.fromEntries(COUNTRIES.map(c => [c.code, c]))
@@ -68,21 +48,17 @@ const COUNTRY_MAP: Record<string, CountryEntry> = Object.fromEntries(COUNTRIES.m
 // ── Groups for <optgroup> ────────────────────────────────────────────────────
 
 const GROUPS: Record<string, { ar: string; fr: string; en: string; es: string }> = {
-  priority:  { ar: '⭐ الأسواق المستهدفة', fr: '⭐ Marchés cibles',    en: '⭐ Target markets',    es: '⭐ Mercados objetivo' },
-  gulf:      { ar: '🌙 دول الخليج',         fr: '🌙 Pays du Golfe',     en: '🌙 Gulf States',        es: '🌙 Países del Golfo'  },
-  mena:      { ar: '🌍 شمال أفريقيا والمشرق', fr: '🌍 Afrique du Nord & Levant', en: '🌍 MENA',          es: '🌍 MENA'              },
-  westafrica:{ ar: '🌿 غرب وسط أفريقيا',    fr: '🌿 Afrique Centrale', en: '🌿 West & Central Africa', es: '🌿 África Occidental' },
-  eastafrica:{ ar: '🌄 شرق أفريقيا',       fr: '🌄 Afrique de l\'Est', en: '🌄 East Africa',       es: '🌄 África Oriental'   },
-  europe:    { ar: '🇪🇺 أوروبا',            fr: '🇪🇺 Europe',           en: '🇪🇺 Europe',            es: '🇪🇺 Europa'           },
+  maghreb:    { ar: '🇲🇦 شمال إفريقيا والمغرب العربي', fr: '🇲🇦 Maghreb & Afrique du Nord', en: '🇲🇦 North Africa & Maghreb', es: '🇲🇦 Norte de África & Magreb' },
+  middleeast: { ar: '🌙 الشرق الأوسط ومصر',            fr: '🌙 Moyen-Orient & Égypte',       en: '🌙 Middle East & Egypt',       es: '🌙 Oriente Medio & Egipto'    },
+  gulf:       { ar: '🛢️ دول الخليج العربي',            fr: '🛢️ Pays du Golfe Arabique',     en: '🛢️ Arabian Gulf States',      es: '🛢️ Países del Golfo Arábigo'  },
+  africa:     { ar: '🌍 غرب وشرق إفريقيا',             fr: '🌍 Afrique de l\'Ouest & Est',   en: '🌍 West & East Africa',        es: '🌍 África Occidental & Oriental'},
 }
 
 const GROUP_CODES: Record<string, string[]> = {
-  priority:   ['MA', 'SN', 'CI', 'GA', 'CM', 'KE'],
-  gulf:       ['SA', 'AE', 'QA', 'KW', 'BH', 'OM'],
-  mena:       ['EG', 'TN', 'DZ', 'LY', 'JO', 'IQ', 'MR'],
-  westafrica: ['ML', 'BF', 'GN', 'TG', 'BJ', 'NE', 'TD', 'CG', 'GQ', 'CF'],
-  eastafrica: ['TZ', 'UG', 'RW'],
-  europe:     ['FR', 'ES', 'BE', 'NL', 'GB'],
+  maghreb:    ['MA', 'DZ', 'TN', 'LY', 'MR'],
+  middleeast: ['EG', 'JO', 'SY', 'IQ'],
+  gulf:       ['KW', 'SA', 'QA', 'AE', 'BH', 'OM'],
+  africa:     ['SN', 'CI', 'GA', 'KE'],
 }
 
 // ── i18n ─────────────────────────────────────────────────────────────────────
