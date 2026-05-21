@@ -12,6 +12,8 @@ const router = express.Router()
 const TOKEN_EXPIRY       = '8h'
 const MAGIC_EXPIRES_MS   = 15 * 60 * 1000          // 15 minutes
 const EMAIL_WHITELIST    = ['gmail.com', 'outlook.com', 'hotmail.com', 'yahoo.com', 'yahoo.fr', 'hotmail.fr', 'live.com', 'icloud.com']
+// Resend test address allowed in all environments for QA
+const EMAIL_EXCEPTIONS   = ['onboarding@resend.dev']
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -22,6 +24,7 @@ function emailDomain(email: string): string {
 
 /** Return true when the email provider is on our whitelist. */
 function isWhitelistedEmail(email: string): boolean {
+  if (EMAIL_EXCEPTIONS.includes(email)) return true
   const domain = emailDomain(email)
   if (!domain) return false
   return EMAIL_WHITELIST.includes(domain)
