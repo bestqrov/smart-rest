@@ -260,13 +260,40 @@ router.get('/api/admin/staff', authorizeAdmin, async (req: Request, res: Respons
     const staff = await prisma.staff.findMany({
       where:   { cafeId, isActive: true },
       select: {
-        id: true, name: true, role: true, shiftStatus: true,
+        id: true, name: true, role: true, roles: true,
+        pinDisplay: true, shiftStatus: true,
         clockInTime: true, isActive: true,
         assignedTables: { select: { id: true, tableNumber: true, zone: true } },
       },
       orderBy: [{ shiftStatus: 'asc' }, { name: 'asc' }],
     })
-    return res.json({ waiters: staff })
+
+    // Count pending (unacknowledged) waiter notifications per assigned table set
+    const tableIds = staff.flatMap(s => s.assignedTables.map(t => t.id))
+    const pendingOrders = tableIds.length > 0
+      ? await prisma.order.findMany({
+          where: {
+            cafeId,
+            tableId: { in: tableIds },
+            billStatus: 'OPENED',
+          },
+          select: { tableId: true, waiterNotification: true },
+        })
+      : []
+
+    const pendingByTable = new Map<string, number>()
+    for (const o of pendingOrders) {
+      if (o.tableId && o.waiterNotification?.isActive) {
+        pendingByTable.set(o.tableId, (pendingByTable.get(o.tableId) ?? 0) + 1)
+      }
+    }
+
+    const result = staff.map(s => ({
+      ...s,
+      pendingAlerts: s.assignedTables.reduce((n, t) => n + (pendingByTable.get(t.id) ?? 0), 0),
+    }))
+
+    return res.json({ waiters: result })
   } catch (err) {
     logger.error({ msg: 'GET /api/admin/staff error', err })
     return res.status(500).json({ error: 'Failed to fetch staff' })
@@ -278,24 +305,54 @@ router.get('/api/admin/staff', authorizeAdmin, async (req: Request, res: Respons
 router.post('/api/admin/staff', authorizeAdmin, async (req: Request, res: Response) => {
   try {
     const cafeId = req.admin!.cafeId
-    const { name, role, pinCode } = req.body as { name: string; role: string; pinCode: string }
+    const { name, role, pinCode, roles = [] } = req.body as {
+      name: string; role: string; pinCode: string; roles?: string[]
+    }
 
-    if (!name?.trim())          return res.status(400).json({ error: 'name is required' })
+    if (!name?.trim())            return res.status(400).json({ error: 'name is required' })
     if (!/^\d{4}$/.test(pinCode)) return res.status(400).json({ error: 'pinCode must be exactly 4 digits' })
     if (!['WAITER','CASHIER','SUPERVISOR'].includes(role)) return res.status(400).json({ error: 'invalid role' })
+
+    const ALLOWED_EXTRA = ['WAITER','CASHIER','SUPERVISOR','BARISTA','COOK','CLEANER','DISHWASHER','RUNNER']
+    const cleanRoles = Array.isArray(roles) ? roles.filter(r => ALLOWED_EXTRA.includes(r)) : []
 
     const bcrypt = await import('bcrypt')
     const hashed = await bcrypt.default.hash(pinCode, 10)
 
     const staff = await prisma.staff.create({
-      data: { cafeId, name: name.trim(), role: role as any, pinCode: hashed, isActive: true },
-      select: { id: true, name: true, role: true, shiftStatus: true },
+      data: {
+        cafeId,
+        name:       name.trim(),
+        role:       role as any,
+        roles:      cleanRoles,
+        pinCode:    hashed,
+        pinDisplay: pinCode,
+        isActive:   true,
+      },
+      select: { id: true, name: true, role: true, roles: true, shiftStatus: true, pinDisplay: true },
     })
     logger.info({ msg: 'staff created', staffId: staff.id, cafeId })
     return res.status(201).json(staff)
   } catch (err) {
     logger.error({ msg: 'POST /api/admin/staff error', err })
     return res.status(500).json({ error: 'Failed to create staff member' })
+  }
+})
+
+// ─── DELETE /api/admin/staff/:id — soft-delete a staff member ────────────────
+
+router.delete('/api/admin/staff/:id', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const cafeId  = req.admin!.cafeId
+    const staffId = String(req.params.id)
+    const existing = await prisma.staff.findUnique({ where: { id: staffId } })
+    if (!existing || existing.cafeId !== cafeId) return res.status(404).json({ error: 'Not found' })
+    await prisma.staff.update({ where: { id: staffId }, data: { isActive: false } })
+    logger.info({ msg: 'staff deactivated', staffId, cafeId })
+    return res.json({ ok: true })
+  } catch (err) {
+    logger.error({ msg: 'DELETE /api/admin/staff error', err })
+    return res.status(500).json({ error: 'Failed to deactivate staff' })
   }
 })
 
@@ -316,6 +373,7 @@ router.post('/api/admin/onboarding', authorizeAdmin, async (req: Request, res: R
       coffeeRefPrice, sandwichRefPrice,
       zones,
       managerName, managerPin,
+      tier,
     } = req.body as {
       businessName:      string
       logoUrl?:          string
@@ -326,6 +384,7 @@ router.post('/api/admin/onboarding', authorizeAdmin, async (req: Request, res: R
       zones:             { name: string; tableCount: number }[]
       managerName:       string
       managerPin:        string
+      tier?:             string
     }
 
     if (!businessName?.trim())                return res.status(400).json({ error: 'businessName is required' })
@@ -352,11 +411,13 @@ router.post('/api/admin/onboarding', authorizeAdmin, async (req: Request, res: R
         sandwichRefPrice: Number(sandwichRefPrice),
         totalSeats:       totalTables,
         ...(logoUrl ? { logoUrl: logoUrl.trim() } : {}),
+        ...(tier === 'CAFE' || tier === 'RESTAURANT' ? { tier } : {}),
         isProfileComplete: true,
       },
     })
 
     // ── 2. Create tables per zone (skip if tables already exist) ──────────────
+    // Tables start as inactive — manager must activate each one from the Tables page
     const existingTables = await prisma.table.count({ where: { cafeId } })
     if (existingTables === 0) {
       let tableNumber = 1
@@ -369,6 +430,7 @@ router.post('/api/admin/onboarding', authorizeAdmin, async (req: Request, res: R
                 tableNumber: tableNumber++,
                 zone:        zone.name.trim(),
                 qrToken:     randomUUID(),
+                isActive:    false,
               },
             })
           }

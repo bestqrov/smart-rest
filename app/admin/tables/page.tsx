@@ -4,12 +4,12 @@ import { useEffect, useRef, useState } from 'react'
 import QRCode from 'qrcode'
 import {
   QrCode, Download, Printer, Loader2, Plus, Minus,
-  RefreshCw, CheckCircle, Layers, Unlink
+  RefreshCw, CheckCircle, Layers, Unlink, PowerOff, Power
 } from 'lucide-react'
 
 type Seat = { id: string; seatNumber: number; qrToken: string }
 type TableRow = {
-  id: string; tableNumber: number; seats: Seat[]
+  id: string; tableNumber: number; isActive: boolean; seats: Seat[]
   mergedIntoTableId: string | null
   mergedIntoTable?: { id: string; tableNumber: number } | null
 }
@@ -117,6 +117,20 @@ export default function TablesPage() {
 
   function toggleMergeSource(id: string) {
     setMergeSource(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
+  }
+
+  async function toggleActive(tableId: string, activate: boolean) {
+    const r = await fetch(`/api/admin/tables/${tableId}/activate`, {
+      method: 'PATCH',
+      headers: { ...authHeader(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ activate })
+    })
+    if (!r.ok) {
+      const body = await r.json().catch(() => ({}))
+      alert(body.error || 'فشل تغيير حالة الطاولة')
+      return
+    }
+    setTables(prev => prev.map(t => t.id === tableId ? { ...t, isActive: activate } : t))
   }
 
   function printQr() {
@@ -277,36 +291,91 @@ export default function TablesPage() {
       ) : (
         <div className="space-y-4">
           {tables.map(table => (
-            <div key={table.id} className={`bg-white rounded-2xl p-5 shadow-sm border ${table.mergedIntoTableId ? 'border-amber-200 bg-amber-50/30' : 'border-gray-100'}`}>
+            <div key={table.id} className={`rounded-2xl p-5 shadow-sm border transition-colors ${
+              !table.isActive
+                ? 'bg-gray-50 border-gray-200 opacity-75'
+                : table.mergedIntoTableId
+                  ? 'bg-amber-50/30 border-amber-200'
+                  : 'bg-white border-gray-100'
+            }`}>
               <div className="flex items-center justify-between mb-3">
-                <h3 className="font-bold text-gray-800">
-                  طاولة {table.tableNumber}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="font-bold text-gray-800">طاولة {table.tableNumber}</h3>
+
+                  {/* ── Activation badge ── */}
+                  {table.isActive ? (
+                    <span className="inline-flex items-center gap-1 text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-medium">
+                      <Power className="w-3 h-3" /> نشطة
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-xs bg-gray-200 text-gray-500 px-2 py-0.5 rounded-full font-medium">
+                      <PowerOff className="w-3 h-3" /> خاملة
+                    </span>
+                  )}
+
                   {table.mergedIntoTableId && (
-                    <span className="mr-2 text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">
+                    <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">
                       مدمجة مع T{table.mergedIntoTable?.tableNumber}
                     </span>
                   )}
-                </h3>
-                <span className="text-xs text-gray-400">{table.seats.length} مقاعد</span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-400">{table.seats.length} مقاعد</span>
+
+                  {/* ── Manager activation toggle ── */}
+                  {table.isActive ? (
+                    <button
+                      onClick={() => toggleActive(table.id, false)}
+                      className="flex items-center gap-1.5 text-xs border border-gray-200 text-gray-500 hover:border-red-300 hover:text-red-600 px-3 py-1.5 rounded-lg transition-colors"
+                      title="تعطيل الطاولة (تصبح غير متاحة للطلب)"
+                    >
+                      <PowerOff className="w-3.5 h-3.5" /> تعطيل
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => toggleActive(table.id, true)}
+                      className="flex items-center gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg transition-colors font-semibold"
+                      title="تفعيل الطاولة — تصبح متاحة للطلب ميدانياً"
+                    >
+                      <Power className="w-3.5 h-3.5" /> تفعيل الطاولة
+                    </button>
+                  )}
+                </div>
               </div>
-              <div className="flex flex-wrap gap-4">
+
+              {/* QR codes — dimmed for inactive tables */}
+              <div className={`flex flex-wrap gap-4 ${!table.isActive ? 'pointer-events-none' : ''}`}>
                 {table.seats.map(seat => (
                   <div key={seat.seatNumber} className="flex flex-col items-center gap-1">
                     {qrImages[seat.qrToken] ? (
-                      <img src={qrImages[seat.qrToken]} alt={`T${table.tableNumber}-S${seat.seatNumber}`} className="w-24 h-24 rounded-lg border border-gray-100" />
+                      <div className="relative">
+                        <img
+                          src={qrImages[seat.qrToken]}
+                          alt={`T${table.tableNumber}-S${seat.seatNumber}`}
+                          className={`w-24 h-24 rounded-lg border ${!table.isActive ? 'border-gray-200 grayscale' : 'border-gray-100'}`}
+                        />
+                        {!table.isActive && (
+                          <div className="absolute inset-0 rounded-lg bg-gray-100/70 flex items-center justify-center">
+                            <span className="text-2xl">🔒</span>
+                          </div>
+                        )}
+                      </div>
                     ) : (
                       <div className="w-24 h-24 bg-gray-100 rounded-lg flex items-center justify-center">
                         <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
                       </div>
                     )}
                     <span className="text-xs text-gray-500">م{seat.seatNumber}</span>
-                    <a
-                      href={qrImages[seat.qrToken] || '#'}
-                      download={`T${table.tableNumber}-S${seat.seatNumber}.png`}
-                      className="text-xs text-emerald-600 hover:text-emerald-800 flex items-center gap-0.5"
-                    >
-                      <Download className="w-3 h-3" /> حفظ
-                    </a>
+                    {table.isActive && (
+                      <a
+                        href={qrImages[seat.qrToken] || '#'}
+                        download={`T${table.tableNumber}-S${seat.seatNumber}.png`}
+                        className="text-xs text-emerald-600 hover:text-emerald-800 flex items-center gap-0.5"
+                      >
+                        <Download className="w-3 h-3" /> حفظ
+                      </a>
+                    )}
                   </div>
                 ))}
               </div>

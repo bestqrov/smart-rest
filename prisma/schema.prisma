@@ -105,6 +105,8 @@ model Cafe {
   hasExtendedTrial    Boolean       @default(false)
   billingStatus       BillingStatus @default(GRACE_PERIOD)
   hasSocialShareAddon Boolean       @default(false)
+  // 'CAFE' = simple cafe (drinks + light snacks), 'RESTAURANT' = full meals + kitchen
+  tier                String        @default("CAFE")
 
   // ── Smart subscription (set after trial analysis) ─────────────────────────
   subscriptionTier  String?   // 'ECONOMY' | 'ADVANCED'
@@ -207,11 +209,14 @@ model Product {
   description    String?
   price          Float
   imageUrl       String?
-  isAvailable    Boolean @default(true)
+  isAvailable    Boolean  @default(true)
   // commission as a fraction of sale price (e.g. 0.05 = 5%)
-  commissionRate Float   @default(0.0)
+  commissionRate Float    @default(0.0)
   calories       Int?
-  likesCount     Int     @default(0)
+  likesCount     Int      @default(0)
+  // 'published' | 'draft' — drafts are invisible to customers
+  status         String   @default("published")
+  tags           String[] @default([])
 
   orderItems OrderItem[]
 
@@ -366,8 +371,15 @@ model Staff {
   role     StaffRole @default(WAITER)
   // 4-digit PIN for fast POS login (stored hashed in application layer)
   pinCode  String
+  // Plain PIN stored for admin display only (show/hide in attendance panel)
+  pinDisplay String?
+  // Multi-role labels beyond the primary role (e.g. ["BARISTA","CLEANER"])
+  roles    String[]  @default([])
   isActive Boolean   @default(true)
   createdAt DateTime @default(now())
+
+  // Daily rate for payroll calculation (set by admin)
+  dailyRate   Float            @default(0)
 
   // Waiter shift state (updated on clock-in / clock-out)
   shiftStatus WaiterDutyStatus @default(OFF_DUTY)

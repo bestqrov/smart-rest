@@ -17,12 +17,13 @@ import Image from 'next/image'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type TableColor = 'EMPTY' | 'OPEN_QR' | 'OPEN_MANUAL' | 'BILL_REQUESTED'
+type TableColor = 'EMPTY' | 'OPEN_QR' | 'OPEN_MANUAL' | 'BILL_REQUESTED' | 'INACTIVE'
 
 interface PosTable {
   id:          string
   tableNumber: number
   qrToken:     string
+  isActive:    boolean
   status:      TableColor
 }
 
@@ -515,6 +516,7 @@ export default function POSPage() {
 
       {/* ── Legend ── */}
       <div className="flex items-center gap-3 px-4 pt-3 pb-1 text-xs flex-wrap">
+        <LegendDot color="bg-gray-600 opacity-50" label="Inactive" />
         <LegendDot color="bg-gray-700" label="Empty" />
         <LegendDot color="bg-sky-500"  label="QR Order" />
         <LegendDot color="bg-amber-500" label="Manual" />
@@ -650,27 +652,35 @@ function TableCard({ table, isAlerting, onClick }: {
   isAlerting: boolean
   onClick:   () => void
 }) {
-  const base   = 'rounded-2xl p-3 flex flex-col items-center gap-1 cursor-pointer select-none transition-all active:scale-95 border-2'
+  const base   = 'rounded-2xl p-3 flex flex-col items-center gap-1 select-none transition-all border-2'
   const styles: Record<TableColor, string> = {
-    EMPTY:          'bg-gray-800 border-gray-700 hover:border-gray-500',
-    OPEN_QR:        'bg-sky-900/60 border-sky-500 hover:border-sky-300',
-    OPEN_MANUAL:    'bg-amber-900/60 border-amber-500 hover:border-amber-300',
-    BILL_REQUESTED: 'bg-red-900/80 border-red-500 hover:border-red-300',
+    INACTIVE:       'bg-gray-900 border-gray-800 opacity-50 cursor-not-allowed',
+    EMPTY:          'bg-gray-800 border-gray-700 hover:border-gray-500 cursor-pointer active:scale-95',
+    OPEN_QR:        'bg-sky-900/60 border-sky-500 hover:border-sky-300 cursor-pointer active:scale-95',
+    OPEN_MANUAL:    'bg-amber-900/60 border-amber-500 hover:border-amber-300 cursor-pointer active:scale-95',
+    BILL_REQUESTED: 'bg-red-900/80 border-red-500 hover:border-red-300 cursor-pointer active:scale-95',
   }
   const icons: Record<TableColor, string> = {
-    EMPTY: '🪑', OPEN_QR: '📱', OPEN_MANUAL: '🖊️', BILL_REQUESTED: '💳'
+    INACTIVE: '🔒', EMPTY: '🪑', OPEN_QR: '📱', OPEN_MANUAL: '🖊️', BILL_REQUESTED: '💳'
   }
 
   return (
     <button
-      onClick={onClick}
+      onClick={table.status === 'INACTIVE' ? undefined : onClick}
       className={`${base} ${styles[table.status]} ${isAlerting ? 'pos-pulse' : ''}`}
-      disabled={table.status === 'EMPTY'}
+      disabled={table.status === 'INACTIVE' || table.status === 'EMPTY'}
+      title={table.status === 'INACTIVE' ? 'Table inactive — activate from admin panel' : undefined}
     >
       <span className="text-2xl">{icons[table.status]}</span>
-      <span className={`font-extrabold text-sm ${table.status === 'EMPTY' ? 'text-gray-500' : 'text-white'}`}>
+      <span className={`font-extrabold text-sm ${
+        table.status === 'INACTIVE' ? 'text-gray-600' :
+        table.status === 'EMPTY'    ? 'text-gray-500' : 'text-white'
+      }`}>
         {table.tableNumber}
       </span>
+      {table.status === 'INACTIVE' && (
+        <span className="text-[9px] font-bold text-gray-600 uppercase tracking-wide">inactive</span>
+      )}
       {isAlerting && (
         <span className="text-[10px] font-bold text-red-300 uppercase tracking-wide animate-pulse">Bill!</span>
       )}

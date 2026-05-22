@@ -37,7 +37,7 @@ type Category = {
 type MenuData = {
   cafeId: number
   tableId: number
-  cafe: { id: number; name: string }
+  cafe: { id: number; name: string; logoUrl?: string | null }
   categories: Category[]
 }
 
@@ -222,12 +222,30 @@ function MenuContent({ params }: { params: { subdomain: string } }) {
   return (
     <ErrorBoundary>
       <NProgressProvider />
-      <div dir={isRtl ? 'rtl' : 'ltr'} className="min-h-screen bg-gray-50 text-gray-900">
+      <div dir={isRtl ? 'rtl' : 'ltr'} className="relative min-h-screen bg-gray-50 text-gray-900">
+
+        {/* Watermark — cafe logo at 5% opacity, fixed behind all content */}
+        {cafe.logoUrl && (
+          <div
+            aria-hidden
+            className="pointer-events-none fixed inset-0 z-0 bg-center bg-no-repeat bg-contain opacity-[0.05]"
+            style={{ backgroundImage: `url(${cafe.logoUrl})` }}
+          />
+        )}
 
         {/* Header */}
         <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-sm border-b border-gray-200">
           <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
-            <div className="font-bold text-lg">{cafe.name}</div>
+            <div className="flex items-center gap-2.5">
+              {cafe.logoUrl && (
+                <img
+                  src={cafe.logoUrl}
+                  alt={cafe.name}
+                  className="w-9 h-9 aspect-square object-contain rounded-lg bg-gray-50 border border-gray-100 shrink-0"
+                />
+              )}
+              <div className="font-bold text-lg leading-tight">{cafe.name}</div>
+            </div>
             <div className="flex items-center gap-3">
               <LanguageSwitcher />
               <button

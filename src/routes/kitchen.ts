@@ -81,4 +81,21 @@ router.patch('/api/kitchen/orders/:orderId', authorizeAdmin, async (req: Request
   }
 })
 
+// ─── GET /api/kitchen/daily-stats ────────────────────────────────────────────
+
+router.get('/api/kitchen/daily-stats', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const cafeId    = req.admin!.cafeId
+    const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0)
+    const [completed, cancelled] = await Promise.all([
+      prisma.order.count({ where: { cafeId, status: 'COMPLETED', createdAt: { gte: todayStart } } }),
+      prisma.order.count({ where: { cafeId, status: 'CANCELLED', createdAt: { gte: todayStart } } }),
+    ])
+    return res.json({ completed, cancelled })
+  } catch (err) {
+    logger.error({ msg: 'GET /api/kitchen/daily-stats error', err })
+    return res.status(500).json({ error: 'Failed to fetch daily stats' })
+  }
+})
+
 export default router

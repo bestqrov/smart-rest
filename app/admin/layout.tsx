@@ -9,16 +9,18 @@ import {
   CreditCard, LogOut, ChevronRight, Menu, X,
   AlertTriangle, Loader2, Gift, Zap, ChefHat, Bell, Monitor,
   Users, BarChart3, Copy, Check, ExternalLink, Building2,
-  Banknote, Wallet
+  Banknote, Wallet, CalendarClock, Sparkles
 } from 'lucide-react'
 
 // ── Nav ───────────────────────────────────────────────────────────────────────
 
 const NAV = [
   { href: '/admin/dashboard',  icon: LayoutDashboard, labelAr: 'لوحة التحكم',       labelFr: 'Dashboard' },
+  { href: '/admin/menu-gen',   icon: Sparkles,        labelAr: 'محرك المنيو الذكي',  labelFr: 'Menu AI' },
   { href: '/admin/menu',       icon: UtensilsCrossed,  labelAr: 'إدارة المنيو',       labelFr: 'Menu' },
   { href: '/admin/tables',     icon: QrCode,           labelAr: 'الطاولات & QR',      labelFr: 'Tables' },
   { href: '/admin/staff',      icon: Users,            labelAr: 'الكادر البشري',      labelFr: 'Staff' },
+  { href: '/admin/attendance', icon: CalendarClock,    labelAr: 'الحضور & التسجيل',   labelFr: 'Attendance' },
   { href: '/admin/financials', icon: BarChart3,        labelAr: 'المالية والتقارير',  labelFr: 'Finances' },
   { href: '/admin/social',     icon: Share2,           labelAr: 'التسويق الذكي',      labelFr: 'Social' },
   { href: '/admin/billing',    icon: CreditCard,       labelAr: 'الفواتير',            labelFr: 'Billing' },
@@ -42,6 +44,7 @@ type CafeState = {
   currency: string
   monthlyFee: number | null
   subscriptionTier: string | null
+  logoUrl: string | null
 }
 
 // ── Payment Gate translations ─────────────────────────────────────────────────
@@ -287,6 +290,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         currency:         profile.currency ?? 'MAD',
         monthlyFee:       finance?.monthlyFee ?? profile.monthlyFee ?? null,
         subscriptionTier: finance?.subscriptionTier ?? profile.subscriptionTier ?? null,
+        logoUrl:          profile.logoUrl ?? null,
       })
     }
   }
@@ -333,11 +337,23 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <div className="px-5 py-5 border-b border-gray-800">
           <Link href="/admin/dashboard" className="flex items-center gap-2">
             <Image src="/assets/logo.png" alt="Smart Menu" width={36} height={36} className="rounded-lg shrink-0" />
-            <div>
+            <div className="flex-1 min-w-0">
               <div className="text-white font-bold text-sm">SmartMenu</div>
               {cafe && <div className="text-gray-400 text-xs truncate">{cafe.subdomain}.smartmenu.ma</div>}
             </div>
+            {/* Cafe logo — top right of sidebar header */}
+            {cafe?.logoUrl && (
+              <img
+                src={cafe.logoUrl}
+                alt={cafe.name}
+                className="w-9 h-9 rounded-lg object-contain aspect-square bg-white/10 shrink-0 border border-gray-700"
+              />
+            )}
           </Link>
+          {/* Cafe name under the logo row */}
+          {cafe?.name && (
+            <p className="text-gray-300 text-xs font-semibold mt-2 truncate">{cafe.name}</p>
+          )}
         </div>
 
         {cafe && (
@@ -397,8 +413,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <Menu className="w-6 h-6" />
         </button>
         <div className="flex items-center gap-2">
-          <Image src="/assets/logo.png" alt="Smart Menu" width={28} height={28} className="rounded-lg" />
-          <span className="text-white font-bold text-sm">SmartMenu</span>
+          {cafe?.logoUrl ? (
+            <img src={cafe.logoUrl} alt={cafe.name} className="w-7 h-7 rounded-lg object-contain aspect-square bg-white/10" />
+          ) : (
+            <Image src="/assets/logo.png" alt="Smart Menu" width={28} height={28} className="rounded-lg" />
+          )}
+          <span className="text-white font-bold text-sm truncate max-w-[140px]">
+            {cafe?.name || 'SmartMenu'}
+          </span>
         </div>
         <div className="w-8" />
       </div>
@@ -410,8 +432,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <div className="relative bg-gray-900 w-72 h-full flex flex-col" dir="rtl">
             <div className="px-4 py-4 flex items-center justify-between border-b border-gray-800">
               <div className="flex items-center gap-2">
-                <Image src="/assets/logo.png" alt="Smart Menu" width={32} height={32} className="rounded-lg" />
-                <span className="text-white font-bold">SmartMenu</span>
+                {cafe?.logoUrl ? (
+                  <img src={cafe.logoUrl} alt={cafe.name} className="w-8 h-8 rounded-lg object-contain aspect-square bg-white/10" />
+                ) : (
+                  <Image src="/assets/logo.png" alt="Smart Menu" width={32} height={32} className="rounded-lg" />
+                )}
+                <span className="text-white font-bold truncate max-w-[140px]">{cafe?.name || 'SmartMenu'}</span>
               </div>
               <button onClick={() => setOpen(false)} className="text-gray-400 p-1">
                 <X className="w-5 h-5" />
@@ -451,8 +477,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       )}
 
       {/* ── Page content ──────────────────────────────────────────── */}
-      <main className="flex-1 md:overflow-y-auto pt-14 md:pt-0">
-        {children}
+      <main className="flex-1 md:overflow-y-auto pt-14 md:pt-0 relative">
+        {/* Watermark — cafe logo at 5% opacity fixed behind all content */}
+        {cafe?.logoUrl && (
+          <div
+            aria-hidden
+            className="pointer-events-none fixed inset-0 z-0 bg-center bg-no-repeat bg-contain opacity-[0.05]"
+            style={{ backgroundImage: `url(${cafe.logoUrl})` }}
+          />
+        )}
+        <div className="relative z-10">
+          {children}
+        </div>
       </main>
 
       {/* ── Payment Gate overlay ──────────────────────────────────── */}

@@ -156,31 +156,56 @@ export default function SocialPage() {
 
       {/* ── Logo watermark ───────────────────────────────────────── */}
       <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-        <h2 className="font-bold text-gray-800 mb-3">شعار المطعم (للعلامة المائية)</h2>
+        <h2 className="font-bold text-gray-800 mb-1">شعار المطعم (الهوية البصرية)</h2>
+        <p className="text-xs text-gray-400 mb-4">
+          يُعرض الشعار في: الـ Navbar · شاشة POS · منيو الزبائن · وكعلامة مائية خلف جميع الشاشات
+        </p>
         <div className="flex items-start gap-4">
-          {logoPreview ? (
-            <img src={logoPreview} alt="Logo" className="w-20 h-20 object-contain rounded-xl border border-gray-100 bg-gray-50" />
-          ) : (
-            <div className="w-20 h-20 rounded-xl border-2 border-dashed border-gray-200 flex items-center justify-center bg-gray-50">
-              <Upload className="w-6 h-6 text-gray-300" />
+          {/* Preview — always square, no distortion */}
+          <div className="relative shrink-0 w-24 h-24">
+            {logoPreview ? (
+              <img
+                src={logoPreview}
+                alt="Logo"
+                className="w-24 h-24 aspect-square object-contain rounded-xl border border-gray-200 bg-gray-50 shadow-sm"
+              />
+            ) : (
+              <div className="w-24 h-24 rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center bg-gray-50 gap-1">
+                <Upload className="w-6 h-6 text-gray-300" />
+                <span className="text-[10px] text-gray-300">معاينة</span>
+              </div>
+            )}
+          </div>
+
+          <div className="flex-1 space-y-3">
+            {/* Upload button */}
+            <div>
+              <button
+                onClick={() => fileRef.current?.click()}
+                className="flex items-center gap-2 border border-gray-200 text-gray-700 hover:border-emerald-400 hover:text-emerald-700 px-4 py-2 rounded-xl text-sm font-medium transition-colors"
+              >
+                <Upload className="w-4 h-4" /> رفع صورة الشعار
+              </button>
+              <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="hidden" onChange={handleLogoFile} />
+
+              {/* Dimension guidance */}
+              <div className="mt-2 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 space-y-0.5">
+                <p className="text-xs font-semibold text-amber-700">📐 الأبعاد الموصى بها</p>
+                <p className="text-xs text-amber-600">• الحجم الأمثل: <strong>512 × 512 px</strong> (مربع)</p>
+                <p className="text-xs text-amber-600">• الصيغة المفضلة: <strong>PNG بخلفية شفافة</strong></p>
+                <p className="text-xs text-amber-600">• الحد الأقصى للحجم: <strong>2 MB</strong></p>
+                <p className="text-xs text-amber-600">• سيتم تغيير حجم الشعار تلقائياً دون تشويه</p>
+              </div>
             </div>
-          )}
-          <div className="flex-1">
-            <button
-              onClick={() => fileRef.current?.click()}
-              className="flex items-center gap-2 border border-gray-200 text-gray-700 hover:border-emerald-400 hover:text-emerald-700 px-4 py-2 rounded-xl text-sm font-medium transition-colors"
-            >
-              <Upload className="w-4 h-4" /> رفع صورة PNG
-            </button>
-            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleLogoFile} />
-            <p className="text-xs text-gray-400 mt-2">PNG شفاف مفضل · حجم مناسب 512×512px</p>
-            <div className="mt-2">
-              <label className="text-xs text-gray-500">أو رابط مباشر</label>
+
+            {/* URL input */}
+            <div>
+              <label className="text-xs text-gray-500">أو رابط مباشر للشعار</label>
               <input
                 type="url"
                 value={profile.logoUrl.startsWith('data:') ? '' : profile.logoUrl}
                 onChange={e => { setProfile(p => ({ ...p, logoUrl: e.target.value })); setLogoPreview(e.target.value) }}
-                placeholder="https://..."
+                placeholder="https://example.com/logo.png"
                 className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-emerald-400"
               />
             </div>

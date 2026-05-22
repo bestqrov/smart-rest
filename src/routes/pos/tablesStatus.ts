@@ -17,15 +17,16 @@ import authorizePOS from '../../middleware/authorizePOS'
 
 const router = express.Router()
 
-type TableColor = 'EMPTY' | 'OPEN_QR' | 'OPEN_MANUAL' | 'BILL_REQUESTED'
+type TableColor = 'EMPTY' | 'OPEN_QR' | 'OPEN_MANUAL' | 'BILL_REQUESTED' | 'INACTIVE'
 
 router.get('/api/pos/tables-status', authorizePOS, async (req: Request, res: Response) => {
   try {
     const { cafeId } = req.staff!
 
     const [tables, activeOrders] = await Promise.all([
+      // Fetch ALL tables (active + inactive) — POS shows inactive ones in gray
       prisma.table.findMany({
-        where: { cafeId, isActive: true },
+        where: { cafeId },
         orderBy: { tableNumber: 'asc' }
       }),
       prisma.order.findMany({
@@ -61,7 +62,9 @@ router.get('/api/pos/tables-status', authorizePOS, async (req: Request, res: Res
       id:          t.id,
       tableNumber: t.tableNumber,
       qrToken:     t.qrToken,
-      status:      (tableStatusMap.get(t.id) ?? 'EMPTY') as TableColor
+      isActive:    t.isActive,
+      // Inactive tables always show as INACTIVE regardless of orders
+      status:      !t.isActive ? 'INACTIVE' : ((tableStatusMap.get(t.id) ?? 'EMPTY') as TableColor)
     }))
 
     return res.json({ tables: result })

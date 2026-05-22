@@ -835,7 +835,15 @@ function MenuPageInner() {
   if (status === 'invalid') return <InvalidQR tr={tr} />
 
   return (
-    <div className="min-h-screen bg-[#f7f7f5] font-sans select-none" dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className="relative min-h-screen bg-[#f7f7f5] font-sans select-none" dir={isRTL ? 'rtl' : 'ltr'}>
+      {/* Watermark — cafe logo at 5% opacity fixed behind all content */}
+      {cafeLogoUrl && (
+        <div
+          aria-hidden
+          className="pointer-events-none fixed inset-0 z-0 bg-center bg-no-repeat bg-contain opacity-[0.05]"
+          style={{ backgroundImage: `url(${cafeLogoUrl})` }}
+        />
+      )}
       <canvas ref={canvasRef} className="hidden" />
       <input ref={fileInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoFile} />
 
@@ -967,7 +975,13 @@ function MenuPageInner() {
         <div className="px-4 pt-4 pb-2">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              {cafeLogoUrl && <img src={cafeLogoUrl} alt={cafeName} className="w-8 h-8 rounded-lg object-cover" />}
+              {cafeLogoUrl && (
+                <img
+                  src={cafeLogoUrl}
+                  alt={cafeName}
+                  className="w-9 h-9 aspect-square rounded-lg object-contain bg-gray-50 border border-gray-100 shrink-0"
+                />
+              )}
               <div>
                 <h1 className="font-bold text-gray-900 leading-tight">{cafeName || tr.menu}</h1>
                 <p className="text-xs text-emerald-600 font-medium">

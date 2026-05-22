@@ -5,293 +5,242 @@ import { useRouter } from 'next/navigation'
 import {
   Building2, DollarSign, LayoutGrid, ShieldCheck,
   ChevronRight, ChevronLeft, Plus, Trash2, Check,
-  Upload, Eye, EyeOff, Rocket, Globe
+  Upload, Eye, EyeOff, Rocket, Globe, Coffee, Utensils, Sparkles
 } from 'lucide-react'
 
 // ── Country → Currency map ────────────────────────────────────────────────────
 
-type CountryEntry = {
-  code: string
-  flag: string
-  currency: string
-  name: Record<'ar' | 'fr' | 'en' | 'es', string>
-}
+type CountryEntry = { code: string; flag: string; currency: string; name: Record<'ar'|'fr'|'en'|'es',string> }
 
 const COUNTRIES: CountryEntry[] = [
-  // ── شمال إفريقيا والمغرب العربي ───────────────────────────────────────────
-  { code: 'MA', flag: '🇲🇦', currency: 'MAD', name: { ar: 'المغرب',     fr: 'Maroc',      en: 'Morocco',    es: 'Marruecos'  } },
-  { code: 'DZ', flag: '🇩🇿', currency: 'DZD', name: { ar: 'الجزائر',    fr: 'Algérie',    en: 'Algeria',    es: 'Argelia'    } },
-  { code: 'TN', flag: '🇹🇳', currency: 'TND', name: { ar: 'تونس',       fr: 'Tunisie',    en: 'Tunisia',    es: 'Túnez'      } },
-  { code: 'LY', flag: '🇱🇾', currency: 'LYD', name: { ar: 'ليبيا',      fr: 'Libye',      en: 'Libya',      es: 'Libia'      } },
-  { code: 'MR', flag: '🇲🇷', currency: 'MRU', name: { ar: 'موريتانيا',  fr: 'Mauritanie', en: 'Mauritania', es: 'Mauritania' } },
-  // ── الشرق الأوسط ومصر ─────────────────────────────────────────────────────
-  { code: 'EG', flag: '🇪🇬', currency: 'EGP', name: { ar: 'مصر',        fr: 'Égypte',     en: 'Egypt',      es: 'Egipto'     } },
-  { code: 'JO', flag: '🇯🇴', currency: 'JOD', name: { ar: 'الأردن',     fr: 'Jordanie',   en: 'Jordan',     es: 'Jordania'   } },
-  { code: 'SY', flag: '🇸🇾', currency: 'SYP', name: { ar: 'سوريا',      fr: 'Syrie',      en: 'Syria',      es: 'Siria'      } },
-  { code: 'IQ', flag: '🇮🇶', currency: 'IQD', name: { ar: 'العراق',     fr: 'Irak',       en: 'Iraq',       es: 'Irak'       } },
-  // ── دول الخليج العربي ─────────────────────────────────────────────────────
-  { code: 'KW', flag: '🇰🇼', currency: 'KWD', name: { ar: 'الكويت',     fr: 'Koweït',     en: 'Kuwait',     es: 'Kuwait'     } },
-  { code: 'SA', flag: '🇸🇦', currency: 'SAR', name: { ar: 'السعودية',   fr: 'Arabie Saoudite', en: 'Saudi Arabia', es: 'Arabia Saudí' } },
-  { code: 'QA', flag: '🇶🇦', currency: 'QAR', name: { ar: 'قطر',        fr: 'Qatar',      en: 'Qatar',      es: 'Catar'      } },
-  { code: 'AE', flag: '🇦🇪', currency: 'AED', name: { ar: 'الإمارات',   fr: 'Émirats Arabes Unis', en: 'UAE', es: 'EAU'      } },
-  { code: 'BH', flag: '🇧🇭', currency: 'BHD', name: { ar: 'البحرين',    fr: 'Bahreïn',    en: 'Bahrain',    es: 'Baréin'     } },
-  { code: 'OM', flag: '🇴🇲', currency: 'OMR', name: { ar: 'سلطنة عُمان',fr: 'Oman',       en: 'Oman',       es: 'Omán'       } },
-  // ── غرب وشرق إفريقيا ──────────────────────────────────────────────────────
-  { code: 'SN', flag: '🇸🇳', currency: 'XOF', name: { ar: 'السنغال',    fr: 'Sénégal',    en: 'Senegal',    es: 'Senegal'    } },
-  { code: 'CI', flag: '🇨🇮', currency: 'XOF', name: { ar: 'كوت ديفوار', fr: "Côte d'Ivoire", en: "Côte d'Ivoire", es: 'Costa de Marfil' } },
-  { code: 'GA', flag: '🇬🇦', currency: 'XAF', name: { ar: 'الغابون',    fr: 'Gabon',      en: 'Gabon',      es: 'Gabón'      } },
-  { code: 'KE', flag: '🇰🇪', currency: 'KES', name: { ar: 'كينيا',      fr: 'Kenya',      en: 'Kenya',      es: 'Kenia'      } },
+  { code: 'MA', flag: '🇲🇦', currency: 'MAD', name: { ar: 'المغرب',      fr: 'Maroc',             en: 'Morocco',      es: 'Marruecos'     } },
+  { code: 'DZ', flag: '🇩🇿', currency: 'DZD', name: { ar: 'الجزائر',     fr: 'Algérie',           en: 'Algeria',      es: 'Argelia'       } },
+  { code: 'TN', flag: '🇹🇳', currency: 'TND', name: { ar: 'تونس',        fr: 'Tunisie',           en: 'Tunisia',      es: 'Túnez'         } },
+  { code: 'LY', flag: '🇱🇾', currency: 'LYD', name: { ar: 'ليبيا',       fr: 'Libye',             en: 'Libya',        es: 'Libia'         } },
+  { code: 'MR', flag: '🇲🇷', currency: 'MRU', name: { ar: 'موريتانيا',   fr: 'Mauritanie',        en: 'Mauritania',   es: 'Mauritania'    } },
+  { code: 'EG', flag: '🇪🇬', currency: 'EGP', name: { ar: 'مصر',         fr: 'Égypte',            en: 'Egypt',        es: 'Egipto'        } },
+  { code: 'JO', flag: '🇯🇴', currency: 'JOD', name: { ar: 'الأردن',      fr: 'Jordanie',          en: 'Jordan',       es: 'Jordania'      } },
+  { code: 'SY', flag: '🇸🇾', currency: 'SYP', name: { ar: 'سوريا',       fr: 'Syrie',             en: 'Syria',        es: 'Siria'         } },
+  { code: 'IQ', flag: '🇮🇶', currency: 'IQD', name: { ar: 'العراق',      fr: 'Irak',              en: 'Iraq',         es: 'Irak'          } },
+  { code: 'KW', flag: '🇰🇼', currency: 'KWD', name: { ar: 'الكويت',      fr: 'Koweït',            en: 'Kuwait',       es: 'Kuwait'        } },
+  { code: 'SA', flag: '🇸🇦', currency: 'SAR', name: { ar: 'السعودية',    fr: 'Arabie Saoudite',   en: 'Saudi Arabia', es: 'Arabia Saudí'  } },
+  { code: 'QA', flag: '🇶🇦', currency: 'QAR', name: { ar: 'قطر',         fr: 'Qatar',             en: 'Qatar',        es: 'Catar'         } },
+  { code: 'AE', flag: '🇦🇪', currency: 'AED', name: { ar: 'الإمارات',    fr: 'Émirats Arabes',    en: 'UAE',          es: 'EAU'           } },
+  { code: 'BH', flag: '🇧🇭', currency: 'BHD', name: { ar: 'البحرين',     fr: 'Bahreïn',           en: 'Bahrain',      es: 'Baréin'        } },
+  { code: 'OM', flag: '🇴🇲', currency: 'OMR', name: { ar: 'سلطنة عُمان', fr: 'Oman',              en: 'Oman',         es: 'Omán'          } },
+  { code: 'SN', flag: '🇸🇳', currency: 'XOF', name: { ar: 'السنغال',     fr: 'Sénégal',           en: 'Senegal',      es: 'Senegal'       } },
+  { code: 'CI', flag: '🇨🇮', currency: 'XOF', name: { ar: 'كوت ديفوار',  fr: "Côte d'Ivoire",     en: "Côte d'Ivoire",es: 'Costa de Marfil'} },
+  { code: 'GA', flag: '🇬🇦', currency: 'XAF', name: { ar: 'الغابون',     fr: 'Gabon',             en: 'Gabon',        es: 'Gabón'         } },
+  { code: 'KE', flag: '🇰🇪', currency: 'KES', name: { ar: 'كينيا',       fr: 'Kenya',             en: 'Kenya',        es: 'Kenia'         } },
 ]
-
 const COUNTRY_MAP: Record<string, CountryEntry> = Object.fromEntries(COUNTRIES.map(c => [c.code, c]))
-
-// ── Groups for <optgroup> ────────────────────────────────────────────────────
-
-const GROUPS: Record<string, { ar: string; fr: string; en: string; es: string }> = {
-  maghreb:    { ar: '🇲🇦 شمال إفريقيا والمغرب العربي', fr: '🇲🇦 Maghreb & Afrique du Nord', en: '🇲🇦 North Africa & Maghreb', es: '🇲🇦 Norte de África & Magreb' },
-  middleeast: { ar: '🌙 الشرق الأوسط ومصر',            fr: '🌙 Moyen-Orient & Égypte',       en: '🌙 Middle East & Egypt',       es: '🌙 Oriente Medio & Egipto'    },
-  gulf:       { ar: '🛢️ دول الخليج العربي',            fr: '🛢️ Pays du Golfe Arabique',     en: '🛢️ Arabian Gulf States',      es: '🛢️ Países del Golfo Arábigo'  },
-  africa:     { ar: '🌍 غرب وشرق إفريقيا',             fr: '🌍 Afrique de l\'Ouest & Est',   en: '🌍 West & East Africa',        es: '🌍 África Occidental & Oriental'},
+const GROUPS: Record<string, Record<'ar'|'fr'|'en'|'es', string>> = {
+  maghreb:    { ar: '🇲🇦 شمال إفريقيا', fr: '🇲🇦 Maghreb', en: '🇲🇦 North Africa', es: '🇲🇦 Norte África' },
+  middleeast: { ar: '🌙 الشرق الأوسط',  fr: '🌙 Moyen-Orient', en: '🌙 Middle East', es: '🌙 Oriente Medio' },
+  gulf:       { ar: '🛢️ الخليج العربي', fr: '🛢️ Golfe Arabique', en: '🛢️ Arabian Gulf', es: '🛢️ Golfo Arábigo' },
+  africa:     { ar: '🌍 غرب وشرق إفريقيا', fr: '🌍 Afrique', en: '🌍 Africa', es: '🌍 África' },
 }
-
 const GROUP_CODES: Record<string, string[]> = {
-  maghreb:    ['MA', 'DZ', 'TN', 'LY', 'MR'],
-  middleeast: ['EG', 'JO', 'SY', 'IQ'],
-  gulf:       ['KW', 'SA', 'QA', 'AE', 'BH', 'OM'],
-  africa:     ['SN', 'CI', 'GA', 'KE'],
+  maghreb: ['MA','DZ','TN','LY','MR'], middleeast: ['EG','JO','SY','IQ'],
+  gulf:    ['KW','SA','QA','AE','BH','OM'], africa: ['SN','CI','GA','KE'],
 }
 
 // ── i18n ─────────────────────────────────────────────────────────────────────
 
 const T = {
   ar: {
-    welcome:    'مرحباً بك في Smart Resto',
-    welcomeSub: 'أكمل الإعداد الأولي لمطعمك في 4 خطوات سريعة',
-    steps: ['هوية المكان', 'التسعير الذكي', 'هيكلة المكان', 'الأمان'],
+    welcome: 'مرحباً بك في Smart Resto',
+    welcomeSub: 'أكمل الإعداد الأولي في 5 خطوات سريعة',
+    steps: ['نوع المنشأة', 'هوية المكان', 'التسعير', 'الهيكلة', 'الأمان'],
+    step0: {
+      title: 'ما هو نوع منشأتك؟',
+      sub:   'هذا يحدد واجهة النظام والميزات المتاحة لك',
+      cafe: {
+        label: 'مقهى / كافيه بسيط',
+        sub:   'مشروبات، كافيه، حلويات خفيفة وسناكس — بدون مطابخ كبيرة',
+        features: ['☕ واجهة مبسطة وسريعة', '🥤 مشروبات وسناكس', '📱 QR & POS بسيط', '💸 اشتراك أقل'],
+      },
+      restaurant: {
+        label: 'مطعم شامل / كافيه+مأكولات',
+        sub:   'وجبات كاملة، مطبخ نشط، وشاشة KDS',
+        features: ['🍽️ منيو كامل مع مأكولات', '👨‍🍳 شاشة مطبخ KDS', '🔥 إدارة طلبات معقدة', '📊 تقارير تفصيلية'],
+      },
+      upgradeNote: 'يمكنك الترقية لاحقاً بـ 25$',
+    },
     step1: {
-      title:     'هوية مطعمك',
-      sub:       'الدولة، اسم المكان، شعاره، والعملة المحددة تلقائياً',
-      country:   'الدولة',
-      countryPh: 'اختر دولتك',
-      name:      'اسم المطعم / المقهى',
-      logo:      'شعار المكان (رابط URL أو رفع صورة)',
-      logoUrl:   'رابط الصورة (URL)',
-      uploadBtn: 'رفع صورة',
-      currency:  'العملة (تُحدَّد تلقائياً)',
+      title: 'هوية مطعمك', sub: 'الدولة، اسم المكان، شعاره، والعملة',
+      country: 'الدولة', countryPh: 'اختر دولتك',
+      name: 'اسم المطعم / المقهى', logo: 'شعار المكان', logoUrl: 'رابط الصورة', uploadBtn: 'رفع',
+      currency: 'العملة (تُحدَّد تلقائياً)',
     },
     step2: {
-      title:      'التسعير الذكي',
-      sub:        'يستخدم النظام هذه الأسعار لحساب اشتراكك تلقائياً',
-      coffee:     'سعر القهوة الأكثر مبيعاً',
-      sandwich:   'سعر الساندويتش المرجعي',
-      coffeePlh:  'مثال: 15',
-      sandwichPlh:'مثال: 35',
-      hint:       'أدخل الأسعار بالعملة المختارة — هذا يساعد النظام في تحديد خطة الاشتراك المناسبة لك تلقائياً',
+      title: 'التسعير الذكي', sub: 'يستخدم النظام هذه الأسعار لحساب اشتراكك تلقائياً',
+      coffee: 'سعر القهوة الأكثر مبيعاً', sandwich: 'سعر الساندويتش المرجعي',
+      coffeePlh: 'مثال: 15', sandwichPlh: 'مثال: 35',
+      hint: 'يساعد النظام في تحديد خطة الاشتراك المناسبة لك تلقائياً',
     },
     step3: {
-      title:      'هيكلة المكان',
-      sub:        'حدد المناطق وعدد الطاولات — سيتم توليد الـ QR تلقائياً',
-      addZone:    'إضافة منطقة',
-      zoneName:   'اسم المنطقة',
-      tableCount: 'عدد الطاولات',
-      zoneHint:   'مثال: الداخل، الشرفة، الحديقة، الطابق الأول',
-      totalTables:'إجمالي الطاولات',
-      minOne:     'أضف منطقة واحدة على الأقل',
+      title: 'هيكلة المكان', sub: 'حدد المناطق وعدد الطاولات — QR تلقائي',
+      addZone: 'إضافة منطقة', zoneName: 'اسم المنطقة', tableCount: 'الطاولات',
+      zoneHint: 'مثال: الداخل، الشرفة، الحديقة، الطابق الأول',
+      totalTables: 'إجمالي الطاولات', minOne: 'أضف منطقة واحدة على الأقل',
     },
     step4: {
-      title:      'حساب المدير الرئيسي',
-      sub:        'سيتم إنشاء حساب مشرف بهذه البيانات للدخول عبر الـ POS',
-      managerName:'اسم المدير',
-      pin:        'الرمز السري (4 أرقام)',
-      pinConfirm: 'تأكيد الرمز السري',
-      pinMismatch:'الرمزان غير متطابقان',
-      pinInvalid: '4 أرقام فقط',
-      showPin:    'إظهار',
-      hidePin:    'إخفاء',
+      title: 'حساب المدير الرئيسي', sub: 'إنشاء حساب مشرف لتسجيل الدخول عبر POS',
+      managerName: 'اسم المدير', pin: 'الرمز السري (4 أرقام)', pinConfirm: 'تأكيد الرمز السري',
+      pinMismatch: 'الرمزان غير متطابقان', pinInvalid: '4 أرقام فقط',
+      showPin: 'إظهار', hidePin: 'إخفاء',
     },
-    next:      'التالي',
-    back:      'رجوع',
-    launch:    'إنهاء وإطلاق النظام 🚀',
-    launching: 'جارٍ إطلاق النظام…',
-    error:     'حدث خطأ، حاول مجدداً',
+    next: 'التالي', back: 'رجوع', launch: 'إنهاء وإطلاق النظام 🚀', launching: 'جارٍ الإطلاق…', error: 'حدث خطأ، حاول مجدداً',
   },
   fr: {
-    welcome:    'Bienvenue sur Smart Resto',
-    welcomeSub: 'Configurez votre restaurant en 4 étapes rapides',
-    steps: ['Identité', 'Tarification', 'Structure', 'Sécurité'],
+    welcome: 'Bienvenue sur Smart Resto',
+    welcomeSub: 'Configurez votre établissement en 5 étapes',
+    steps: ['Type', 'Identité', 'Tarification', 'Structure', 'Sécurité'],
+    step0: {
+      title: "Quel est votre type d'établissement ?",
+      sub:   'Cela détermine l\'interface et les fonctionnalités disponibles',
+      cafe: {
+        label: 'Café / Snack simple',
+        sub:   'Boissons, café, pâtisseries légères — sans grande cuisine',
+        features: ['☕ Interface simple et rapide', '🥤 Boissons & snacks', '📱 QR & POS simplifié', '💸 Abonnement réduit'],
+      },
+      restaurant: {
+        label: 'Restaurant complet / Café+Restauration',
+        sub:   'Plats complets, cuisine active, écran KDS',
+        features: ['🍽️ Menu complet avec plats', '👨‍🍳 Écran cuisine KDS', '🔥 Gestion commandes complexes', '📊 Rapports détaillés'],
+      },
+      upgradeNote: 'Vous pouvez passer à ce niveau plus tard pour 25$',
+    },
     step1: {
-      title:     'Identité du lieu',
-      sub:       'Pays, nom, logo et devise détectée automatiquement',
-      country:   'Pays',
-      countryPh: 'Choisissez votre pays',
-      name:      'Nom du restaurant / café',
-      logo:      'Logo (URL ou téléchargement)',
-      logoUrl:   "URL de l'image",
-      uploadBtn: 'Télécharger',
-      currency:  'Devise (détectée automatiquement)',
+      title: 'Identité du lieu', sub: 'Pays, nom, logo et devise',
+      country: 'Pays', countryPh: 'Choisissez votre pays',
+      name: 'Nom du restaurant / café', logo: 'Logo', logoUrl: "URL de l'image", uploadBtn: 'Télécharger',
+      currency: 'Devise (détectée automatiquement)',
     },
     step2: {
-      title:      'Tarification intelligente',
-      sub:        'Ces prix servent à calculer votre abonnement automatiquement',
-      coffee:     'Prix du café le plus vendu',
-      sandwich:   'Prix du sandwich de référence',
-      coffeePlh:  'Ex: 3.5',
-      sandwichPlh:'Ex: 8',
-      hint:       'Ces prix aident le système à choisir automatiquement le forfait adapté à votre établissement',
+      title: 'Tarification intelligente', sub: 'Ces prix servent à calculer votre abonnement',
+      coffee: 'Prix du café le plus vendu', sandwich: 'Prix du sandwich de référence',
+      coffeePlh: 'Ex: 3.5', sandwichPlh: 'Ex: 8',
+      hint: 'Aide à sélectionner automatiquement le forfait adapté',
     },
     step3: {
-      title:      'Structure du lieu',
-      sub:        'Définissez les zones et le nombre de tables — les QR seront générés automatiquement',
-      addZone:    'Ajouter une zone',
-      zoneName:   'Nom de la zone',
-      tableCount: 'Nb de tables',
-      zoneHint:   'Ex: Salle, Terrasse, Jardin, 1er étage',
-      totalTables:'Total tables',
-      minOne:     'Ajoutez au moins une zone',
+      title: 'Structure du lieu', sub: 'Définissez zones et tables — QR automatiques',
+      addZone: 'Ajouter une zone', zoneName: 'Nom de la zone', tableCount: 'Tables',
+      zoneHint: 'Ex: Salle, Terrasse, Jardin, 1er étage',
+      totalTables: 'Total tables', minOne: 'Ajoutez au moins une zone',
     },
     step4: {
-      title:      'Compte du gérant principal',
-      sub:        'Un compte superviseur sera créé avec ces informations pour accéder au POS',
-      managerName:'Nom du gérant',
-      pin:        'Code PIN (4 chiffres)',
-      pinConfirm: 'Confirmer le code PIN',
-      pinMismatch:'Les codes PIN ne correspondent pas',
-      pinInvalid: '4 chiffres requis',
-      showPin:    'Afficher',
-      hidePin:    'Masquer',
+      title: 'Compte gérant principal', sub: 'Accès POS pour le superviseur',
+      managerName: 'Nom du gérant', pin: 'Code PIN (4 chiffres)', pinConfirm: 'Confirmer le code PIN',
+      pinMismatch: 'Les codes PIN ne correspondent pas', pinInvalid: '4 chiffres requis',
+      showPin: 'Afficher', hidePin: 'Masquer',
     },
-    next:      'Suivant',
-    back:      'Retour',
-    launch:    'Terminer et lancer le système 🚀',
-    launching: 'Lancement en cours…',
-    error:     'Une erreur est survenue, réessayez',
+    next: 'Suivant', back: 'Retour', launch: 'Terminer et lancer 🚀', launching: 'Lancement…', error: 'Erreur, réessayez',
   },
   en: {
-    welcome:    'Welcome to Smart Resto',
-    welcomeSub: 'Set up your restaurant in 4 quick steps',
-    steps: ['Identity', 'Pricing', 'Structure', 'Security'],
+    welcome: 'Welcome to Smart Resto',
+    welcomeSub: 'Set up your establishment in 5 quick steps',
+    steps: ['Type', 'Identity', 'Pricing', 'Structure', 'Security'],
+    step0: {
+      title: 'What type of establishment are you?',
+      sub:   'This determines your system interface and available features',
+      cafe: {
+        label: 'Simple Cafe / Coffee Shop',
+        sub:   'Drinks, coffee, light pastries & snacks — no full kitchen',
+        features: ['☕ Simple & fast interface', '🥤 Drinks & snacks', '📱 QR & simple POS', '💸 Lower subscription'],
+      },
+      restaurant: {
+        label: 'Full Restaurant / Cafe + Food',
+        sub:   'Complete meals, active kitchen, KDS screen',
+        features: ['🍽️ Full menu with meals', '👨‍🍳 Kitchen KDS screen', '🔥 Complex order management', '📊 Detailed reports'],
+      },
+      upgradeNote: 'You can upgrade later for $25',
+    },
     step1: {
-      title:     'Restaurant Identity',
-      sub:       'Country, name, logo and auto-detected currency',
-      country:   'Country',
-      countryPh: 'Select your country',
-      name:      'Restaurant / Cafe name',
-      logo:      'Logo (URL or upload)',
-      logoUrl:   'Image URL',
-      uploadBtn: 'Upload',
-      currency:  'Currency (auto-detected)',
+      title: 'Restaurant Identity', sub: 'Country, name, logo and currency',
+      country: 'Country', countryPh: 'Select your country',
+      name: 'Restaurant / Cafe name', logo: 'Logo', logoUrl: 'Image URL', uploadBtn: 'Upload',
+      currency: 'Currency (auto-detected)',
     },
     step2: {
-      title:      'Smart Pricing',
-      sub:        'These prices are used to automatically calculate your subscription',
-      coffee:     'Price of your best-selling coffee',
-      sandwich:   'Reference sandwich price',
-      coffeePlh:  'e.g. 4',
-      sandwichPlh:'e.g. 9',
-      hint:       'These reference prices help the system automatically select the right subscription plan for you',
+      title: 'Smart Pricing', sub: 'Used to automatically calculate your subscription',
+      coffee: 'Best-selling coffee price', sandwich: 'Reference sandwich price',
+      coffeePlh: 'e.g. 4', sandwichPlh: 'e.g. 9',
+      hint: 'Helps the system auto-select the right subscription plan',
     },
     step3: {
-      title:      'Place Structure',
-      sub:        'Define zones and table counts — QR codes will be generated automatically',
-      addZone:    'Add zone',
-      zoneName:   'Zone name',
-      tableCount: 'Tables',
-      zoneHint:   'e.g. Indoor, Terrace, Garden, 1st Floor',
-      totalTables:'Total tables',
-      minOne:     'Add at least one zone',
+      title: 'Place Structure', sub: 'Define zones and tables — QR codes auto-generated',
+      addZone: 'Add zone', zoneName: 'Zone name', tableCount: 'Tables',
+      zoneHint: 'e.g. Indoor, Terrace, Garden, 1st Floor',
+      totalTables: 'Total tables', minOne: 'Add at least one zone',
     },
     step4: {
-      title:      'Main Manager Account',
-      sub:        'A supervisor account will be created with these details for POS login',
-      managerName:'Manager name',
-      pin:        'PIN Code (4 digits)',
-      pinConfirm: 'Confirm PIN Code',
-      pinMismatch:'PIN codes do not match',
-      pinInvalid: '4 digits required',
-      showPin:    'Show',
-      hidePin:    'Hide',
+      title: 'Main Manager Account', sub: 'Supervisor account for POS login',
+      managerName: 'Manager name', pin: 'PIN Code (4 digits)', pinConfirm: 'Confirm PIN Code',
+      pinMismatch: 'PIN codes do not match', pinInvalid: '4 digits required',
+      showPin: 'Show', hidePin: 'Hide',
     },
-    next:      'Next',
-    back:      'Back',
-    launch:    'Finish & Launch System 🚀',
-    launching: 'Launching…',
-    error:     'An error occurred, please try again',
+    next: 'Next', back: 'Back', launch: 'Finish & Launch 🚀', launching: 'Launching…', error: 'An error occurred, retry',
   },
   es: {
-    welcome:    'Bienvenido a Smart Resto',
-    welcomeSub: 'Configura tu restaurante en 4 pasos rápidos',
-    steps: ['Identidad', 'Precios', 'Estructura', 'Seguridad'],
+    welcome: 'Bienvenido a Smart Resto',
+    welcomeSub: 'Configura tu establecimiento en 5 pasos',
+    steps: ['Tipo', 'Identidad', 'Precios', 'Estructura', 'Seguridad'],
+    step0: {
+      title: '¿Qué tipo de establecimiento tienes?',
+      sub:   'Esto determina la interfaz y las funciones disponibles',
+      cafe: {
+        label: 'Café / Cafetería sencilla',
+        sub:   'Bebidas, café, pasteles ligeros y snacks — sin cocina grande',
+        features: ['☕ Interfaz simple y rápida', '🥤 Bebidas & snacks', '📱 QR & POS simple', '💸 Suscripción reducida'],
+      },
+      restaurant: {
+        label: 'Restaurante completo / Café+Comida',
+        sub:   'Platos completos, cocina activa, pantalla KDS',
+        features: ['🍽️ Menú completo con platos', '👨‍🍳 Pantalla cocina KDS', '🔥 Gestión pedidos compleja', '📊 Informes detallados'],
+      },
+      upgradeNote: 'Puedes mejorar más tarde por $25',
+    },
     step1: {
-      title:     'Identidad del lugar',
-      sub:       'País, nombre, logo y moneda detectada automáticamente',
-      country:   'País',
-      countryPh: 'Selecciona tu país',
-      name:      'Nombre del restaurante / café',
-      logo:      'Logo (URL o subida)',
-      logoUrl:   'URL de la imagen',
-      uploadBtn: 'Subir',
-      currency:  'Moneda (detectada automáticamente)',
+      title: 'Identidad del lugar', sub: 'País, nombre, logo y moneda',
+      country: 'País', countryPh: 'Selecciona tu país',
+      name: 'Nombre del restaurante / café', logo: 'Logo', logoUrl: 'URL de imagen', uploadBtn: 'Subir',
+      currency: 'Moneda (detectada automáticamente)',
     },
     step2: {
-      title:      'Precios inteligentes',
-      sub:        'El sistema usa estos precios para calcular tu suscripción automáticamente',
-      coffee:     'Precio del café más vendido',
-      sandwich:   'Precio de referencia del sándwich',
-      coffeePlh:  'Ej: 2.5',
-      sandwichPlh:'Ej: 6',
-      hint:       'Estos precios ayudan al sistema a seleccionar automáticamente el plan de suscripción adecuado',
+      title: 'Precios inteligentes', sub: 'Para calcular tu suscripción automáticamente',
+      coffee: 'Precio café más vendido', sandwich: 'Precio sándwich de referencia',
+      coffeePlh: 'Ej: 2.5', sandwichPlh: 'Ej: 6',
+      hint: 'Ayuda a seleccionar el plan de suscripción correcto',
     },
     step3: {
-      title:      'Estructura del local',
-      sub:        'Define zonas y número de mesas — los QR se generarán automáticamente',
-      addZone:    'Agregar zona',
-      zoneName:   'Nombre de la zona',
-      tableCount: 'Mesas',
-      zoneHint:   'Ej: Interior, Terraza, Jardín, 1er piso',
-      totalTables:'Total mesas',
-      minOne:     'Agrega al menos una zona',
+      title: 'Estructura del local', sub: 'Define zonas y mesas — QR automáticos',
+      addZone: 'Agregar zona', zoneName: 'Nombre de zona', tableCount: 'Mesas',
+      zoneHint: 'Ej: Interior, Terraza, Jardín, 1er piso',
+      totalTables: 'Total mesas', minOne: 'Agrega al menos una zona',
     },
     step4: {
-      title:      'Cuenta del gerente principal',
-      sub:        'Se creará una cuenta de supervisor con estos datos para el acceso al POS',
-      managerName:'Nombre del gerente',
-      pin:        'Código PIN (4 dígitos)',
-      pinConfirm: 'Confirmar código PIN',
-      pinMismatch:'Los códigos PIN no coinciden',
-      pinInvalid: 'Se requieren 4 dígitos',
-      showPin:    'Mostrar',
-      hidePin:    'Ocultar',
+      title: 'Cuenta del gerente principal', sub: 'Acceso POS para el supervisor',
+      managerName: 'Nombre del gerente', pin: 'Código PIN (4 dígitos)', pinConfirm: 'Confirmar PIN',
+      pinMismatch: 'Los códigos no coinciden', pinInvalid: 'Se requieren 4 dígitos',
+      showPin: 'Mostrar', hidePin: 'Ocultar',
     },
-    next:      'Siguiente',
-    back:      'Atrás',
-    launch:    'Finalizar y lanzar el sistema 🚀',
-    launching: 'Lanzando…',
-    error:     'Ocurrió un error, inténtalo de nuevo',
+    next: 'Siguiente', back: 'Atrás', launch: 'Finalizar y lanzar 🚀', launching: 'Lanzando…', error: 'Error, inténtalo de nuevo',
   },
 }
 
 type Lang = keyof typeof T
-
-// ── Types ─────────────────────────────────────────────────────────────────────
-
 interface Zone { name: string; tableCount: number }
-
 interface WizardData {
-  businessName:     string
-  country:          string
-  logoUrl:          string
-  currency:         string
-  coffeeRefPrice:   string
-  sandwichRefPrice: string
-  zones:            Zone[]
-  managerName:      string
-  managerPin:       string
-  pinConfirm:       string
+  tier: 'CAFE' | 'RESTAURANT'
+  businessName: string; country: string; logoUrl: string; currency: string
+  coffeeRefPrice: string; sandwichRefPrice: string
+  zones: Zone[]; managerName: string; managerPin: string; pinConfirm: string
 }
 
-const STEP_ICONS = [Building2, DollarSign, LayoutGrid, ShieldCheck]
-
-// ── Component ─────────────────────────────────────────────────────────────────
+const STEP_ICONS = [Sparkles, Building2, DollarSign, LayoutGrid, ShieldCheck]
+const TOTAL_STEPS = 5
 
 export default function OnboardingPage() {
   const router  = useRouter()
@@ -308,19 +257,13 @@ export default function OnboardingPage() {
   const [stepErr, setStepErr] = useState('')
 
   const [data, setData] = useState<WizardData>({
-    businessName:     '',
-    country:          'MA',
-    logoUrl:          '',
-    currency:         'MAD',
-    coffeeRefPrice:   '',
-    sandwichRefPrice: '',
-    zones:            [{ name: '', tableCount: 4 }],
-    managerName:      '',
-    managerPin:       '',
-    pinConfirm:       '',
+    tier: 'CAFE',
+    businessName: '', country: 'MA', logoUrl: '', currency: 'MAD',
+    coffeeRefPrice: '', sandwichRefPrice: '',
+    zones: [{ name: '', tableCount: 4 }],
+    managerName: '', managerPin: '', pinConfirm: '',
   })
 
-  // Pre-fill from existing profile
   useEffect(() => {
     const token = localStorage.getItem('token')
     if (!token) return
@@ -336,13 +279,13 @@ export default function OnboardingPage() {
           currency:         p.currency ?? (COUNTRY_MAP[p.country ?? 'MA']?.currency ?? 'MAD'),
           coffeeRefPrice:   p.coffeeRefPrice   ? String(p.coffeeRefPrice)   : '',
           sandwichRefPrice: p.sandwichRefPrice ? String(p.sandwichRefPrice) : '',
+          tier:             (p.tier as 'CAFE'|'RESTAURANT') ?? 'CAFE',
         }))
       })
   }, [])
 
   function set<K extends keyof WizardData>(key: K, val: WizardData[K]) {
-    setData(d => ({ ...d, [key]: val }))
-    setStepErr('')
+    setData(d => ({ ...d, [key]: val })); setStepErr('')
   }
 
   function handleCountryChange(code: string) {
@@ -360,35 +303,32 @@ export default function OnboardingPage() {
   }
 
   function updateZone(i: number, field: keyof Zone, val: string | number) {
-    setData(d => {
-      const zones = [...d.zones]
-      zones[i] = { ...zones[i], [field]: val }
-      return { ...d, zones }
-    })
+    setData(d => { const z = [...d.zones]; z[i] = { ...z[i], [field]: val }; return { ...d, zones: z } })
     setStepErr('')
   }
-  function addZone()          { setData(d => ({ ...d, zones: [...d.zones, { name: '', tableCount: 2 }] })) }
+  function addZone()             { setData(d => ({ ...d, zones: [...d.zones, { name: '', tableCount: 2 }] })) }
   function removeZone(i: number) { setData(d => ({ ...d, zones: d.zones.filter((_, idx) => idx !== i) })) }
 
   function validateStep(): boolean {
-    if (step === 0) {
+    if (step === 0) { /* tier is always selected */ return true }
+    if (step === 1) {
       if (!data.country)              { setStepErr(t.step1.country + ' is required'); return false }
       if (!data.businessName.trim())  { setStepErr(t.step1.name + ' is required'); return false }
     }
-    if (step === 1) {
-      if (!data.coffeeRefPrice || Number(data.coffeeRefPrice) <= 0)   { setStepErr(t.step2.coffee + ' — required'); return false }
+    if (step === 2) {
+      if (!data.coffeeRefPrice || Number(data.coffeeRefPrice) <= 0)     { setStepErr(t.step2.coffee + ' — required'); return false }
       if (!data.sandwichRefPrice || Number(data.sandwichRefPrice) <= 0) { setStepErr(t.step2.sandwich + ' — required'); return false }
     }
-    if (step === 2) {
+    if (step === 3) {
       if (data.zones.length === 0) { setStepErr(t.step3.minOne); return false }
       for (const z of data.zones) {
-        if (!z.name.trim())              { setStepErr(t.step3.zoneName + ' — required'); return false }
+        if (!z.name.trim())                   { setStepErr(t.step3.zoneName + ' — required'); return false }
         if (!z.tableCount || z.tableCount < 1) { setStepErr(t.step3.tableCount + ' — min 1'); return false }
       }
     }
-    if (step === 3) {
-      if (!data.managerName.trim())      { setStepErr(t.step4.managerName + ' — required'); return false }
-      if (!/^\d{4}$/.test(data.managerPin)) { setStepErr(t.step4.pinInvalid); return false }
+    if (step === 4) {
+      if (!data.managerName.trim())          { setStepErr(t.step4.managerName + ' — required'); return false }
+      if (!/^\d{4}$/.test(data.managerPin))  { setStepErr(t.step4.pinInvalid); return false }
       if (data.managerPin !== data.pinConfirm) { setStepErr(t.step4.pinMismatch); return false }
     }
     return true
@@ -404,9 +344,10 @@ export default function OnboardingPage() {
     try {
       const token = localStorage.getItem('token')
       const res = await fetch('/api/admin/onboarding', {
-        method:  'POST',
+        method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body:    JSON.stringify({
+        body: JSON.stringify({
+          tier:            data.tier,
           businessName:    data.businessName.trim(),
           logoUrl:         data.logoUrl.trim() || undefined,
           currency:        data.currency,
@@ -420,7 +361,8 @@ export default function OnboardingPage() {
       })
       const body = await res.json()
       if (!res.ok) { setError(body.error ?? t.error); return }
-      router.replace('/admin/dashboard')
+      // After onboarding → go to smart menu generation
+      router.replace('/admin/menu-gen')
     } catch {
       setError(t.error)
     } finally {
@@ -432,15 +374,12 @@ export default function OnboardingPage() {
   const selectedEntry = COUNTRY_MAP[data.country]
 
   return (
-    <div
-      dir={isRTL ? 'rtl' : 'ltr'}
-      className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col items-center justify-center px-4 py-10"
-    >
+    <div dir={isRTL ? 'rtl' : 'ltr'}
+      className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col items-center justify-center px-4 py-10">
+
       {data.logoUrl && (
-        <div
-          className="fixed inset-0 bg-center bg-no-repeat bg-contain opacity-[0.04] pointer-events-none"
-          style={{ backgroundImage: `url(${data.logoUrl})`, filter: 'blur(3px)' }}
-        />
+        <div className="fixed inset-0 bg-center bg-no-repeat bg-contain opacity-[0.04] pointer-events-none"
+          style={{ backgroundImage: `url(${data.logoUrl})`, filter: 'blur(3px)' }} />
       )}
 
       <div className="relative z-10 w-full max-w-xl">
@@ -449,9 +388,7 @@ export default function OnboardingPage() {
         <div className={`flex gap-2 mb-6 ${isRTL ? 'justify-start' : 'justify-end'}`}>
           {(Object.keys(T) as Lang[]).map(l => (
             <button key={l} onClick={() => setLang(l)}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors ${
-                lang === l ? 'bg-amber-500 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-              }`}>
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors ${lang === l ? 'bg-amber-500 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}>
               {l.toUpperCase()}
             </button>
           ))}
@@ -465,7 +402,7 @@ export default function OnboardingPage() {
         </div>
 
         {/* Progress stepper */}
-        <div className="flex items-center justify-center gap-2 mb-8">
+        <div className="flex items-center justify-center gap-1 mb-8">
           {t.steps.map((label, i) => {
             const Icon   = STEP_ICONS[i]
             const done   = i < step
@@ -473,21 +410,13 @@ export default function OnboardingPage() {
             return (
               <div key={i} className="flex items-center">
                 <div className="flex flex-col items-center gap-1">
-                  <div className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
-                    done   ? 'bg-green-500 text-white' :
-                    active ? 'bg-amber-500 text-white ring-4 ring-amber-500/30' :
-                             'bg-slate-700 text-slate-400'
-                  }`}>
-                    {done ? <Check className="w-4 h-4" /> : <Icon className="w-4 h-4" />}
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${done ? 'bg-green-500 text-white' : active ? 'bg-amber-500 text-white ring-4 ring-amber-500/30' : 'bg-slate-700 text-slate-400'}`}>
+                    {done ? <Check className="w-3.5 h-3.5" /> : <Icon className="w-3.5 h-3.5" />}
                   </div>
-                  <span className={`text-xs font-medium hidden sm:block ${
-                    active ? 'text-amber-400' : done ? 'text-green-400' : 'text-slate-500'
-                  }`}>{label}</span>
+                  <span className={`text-xs font-medium hidden sm:block ${active ? 'text-amber-400' : done ? 'text-green-400' : 'text-slate-500'}`}>{label}</span>
                 </div>
-                {i < 3 && (
-                  <div className={`w-8 sm:w-14 h-0.5 mx-1 mt-[-14px] transition-colors ${
-                    i < step ? 'bg-green-500' : 'bg-slate-700'
-                  }`} />
+                {i < TOTAL_STEPS - 1 && (
+                  <div className={`w-6 sm:w-10 h-0.5 mx-0.5 mt-[-14px] transition-colors ${i < step ? 'bg-green-500' : 'bg-slate-700'}`} />
                 )}
               </div>
             )
@@ -497,29 +426,81 @@ export default function OnboardingPage() {
         {/* Card */}
         <div className="bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl p-6 sm:p-8 space-y-5">
 
-          {/* ── Step 0: Identity ─────────────────────────────────────── */}
+          {/* ── Step 0: Tier Selection ─────────────────────────── */}
           {step === 0 && (
-            <StepCard title={t.step1.title} sub={t.step1.sub}>
+            <StepCard title={t.step0.title} sub={t.step0.sub}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
-              {/* Country selector */}
+                {/* CAFE card */}
+                <button
+                  type="button"
+                  onClick={() => set('tier', 'CAFE')}
+                  className={`relative rounded-2xl border-2 p-4 text-start transition-all hover:shadow-md ${
+                    data.tier === 'CAFE'
+                      ? 'border-amber-500 bg-amber-50 shadow-md shadow-amber-100'
+                      : 'border-slate-200 hover:border-amber-200'
+                  }`}
+                >
+                  {data.tier === 'CAFE' && (
+                    <div className="absolute top-3 end-3 w-5 h-5 bg-amber-500 rounded-full flex items-center justify-center">
+                      <Check className="w-3 h-3 text-white" />
+                    </div>
+                  )}
+                  <div className="text-3xl mb-2">☕</div>
+                  <p className="font-extrabold text-slate-800 text-sm">{t.step0.cafe.label}</p>
+                  <p className="text-xs text-slate-500 mt-1 mb-3">{t.step0.cafe.sub}</p>
+                  <ul className="space-y-1">
+                    {t.step0.cafe.features.map((f, i) => (
+                      <li key={i} className="text-xs text-slate-600">{f}</li>
+                    ))}
+                  </ul>
+                </button>
+
+                {/* RESTAURANT card */}
+                <button
+                  type="button"
+                  onClick={() => set('tier', 'RESTAURANT')}
+                  className={`relative rounded-2xl border-2 p-4 text-start transition-all hover:shadow-md ${
+                    data.tier === 'RESTAURANT'
+                      ? 'border-emerald-500 bg-emerald-50 shadow-md shadow-emerald-100'
+                      : 'border-slate-200 hover:border-emerald-200'
+                  }`}
+                >
+                  {data.tier === 'RESTAURANT' && (
+                    <div className="absolute top-3 end-3 w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center">
+                      <Check className="w-3 h-3 text-white" />
+                    </div>
+                  )}
+                  <div className="text-3xl mb-2">🍽️</div>
+                  <p className="font-extrabold text-slate-800 text-sm">{t.step0.restaurant.label}</p>
+                  <p className="text-xs text-slate-500 mt-1 mb-3">{t.step0.restaurant.sub}</p>
+                  <ul className="space-y-1">
+                    {t.step0.restaurant.features.map((f, i) => (
+                      <li key={i} className="text-xs text-slate-600">{f}</li>
+                    ))}
+                  </ul>
+                </button>
+              </div>
+
+              <p className="text-xs text-center text-slate-400">
+                <Coffee className="w-3 h-3 inline me-1" />{t.step0.upgradeNote}
+              </p>
+            </StepCard>
+          )}
+
+          {/* ── Step 1: Identity ───────────────────────────────── */}
+          {step === 1 && (
+            <StepCard title={t.step1.title} sub={t.step1.sub}>
               <Field label={<><Globe className="w-3.5 h-3.5 inline me-1" />{t.step1.country}</>}>
                 <div className="relative">
-                  <select
-                    value={data.country}
-                    onChange={e => handleCountryChange(e.target.value)}
-                    className="input appearance-none pr-8 cursor-pointer"
-                  >
+                  <select value={data.country} onChange={e => handleCountryChange(e.target.value)}
+                    className="input appearance-none pe-8 cursor-pointer">
                     <option value="" disabled>{t.step1.countryPh}</option>
-                    {Object.entries(GROUPS).map(([groupKey, groupName]) => (
-                      <optgroup key={groupKey} label={groupName[lang]}>
-                        {(GROUP_CODES[groupKey] ?? []).map(code => {
-                          const c = COUNTRY_MAP[code]
-                          if (!c) return null
-                          return (
-                            <option key={code} value={code}>
-                              {c.flag} {c.name[lang]}
-                            </option>
-                          )
+                    {Object.entries(GROUPS).map(([gk, gn]) => (
+                      <optgroup key={gk} label={gn[lang]}>
+                        {(GROUP_CODES[gk] ?? []).map(code => {
+                          const c = COUNTRY_MAP[code]; if (!c) return null
+                          return <option key={code} value={code}>{c.flag} {c.name[lang]}</option>
                         })}
                       </optgroup>
                     ))}
@@ -531,41 +512,32 @@ export default function OnboardingPage() {
                     <span className="text-lg">{selectedEntry.flag}</span>
                     <span className="text-xs text-slate-500">{selectedEntry.name[lang]}</span>
                     <span className="ms-auto flex items-center gap-1 bg-amber-50 border border-amber-200 text-amber-700 text-xs font-bold px-3 py-1 rounded-full">
-                      {t.step1.currency.split('(')[0].trim()}:
-                      <span className="text-amber-600 font-extrabold">{data.currency}</span>
+                      {t.step1.currency.split('(')[0].trim()}: <span className="text-amber-600 font-extrabold">{data.currency}</span>
                     </span>
                   </div>
                 )}
               </Field>
 
-              {/* Business name */}
               <Field label={t.step1.name}>
-                <input
-                  value={data.businessName}
-                  onChange={e => set('businessName', e.target.value)}
-                  placeholder="Le Café de Paris"
-                  className="input"
-                />
+                <input value={data.businessName} onChange={e => set('businessName', e.target.value)}
+                  placeholder="Le Café de Paris" className="input" />
               </Field>
 
-              {/* Logo */}
               <Field label={t.step1.logo}>
                 <div className="flex gap-2">
-                  <input
-                    value={data.logoUrl.startsWith('data:') ? '' : data.logoUrl}
+                  <input value={data.logoUrl.startsWith('data:') ? '' : data.logoUrl}
                     onChange={e => set('logoUrl', e.target.value)}
-                    placeholder={t.step1.logoUrl}
-                    className="input flex-1"
-                  />
+                    placeholder={t.step1.logoUrl} className="input flex-1" />
                   <button type="button" onClick={() => fileRef.current?.click()}
                     className="flex items-center gap-1.5 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 rounded-xl text-sm font-medium text-slate-600 transition-colors shrink-0">
                     <Upload className="w-4 h-4" /> {t.step1.uploadBtn}
                   </button>
-                  <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+                  <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="hidden" onChange={handleFileChange} />
                 </div>
+                <p className="text-xs text-slate-400 mt-1">📐 الأبعاد المثلى: <strong>512 × 512 px</strong> · PNG شفاف · 2 MB max</p>
                 {data.logoUrl && (
                   <div className="mt-2 flex items-center gap-3">
-                    <img src={data.logoUrl} alt="logo preview" className="w-14 h-14 rounded-xl object-cover border border-slate-200 shadow-sm" />
+                    <img src={data.logoUrl} alt="logo" className="w-14 h-14 rounded-xl object-contain aspect-square border border-slate-200 shadow-sm bg-slate-50" />
                     <span className="text-xs text-slate-400">Preview ✓</span>
                   </div>
                 )}
@@ -573,8 +545,8 @@ export default function OnboardingPage() {
             </StepCard>
           )}
 
-          {/* ── Step 1: Pricing ──────────────────────────────────────── */}
-          {step === 1 && (
+          {/* ── Step 2: Pricing ────────────────────────────────── */}
+          {step === 2 && (
             <StepCard title={t.step2.title} sub={t.step2.sub}>
               <div className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 text-sm text-amber-700">
                 💡 {t.step2.hint}
@@ -582,54 +554,35 @@ export default function OnboardingPage() {
               <div className="grid grid-cols-2 gap-4">
                 <Field label={`☕ ${t.step2.coffee}`}>
                   <div className="relative">
-                    <input type="number" min="0" step="0.5"
-                      value={data.coffeeRefPrice}
-                      onChange={e => set('coffeeRefPrice', e.target.value)}
-                      placeholder={t.step2.coffeePlh}
-                      className="input" />
-                    <span className="absolute inset-y-0 end-3 flex items-center text-sm text-slate-400 pointer-events-none">
-                      {data.currency}
-                    </span>
+                    <input type="number" min="0" step="0.5" value={data.coffeeRefPrice}
+                      onChange={e => set('coffeeRefPrice', e.target.value)} placeholder={t.step2.coffeePlh} className="input" />
+                    <span className="absolute inset-y-0 end-3 flex items-center text-sm text-slate-400 pointer-events-none">{data.currency}</span>
                   </div>
                 </Field>
                 <Field label={`🥪 ${t.step2.sandwich}`}>
                   <div className="relative">
-                    <input type="number" min="0" step="0.5"
-                      value={data.sandwichRefPrice}
-                      onChange={e => set('sandwichRefPrice', e.target.value)}
-                      placeholder={t.step2.sandwichPlh}
-                      className="input" />
-                    <span className="absolute inset-y-0 end-3 flex items-center text-sm text-slate-400 pointer-events-none">
-                      {data.currency}
-                    </span>
+                    <input type="number" min="0" step="0.5" value={data.sandwichRefPrice}
+                      onChange={e => set('sandwichRefPrice', e.target.value)} placeholder={t.step2.sandwichPlh} className="input" />
+                    <span className="absolute inset-y-0 end-3 flex items-center text-sm text-slate-400 pointer-events-none">{data.currency}</span>
                   </div>
                 </Field>
               </div>
             </StepCard>
           )}
 
-          {/* ── Step 2: Structure ────────────────────────────────────── */}
-          {step === 2 && (
+          {/* ── Step 3: Structure ──────────────────────────────── */}
+          {step === 3 && (
             <StepCard title={t.step3.title} sub={t.step3.sub}>
               <p className="text-xs text-slate-400">{t.step3.zoneHint}</p>
               <div className="space-y-2">
                 {data.zones.map((zone, i) => (
                   <div key={i} className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-full bg-amber-100 text-amber-700 text-xs font-bold flex items-center justify-center shrink-0">
-                      {i + 1}
-                    </div>
-                    <input
-                      value={zone.name}
-                      onChange={e => updateZone(i, 'name', e.target.value)}
-                      placeholder={t.step3.zoneName}
-                      className="input flex-1"
-                    />
-                    <input
-                      type="number" min="1" max="50"
-                      value={zone.tableCount}
+                    <div className="w-6 h-6 rounded-full bg-amber-100 text-amber-700 text-xs font-bold flex items-center justify-center shrink-0">{i + 1}</div>
+                    <input value={zone.name} onChange={e => updateZone(i, 'name', e.target.value)}
+                      placeholder={t.step3.zoneName} className="input flex-1" />
+                    <input type="number" min="1" max="50" value={zone.tableCount}
                       onChange={e => updateZone(i, 'tableCount', Number(e.target.value))}
-                      className="input w-20 text-center"
-                    />
+                      className="input w-20 text-center" />
                     {data.zones.length > 1 && (
                       <button type="button" onClick={() => removeZone(i)}
                         className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
@@ -652,67 +605,42 @@ export default function OnboardingPage() {
             </StepCard>
           )}
 
-          {/* ── Step 3: Security ─────────────────────────────────────── */}
-          {step === 3 && (
+          {/* ── Step 4: Security ───────────────────────────────── */}
+          {step === 4 && (
             <StepCard title={t.step4.title} sub={t.step4.sub}>
               <Field label={`👤 ${t.step4.managerName}`}>
-                <input
-                  value={data.managerName}
-                  onChange={e => set('managerName', e.target.value)}
-                  placeholder="Ahmed / Marie / Carlos"
-                  className="input"
-                />
+                <input value={data.managerName} onChange={e => set('managerName', e.target.value)}
+                  placeholder="Ahmed / Marie / Carlos" className="input" />
               </Field>
-
               <Field label={`🔐 ${t.step4.pin}`}>
                 <div className="relative">
-                  <input
-                    type={showPin ? 'text' : 'password'}
-                    inputMode="numeric"
-                    maxLength={4}
-                    value={data.managerPin}
-                    onChange={e => set('managerPin', e.target.value.replace(/\D/g, '').slice(0, 4))}
-                    placeholder="••••"
-                    className="input text-center text-2xl tracking-[0.5em] font-bold"
-                  />
+                  <input type={showPin ? 'text' : 'password'} inputMode="numeric" maxLength={4}
+                    value={data.managerPin} onChange={e => set('managerPin', e.target.value.replace(/\D/g, '').slice(0,4))}
+                    placeholder="••••" className="input text-center text-2xl tracking-[0.5em] font-bold" />
                   <button type="button" onClick={() => setShowPin(p => !p)}
                     className="absolute inset-y-0 end-3 flex items-center text-slate-400 hover:text-slate-600">
                     {showPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
               </Field>
-
               <Field label={`🔐 ${t.step4.pinConfirm}`}>
-                <input
-                  type={showPin ? 'text' : 'password'}
-                  inputMode="numeric"
-                  maxLength={4}
-                  value={data.pinConfirm}
-                  onChange={e => set('pinConfirm', e.target.value.replace(/\D/g, '').slice(0, 4))}
-                  placeholder="••••"
-                  className="input text-center text-2xl tracking-[0.5em] font-bold"
-                />
+                <input type={showPin ? 'text' : 'password'} inputMode="numeric" maxLength={4}
+                  value={data.pinConfirm} onChange={e => set('pinConfirm', e.target.value.replace(/\D/g, '').slice(0,4))}
+                  placeholder="••••" className="input text-center text-2xl tracking-[0.5em] font-bold" />
               </Field>
-
-              {/* Summary card */}
               <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-2 text-sm">
                 <p className="font-semibold text-slate-700 mb-2">📋 Summary</p>
-                <div className="flex justify-between"><span className="text-slate-500">Cafe</span><span className="font-medium">{data.businessName}</span></div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Country</span>
-                  <span className="font-medium">{selectedEntry?.flag} {selectedEntry?.name.en}</span>
-                </div>
+                <div className="flex justify-between"><span className="text-slate-500">Type</span><span className="font-medium">{data.tier === 'CAFE' ? '☕ Cafe' : '🍽️ Restaurant'}</span></div>
+                <div className="flex justify-between"><span className="text-slate-500">Name</span><span className="font-medium">{data.businessName}</span></div>
+                <div className="flex justify-between"><span className="text-slate-500">Country</span><span className="font-medium">{selectedEntry?.flag} {selectedEntry?.name.en}</span></div>
                 <div className="flex justify-between"><span className="text-slate-500">Currency</span><span className="font-bold text-amber-600">{data.currency}</span></div>
-                <div className="flex justify-between"><span className="text-slate-500">Tables</span><span className="font-medium">{totalTables} tables / {data.zones.length} zones</span></div>
-                <div className="flex justify-between"><span className="text-slate-500">☕ Coffee ref</span><span className="font-medium">{data.coffeeRefPrice} {data.currency}</span></div>
+                <div className="flex justify-between"><span className="text-slate-500">Tables</span><span className="font-medium">{totalTables} / {data.zones.length} zones</span></div>
               </div>
             </StepCard>
           )}
 
           {stepErr && <p className="text-red-500 text-sm font-medium">{stepErr}</p>}
-          {error && (
-            <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-red-700 text-sm">{error}</div>
-          )}
+          {error && <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-red-700 text-sm">{error}</div>}
 
           {/* Navigation */}
           <div className={`flex items-center ${step > 0 ? 'justify-between' : 'justify-end'}`}>
@@ -723,7 +651,7 @@ export default function OnboardingPage() {
                 {t.back}
               </button>
             )}
-            {step < 3 ? (
+            {step < TOTAL_STEPS - 1 ? (
               <button type="button" onClick={handleNext}
                 className="flex items-center gap-2 px-6 py-2.5 bg-amber-500 hover:bg-amber-400 text-white rounded-xl font-bold transition-colors active:scale-95">
                 {t.next}
@@ -734,8 +662,7 @@ export default function OnboardingPage() {
                 className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 disabled:opacity-60 text-white rounded-xl font-bold text-base transition-all active:scale-95 shadow-lg shadow-amber-500/30">
                 {saving
                   ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />{t.launching}</>
-                  : <><Rocket className="w-5 h-5" /> {t.launch}</>
-                }
+                  : <><Rocket className="w-5 h-5" /> {t.launch}</>}
               </button>
             )}
           </div>
@@ -743,20 +670,8 @@ export default function OnboardingPage() {
       </div>
 
       <style jsx global>{`
-        .input {
-          width: 100%;
-          padding: 0.625rem 0.875rem;
-          border: 1px solid #e2e8f0;
-          border-radius: 0.75rem;
-          font-size: 0.875rem;
-          outline: none;
-          background: white;
-          transition: box-shadow 0.15s;
-        }
-        .input:focus {
-          box-shadow: 0 0 0 2px rgba(245,158,11,0.4);
-          border-color: #f59e0b;
-        }
+        .input { width: 100%; padding: 0.625rem 0.875rem; border: 1px solid #e2e8f0; border-radius: 0.75rem; font-size: 0.875rem; outline: none; background: white; transition: box-shadow 0.15s; }
+        .input:focus { box-shadow: 0 0 0 2px rgba(245,158,11,0.4); border-color: #f59e0b; }
       `}</style>
     </div>
   )
@@ -765,15 +680,11 @@ export default function OnboardingPage() {
 function StepCard({ title, sub, children }: { title: string; sub: string; children: React.ReactNode }) {
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className="text-xl font-extrabold text-slate-800">{title}</h2>
-        <p className="text-sm text-slate-500 mt-0.5">{sub}</p>
-      </div>
+      <div><h2 className="text-xl font-extrabold text-slate-800">{title}</h2><p className="text-sm text-slate-500 mt-0.5">{sub}</p></div>
       {children}
     </div>
   )
 }
-
 function Field({ label, children }: { label: React.ReactNode; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">

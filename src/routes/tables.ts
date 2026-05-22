@@ -56,6 +56,50 @@ router.get('/api/tables', authorizeAdmin, async (req: Request, res: Response) =>
   }
 })
 
+// ─── PATCH /api/admin/tables/:id/activate — manager activates / deactivates ──
+//
+// Body: { activate: boolean }
+// Requires admin token. A table with open orders cannot be deactivated.
+
+router.patch('/api/admin/tables/:id/activate', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const cafeId  = req.admin!.cafeId
+    const tableId = String(req.params.id)
+    const { activate } = req.body as { activate: boolean }
+
+    if (typeof activate !== 'boolean') {
+      return res.status(400).json({ error: 'activate (boolean) is required' })
+    }
+
+    const table = await prisma.table.findUnique({ where: { id: tableId } })
+    if (!table || table.cafeId !== cafeId) {
+      return res.status(404).json({ error: 'Table not found' })
+    }
+
+    // Prevent deactivating a table that has open orders
+    if (!activate) {
+      const openOrders = await prisma.order.count({
+        where: { tableId, billStatus: { in: ['OPENED', 'BILL_REQUESTED'] } }
+      })
+      if (openOrders > 0) {
+        return res.status(409).json({ error: 'Cannot deactivate a table with open orders' })
+      }
+    }
+
+    const updated = await prisma.table.update({
+      where: { id: tableId },
+      data:  { isActive: activate },
+      select: { id: true, tableNumber: true, isActive: true }
+    })
+
+    logger.info({ msg: activate ? 'table activated' : 'table deactivated', cafeId, tableId })
+    return res.json(updated)
+  } catch (err) {
+    logger.error({ msg: 'PATCH /api/admin/tables/:id/activate error', err })
+    return res.status(500).json({ error: 'Failed to update table status' })
+  }
+})
+
 // ─── POST /api/tables/generate — bulk create tables + seats ──────────────────
 
 router.post('/api/tables/generate', authorizeAdmin, async (req: Request, res: Response) => {

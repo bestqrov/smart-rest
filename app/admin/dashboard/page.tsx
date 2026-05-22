@@ -6,7 +6,7 @@ import { io, Socket } from 'socket.io-client'
 import {
   TrendingUp, ShoppingBag, Users, Clock,
   Bell, CheckCheck, Wallet, AlertTriangle, Loader2,
-  ChefHat, Heart, Activity
+  ChefHat, Heart, Activity, UserPlus
 } from 'lucide-react'
 
 type WaiterCall = { id: number; tableId: number; type: string; message?: string; createdAt: string }
@@ -16,6 +16,7 @@ export default function DashboardPage() {
   const [billing, setBilling] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [calls, setCalls]     = useState<WaiterCall[]>([])
+  const [staffCount, setStaffCount] = useState<number | null>(null)
   const socketRef = useRef<Socket | null>(null)
 
   function authHeader() {
@@ -24,10 +25,13 @@ export default function DashboardPage() {
 
   useEffect(() => {
     Promise.all([
-      fetch('/api/admin/stats',         { headers: authHeader() }).then(r => r.ok ? r.json() : null),
-      fetch('/api/finance/status',      { headers: authHeader() }).then(r => r.ok ? r.json() : null),
-    ]).then(([s, b]) => {
-      setStats(s); setBilling(b); setLoading(false)
+      fetch('/api/admin/stats',    { headers: authHeader() }).then(r => r.ok ? r.json() : null),
+      fetch('/api/finance/status', { headers: authHeader() }).then(r => r.ok ? r.json() : null),
+      fetch('/api/admin/staff',    { headers: authHeader() }).then(r => r.ok ? r.json() : null),
+    ]).then(([s, b, st]) => {
+      setStats(s); setBilling(b)
+      setStaffCount(st?.waiters?.length ?? 0)
+      setLoading(false)
     })
 
     const token   = localStorage.getItem('token')
@@ -62,6 +66,30 @@ export default function DashboardPage() {
 
   return (
     <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6" dir="rtl">
+
+      {/* ── System Health: zero-staff alert ──────────────────────── */}
+      {staffCount === 0 && (
+        <div className="bg-red-50 border-2 border-red-300 rounded-2xl p-4 flex items-start gap-3 animate-pulse-slow">
+          <Bell className="w-6 h-6 text-red-500 shrink-0 mt-0.5 animate-[bell-ring_1s_ease-in-out_infinite]" style={{
+            animation: 'ring 0.8s ease-in-out infinite alternate'
+          }} />
+          <div className="flex-1">
+            <p className="font-extrabold text-red-800 text-base">
+              🔴 تنبيه إعداد النظام — Alerte configuration système
+            </p>
+            <div className="mt-1 space-y-0.5 text-sm text-red-700">
+              <p>🇸🇦 <strong>المرجو إضافة نادل أو موظف</strong> لتفعيل النظام والبدء في استقبال الطلبات ميدانياً.</p>
+              <p>🇫🇷 <strong>Veuillez ajouter un serveur ou un employé</strong> pour activer le système et commencer à recevoir des commandes.</p>
+              <p>🇬🇧 <strong>Please add a waiter or staff member</strong> to activate the system and start receiving orders in the field.</p>
+              <p>🇪🇸 <strong>Por favor, añade un camarero o empleado</strong> para activar el sistema y comenzar a recibir pedidos.</p>
+            </div>
+            <a href="/admin/staff"
+              className="mt-3 inline-flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white text-sm font-bold px-4 py-2 rounded-xl transition-colors">
+              <Users className="w-4 h-4" /> إضافة موظف الآن / Add Staff Now
+            </a>
+          </div>
+        </div>
+      )}
 
       {/* ── Billing alert banner ──────────────────────────────────── */}
       {billing?.billingStatus === 'SUSPENDED' && (
