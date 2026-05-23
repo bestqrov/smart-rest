@@ -56,6 +56,30 @@ export function registerSocketHandlers(io: SocketIOServer) {
       }
     })
 
+    // ── join_menu_room — customer device joins cafe-wide menu broadcast room ─
+    // Used to receive live price_updated events without exposing admin rooms.
+    socket.on('join_menu_room', async (payload: { cafeId: string; tableToken: string }) => {
+      try {
+        const { cafeId, tableToken } = payload
+        if (!cafeId || !tableToken) return
+
+        const table = await prisma.table.findFirst({
+          where: { qrToken: tableToken, cafeId, isActive: true },
+          select: { id: true }
+        })
+        if (!table) {
+          socket.emit('error', { message: 'Invalid table token for menu room' })
+          return
+        }
+
+        const room = `menu_room_${cafeId}`
+        socket.join(room)
+        logger.debug({ msg: 'Customer joined menu room', room, socketId: socket.id })
+      } catch (err) {
+        logger.error({ msg: 'join_menu_room error', err, payload })
+      }
+    })
+
     // ── join_table_room — customer device joins their seat room ─────────────
     socket.on('join_table_room', async (payload: { cafeId: string; tableId: string; seatToken: string }) => {
       try {

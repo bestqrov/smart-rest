@@ -54,6 +54,14 @@ type WaiterNotification {
   isActive Boolean         @default(false)
 }
 
+// Embedded document — Smart WiFi config per cafe (premium feature)
+type SmartWifi {
+  enabled        Boolean @default(false)
+  ssid           String  @default("")
+  password       String  @default("")
+  showAfterOrder Boolean @default(true)
+}
+
 enum BillingStatus {
   GRACE_PERIOD
   COLLECTING_DEBT
@@ -107,6 +115,17 @@ model Cafe {
   hasSocialShareAddon Boolean       @default(false)
   // 'CAFE' = simple cafe (drinks + light snacks), 'RESTAURANT' = full meals + kitchen
   tier                String        @default("CAFE")
+  // Smart WiFi — optional embedded config (null = feature not configured)
+  smartWifi           SmartWifi?
+
+  // ── Per-restaurant feature flags (toggled by superadmin) ──────────────────
+  smartWifiEnabled  Boolean @default(false)
+  cashierPosEnabled Boolean @default(true)
+  orderingEnabled   Boolean @default(true)
+
+  // ── Supplier-finder quota (resets monthly, Premium plan only) ─────────────
+  supplierSearchesUsed Int       @default(0)
+  lastCreditReset      DateTime?
 
   // ── Smart subscription (set after trial analysis) ─────────────────────────
   subscriptionTier  String?   // 'ECONOMY' | 'ADVANCED'
@@ -476,6 +495,29 @@ model WaiterShift {
   @@index([cafeId])
   @@index([staffId])
   @@index([clockIn])
+}
+
+// ─── Sales Leads CRM (populated by the Superadmin Lead Scraper) ──────────────
+
+model Lead {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  businessName String
+  city         String
+  country      String
+  phone        String
+  email        String   @default("")
+  rating       Float    @default(0)
+  // New | Contacted | Interested | Registered
+  status       String   @default("New")
+  platform     String   // google | facebook | instagram
+  notes        String   @default("")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([status])
+  @@index([city])
+  @@index([platform])
+  @@index([createdAt])
 }
 
 // ─── Payment Requests (Superadmin Payment Gateway) ────────────────────────────

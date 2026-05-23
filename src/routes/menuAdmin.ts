@@ -138,6 +138,16 @@ router.put('/api/admin/products/:id', authorizeAdmin, async (req: Request, res: 
         ...(isAvailable !== undefined && { isAvailable })
       }
     })
+
+    // Broadcast live price change to POS and all QR menu customers of this cafe
+    if (price !== undefined) {
+      const io = req.app.get('io')
+      const pricePayload = { productId: id, price: product.price, cafeId }
+      io.to(`room_${cafeId}`).emit('price_updated', pricePayload)
+      io.to(`menu_room_${cafeId}`).emit('price_updated', pricePayload)
+      logger.info({ msg: 'price_updated broadcast', productId: id, price: product.price, cafeId })
+    }
+
     return res.json(product)
   } catch (err) {
     return res.status(500).json({ error: 'Failed' })
@@ -460,6 +470,50 @@ router.post('/api/admin/onboarding', authorizeAdmin, async (req: Request, res: R
   } catch (err) {
     logger.error({ msg: 'POST /api/admin/onboarding error', err })
     return res.status(500).json({ error: 'Onboarding failed' })
+  }
+})
+
+// ─── Smart WiFi settings ──────────────────────────────────────────────────────
+
+router.get('/api/admin/cafe/wifi', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const cafeId = req.admin!.cafeId
+    const cafe = await prisma.cafe.findUnique({
+      where: { id: cafeId },
+      select: { smartWifi: true }
+    })
+    return res.json(cafe?.smartWifi ?? { enabled: false, ssid: '', password: '', showAfterOrder: true })
+  } catch (err) {
+    logger.error({ msg: 'GET /api/admin/cafe/wifi error', err })
+    return res.status(500).json({ error: 'Failed' })
+  }
+})
+
+router.put('/api/admin/cafe/wifi', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const cafeId = req.admin!.cafeId
+    const { enabled, ssid, password, showAfterOrder } = req.body as {
+      enabled?: boolean; ssid?: string; password?: string; showAfterOrder?: boolean
+    }
+
+    // Never store credentials with leading/trailing whitespace
+    const cafe = await prisma.cafe.update({
+      where: { id: cafeId },
+      data: {
+        smartWifi: {
+          enabled:        enabled        ?? false,
+          ssid:           (ssid          ?? '').trim(),
+          password:       (password      ?? '').trim(),
+          showAfterOrder: showAfterOrder ?? true
+        }
+      },
+      select: { smartWifi: true }
+    })
+    logger.info({ msg: 'smartWifi updated', cafeId, enabled })
+    return res.json(cafe.smartWifi)
+  } catch (err) {
+    logger.error({ msg: 'PUT /api/admin/cafe/wifi error', err })
+    return res.status(500).json({ error: 'Failed' })
   }
 })
 

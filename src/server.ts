@@ -38,8 +38,10 @@ import publicCafeRouter from './routes/publicCafe'
 import adminExpensesRouter from './routes/adminExpenses'
 import adminPayrollRouter from './routes/adminPayroll'
 import menuGenerationRouter from './routes/menuGeneration'
+import suppliersRouter from './routes/suppliers'
 import { registerSocketHandlers } from './socket/handlers'
 import { startWeeklyBillingCron } from './cron/weeklyBilling'
+import { initChangeStreams, closeChangeStreams } from './services/changeStreams'
 
 async function main() {
   if (process.env.DEMO_SEED === 'true') {
@@ -112,6 +114,7 @@ async function main() {
   app.use(adminExpensesRouter)
   app.use(adminPayrollRouter)
   app.use(menuGenerationRouter)
+  app.use(suppliersRouter)
 
   // health
   app.get('/health', (req, res) => res.json({ ok: true }))
@@ -140,6 +143,19 @@ async function main() {
   httpServer.listen(port, '0.0.0.0', () => {
     logger.info({ msg: 'Server started', port, host: '0.0.0.0' })
     console.log(`Server listening on http://0.0.0.0:${port}`)
+    // Start change streams after server is listening
+    initChangeStreams(io).catch((err) => {
+      logger.warn({ msg: 'initChangeStreams failed at boot', err: err?.message })
+    })
+  })
+
+  process.on('SIGTERM', async () => {
+    await closeChangeStreams()
+    process.exit(0)
+  })
+  process.on('SIGINT', async () => {
+    await closeChangeStreams()
+    process.exit(0)
   })
 }
 

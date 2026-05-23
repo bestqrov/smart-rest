@@ -4,9 +4,11 @@ import React, { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Phone, ShoppingCart, X, Plus, Minus, Bell } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
+import { io as socketIO } from 'socket.io-client'
 import useTranslation from '../../../src/hooks/useTranslation'
 import LanguageSwitcher from './LanguageSwitcher'
 import ReviewPrompt from './ReviewPrompt'
+import SmartWifiCard from './SmartWifiCard'
 import ErrorBoundary from '../../../src/components/ErrorBoundary'
 import NProgressProvider from '../../../src/components/NProgressProvider'
 
@@ -73,6 +75,9 @@ function MenuContent({ params }: { params: { subdomain: string } }) {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [orderSent, setOrderSent] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [wifiData, setWifiData] = useState<{ ssid: string; password: string } | null>(null)
+  // Set of productIds whose price just changed — used to flash the price tag
+  const [flashedPrices, setFlashedPrices] = useState<Set<string>>(new Set())
 
   const sectionRefs = useRef<Record<number, HTMLElement | null>>({})
 
@@ -125,6 +130,59 @@ function MenuContent({ params }: { params: { subdomain: string } }) {
     )
   }, [params.subdomain, tableToken])
 
+  // Live price sync — join menu_room after menu data is available
+  useEffect(() => {
+    if (!menuData) return
+
+    const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || window.location.origin
+    const socket = socketIO(SOCKET_URL, { transports: ['polling', 'websocket'] })
+
+    socket.on('connect', () => {
+      socket.emit('join_menu_room', {
+        cafeId: String(menuData.cafeId),
+        tableToken
+      })
+    })
+
+    socket.on('price_updated', ({ productId, price }: { productId: string; price: number }) => {
+      // Update live price in menu state
+      setMenuData(prev => {
+        if (!prev) return prev
+        return {
+          ...prev,
+          categories: prev.categories.map(cat => ({
+            ...cat,
+            products: cat.products.map(p =>
+              String(p.id) === productId ? { ...p, price } : p
+            )
+          }))
+        }
+      })
+      // Sync price in cart so totals stay correct
+      setCart(prev => {
+        const numId = Number(productId)
+        const item = prev[numId]
+        if (!item) return prev
+        return { ...prev, [numId]: { ...item, product: { ...item.product, price } } }
+      })
+      // Flash the updated price badge for 2 s
+      setFlashedPrices(prev => {
+        const next = new Set(prev)
+        next.add(productId)
+        return next
+      })
+      setTimeout(() => {
+        setFlashedPrices(prev => {
+          const next = new Set(prev)
+          next.delete(productId)
+          return next
+        })
+      }, 2000)
+    })
+
+    return () => { socket.disconnect() }
+  }, [menuData?.cafeId, tableToken]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const itemsArray = useMemo(() => Object.values(cart), [cart])
   const totalQty = itemsArray.reduce((s, it) => s + it.qty, 0)
   const totalPrice = itemsArray.reduce((s, it) => s + it.qty * it.product.price, 0)
@@ -174,6 +232,17 @@ function MenuContent({ params }: { params: { subdomain: string } }) {
       setOrderSent(true)
       setCart({})
       setDrawerOpen(false)
+
+      // After order confirmed, try to fetch Smart WiFi credentials
+      try {
+        const wifiRes = await fetch(`/api/menu/wifi?tableToken=${encodeURIComponent(tableToken)}`)
+        if (wifiRes.ok) {
+          const wifi = await wifiRes.json()
+          if (wifi.ssid) setWifiData(wifi)
+        }
+      } catch {
+        // WiFi feature unavailable — silently ignore
+      }
     } catch {
       alert('خطأ في الشبكة. يرجى المحاولة مجدداً.')
     } finally {
@@ -301,7 +370,9 @@ function MenuContent({ params }: { params: { subdomain: string } }) {
                       )}
                     </div>
                     <div className="mt-3 flex items-center justify-between">
-                      <div className="text-base font-semibold">{Number(p.price).toFixed(2)} MAD</div>
+                      <div className={`text-base font-semibold transition-colors duration-500 ${flashedPrices.has(String(p.id)) ? 'text-emerald-600 scale-110' : ''}`}>
+                        {Number(p.price).toFixed(2)} MAD
+                      </div>
                       {cart[p.id] ? (
                         <div className="flex items-center gap-1">
                           <button
@@ -423,7 +494,7 @@ function MenuContent({ params }: { params: { subdomain: string } }) {
           )}
         </AnimatePresence>
 
-        {/* Review prompt after successful order */}
+        {/* Review prompt + Smart WiFi card after successful order */}
         <AnimatePresence>
           {orderSent && (
             <motion.div
@@ -432,7 +503,14 @@ function MenuContent({ params }: { params: { subdomain: string } }) {
               exit={{ opacity: 0 }}
               className="fixed inset-0 z-50 flex items-end justify-center pointer-events-none"
             >
-              <div className="pointer-events-auto w-full max-w-md p-4">
+              <div className="pointer-events-auto w-full max-w-md p-4 space-y-3">
+                {wifiData && (
+                  <SmartWifiCard
+                    ssid={wifiData.ssid}
+                    password={wifiData.password}
+                    onClose={() => setWifiData(null)}
+                  />
+                )}
                 <ReviewPrompt
                   cafeName={cafe.name}
                   socialLinks={{}}

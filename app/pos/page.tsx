@@ -181,18 +181,23 @@ export default function POSPage() {
   // socket
   const socketRef = useRef<Socket | null>(null)
 
+  // price update banner — shown when admin changes a product price
+  const [priceUpdateBanner, setPriceUpdateBanner] = useState(false)
+
   // ── sync muted ref ──────────────────────────────────────────────────────────
   useEffect(() => { mutedRef.current = muted }, [muted])
 
-  // ── boot: read stored posToken ─────────────────────────────────────────────
+  // ── boot: read stored posToken — redirect WAITER to their dedicated screen ──
   useEffect(() => {
     const t = localStorage.getItem('posToken')
     if (!t) return
     try {
       const p = JSON.parse(atob(t.split('.')[1]))
+      if (p.staffRole === 'WAITER') { window.location.href = '/waiter'; return }
+      const savedName = localStorage.getItem('staffName') ?? ''
       setPosToken(t)
       setCafeId(p.cafeId)
-      setStaff({ id: p.staffId, name: '', role: p.staffRole })
+      setStaff({ id: p.staffId, name: savedName, role: p.staffRole })
     } catch {
       localStorage.removeItem('posToken')
     }
@@ -235,10 +240,13 @@ export default function POSPage() {
       localStorage.setItem('posToken',         data.token)
       localStorage.setItem('cafeId',           payload.cafeId)
       localStorage.setItem('posLastSubdomain', subdomainInput.trim())
+      localStorage.setItem('staffName',        data.staff?.name ?? '')
+      setPinInput('')
+      // Route each role to its dedicated screen
+      if (data.staff?.role === 'WAITER') { window.location.href = '/waiter'; return }
       setPosToken(data.token)
       setCafeId(payload.cafeId)
       setStaff(data.staff)
-      setPinInput('')
     } catch {
       setLoginErr('Network error')
     } finally {
@@ -308,6 +316,12 @@ export default function POSPage() {
     socketRef.current = socket
 
     socket.on('connect', () => socket.emit('join', `room_${cafeId}`))
+
+    // Admin updated a product price — surface a dismissible banner so cashier
+    // knows the menu changed (relevant for manual POS order quoting).
+    socket.on('price_updated', () => {
+      setPriceUpdateBanner(true)
+    })
 
     socket.on('bill_requested', (payload: { id: string; tableId: string; tableNumber: number; createdAt: string }) => {
       // Update table status in-place + add to alertIds
@@ -412,7 +426,12 @@ export default function POSPage() {
               <div className="w-16 h-16 rounded-2xl bg-amber-500 flex items-center justify-center mb-3 text-3xl shadow">☕</div>
             )}
             <h1 className="text-xl font-extrabold text-gray-900">{cafeName}</h1>
-            <p className="text-sm text-gray-400 mt-0.5">Mini POS — Staff Login</p>
+            <p className="text-sm text-gray-400 mt-0.5">Smart Resto — Staff Login</p>
+            <div className="flex gap-2 mt-2">
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">CASHIER</span>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-100 text-sky-700">WAITER</span>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-100 text-violet-700">SUPERVISOR</span>
+            </div>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-4">
@@ -481,12 +500,24 @@ export default function POSPage() {
     <div className="min-h-screen bg-gray-950 text-white" dir="ltr">
 
       {/* ── Header ── */}
-      <header className="bg-gray-900 border-b border-gray-800 px-4 py-3 flex items-center justify-between sticky top-0 z-20">
+      <header className={`border-b px-4 py-3 flex items-center justify-between sticky top-0 z-20 ${
+        staff?.role === 'SUPERVISOR'
+          ? 'bg-violet-950 border-violet-800'
+          : 'bg-gray-900 border-gray-800'
+      }`}>
         <div className="flex items-center gap-3">
-          <Image src="/assets/logo.png" alt="Smart Menu" width={32} height={32} className="rounded-lg" />
+          <Image src="/assets/logo.png" alt="Smart Resto" width={32} height={32} className="rounded-lg" />
           <div>
-            <p className="font-extrabold text-white leading-none text-sm">Mini POS</p>
-            {staff && <p className="text-xs text-gray-400">{staff.name || staff.role}</p>}
+            <div className="flex items-center gap-2">
+              <p className="font-extrabold text-white leading-none text-sm">Mini POS</p>
+              {staff?.role === 'SUPERVISOR' && (
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-violet-500 text-white">SUPERVISOR</span>
+              )}
+              {staff?.role === 'CASHIER' && (
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500 text-white">CASHIER</span>
+              )}
+            </div>
+            {staff && <p className="text-xs text-gray-400 mt-0.5">{staff.name || staff.role}</p>}
           </div>
         </div>
 
@@ -513,6 +544,19 @@ export default function POSPage() {
           </button>
         </div>
       </header>
+
+      {/* ── Price-update banner ── */}
+      {priceUpdateBanner && (
+        <div className="flex items-center justify-between bg-amber-500/20 border-b border-amber-500/30 px-4 py-2 text-xs text-amber-300">
+          <span>⚠️ Menu prices updated by admin — manual orders may need repricing.</span>
+          <button
+            onClick={() => setPriceUpdateBanner(false)}
+            className="ml-4 text-amber-400 hover:text-white font-bold"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* ── Legend ── */}
       <div className="flex items-center gap-3 px-4 pt-3 pb-1 text-xs flex-wrap">

@@ -1,7 +1,9 @@
 import express, { Request, Response, NextFunction } from 'express'
+import jwt from 'jsonwebtoken'
 
 import logger from '../logger'
 import prisma from '../prisma'
+import { JWT_SECRET } from '../config'
 import {
   applySmartSubscription,
   computeSmartSubscription,
@@ -473,6 +475,90 @@ router.get('/api/superadmin/webhooks/expiring-tomorrow', requireSuperAdmin, asyn
     })
   } catch (err) {
     logger.error({ msg: 'expiring-tomorrow webhook error', err })
+    return res.status(500).json({ error: 'Failed' })
+  }
+})
+
+// ─── PATCH /api/superadmin/tenants/:id/features ───────────────────────────────
+// Toggle feature flags per restaurant instantly.
+
+router.patch('/api/superadmin/tenants/:id/features', requireSuperAdmin, async (req: Request, res: Response) => {
+  try {
+    const id = req.params['id'] as string
+    const { smartWifiEnabled, cashierPosEnabled, orderingEnabled } = req.body as {
+      smartWifiEnabled?:  boolean
+      cashierPosEnabled?: boolean
+      orderingEnabled?:   boolean
+    }
+
+    const data: Record<string, boolean> = {}
+    if (smartWifiEnabled  != null) data['smartWifiEnabled']  = Boolean(smartWifiEnabled)
+    if (cashierPosEnabled != null) data['cashierPosEnabled'] = Boolean(cashierPosEnabled)
+    if (orderingEnabled   != null) data['orderingEnabled']   = Boolean(orderingEnabled)
+
+    if (Object.keys(data).length === 0) {
+      return res.status(400).json({ error: 'No feature flags provided' })
+    }
+
+    const updated = await prisma.cafe.update({
+      where:  { id },
+      data,
+      select: {
+        id: true, businessName: true,
+        smartWifiEnabled: true, cashierPosEnabled: true, orderingEnabled: true
+      }
+    })
+
+    logger.info({ msg: 'Feature flags updated', cafeId: id, flags: data })
+    return res.json({ ok: true, cafe: updated })
+  } catch (err) {
+    logger.error({ msg: 'PATCH features error', err })
+    return res.status(500).json({ error: 'Failed' })
+  }
+})
+
+// ─── POST /api/superadmin/tenants/:id/impersonate ─────────────────────────────
+// Generate a short-lived 1h JWT allowing the superadmin to log in as any
+// restaurant admin. The token is flagged with `impersonated: true` so audit
+// logs can identify impersonation sessions.
+
+router.post('/api/superadmin/tenants/:id/impersonate', requireSuperAdmin, async (req: Request, res: Response) => {
+  try {
+    const id = req.params['id'] as string
+
+    const cafe = await prisma.cafe.findUnique({
+      where:  { id },
+      select: { id: true, businessName: true, subdomain: true }
+    })
+    if (!cafe) return res.status(404).json({ error: 'Cafe not found' })
+
+    // Find the owner/admin user for this cafe
+    const adminUser = await prisma.user.findFirst({
+      where:  { cafeId: id },
+      select: { id: true }
+    })
+    if (!adminUser) return res.status(404).json({ error: 'No admin user found for this cafe' })
+
+    const token = jwt.sign(
+      {
+        userId:       adminUser.id,
+        cafeId:       id,
+        subdomain:    cafe.subdomain,
+        impersonated: true,
+      },
+      JWT_SECRET,
+      { expiresIn: '1h' }
+    )
+
+    logger.warn({
+      msg:         'Superadmin impersonation token issued',
+      cafeId:      id,
+      businessName: cafe.businessName,
+    })
+
+    return res.json({ token, expiresIn: '1h', cafe: { id, businessName: cafe.businessName, subdomain: cafe.subdomain } })
+  } catch (err) {
+    logger.error({ msg: 'POST impersonate error', err })
     return res.status(500).json({ error: 'Failed' })
   }
 })
