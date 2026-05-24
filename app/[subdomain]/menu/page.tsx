@@ -76,6 +76,10 @@ function MenuContent({ params }: { params: { subdomain: string } }) {
   const [orderSent, setOrderSent] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [wifiData, setWifiData] = useState<{ ssid: string; password: string } | null>(null)
+  const [resOpen, setResOpen]   = useState(false)
+  const [resSent, setResSent]   = useState(false)
+  const [resForm, setResForm]   = useState({ name: '', phone: '', guests: 2, date: '', notes: '' })
+  const [resSending, setResSending] = useState(false)
   // Set of productIds whose price just changed — used to flash the price tag
   const [flashedPrices, setFlashedPrices] = useState<Set<string>>(new Set())
 
@@ -247,6 +251,30 @@ function MenuContent({ params }: { params: { subdomain: string } }) {
       alert('خطأ في الشبكة. يرجى المحاولة مجدداً.')
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  async function sendReservation() {
+    if (!tableToken || !resForm.name || !resForm.phone || !resForm.date) return
+    setResSending(true)
+    try {
+      const res = await fetch('/api/reservations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...resForm, tableToken })
+      })
+      if (res.ok) {
+        setResSent(true)
+        setResForm({ name: '', phone: '', guests: 2, date: '', notes: '' })
+        setTimeout(() => { setResOpen(false); setResSent(false) }, 2500)
+      } else {
+        const d = await res.json()
+        alert(d.error || 'فشل إرسال الحجز')
+      }
+    } catch {
+      alert('خطأ في الشبكة')
+    } finally {
+      setResSending(false)
     }
   }
 
@@ -490,6 +518,112 @@ function MenuContent({ params }: { params: { subdomain: string } }) {
                   </button>
                 </div>
               </motion.aside>
+            </>
+          )}
+        </AnimatePresence>
+
+        {/* Floating reservation button */}
+        {!orderSent && totalQty === 0 && (
+          <button
+            onClick={() => setResOpen(true)}
+            className="fixed bottom-4 right-4 z-30 flex items-center gap-2 bg-violet-600 hover:bg-violet-500 active:scale-95 text-white font-semibold text-sm px-4 py-2.5 rounded-full shadow-xl transition-all"
+          >
+            📅 حجز طاولة
+          </button>
+        )}
+
+        {/* Reservation modal */}
+        <AnimatePresence>
+          {resOpen && (
+            <>
+              <motion.div
+                className="fixed inset-0 bg-black/50 z-50"
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                onClick={() => setResOpen(false)}
+              />
+              <motion.div
+                className="fixed inset-x-0 bottom-0 z-50 bg-white rounded-t-2xl shadow-2xl p-5 space-y-4 max-h-[90vh] overflow-y-auto"
+                initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+                transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+              >
+                {resSent ? (
+                  <div className="text-center py-8 space-y-3">
+                    <p className="text-5xl">✅</p>
+                    <p className="font-bold text-lg text-gray-800">تم إرسال الحجز!</p>
+                    <p className="text-sm text-gray-500">سيتواصل معك المطعم للتأكيد</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-bold text-lg text-gray-900">📅 حجز طاولة</h3>
+                      <button onClick={() => setResOpen(false)} className="text-gray-400 hover:text-gray-700 text-xl leading-none">✕</button>
+                    </div>
+
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-xs font-semibold text-gray-600 block mb-1">الاسم *</label>
+                        <input
+                          type="text" placeholder="اسمك الكامل"
+                          value={resForm.name}
+                          onChange={e => setResForm(f => ({ ...f, name: e.target.value }))}
+                          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-violet-400"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-gray-600 block mb-1">رقم الهاتف *</label>
+                        <input
+                          type="tel" placeholder="06XXXXXXXX"
+                          value={resForm.phone}
+                          onChange={e => setResForm(f => ({ ...f, phone: e.target.value }))}
+                          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-violet-400"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-xs font-semibold text-gray-600 block mb-1">عدد الأشخاص *</label>
+                          <select
+                            value={resForm.guests}
+                            onChange={e => setResForm(f => ({ ...f, guests: Number(e.target.value) }))}
+                            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-violet-400"
+                          >
+                            {[1,2,3,4,5,6,7,8,10,12,15,20].map(n => (
+                              <option key={n} value={n}>{n} {n === 1 ? 'شخص' : 'أشخاص'}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-xs font-semibold text-gray-600 block mb-1">التاريخ والوقت *</label>
+                          <input
+                            type="datetime-local"
+                            min={new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16)}
+                            value={resForm.date}
+                            onChange={e => setResForm(f => ({ ...f, date: e.target.value }))}
+                            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-violet-400"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-gray-600 block mb-1">ملاحظات (اختياري)</label>
+                        <textarea
+                          placeholder="حساسية غذائية، مناسبة خاصة..."
+                          value={resForm.notes}
+                          onChange={e => setResForm(f => ({ ...f, notes: e.target.value }))}
+                          rows={2}
+                          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-violet-400 resize-none"
+                        />
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={sendReservation}
+                      disabled={resSending || !resForm.name || !resForm.phone || !resForm.date}
+                      className="w-full bg-violet-600 hover:bg-violet-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 rounded-xl transition-all active:scale-95"
+                    >
+                      {resSending ? 'جاري الإرسال…' : 'تأكيد الحجز'}
+                    </button>
+                  </>
+                )}
+              </motion.div>
             </>
           )}
         </AnimatePresence>

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { io as socketIO, Socket } from 'socket.io-client'
-import { Bell, BellOff, ChefHat, CheckCircle2, Clock, AlertTriangle, CheckCheck, XCircle } from 'lucide-react'
+import { Bell, BellOff, ChefHat, CheckCircle2, Clock, AlertTriangle, CheckCheck, XCircle, CalendarClock, Users, Phone, Check, X } from 'lucide-react'
 
 type Lang = 'ar' | 'en' | 'fr' | 'es'
 
@@ -14,12 +14,17 @@ const T = {
     sub: 'Real-time order queue',
     newOrders: 'NEW',
     cooking: 'COOKING',
+    reservations: 'BOOKINGS',
     noNew: 'No pending orders',
     noCooking: 'Nothing cooking yet',
+    noReservations: 'No pending reservations',
     accept: 'Start',
     ready: 'Done',
+    resAccept: 'Accept',
+    resCancel: 'Cancel',
     urgent: 'URGENT',
     seat: 'Seat',
+    guests: 'guests',
     justNow: 'Now',
     minAgo: (m: number) => `${m}m`,
     mute: 'Mute',
@@ -33,12 +38,17 @@ const T = {
     sub: 'قائمة الطلبات اللحظية',
     newOrders: 'جديد',
     cooking: 'تحضير',
+    reservations: 'حجوزات',
     noNew: 'لا يوجد طلبات معلقة',
     noCooking: 'لا يوجد طلبات قيد التحضير',
+    noReservations: 'لا يوجد حجوزات معلقة',
     accept: 'بدء',
     ready: 'جاهز',
+    resAccept: 'قبول',
+    resCancel: 'رفض',
     urgent: 'عاجل',
     seat: 'مقعد',
+    guests: 'أشخاص',
     justNow: 'الآن',
     minAgo: (m: number) => `${m}د`,
     mute: 'كتم',
@@ -52,12 +62,17 @@ const T = {
     sub: "File d'attente",
     newOrders: 'NOUV.',
     cooking: 'EN COURS',
+    reservations: 'RÉSERV.',
     noNew: 'Aucune commande en attente',
     noCooking: 'Rien en préparation',
+    noReservations: 'Aucune réservation en attente',
     accept: 'Démarrer',
     ready: 'Prêt',
+    resAccept: 'Accepter',
+    resCancel: 'Annuler',
     urgent: 'URGENT',
     seat: 'Place',
+    guests: 'pers.',
     justNow: 'Maintenant',
     minAgo: (m: number) => `${m}min`,
     mute: 'Muet',
@@ -71,12 +86,17 @@ const T = {
     sub: 'Cola en tiempo real',
     newOrders: 'NUEVO',
     cooking: 'EN PREP.',
+    reservations: 'RESERVAS',
     noNew: 'Sin pedidos pendientes',
     noCooking: 'Nada en preparación',
+    noReservations: 'Sin reservas pendientes',
     accept: 'Iniciar',
     ready: 'Listo',
+    resAccept: 'Aceptar',
+    resCancel: 'Cancelar',
     urgent: 'URGENTE',
     seat: 'Asiento',
+    guests: 'pers.',
     justNow: 'Ahora',
     minAgo: (m: number) => `${m}min`,
     mute: 'Silenciar',
@@ -101,6 +121,19 @@ type KdsTicket = {
   createdAt:          string
   status:             'PENDING' | 'PREPARING'
 }
+
+type Reservation = {
+  id:        string
+  name:      string
+  phone:     string
+  guests:    number
+  date:      string
+  notes:     string
+  status:    'PENDING' | 'ACCEPTED' | 'CANCELLED'
+  createdAt: string
+}
+
+type ActiveTab = 'orders' | 'reservations'
 
 // ─── Audio ────────────────────────────────────────────────────────────────────
 
@@ -147,15 +180,18 @@ const STALE_THRESHOLD_MIN = 90
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function KitchenPage() {
-  const [tickets, setTickets]   = useState<KdsTicket[]>([])
-  const [loading, setLoading]   = useState(true)
-  const [cafeId,  setCafeId]    = useState('')
-  const [authed,  setAuthed]    = useState(false)
-  const [muted,   setMuted]     = useState(false)
-  const [lang,    setLang]      = useState<Lang>('en')
-  const [, setTick]             = useState(0)
+  const [tickets, setTickets]           = useState<KdsTicket[]>([])
+  const [reservations, setReservations] = useState<Reservation[]>([])
+  const [activeTab, setActiveTab]       = useState<ActiveTab>('orders')
+  const [loading, setLoading]           = useState(true)
+  const [cafeId,  setCafeId]            = useState('')
+  const [authed,  setAuthed]            = useState(false)
+  const [muted,   setMuted]             = useState(false)
+  const [lang,    setLang]              = useState<Lang>('en')
+  const [, setTick]                     = useState(0)
   const [completedToday, setCompletedToday] = useState(0)
   const [cancelledToday, setCancelledToday] = useState(0)
+  const [newReservationAlert, setNewReservationAlert] = useState(false)
 
   const socketRef     = useRef<Socket | null>(null)
   const deliveredIds  = useRef<Set<string>>(new Set())
@@ -219,6 +255,14 @@ export default function KitchenPage() {
     setLoading(false)
   }
 
+  // ── load reservations ─────────────────────────────────────────────────────
+  async function loadReservations() {
+    try {
+      const res = await fetch('/api/kitchen/reservations', { headers: authHeader() })
+      if (res.ok) setReservations(await res.json())
+    } catch {}
+  }
+
   // ── fetch daily counters ──────────────────────────────────────────────────
   async function loadDailyStats() {
     try {
@@ -235,6 +279,7 @@ export default function KitchenPage() {
     if (!authed) return
     loadOrders()
     loadDailyStats()
+    loadReservations()
   }, [authed])
 
   // ── hourly auto-clean: remove stale orders ────────────────────────────────
@@ -286,6 +331,18 @@ export default function KitchenPage() {
       })
     })
 
+    socket.on('reservation_new', (res: Reservation) => {
+      setReservations(prev => [res, ...prev])
+      setNewReservationAlert(true)
+      if (!mutedRef.current) playKitchenAlert()
+    })
+
+    socket.on('reservation_updated', ({ id, status }: { id: string; status: string }) => {
+      setReservations(prev => prev.filter(r => r.id !== id || status === 'ACCEPTED')
+        .map(r => r.id === id ? { ...r, status: status as Reservation['status'] } : r)
+      )
+    })
+
     socket.on('kds_order_updated', ({ orderId, status }: { orderId: string; status: string }) => {
       if (['DELIVERED', 'COMPLETED', 'CANCELLED'].includes(status)) {
         deliveredIds.current.add(orderId)
@@ -323,6 +380,17 @@ export default function KitchenPage() {
     } catch {}
   }
 
+  async function handleReservation(id: string, action: 'accept' | 'cancel') {
+    setReservations(prev => prev.filter(r => r.id !== id))
+    try {
+      await fetch(`/api/kitchen/reservations/${id}`, {
+        method: 'PATCH',
+        headers: { ...authHeader(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+      })
+    } catch {}
+  }
+
   async function markReady(orderId: string) {
     deliveredIds.current.add(orderId)
     alertOrderIds.current.delete(orderId)
@@ -338,8 +406,9 @@ export default function KitchenPage() {
     } catch {}
   }
 
-  const pending   = tickets.filter(t => t.status === 'PENDING')
-  const preparing = tickets.filter(t => t.status === 'PREPARING')
+  const pending    = tickets.filter(t => t.status === 'PENDING')
+  const preparing  = tickets.filter(t => t.status === 'PREPARING')
+  const pendingRes = reservations.filter(r => r.status === 'PENDING')
 
   if (loading) return (
     <div className="min-h-screen bg-gray-950 flex items-center justify-center" dir={isRTL ? 'rtl' : 'ltr'}>
@@ -369,13 +438,27 @@ export default function KitchenPage() {
             <XCircle className="w-3.5 h-3.5" /> {cancelledToday} {tr.cancelledToday}
           </span>
 
-          {/* Active queue counters */}
-          <span className="bg-red-500/20 text-red-300 border border-red-500/30 px-2.5 py-1 rounded-full font-bold text-xs">
-            {pending.length} {tr.newOrders}
-          </span>
-          <span className="bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2.5 py-1 rounded-full font-bold text-xs">
-            {preparing.length} {tr.cooking}
-          </span>
+          {/* Tab switcher */}
+          <div className="flex items-center gap-0.5 bg-gray-800 rounded-lg p-0.5">
+            <button
+              onClick={() => setActiveTab('orders')}
+              className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all ${activeTab === 'orders' ? 'bg-amber-500 text-gray-950' : 'text-gray-400 hover:text-white'}`}
+            >
+              🍳 {tr.newOrders} {pending.length > 0 && <span className="ml-1 bg-red-500 text-white rounded-full px-1">{pending.length}</span>}
+            </button>
+            <button
+              onClick={() => { setActiveTab('reservations'); setNewReservationAlert(false) }}
+              className={`relative px-2.5 py-1 rounded-md text-xs font-bold transition-all ${activeTab === 'reservations' ? 'bg-violet-500 text-white' : 'text-gray-400 hover:text-white'}`}
+            >
+              <CalendarClock className="w-3.5 h-3.5 inline mr-1" />
+              {tr.reservations}
+              {pendingRes.length > 0 && (
+                <span className={`ml-1 rounded-full px-1 text-white text-xs ${newReservationAlert ? 'bg-red-500 animate-pulse' : 'bg-violet-600'}`}>
+                  {pendingRes.length}
+                </span>
+              )}
+            </button>
+          </div>
 
           {/* Mute toggle */}
           <button
@@ -402,57 +485,84 @@ export default function KitchenPage() {
       </header>
 
       {/* ── Columns ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 h-[calc(100vh-49px)]">
+      {activeTab === 'orders' ? (
+        <div className="grid grid-cols-1 lg:grid-cols-2 h-[calc(100vh-49px)]">
 
-        {/* PENDING */}
-        <div className={`${isRTL ? 'border-l' : 'border-r'} border-gray-800 overflow-y-auto`}>
-          <div className="sticky top-0 bg-red-950/80 backdrop-blur px-3 py-2 border-b border-red-900/40">
-            <h2 className="font-bold text-red-300 text-sm flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-red-400 animate-pulse inline-block" />
-              {tr.newOrders} — {pending.length}
-              {pending.length > 0 && alertOrderIds.current.size > 0 && !muted && (
-                <span className="ml-auto text-xs bg-red-500/30 text-red-300 px-2 py-0.5 rounded-full animate-pulse flex items-center gap-1">
-                  <Bell className="w-3 h-3" />
-                </span>
-              )}
+          {/* PENDING */}
+          <div className={`${isRTL ? 'border-l' : 'border-r'} border-gray-800 overflow-y-auto`}>
+            <div className="sticky top-0 bg-red-950/80 backdrop-blur px-3 py-2 border-b border-red-900/40">
+              <h2 className="font-bold text-red-300 text-sm flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-red-400 animate-pulse inline-block" />
+                {tr.newOrders} — {pending.length}
+                {pending.length > 0 && alertOrderIds.current.size > 0 && !muted && (
+                  <span className="ml-auto text-xs bg-red-500/30 text-red-300 px-2 py-0.5 rounded-full animate-pulse flex items-center gap-1">
+                    <Bell className="w-3 h-3" />
+                  </span>
+                )}
+              </h2>
+            </div>
+            <div className="p-2 grid grid-cols-1 xl:grid-cols-2 gap-2">
+              {pending.length === 0 && <KdsEmpty icon="✅" text={tr.noNew} />}
+              {pending.map(t => (
+                <TicketCard
+                  key={t.orderId} ticket={t} action="accept"
+                  label={tr.accept} seat={tr.seat}
+                  justNow={tr.justNow} minAgo={tr.minAgo}
+                  urgent={tr.urgent} isRTL={isRTL}
+                  onAction={() => accept(t.orderId)}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* PREPARING */}
+          <div className="overflow-y-auto">
+            <div className="sticky top-0 bg-amber-950/80 backdrop-blur px-3 py-2 border-b border-amber-900/40">
+              <h2 className="font-bold text-amber-300 text-sm flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse inline-block" />
+                {tr.cooking} — {preparing.length}
+              </h2>
+            </div>
+            <div className="p-2 grid grid-cols-1 xl:grid-cols-2 gap-2">
+              {preparing.length === 0 && <KdsEmpty icon="🍳" text={tr.noCooking} />}
+              {preparing.map(t => (
+                <TicketCard
+                  key={t.orderId} ticket={t} action="ready"
+                  label={tr.ready} seat={tr.seat}
+                  justNow={tr.justNow} minAgo={tr.minAgo}
+                  urgent={tr.urgent} isRTL={isRTL}
+                  onAction={() => markReady(t.orderId)}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : (
+        /* ── Reservations panel ── */
+        <div className="h-[calc(100vh-49px)] overflow-y-auto">
+          <div className="sticky top-0 bg-violet-950/80 backdrop-blur px-3 py-2 border-b border-violet-900/40">
+            <h2 className="font-bold text-violet-300 text-sm flex items-center gap-2">
+              <CalendarClock className="w-4 h-4" />
+              {tr.reservations} — {pendingRes.length}
             </h2>
           </div>
-          <div className="p-2 grid grid-cols-1 xl:grid-cols-2 gap-2">
-            {pending.length === 0 && <KdsEmpty icon="✅" text={tr.noNew} />}
-            {pending.map(t => (
-              <TicketCard
-                key={t.orderId} ticket={t} action="accept"
-                label={tr.accept} seat={tr.seat}
-                justNow={tr.justNow} minAgo={tr.minAgo}
-                urgent={tr.urgent} isRTL={isRTL}
-                onAction={() => accept(t.orderId)}
+          <div className="p-3 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+            {pendingRes.length === 0 && <KdsEmpty icon="📅" text={tr.noReservations} />}
+            {pendingRes.map(r => (
+              <ReservationCard
+                key={r.id}
+                reservation={r}
+                labelAccept={tr.resAccept}
+                labelCancel={tr.resCancel}
+                guestsLabel={tr.guests}
+                isRTL={isRTL}
+                onAccept={() => handleReservation(r.id, 'accept')}
+                onCancel={() => handleReservation(r.id, 'cancel')}
               />
             ))}
           </div>
         </div>
-
-        {/* PREPARING */}
-        <div className="overflow-y-auto">
-          <div className="sticky top-0 bg-amber-950/80 backdrop-blur px-3 py-2 border-b border-amber-900/40">
-            <h2 className="font-bold text-amber-300 text-sm flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse inline-block" />
-              {tr.cooking} — {preparing.length}
-            </h2>
-          </div>
-          <div className="p-2 grid grid-cols-1 xl:grid-cols-2 gap-2">
-            {preparing.length === 0 && <KdsEmpty icon="🍳" text={tr.noCooking} />}
-            {preparing.map(t => (
-              <TicketCard
-                key={t.orderId} ticket={t} action="ready"
-                label={tr.ready} seat={tr.seat}
-                justNow={tr.justNow} minAgo={tr.minAgo}
-                urgent={tr.urgent} isRTL={isRTL}
-                onAction={() => markReady(t.orderId)}
-              />
-            ))}
-          </div>
-        </div>
-      </div>
+      )}
     </div>
   )
 }
@@ -550,6 +660,72 @@ function KdsEmpty({ icon, text }: { icon: string; text: string }) {
     <div className="text-center py-12 text-gray-600 xl:col-span-2">
       <p className="text-3xl mb-2">{icon}</p>
       <p className="text-xs">{text}</p>
+    </div>
+  )
+}
+
+// ─── ReservationCard ──────────────────────────────────────────────────────────
+
+function ReservationCard({ reservation, labelAccept, labelCancel, guestsLabel, isRTL, onAccept, onCancel }: {
+  reservation:  Reservation
+  labelAccept:  string
+  labelCancel:  string
+  guestsLabel:  string
+  isRTL:        boolean
+  onAccept:     () => void
+  onCancel:     () => void
+}) {
+  const date    = new Date(reservation.date)
+  const dateStr = date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
+  const timeStr = date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+
+  return (
+    <div className="rounded-xl border border-violet-700/50 bg-violet-950/40 p-3 space-y-3 transition-all hover:border-violet-500/70">
+
+      {/* Date + time */}
+      <div className={`flex items-center justify-between ${isRTL ? 'flex-row-reverse' : ''}`}>
+        <div className="flex items-center gap-1.5 text-violet-300">
+          <CalendarClock className="w-4 h-4 shrink-0" />
+          <span className="font-bold text-sm">{dateStr}</span>
+          <span className="text-xs text-violet-400">{timeStr}</span>
+        </div>
+        <div className="flex items-center gap-1 text-violet-400 text-xs font-bold">
+          <Users className="w-3.5 h-3.5" />
+          {reservation.guests} {guestsLabel}
+        </div>
+      </div>
+
+      {/* Name + phone */}
+      <div className={`space-y-0.5 ${isRTL ? 'text-right' : ''}`}>
+        <p className="font-bold text-white text-sm">{reservation.name}</p>
+        <p className="flex items-center gap-1 text-gray-400 text-xs">
+          <Phone className="w-3 h-3" />
+          {reservation.phone}
+        </p>
+      </div>
+
+      {/* Notes */}
+      {reservation.notes && (
+        <p className="text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-lg px-2 py-1.5">
+          ⚠ {reservation.notes}
+        </p>
+      )}
+
+      {/* Actions */}
+      <div className={`flex gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
+        <button
+          onClick={onAccept}
+          className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-white font-bold text-sm py-2 rounded-lg transition-all"
+        >
+          <Check className="w-4 h-4" /> {labelAccept}
+        </button>
+        <button
+          onClick={onCancel}
+          className="flex-1 flex items-center justify-center gap-1.5 bg-red-600 hover:bg-red-500 active:scale-95 text-white font-bold text-sm py-2 rounded-lg transition-all"
+        >
+          <X className="w-4 h-4" /> {labelCancel}
+        </button>
+      </div>
     </div>
   )
 }

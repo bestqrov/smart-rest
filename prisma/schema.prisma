@@ -149,6 +149,7 @@ model Cafe {
   waiterQRTokens  WaiterQRToken[]
   expenses        Expense[]
   paymentRequests PaymentRequest[]
+  reservations    Reservation[]
 
 }
 
@@ -518,6 +519,26 @@ model Lead {
   @@index([city])
   @@index([platform])
   @@index([createdAt])
+}
+
+// ─── Reservations (client → kitchen) ─────────────────────────────────────────
+
+model Reservation {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId    String   @db.ObjectId
+  cafe      Cafe     @relation(fields: [cafeId], references: [id])
+  name      String
+  phone     String
+  guests    Int
+  date      DateTime
+  notes     String   @default("")
+  status    String   @default("PENDING")  // PENDING | ACCEPTED | CANCELLED
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([cafeId])
+  @@index([status])
+  @@index([date])
 }
 
 // ─── Payment Requests (Superadmin Payment Gateway) ────────────────────────────
