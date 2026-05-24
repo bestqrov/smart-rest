@@ -1,0 +1,550 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import {
+  User, Palette, Lock, Users,
+  Save, Eye, EyeOff, CheckCircle2, AlertCircle, Loader2,
+  RefreshCw
+} from 'lucide-react'
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type Profile = {
+  businessName: string
+  name:         string
+  country:      string
+  currency:     string
+  logoUrl:      string
+  accentColor:  string
+  primaryFont:  string
+}
+
+type StaffMember = {
+  id:         string
+  name:       string
+  role:       string
+  pinDisplay: string | null
+  shiftStatus: string
+}
+
+type Tab = 'profile' | 'branding' | 'password' | 'staff'
+
+// ─── Font options ─────────────────────────────────────────────────────────────
+
+const FONTS = [
+  { value: 'Cairo',    label: 'Cairo (Arabic)' },
+  { value: 'Tajawal',  label: 'Tajawal (Arabic)' },
+  { value: 'Rubik',    label: 'Rubik' },
+  { value: 'Inter',    label: 'Inter' },
+  { value: 'Poppins',  label: 'Poppins' },
+]
+
+const PRESET_COLORS = [
+  '#059669', // emerald (default)
+  '#2563eb', // blue
+  '#7c3aed', // violet
+  '#dc2626', // red
+  '#d97706', // amber
+  '#0891b2', // cyan
+  '#db2777', // pink
+  '#16a34a', // green
+  '#ea580c', // orange
+  '#1e293b', // slate dark
+]
+
+// ─── Toast ───────────────────────────────────────────────────────────────────
+
+function Toast({ msg, type }: { msg: string; type: 'success' | 'error' }) {
+  return (
+    <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-3 rounded-xl shadow-xl text-sm font-semibold transition-all ${
+      type === 'success' ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'
+    }`}>
+      {type === 'success' ? <CheckCircle2 className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+      {msg}
+    </div>
+  )
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
+export default function SettingsPage() {
+  const router = useRouter()
+  const [activeTab, setActiveTab] = useState<Tab>('profile')
+  const [toast, setToast]         = useState<{ msg: string; type: 'success' | 'error' } | null>(null)
+  const [saving, setSaving]       = useState(false)
+
+  function showToast(msg: string, type: 'success' | 'error') {
+    setToast({ msg, type })
+    setTimeout(() => setToast(null), 3000)
+  }
+
+  function authHeader() {
+    return { Authorization: `Bearer ${localStorage.getItem('token')}`, 'Content-Type': 'application/json' }
+  }
+
+  // ── Profile ───────────────────────────────────────────────────────────────
+
+  const [profile, setProfile] = useState<Profile>({
+    businessName: '', name: '', country: '', currency: '',
+    logoUrl: '', accentColor: '#059669', primaryFont: 'Cairo'
+  })
+
+  useEffect(() => {
+    const token = localStorage.getItem('token')
+    if (!token) { router.push('/login'); return }
+    fetch('/api/admin/cafe/profile', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (d) setProfile({
+          businessName: d.businessName ?? '',
+          name:         d.name ?? '',
+          country:      d.country ?? '',
+          currency:     d.currency ?? '',
+          logoUrl:      d.logoUrl ?? '',
+          accentColor:  d.accentColor ?? '#059669',
+          primaryFont:  d.primaryFont ?? 'Cairo',
+        })
+      })
+  }, [router])
+
+  async function saveProfile() {
+    setSaving(true)
+    try {
+      const res = await fetch('/api/admin/cafe/profile', {
+        method: 'PUT',
+        headers: authHeader(),
+        body: JSON.stringify({
+          businessName: profile.businessName,
+          logoUrl:      profile.logoUrl || null,
+          accentColor:  profile.accentColor,
+          primaryFont:  profile.primaryFont,
+        })
+      })
+      if (res.ok) showToast('تم الحفظ بنجاح ✓', 'success')
+      else showToast('فشل الحفظ', 'error')
+    } finally { setSaving(false) }
+  }
+
+  // ── Password ──────────────────────────────────────────────────────────────
+
+  const [pwForm, setPwForm]   = useState({ current: '', newPw: '', confirm: '' })
+  const [showPw, setShowPw]   = useState({ current: false, newPw: false, confirm: false })
+
+  async function changePassword() {
+    if (pwForm.newPw !== pwForm.confirm) { showToast('كلمات المرور غير متطابقة', 'error'); return }
+    if (pwForm.newPw.length < 8)         { showToast('كلمة المرور يجب أن تكون 8 أحرف على الأقل', 'error'); return }
+    setSaving(true)
+    try {
+      const res = await fetch('/api/admin/auth/change-password', {
+        method: 'POST',
+        headers: authHeader(),
+        body: JSON.stringify({ currentPassword: pwForm.current, newPassword: pwForm.newPw })
+      })
+      const d = await res.json()
+      if (res.ok) { showToast('تم تغيير كلمة المرور ✓', 'success'); setPwForm({ current: '', newPw: '', confirm: '' }) }
+      else         showToast(d.error ?? 'فشل التغيير', 'error')
+    } finally { setSaving(false) }
+  }
+
+  // ── Staff PINs ────────────────────────────────────────────────────────────
+
+  const [staff, setStaff]         = useState<StaffMember[]>([])
+  const [editingPin, setEditingPin]= useState<Record<string, string>>({})
+  const [savingPin, setSavingPin]  = useState<string | null>(null)
+
+  useEffect(() => {
+    if (activeTab !== 'staff') return
+    fetch('/api/admin/staff', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } })
+      .then(r => r.ok ? r.json() : [])
+      .then(d => setStaff(Array.isArray(d) ? d : d.staff ?? []))
+  }, [activeTab])
+
+  async function updatePin(staffId: string) {
+    const pin = editingPin[staffId] ?? ''
+    if (!/^\d{4}$/.test(pin)) { showToast('PIN يجب أن يكون 4 أرقام', 'error'); return }
+    setSavingPin(staffId)
+    try {
+      const res = await fetch(`/api/admin/staff/${staffId}/pin`, {
+        method: 'PATCH',
+        headers: authHeader(),
+        body: JSON.stringify({ pinCode: pin })
+      })
+      if (res.ok) {
+        showToast('تم تحديث الـ PIN ✓', 'success')
+        setStaff(prev => prev.map(s => s.id === staffId ? { ...s, pinDisplay: pin } : s))
+        setEditingPin(prev => { const n = { ...prev }; delete n[staffId]; return n })
+      } else {
+        const d = await res.json()
+        showToast(d.error ?? 'فشل التحديث', 'error')
+      }
+    } finally { setSavingPin(null) }
+  }
+
+  const ROLE_LABEL: Record<string, string> = {
+    CASHIER: 'كاشير', WAITER: 'نادل', SUPERVISOR: 'مشرف'
+  }
+  const ROLE_COLOR: Record<string, string> = {
+    CASHIER:    'bg-amber-100 text-amber-700',
+    WAITER:     'bg-sky-100 text-sky-700',
+    SUPERVISOR: 'bg-violet-100 text-violet-700',
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+
+  const TABS: { id: Tab; icon: React.ElementType; labelAr: string }[] = [
+    { id: 'profile',  icon: User,    labelAr: 'الملف الشخصي' },
+    { id: 'branding', icon: Palette, labelAr: 'الهوية البصرية' },
+    { id: 'password', icon: Lock,    labelAr: 'كلمة المرور' },
+    { id: 'staff',    icon: Users,   labelAr: 'كود الكادر' },
+  ]
+
+  return (
+    <div className="p-4 md:p-6 max-w-3xl mx-auto space-y-6" dir="rtl">
+
+      {toast && <Toast msg={toast.msg} type={toast.type} />}
+
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-extrabold text-gray-900">الإعدادات</h1>
+        <p className="text-sm text-gray-500 mt-0.5">إدارة ملف المطعم، الهوية البصرية، وكلمات المرور</p>
+      </div>
+
+      {/* Tab switcher */}
+      <div className="flex gap-1 bg-gray-100 p-1 rounded-xl overflow-x-auto">
+        {TABS.map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold whitespace-nowrap transition-all ${
+              activeTab === tab.id
+                ? 'bg-white shadow text-gray-900'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            <tab.icon className="w-4 h-4" />
+            {tab.labelAr}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Profile tab ── */}
+      {activeTab === 'profile' && (
+        <section className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-5">
+          <h2 className="font-bold text-gray-800 flex items-center gap-2"><User className="w-5 h-5 text-emerald-600" /> الملف الشخصي</h2>
+
+          <div className="space-y-4">
+            <Field label="اسم المطعم / المقهى">
+              <input
+                value={profile.businessName}
+                onChange={e => setProfile(p => ({ ...p, businessName: e.target.value }))}
+                placeholder="مثال: مقهى النجمة"
+                className="input"
+              />
+            </Field>
+
+            <Field label="رابط الشعار (Logo URL)">
+              <div className="flex gap-2">
+                <input
+                  value={profile.logoUrl}
+                  onChange={e => setProfile(p => ({ ...p, logoUrl: e.target.value }))}
+                  placeholder="https://..."
+                  className="input flex-1"
+                />
+                {profile.logoUrl && (
+                  <img
+                    src={profile.logoUrl}
+                    alt="logo"
+                    className="w-10 h-10 rounded-lg object-contain border border-gray-200 bg-gray-50 shrink-0"
+                    onError={e => (e.currentTarget.style.display = 'none')}
+                  />
+                )}
+              </div>
+              <p className="text-xs text-gray-400 mt-1">ارفع الصورة على Imgur أو Cloudinary وأدخل الرابط هنا</p>
+            </Field>
+
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="الدولة">
+                <input value={profile.country} readOnly className="input bg-gray-50 text-gray-400 cursor-not-allowed" />
+              </Field>
+              <Field label="العملة">
+                <input value={profile.currency} readOnly className="input bg-gray-50 text-gray-400 cursor-not-allowed" />
+              </Field>
+            </div>
+          </div>
+
+          <SaveButton saving={saving} onClick={saveProfile} />
+        </section>
+      )}
+
+      {/* ── Branding tab ── */}
+      {activeTab === 'branding' && (
+        <section className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-6">
+          <h2 className="font-bold text-gray-800 flex items-center gap-2"><Palette className="w-5 h-5 text-violet-600" /> الهوية البصرية للمنيو</h2>
+
+          {/* Color */}
+          <Field label="اللون الرئيسي (QR Menu)">
+            <div className="space-y-3">
+              {/* Presets */}
+              <div className="flex flex-wrap gap-2">
+                {PRESET_COLORS.map(c => (
+                  <button
+                    key={c}
+                    onClick={() => setProfile(p => ({ ...p, accentColor: c }))}
+                    style={{ backgroundColor: c }}
+                    className={`w-8 h-8 rounded-full transition-all hover:scale-110 ${profile.accentColor === c ? 'ring-2 ring-offset-2 ring-gray-900 scale-110' : ''}`}
+                    title={c}
+                  />
+                ))}
+              </div>
+              {/* Custom picker */}
+              <div className="flex items-center gap-3">
+                <input
+                  type="color"
+                  value={profile.accentColor}
+                  onChange={e => setProfile(p => ({ ...p, accentColor: e.target.value }))}
+                  className="w-10 h-10 rounded-lg border border-gray-200 cursor-pointer p-0.5"
+                />
+                <span className="text-sm font-mono text-gray-600">{profile.accentColor}</span>
+              </div>
+            </div>
+          </Field>
+
+          {/* Font */}
+          <Field label="الخط (QR Menu)">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {FONTS.map(f => (
+                <button
+                  key={f.value}
+                  onClick={() => setProfile(p => ({ ...p, primaryFont: f.value }))}
+                  className={`px-3 py-2.5 rounded-xl border-2 text-sm font-semibold transition-all ${
+                    profile.primaryFont === f.value
+                      ? 'border-violet-500 bg-violet-50 text-violet-700'
+                      : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                  }`}
+                  style={{ fontFamily: f.value }}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+          </Field>
+
+          {/* Live preview */}
+          <div>
+            <p className="text-xs font-semibold text-gray-500 mb-2">معاينة:</p>
+            <div
+              className="rounded-xl p-4 text-white text-center"
+              style={{ backgroundColor: profile.accentColor, fontFamily: profile.primaryFont }}
+            >
+              <p className="text-lg font-bold">{profile.businessName || 'اسم المطعم'}</p>
+              <p className="text-sm opacity-80 mt-1">قائمة الطلبات • Menu</p>
+              <div
+                className="mt-3 inline-block px-4 py-1.5 rounded-full text-sm font-semibold"
+                style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}
+              >
+                اطلب الآن
+              </div>
+            </div>
+          </div>
+
+          <SaveButton saving={saving} onClick={saveProfile} />
+        </section>
+      )}
+
+      {/* ── Password tab ── */}
+      {activeTab === 'password' && (
+        <section className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-5">
+          <h2 className="font-bold text-gray-800 flex items-center gap-2"><Lock className="w-5 h-5 text-red-500" /> تغيير كلمة مرور الحساب</h2>
+
+          <Field label="كلمة المرور الحالية">
+            <PasswordInput
+              value={pwForm.current}
+              onChange={v => setPwForm(p => ({ ...p, current: v }))}
+              show={showPw.current}
+              onToggle={() => setShowPw(p => ({ ...p, current: !p.current }))}
+              placeholder="••••••••"
+            />
+          </Field>
+
+          <Field label="كلمة المرور الجديدة">
+            <PasswordInput
+              value={pwForm.newPw}
+              onChange={v => setPwForm(p => ({ ...p, newPw: v }))}
+              show={showPw.newPw}
+              onToggle={() => setShowPw(p => ({ ...p, newPw: !p.newPw }))}
+              placeholder="8 أحرف على الأقل"
+            />
+          </Field>
+
+          <Field label="تأكيد كلمة المرور الجديدة">
+            <PasswordInput
+              value={pwForm.confirm}
+              onChange={v => setPwForm(p => ({ ...p, confirm: v }))}
+              show={showPw.confirm}
+              onToggle={() => setShowPw(p => ({ ...p, confirm: !p.confirm }))}
+              placeholder="••••••••"
+            />
+          </Field>
+
+          {pwForm.newPw && pwForm.confirm && pwForm.newPw !== pwForm.confirm && (
+            <p className="text-red-500 text-sm flex items-center gap-1">
+              <AlertCircle className="w-4 h-4" /> كلمات المرور غير متطابقة
+            </p>
+          )}
+
+          <button
+            onClick={changePassword}
+            disabled={saving || !pwForm.current || !pwForm.newPw || !pwForm.confirm}
+            className="flex items-center gap-2 px-5 py-2.5 bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all active:scale-95"
+          >
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
+            تغيير كلمة المرور
+          </button>
+        </section>
+      )}
+
+      {/* ── Staff PINs tab ── */}
+      {activeTab === 'staff' && (
+        <section className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="font-bold text-gray-800 flex items-center gap-2">
+              <Users className="w-5 h-5 text-sky-600" /> أكواد دخول الكادر (PIN)
+            </h2>
+            <button
+              onClick={() => {
+                fetch('/api/admin/staff', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } })
+                  .then(r => r.ok ? r.json() : [])
+                  .then(d => setStaff(Array.isArray(d) ? d : d.staff ?? []))
+              }}
+              className="p-2 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100"
+              title="تحديث"
+            >
+              <RefreshCw className="w-4 h-4" />
+            </button>
+          </div>
+
+          {staff.length === 0 ? (
+            <p className="text-center py-8 text-gray-400 text-sm">لا يوجد موظفون مسجلون</p>
+          ) : (
+            <div className="space-y-2">
+              {staff.map(s => {
+                const isEditing = editingPin[s.id] !== undefined
+                return (
+                  <div key={s.id} className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:border-gray-200 transition-all">
+                    {/* Avatar */}
+                    <div className="w-9 h-9 rounded-full bg-gray-200 flex items-center justify-center font-bold text-gray-600 text-sm shrink-0">
+                      {s.name.charAt(0)}
+                    </div>
+
+                    {/* Name + role */}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-gray-800 text-sm truncate">{s.name}</p>
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${ROLE_COLOR[s.role] ?? 'bg-gray-100 text-gray-600'}`}>
+                        {ROLE_LABEL[s.role] ?? s.role}
+                      </span>
+                    </div>
+
+                    {/* PIN input */}
+                    <div className="flex items-center gap-2 shrink-0">
+                      {isEditing ? (
+                        <>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            maxLength={4}
+                            value={editingPin[s.id]}
+                            onChange={e => setEditingPin(prev => ({ ...prev, [s.id]: e.target.value.replace(/\D/g, '').slice(0, 4) }))}
+                            className="w-16 text-center border-2 border-sky-400 rounded-lg px-2 py-1.5 text-sm font-mono font-bold focus:outline-none"
+                            placeholder="0000"
+                            autoFocus
+                          />
+                          <button
+                            onClick={() => updatePin(s.id)}
+                            disabled={savingPin === s.id}
+                            className="p-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition-all"
+                          >
+                            {savingPin === s.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                          </button>
+                          <button
+                            onClick={() => setEditingPin(prev => { const n = { ...prev }; delete n[s.id]; return n })}
+                            className="p-1.5 text-gray-400 hover:text-gray-700 rounded-lg"
+                          >
+                            ✕
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <span className="font-mono text-gray-500 text-sm bg-gray-100 px-2.5 py-1 rounded-lg">
+                            {s.pinDisplay ?? '••••'}
+                          </span>
+                          <button
+                            onClick={() => setEditingPin(prev => ({ ...prev, [s.id]: s.pinDisplay ?? '' }))}
+                            className="text-xs text-sky-600 hover:text-sky-800 font-semibold px-2 py-1 rounded-lg hover:bg-sky-50 transition-all"
+                          >
+                            تعديل
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </section>
+      )}
+    </div>
+  )
+}
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="block text-sm font-semibold text-gray-700 mb-1.5">{label}</label>
+      {children}
+    </div>
+  )
+}
+
+function SaveButton({ saving, onClick }: { saving: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={saving}
+      className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-semibold rounded-xl transition-all active:scale-95"
+    >
+      {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+      حفظ التغييرات
+    </button>
+  )
+}
+
+function PasswordInput({ value, onChange, show, onToggle, placeholder }: {
+  value:      string
+  onChange:   (v: string) => void
+  show:       boolean
+  onToggle:   () => void
+  placeholder: string
+}) {
+  return (
+    <div className="relative">
+      <input
+        type={show ? 'text' : 'password'}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="input pl-10"
+      />
+      <button
+        type="button"
+        onClick={onToggle}
+        className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700"
+      >
+        {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+      </button>
+    </div>
+  )
+}

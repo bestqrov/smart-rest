@@ -172,7 +172,7 @@ router.delete('/api/admin/products/:id', authorizeAdmin, async (req: Request, re
 router.put('/api/admin/cafe/profile', authorizeAdmin, async (req: Request, res: Response) => {
   try {
     const cafeId = req.admin!.cafeId
-    const { businessName, logoUrl, socialLinks, hasSocialShareAddon, lat, lng } = req.body
+    const { businessName, logoUrl, socialLinks, hasSocialShareAddon, lat, lng, accentColor, primaryFont } = req.body
     const cafe = await prisma.cafe.update({
       where: { id: cafeId },
       data: {
@@ -181,7 +181,9 @@ router.put('/api/admin/cafe/profile', authorizeAdmin, async (req: Request, res: 
         ...(socialLinks !== undefined && { socialLinks }),
         ...(hasSocialShareAddon !== undefined && { hasSocialShareAddon }),
         ...(lat !== undefined && { lat }),
-        ...(lng !== undefined && { lng })
+        ...(lng !== undefined && { lng }),
+        ...(accentColor !== undefined && { accentColor }),
+        ...(primaryFont !== undefined && { primaryFont }),
       }
     })
     return res.json(cafe)
@@ -202,7 +204,8 @@ router.get('/api/admin/cafe/profile', authorizeAdmin, async (req: Request, res: 
         walletBalance: true, billingStatus: true, trialEndsAt: true,
         hasExtendedTrial: true, totalSeats: true, isProfileComplete: true,
         coffeeRefPrice: true, sandwichRefPrice: true,
-        monthlyFee: true, subscriptionTier: true
+        monthlyFee: true, subscriptionTier: true,
+        accentColor: true, primaryFont: true
       }
     })
     return res.json(cafe)
@@ -514,6 +517,70 @@ router.put('/api/admin/cafe/wifi', authorizeAdmin, async (req: Request, res: Res
   } catch (err) {
     logger.error({ msg: 'PUT /api/admin/cafe/wifi error', err })
     return res.status(500).json({ error: 'Failed' })
+  }
+})
+
+// ─── PATCH /api/admin/staff/:id/pin — update a staff member's PIN ─────────────
+
+router.patch('/api/admin/staff/:id/pin', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const cafeId = req.admin!.cafeId
+    const id     = req.params['id'] as string
+    const { pinCode } = req.body as { pinCode?: string }
+
+    if (!pinCode || !/^\d{4}$/.test(pinCode)) {
+      return res.status(400).json({ error: 'pinCode must be exactly 4 digits' })
+    }
+
+    const staff = await prisma.staff.findUnique({ where: { id }, select: { cafeId: true } })
+    if (!staff) return res.status(404).json({ error: 'Staff not found' })
+    if (staff.cafeId !== cafeId) return res.status(403).json({ error: 'Forbidden' })
+
+    const bcrypt = await import('bcrypt')
+    const hashed = await bcrypt.default.hash(pinCode, 10)
+
+    await prisma.staff.update({
+      where: { id },
+      data:  { pinCode: hashed, pinDisplay: pinCode }
+    })
+
+    logger.info({ msg: 'Staff PIN updated', cafeId, staffId: id })
+    return res.json({ ok: true })
+  } catch (err) {
+    logger.error({ msg: 'PATCH staff/:id/pin error', err })
+    return res.status(500).json({ error: 'Failed to update PIN' })
+  }
+})
+
+// ─── POST /api/admin/auth/change-password ────────────────────────────────────
+
+router.post('/api/admin/auth/change-password', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.admin!
+    const { currentPassword, newPassword } = req.body as { currentPassword?: string; newPassword?: string }
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'currentPassword and newPassword are required' })
+    }
+    if (newPassword.length < 8) {
+      return res.status(400).json({ error: 'New password must be at least 8 characters' })
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { passwordHash: true } })
+    if (!user) return res.status(404).json({ error: 'User not found' })
+
+    const bcrypt = await import('bcrypt')
+    const valid  = await bcrypt.default.compare(currentPassword, user.passwordHash)
+    if (!valid) return res.status(401).json({ error: 'Current password is incorrect' })
+
+    const newHash = await bcrypt.default.hash(newPassword, 10)
+    await prisma.user.update({ where: { id: userId }, data: { passwordHash: newHash } })
+
+    logger.info({ msg: 'Admin password changed', userId })
+    return res.json({ ok: true })
+  } catch (err) {
+    logger.error({ msg: 'POST change-password error', err })
+    return res.status(500).json({ error: 'Failed to change password' })
   }
 })
 

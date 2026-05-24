@@ -9,7 +9,7 @@ import {
   CreditCard, LogOut, ChevronRight, Menu, X,
   AlertTriangle, Loader2, Gift, Zap, ChefHat, Bell, Monitor,
   Users, BarChart3, Copy, Check, ExternalLink, Building2,
-  Banknote, Wallet, CalendarClock, Sparkles
+  Banknote, Wallet, CalendarClock, Sparkles, Settings
 } from 'lucide-react'
 
 // ── Nav ───────────────────────────────────────────────────────────────────────
@@ -24,6 +24,7 @@ const NAV = [
   { href: '/admin/financials', icon: BarChart3,        labelAr: 'المالية والتقارير',  labelFr: 'Finances' },
   { href: '/admin/social',     icon: Share2,           labelAr: 'التسويق الذكي',      labelFr: 'Social' },
   { href: '/admin/billing',    icon: CreditCard,       labelAr: 'الفواتير',            labelFr: 'Billing' },
+  { href: '/admin/settings',  icon: Settings,         labelAr: 'الإعدادات',           labelFr: 'Settings' },
 ]
 
 const STAFF_LINKS = [
