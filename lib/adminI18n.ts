@@ -41,6 +41,17 @@ export const A = {
     settings:      'الإعدادات',
     menuAI:        'محرك المنيو الذكي',
 
+    // Staff screens
+    staffScreens:  'شاشات الكادر',
+    kitchenKds:    'شاشة المطبخ',
+    waiterView:    'شاشة النادل',
+    miniPos:       'Mini POS',
+
+    // Billing status
+    statusTrial:   'تجريبي',
+    statusActive:  'نشط',
+    statusSuspend: 'موقوف',
+
     // Dashboard
     todayOrders:   'طلبات اليوم',
     totalRevenue:  'إجمالي الإيرادات',
@@ -172,6 +183,15 @@ export const A = {
     settings:      'Settings',
     menuAI:        'Smart Menu AI',
 
+    staffScreens:  'Staff Screens',
+    kitchenKds:    'Kitchen KDS',
+    waiterView:    'Waiter View',
+    miniPos:       'Mini POS',
+
+    statusTrial:   'Trial',
+    statusActive:  'Active',
+    statusSuspend: 'Suspended',
+
     todayOrders:   "Today's Orders",
     totalRevenue:  'Total Revenue',
     activeStaff:   'Active Staff',
@@ -294,6 +314,15 @@ export const A = {
     settings:      'Paramètres',
     menuAI:        'Menu IA intelligent',
 
+    staffScreens:  'Écrans personnel',
+    kitchenKds:    'Cuisine KDS',
+    waiterView:    'Vue serveur',
+    miniPos:       'Mini POS',
+
+    statusTrial:   'Essai',
+    statusActive:  'Actif',
+    statusSuspend: 'Suspendu',
+
     todayOrders:   "Commandes du jour",
     totalRevenue:  'Chiffre d\'affaires',
     activeStaff:   'Personnel actif',
@@ -415,6 +444,15 @@ export const A = {
     billing:       'Facturación',
     settings:      'Configuración',
     menuAI:        'Menú IA inteligente',
+
+    staffScreens:  'Pantallas personal',
+    kitchenKds:    'Cocina KDS',
+    waiterView:    'Vista mesero',
+    miniPos:       'Mini POS',
+
+    statusTrial:   'Prueba',
+    statusActive:  'Activo',
+    statusSuspend: 'Suspendido',
 
     todayOrders:   'Pedidos de hoy',
     totalRevenue:  'Ingresos totales',

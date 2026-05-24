@@ -12,27 +12,28 @@ import {
   Banknote, Wallet, CalendarClock, Sparkles, Settings, Languages
 } from 'lucide-react'
 import { AdminLangProvider, useLang, type AdminLang } from './lang-context'
+import { A, type AdminT } from '@/lib/adminI18n'
 
 // ── Nav ───────────────────────────────────────────────────────────────────────
 
 const NAV = [
-  { href: '/admin/dashboard',  icon: LayoutDashboard, labelAr: 'لوحة التحكم',       labelFr: 'Dashboard' },
-  { href: '/admin/menu-gen',   icon: Sparkles,        labelAr: 'محرك المنيو الذكي',  labelFr: 'Menu AI' },
-  { href: '/admin/menu',       icon: UtensilsCrossed,  labelAr: 'إدارة المنيو',       labelFr: 'Menu' },
-  { href: '/admin/tables',     icon: QrCode,           labelAr: 'الطاولات & QR',      labelFr: 'Tables' },
-  { href: '/admin/staff',      icon: Users,            labelAr: 'الكادر البشري',      labelFr: 'Staff' },
-  { href: '/admin/attendance', icon: CalendarClock,    labelAr: 'الحضور & التسجيل',   labelFr: 'Attendance' },
-  { href: '/admin/financials', icon: BarChart3,        labelAr: 'المالية والتقارير',  labelFr: 'Finances' },
-  { href: '/admin/social',     icon: Share2,           labelAr: 'التسويق الذكي',      labelFr: 'Social' },
-  { href: '/admin/billing',    icon: CreditCard,       labelAr: 'الفواتير',            labelFr: 'Billing' },
-  { href: '/admin/settings',  icon: Settings,         labelAr: 'الإعدادات',           labelFr: 'Settings' },
-]
+  { href: '/admin/dashboard',  icon: LayoutDashboard, key: 'dashboard'  },
+  { href: '/admin/menu-gen',   icon: Sparkles,        key: 'menuAI'     },
+  { href: '/admin/menu',       icon: UtensilsCrossed, key: 'menu'       },
+  { href: '/admin/tables',     icon: QrCode,          key: 'tables'     },
+  { href: '/admin/staff',      icon: Users,           key: 'staff'      },
+  { href: '/admin/attendance', icon: CalendarClock,   key: 'attendance' },
+  { href: '/admin/financials', icon: BarChart3,       key: 'financials' },
+  { href: '/admin/social',     icon: Share2,          key: 'social'     },
+  { href: '/admin/billing',    icon: CreditCard,      key: 'billing'    },
+  { href: '/admin/settings',   icon: Settings,        key: 'settings'   },
+] as const
 
 const STAFF_LINKS = [
-  { href: '/kitchen', icon: ChefHat,  labelAr: 'شاشة المطبخ', labelFr: 'Kitchen KDS' },
-  { href: '/waiter',  icon: Bell,     labelAr: 'شاشة النادل',  labelFr: 'Waiter View' },
-  { href: '/pos',     icon: Monitor,  labelAr: 'Mini POS',     labelFr: 'Mini POS' },
-]
+  { href: '/kitchen', icon: ChefHat,  key: 'kitchenKds' },
+  { href: '/waiter',  icon: Bell,     key: 'waiterView'  },
+  { href: '/pos',     icon: Monitor,  key: 'miniPos'     },
+] as const
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -272,6 +273,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 function AdminLayoutInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router   = useRouter()
+  const { lang, isRTL } = useLang()
+  const t = A[lang]
   const [open, setOpen]   = useState(false)
   const [cafe, setCafe]   = useState<CafeState | null>(null)
   const [gateAction, setGateAction] = useState<string | null>(null)
@@ -326,9 +329,9 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
     SUSPENDED:       'bg-red-100   text-red-700'
   }
   const billingLabel: Record<string, string> = {
-    GRACE_PERIOD:    'تجريبي',
-    COLLECTING_DEBT: 'نشط',
-    SUSPENDED:       'موقوف'
+    GRACE_PERIOD:    t.statusTrial,
+    COLLECTING_DEBT: t.statusActive,
+    SUSPENDED:       t.statusSuspend,
   }
 
   const showPaymentGate = cafe
@@ -340,7 +343,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
     )
 
   return (
-    <div className="min-h-screen bg-gray-50 flex" dir="rtl">
+    <div className="min-h-screen bg-gray-50 flex" dir={isRTL ? 'rtl' : 'ltr'}>
 
       {/* ── Sidebar (desktop) ─────────────────────────────────────── */}
       <aside className="hidden md:flex flex-col w-64 bg-gray-900 min-h-screen shrink-0">
@@ -383,27 +386,21 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
                   active ? 'bg-emerald-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'
                 }`}>
                 <item.icon className="w-5 h-5 shrink-0" />
-                <div className="flex flex-col">
-                  <span className="text-sm font-medium">{item.labelAr}</span>
-                  <span className="text-xs opacity-60">{item.labelFr}</span>
-                </div>
-                {active && <ChevronRight className="w-4 h-4 mr-auto opacity-70" />}
+                <span className="text-sm font-medium flex-1">{t[item.key as keyof AdminT]}</span>
+                {active && <ChevronRight className={`w-4 h-4 opacity-70 ${!isRTL ? 'rotate-180' : ''}`} />}
               </Link>
             )
           })}
         </nav>
 
         <div className="px-3 pb-3 border-t border-gray-800 pt-3">
-          <p className="text-xs text-gray-600 uppercase tracking-widest px-2 mb-2">Staff Screens</p>
+          <p className="text-xs text-gray-600 uppercase tracking-widest px-2 mb-2">{t.staffScreens}</p>
           {STAFF_LINKS.map(item => (
             <a key={item.href} href={item.href} target="_blank" rel="noopener noreferrer"
               className="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-white transition-colors group mb-1">
               <item.icon className="w-4 h-4 shrink-0" />
-              <div className="flex flex-col">
-                <span className="text-xs font-medium">{item.labelAr}</span>
-                <span className="text-xs opacity-50">{item.labelFr}</span>
-              </div>
-              <span className="text-gray-700 text-xs mr-auto group-hover:text-gray-500">↗</span>
+              <span className="text-xs font-medium flex-1">{t[item.key as keyof AdminT]}</span>
+              <span className="text-gray-700 text-xs group-hover:text-gray-500">↗</span>
             </a>
           ))}
         </div>
@@ -413,7 +410,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
           <button onClick={logout}
             className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-red-400 transition-colors">
             <LogOut className="w-5 h-5" />
-            <span className="text-sm">تسجيل الخروج</span>
+            <span className="text-sm">{t.logout}</span>
           </button>
         </div>
       </aside>
@@ -440,7 +437,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
       {open && (
         <div className="md:hidden fixed inset-0 z-50 flex">
           <div className="absolute inset-0 bg-black/60" onClick={() => setOpen(false)} />
-          <div className="relative bg-gray-900 w-72 h-full flex flex-col" dir="rtl">
+          <div className="relative bg-gray-900 w-72 h-full flex flex-col" dir={isRTL ? 'rtl' : 'ltr'}>
             <div className="px-4 py-4 flex items-center justify-between border-b border-gray-800">
               <div className="flex items-center gap-2">
                 {cafe?.logoUrl ? (
@@ -471,7 +468,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
                       active ? 'bg-emerald-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'
                     }`}>
                     <item.icon className="w-5 h-5" />
-                    <span className="font-medium">{item.labelAr}</span>
+                    <span className="font-medium">{t[item.key as keyof AdminT]}</span>
                   </Link>
                 )
               })}
@@ -481,7 +478,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
               <button onClick={logout}
                 className="flex items-center gap-3 w-full px-3 py-3 rounded-xl text-gray-400 hover:bg-gray-800 hover:text-red-400">
                 <LogOut className="w-5 h-5" />
-                <span>تسجيل الخروج</span>
+                <span>{t.logout}</span>
               </button>
             </div>
           </div>
