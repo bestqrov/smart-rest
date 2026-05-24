@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useLang } from '../lang-context'
 import {
   Globe, FileUp, Camera, Sparkles, ChevronRight, ChevronLeft,
   Loader2, Check, Edit2, Trash2, Plus, X, AlertTriangle,
@@ -309,9 +310,8 @@ export default function MenuGenPage() {
   const fileRef = useRef<HTMLInputElement>(null)
   const camRef  = useRef<HTMLInputElement>(null)
 
-  const [lang,  setLang]  = useState<Lang>('ar')
+  const { lang, isRTL } = useLang()
   const t = T[lang]
-  const isRTL = lang === 'ar'
 
   const [stage,  setStage]  = useState<Stage>('path-select')
   const [path,   setPath]   = useState<Path>('url')
@@ -516,15 +516,6 @@ export default function MenuGenPage() {
             {tier === 'CAFE' && <Lock className="w-3 h-3" />}
           </button>
 
-          {/* Lang */}
-          <div className="flex gap-1 bg-slate-100 rounded-lg p-1">
-            {(['ar','fr','en','es'] as Lang[]).map(l => (
-              <button key={l} onClick={() => setLang(l)}
-                className={`text-xs font-bold px-2 py-0.5 rounded-md transition-all ${lang === l ? 'bg-amber-500 text-white' : 'text-slate-400 hover:text-slate-700'}`}>
-                {l.toUpperCase()}
-              </button>
-            ))}
-          </div>
         </div>
       </header>
 

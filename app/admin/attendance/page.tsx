@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import QRCode from 'qrcode'
 import { Eye, EyeOff, RefreshCw, QrCode, CalendarClock, Clock, CheckCircle, XCircle } from 'lucide-react'
+import { useLang } from '../lang-context'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -126,9 +127,8 @@ function elapsed(iso: string, t: typeof T['en']) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function AttendancePage() {
-  const [lang,  setLang]  = useState<Lang>('ar')
-  const isRTL = lang === 'ar'
-  const t     = T[lang]
+  const { lang, isRTL } = useLang()
+  const t = T[lang]
 
   const [staff,   setStaff]   = useState<StaffMember[]>([])
   const [loading, setLoading] = useState(true)
@@ -232,15 +232,6 @@ export default function AttendancePage() {
           </div>
         </div>
 
-        {/* Lang switcher */}
-        <div className="flex items-center gap-1.5">
-          {(['ar','fr','en','es'] as Lang[]).map(l => (
-            <button key={l} onClick={() => setLang(l)}
-              className={`px-2 py-1 rounded text-xs font-bold ${lang === l ? 'bg-amber-500 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
-              {l.toUpperCase()}
-            </button>
-          ))}
-        </div>
       </div>
 
       {/* ── Shared rotating QR banner ── */}

@@ -7,6 +7,8 @@ import {
   Save, Eye, EyeOff, CheckCircle2, AlertCircle, Loader2,
   RefreshCw
 } from 'lucide-react'
+import { useLang } from '../lang-context'
+import { A } from '../../../lib/adminI18n'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -70,6 +72,9 @@ function Toast({ msg, type }: { msg: string; type: 'success' | 'error' }) {
 
 export default function SettingsPage() {
   const router = useRouter()
+  const { lang, isRTL } = useLang()
+  const t = A[lang]
+
   const [activeTab, setActiveTab] = useState<Tab>('profile')
   const [toast, setToast]         = useState<{ msg: string; type: 'success' | 'error' } | null>(null)
   const [saving, setSaving]       = useState(false)
@@ -192,22 +197,22 @@ export default function SettingsPage() {
 
   // ─────────────────────────────────────────────────────────────────────────
 
-  const TABS: { id: Tab; icon: React.ElementType; labelAr: string }[] = [
-    { id: 'profile',  icon: User,    labelAr: 'الملف الشخصي' },
-    { id: 'branding', icon: Palette, labelAr: 'الهوية البصرية' },
-    { id: 'password', icon: Lock,    labelAr: 'كلمة المرور' },
-    { id: 'staff',    icon: Users,   labelAr: 'كود الكادر' },
+  const TABS: { id: Tab; icon: React.ElementType; label: string }[] = [
+    { id: 'profile',  icon: User,    label: t.profile },
+    { id: 'branding', icon: Palette, label: t.branding },
+    { id: 'password', icon: Lock,    label: t.password },
+    { id: 'staff',    icon: Users,   label: t.staffPins },
   ]
 
   return (
-    <div className="p-4 md:p-6 max-w-3xl mx-auto space-y-6" dir="rtl">
+    <div className="p-4 md:p-6 max-w-3xl mx-auto space-y-6" dir={isRTL ? 'rtl' : 'ltr'}>
 
       {toast && <Toast msg={toast.msg} type={toast.type} />}
 
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-extrabold text-gray-900">الإعدادات</h1>
-        <p className="text-sm text-gray-500 mt-0.5">إدارة ملف المطعم، الهوية البصرية، وكلمات المرور</p>
+        <h1 className="text-2xl font-extrabold text-gray-900">{t.settings}</h1>
+        <p className="text-sm text-gray-500 mt-0.5">{t.profile} · {t.branding} · {t.password}</p>
       </div>
 
       {/* Tab switcher */}
@@ -223,7 +228,7 @@ export default function SettingsPage() {
             }`}
           >
             <tab.icon className="w-4 h-4" />
-            {tab.labelAr}
+            {tab.label}
           </button>
         ))}
       </div>
@@ -231,10 +236,10 @@ export default function SettingsPage() {
       {/* ── Profile tab ── */}
       {activeTab === 'profile' && (
         <section className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-5">
-          <h2 className="font-bold text-gray-800 flex items-center gap-2"><User className="w-5 h-5 text-emerald-600" /> الملف الشخصي</h2>
+          <h2 className="font-bold text-gray-800 flex items-center gap-2"><User className="w-5 h-5 text-emerald-600" /> {t.profile}</h2>
 
           <div className="space-y-4">
-            <Field label="اسم المطعم / المقهى">
+            <Field label={t.businessName}>
               <input
                 value={profile.businessName}
                 onChange={e => setProfile(p => ({ ...p, businessName: e.target.value }))}
@@ -243,7 +248,7 @@ export default function SettingsPage() {
               />
             </Field>
 
-            <Field label="رابط الشعار (Logo URL)">
+            <Field label={t.logoUrl}>
               <div className="flex gap-2">
                 <input
                   value={profile.logoUrl}
@@ -264,26 +269,26 @@ export default function SettingsPage() {
             </Field>
 
             <div className="grid grid-cols-2 gap-4">
-              <Field label="الدولة">
+              <Field label={t.zone}>
                 <input value={profile.country} readOnly className="input bg-gray-50 text-gray-400 cursor-not-allowed" />
               </Field>
-              <Field label="العملة">
+              <Field label={t.price}>
                 <input value={profile.currency} readOnly className="input bg-gray-50 text-gray-400 cursor-not-allowed" />
               </Field>
             </div>
           </div>
 
-          <SaveButton saving={saving} onClick={saveProfile} />
+          <SaveButton saving={saving} onClick={saveProfile} label={t.saveChanges} />
         </section>
       )}
 
       {/* ── Branding tab ── */}
       {activeTab === 'branding' && (
         <section className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-6">
-          <h2 className="font-bold text-gray-800 flex items-center gap-2"><Palette className="w-5 h-5 text-violet-600" /> الهوية البصرية للمنيو</h2>
+          <h2 className="font-bold text-gray-800 flex items-center gap-2"><Palette className="w-5 h-5 text-violet-600" /> {t.branding}</h2>
 
           {/* Color */}
-          <Field label="اللون الرئيسي (QR Menu)">
+          <Field label={t.accentColor}>
             <div className="space-y-3">
               {/* Presets */}
               <div className="flex flex-wrap gap-2">
@@ -311,7 +316,7 @@ export default function SettingsPage() {
           </Field>
 
           {/* Font */}
-          <Field label="الخط (QR Menu)">
+          <Field label={t.font}>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {FONTS.map(f => (
                 <button
@@ -332,7 +337,7 @@ export default function SettingsPage() {
 
           {/* Live preview */}
           <div>
-            <p className="text-xs font-semibold text-gray-500 mb-2">معاينة:</p>
+            <p className="text-xs font-semibold text-gray-500 mb-2">{t.preview}:</p>
             <div
               className="rounded-xl p-4 text-white text-center"
               style={{ backgroundColor: profile.accentColor, fontFamily: profile.primaryFont }}
@@ -348,16 +353,16 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          <SaveButton saving={saving} onClick={saveProfile} />
+          <SaveButton saving={saving} onClick={saveProfile} label={t.saveChanges} />
         </section>
       )}
 
       {/* ── Password tab ── */}
       {activeTab === 'password' && (
         <section className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-5">
-          <h2 className="font-bold text-gray-800 flex items-center gap-2"><Lock className="w-5 h-5 text-red-500" /> تغيير كلمة مرور الحساب</h2>
+          <h2 className="font-bold text-gray-800 flex items-center gap-2"><Lock className="w-5 h-5 text-red-500" /> {t.changePassword}</h2>
 
-          <Field label="كلمة المرور الحالية">
+          <Field label={t.currentPw}>
             <PasswordInput
               value={pwForm.current}
               onChange={v => setPwForm(p => ({ ...p, current: v }))}
@@ -367,17 +372,17 @@ export default function SettingsPage() {
             />
           </Field>
 
-          <Field label="كلمة المرور الجديدة">
+          <Field label={t.newPw}>
             <PasswordInput
               value={pwForm.newPw}
               onChange={v => setPwForm(p => ({ ...p, newPw: v }))}
               show={showPw.newPw}
               onToggle={() => setShowPw(p => ({ ...p, newPw: !p.newPw }))}
-              placeholder="8 أحرف على الأقل"
+              placeholder="8+"
             />
           </Field>
 
-          <Field label="تأكيد كلمة المرور الجديدة">
+          <Field label={t.confirmPw}>
             <PasswordInput
               value={pwForm.confirm}
               onChange={v => setPwForm(p => ({ ...p, confirm: v }))}
@@ -399,7 +404,7 @@ export default function SettingsPage() {
             className="flex items-center gap-2 px-5 py-2.5 bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all active:scale-95"
           >
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
-            تغيير كلمة المرور
+            {t.changePassword}
           </button>
         </section>
       )}
@@ -409,7 +414,7 @@ export default function SettingsPage() {
         <section className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="font-bold text-gray-800 flex items-center gap-2">
-              <Users className="w-5 h-5 text-sky-600" /> أكواد دخول الكادر (PIN)
+              <Users className="w-5 h-5 text-sky-600" /> {t.staffPins}
             </h2>
             <button
               onClick={() => {
@@ -425,7 +430,7 @@ export default function SettingsPage() {
           </div>
 
           {staff.length === 0 ? (
-            <p className="text-center py-8 text-gray-400 text-sm">لا يوجد موظفون مسجلون</p>
+            <p className="text-center py-8 text-gray-400 text-sm">{t.noData}</p>
           ) : (
             <div className="space-y-2">
               {staff.map(s => {
@@ -482,7 +487,7 @@ export default function SettingsPage() {
                             onClick={() => setEditingPin(prev => ({ ...prev, [s.id]: s.pinDisplay ?? '' }))}
                             className="text-xs text-sky-600 hover:text-sky-800 font-semibold px-2 py-1 rounded-lg hover:bg-sky-50 transition-all"
                           >
-                            تعديل
+                            {t.edit}
                           </button>
                         </>
                       )}
@@ -509,7 +514,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   )
 }
 
-function SaveButton({ saving, onClick }: { saving: boolean; onClick: () => void }) {
+function SaveButton({ saving, onClick, label }: { saving: boolean; onClick: () => void; label?: string }) {
   return (
     <button
       onClick={onClick}
@@ -517,7 +522,7 @@ function SaveButton({ saving, onClick }: { saving: boolean; onClick: () => void 
       className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-semibold rounded-xl transition-all active:scale-95"
     >
       {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-      حفظ التغييرات
+      {label ?? 'Save'}
     </button>
   )
 }

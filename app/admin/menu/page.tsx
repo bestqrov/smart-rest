@@ -5,6 +5,8 @@ import {
   Plus, Pencil, Trash2, ChevronDown, ChevronUp,
   ImageIcon, Save, X, Loader2, Tag, DollarSign
 } from 'lucide-react'
+import { useLang } from '../lang-context'
+import { A } from '../../../lib/adminI18n'
 
 type Category = { id: number; nameAr: string; nameEn: string; nameFr: string; nameEs: string; nameDe: string; order: number; _count?: { products: number } }
 type Product  = { id: number; categoryId: number; nameAr: string; nameEn: string; nameFr: string; price: string | number; description?: string; imageUrl?: string; isAvailable: boolean; category?: { nameEn: string } }
@@ -13,6 +15,9 @@ const EMPTY_CAT: Omit<Category, 'id' | 'order' | '_count'> = { nameAr: '', nameE
 const EMPTY_PRD = { categoryId: 0, nameAr: '', nameEn: '', nameFr: '', price: '', description: '', imageUrl: '' }
 
 export default function MenuPage() {
+  const { lang, isRTL } = useLang()
+  const t = A[lang]
+
   const [categories, setCategories] = useState<Category[]>([])
   const [products,   setProducts]   = useState<Product[]>([])
   const [activeTab,  setActiveTab]  = useState<'categories' | 'products'>('products')
@@ -54,7 +59,7 @@ export default function MenuPage() {
   }
 
   async function deleteCategory(id: number) {
-    if (!confirm('حذف هذه الفئة وكل منتجاتها؟')) return
+    if (!confirm(t.confirmDelete)) return
     await fetch(`/api/admin/categories/${id}`, { method: 'DELETE', headers: auth() })
     await load()
   }
@@ -87,7 +92,7 @@ export default function MenuPage() {
   }
 
   async function deleteProduct(id: number) {
-    if (!confirm('حذف هذا المنتج؟')) return
+    if (!confirm(t.confirmDelete)) return
     await fetch(`/api/admin/products/${id}`, { method: 'DELETE', headers: auth() })
     await load()
   }
@@ -113,9 +118,9 @@ export default function MenuPage() {
   if (loading) return <div className="flex items-center justify-center h-64"><Loader2 className="w-7 h-7 animate-spin text-emerald-600" /></div>
 
   return (
-    <div className="p-4 sm:p-6 max-w-4xl mx-auto" dir="rtl">
+    <div className="p-4 sm:p-6 max-w-4xl mx-auto" dir={isRTL ? 'rtl' : 'ltr'}>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-extrabold text-gray-900">إدارة المنيو</h1>
+        <h1 className="text-2xl font-extrabold text-gray-900">{t.menu}</h1>
         <div className="flex gap-2">
           {categories.length === 0 && (
             <button
@@ -124,11 +129,11 @@ export default function MenuPage() {
               className="flex items-center gap-1.5 bg-amber-100 hover:bg-amber-200 text-amber-800 text-sm font-semibold px-3 py-2 rounded-xl transition-colors disabled:opacity-60"
             >
               {seeding ? <Loader2 className="w-4 h-4 animate-spin" /> : '✨'}
-              قائمة تجريبية
+              Demo
             </button>
           )}
-          <TabBtn active={activeTab === 'products'} onClick={() => setActiveTab('products')}>المنتجات</TabBtn>
-          <TabBtn active={activeTab === 'categories'} onClick={() => setActiveTab('categories')}>الفئات</TabBtn>
+          <TabBtn active={activeTab === 'products'} onClick={() => setActiveTab('products')}>{t.products}</TabBtn>
+          <TabBtn active={activeTab === 'categories'} onClick={() => setActiveTab('categories')}>{t.categories}</TabBtn>
         </div>
       </div>
 
@@ -139,7 +144,7 @@ export default function MenuPage() {
             onClick={() => setCatModal({ open: true, data: { ...EMPTY_CAT } })}
             className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl font-semibold text-sm transition-colors"
           >
-            <Plus className="w-4 h-4" /> إضافة فئة جديدة
+            <Plus className="w-4 h-4" /> {t.addCategory}
           </button>
 
           {categories.map((cat) => (
@@ -211,7 +216,7 @@ export default function MenuPage() {
                             onClick={() => toggleAvailable(p)}
                             className={`text-xs px-2 py-1 rounded-lg font-medium transition-colors ${p.isAvailable ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
                           >
-                            {p.isAvailable ? 'متاح' : 'غير متاح'}
+                            {p.isAvailable ? t.available : t.unavailable}
                           </button>
                           <button onClick={() => openEditProduct(p)} className="p-1.5 text-gray-400 hover:text-emerald-600 transition-colors">
                             <Pencil className="w-3.5 h-3.5" />
@@ -227,7 +232,7 @@ export default function MenuPage() {
                       onClick={() => openNewProduct(cat.id)}
                       className="flex items-center gap-2 text-sm text-emerald-600 hover:text-emerald-700 font-medium py-2 w-full justify-center border-2 border-dashed border-emerald-200 rounded-xl hover:border-emerald-400 transition-colors"
                     >
-                      <Plus className="w-4 h-4" /> إضافة منتج
+                      <Plus className="w-4 h-4" /> {t.addProduct}
                     </button>
                   </div>
                 )}
@@ -239,14 +244,14 @@ export default function MenuPage() {
 
       {/* ── CATEGORY MODAL ───────────────────────────────────── */}
       {catModal.open && (
-        <Modal title={catModal.id ? 'تعديل الفئة' : 'فئة جديدة'} onClose={() => setCatModal({ open: false, data: { ...EMPTY_CAT } })}>
+        <Modal title={catModal.id ? t.edit : t.addCategory} onClose={() => setCatModal({ open: false, data: { ...EMPTY_CAT } })}>
           <div className="space-y-3">
             {[
-              { key: 'nameAr', label: 'الاسم بالعربية *', dir: 'rtl'  as const },
-              { key: 'nameEn', label: 'الاسم بالإنجليزية *', dir: 'ltr' as const },
-              { key: 'nameFr', label: 'الاسم بالفرنسية', dir: 'ltr' as const },
-              { key: 'nameEs', label: 'الاسم بالإسبانية', dir: 'ltr' as const },
-              { key: 'nameDe', label: 'الاسم بالألمانية', dir: 'ltr' as const },
+              { key: 'nameAr', label: t.nameAr + ' *', dir: 'rtl'  as const },
+              { key: 'nameEn', label: t.nameEn + ' *', dir: 'ltr' as const },
+              { key: 'nameFr', label: t.nameFr, dir: 'ltr' as const },
+              { key: 'nameEs', label: t.nameEs, dir: 'ltr' as const },
+              { key: 'nameDe', label: 'DE', dir: 'ltr' as const },
             ].map(({ key, label, dir }) => (
               <div key={key}>
                 <label className="block text-xs font-semibold text-gray-600 mb-1">{label}</label>
@@ -260,7 +265,7 @@ export default function MenuPage() {
             ))}
             <button onClick={saveCategory} disabled={saving} className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold flex items-center justify-center gap-2 disabled:opacity-50">
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-              حفظ
+              {t.save}
             </button>
           </div>
         </Modal>
@@ -268,11 +273,11 @@ export default function MenuPage() {
 
       {/* ── PRODUCT MODAL ────────────────────────────────────── */}
       {prdModal.open && (
-        <Modal title={prdModal.id ? 'تعديل المنتج' : 'منتج جديد'} onClose={() => setPrdModal({ open: false, data: { ...EMPTY_PRD } })}>
+        <Modal title={prdModal.id ? t.edit : t.addProduct} onClose={() => setPrdModal({ open: false, data: { ...EMPTY_PRD } })}>
           <div className="space-y-3">
             {/* Image upload */}
             <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1">صورة المنتج</label>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">{t.image}</label>
               <div className="flex items-center gap-3">
                 <div className="w-16 h-16 rounded-xl bg-gray-100 overflow-hidden shrink-0">
                   {imgPreview ? (
@@ -308,9 +313,9 @@ export default function MenuPage() {
             </div>
 
             {[
-              { key: 'nameAr', label: 'الاسم بالعربية *', dir: 'rtl'  as const },
-              { key: 'nameEn', label: 'الاسم بالإنجليزية *', dir: 'ltr' as const },
-              { key: 'nameFr', label: 'الاسم بالفرنسية', dir: 'ltr' as const },
+              { key: 'nameAr', label: t.nameAr + ' *', dir: 'rtl'  as const },
+              { key: 'nameEn', label: t.nameEn + ' *', dir: 'ltr' as const },
+              { key: 'nameFr', label: t.nameFr, dir: 'ltr' as const },
             ].map(({ key, label, dir }) => (
               <div key={key}>
                 <label className="block text-xs font-semibold text-gray-600 mb-1">{label}</label>
@@ -321,7 +326,7 @@ export default function MenuPage() {
             ))}
 
             <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1">السعر *</label>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">{t.price} *</label>
               <div className="relative">
                 <DollarSign className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input type="number" step="0.01" min="0" value={prdModal.data.price}
@@ -331,7 +336,7 @@ export default function MenuPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1">الوصف</label>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">{t.description}</label>
               <textarea rows={2} value={prdModal.data.description}
                 onChange={e => setPrdModal(m => ({ ...m, data: { ...m.data, description: e.target.value } }))}
                 dir="rtl"
@@ -340,7 +345,7 @@ export default function MenuPage() {
 
             <button onClick={saveProduct} disabled={saving} className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold flex items-center justify-center gap-2 disabled:opacity-50">
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-              حفظ المنتج
+              {t.save}
             </button>
           </div>
         </Modal>

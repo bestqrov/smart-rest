@@ -9,8 +9,9 @@ import {
   CreditCard, LogOut, ChevronRight, Menu, X,
   AlertTriangle, Loader2, Gift, Zap, ChefHat, Bell, Monitor,
   Users, BarChart3, Copy, Check, ExternalLink, Building2,
-  Banknote, Wallet, CalendarClock, Sparkles, Settings
+  Banknote, Wallet, CalendarClock, Sparkles, Settings, Languages
 } from 'lucide-react'
+import { AdminLangProvider, useLang, type AdminLang } from './lang-context'
 
 // ── Nav ───────────────────────────────────────────────────────────────────────
 
@@ -261,6 +262,14 @@ const PAYPAL_LINK = process.env.NEXT_PUBLIC_PAYPAL_LINK ?? 'https://paypal.me/sm
 // ── AdminLayout ───────────────────────────────────────────────────────────────
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <AdminLangProvider>
+      <AdminLayoutInner>{children}</AdminLayoutInner>
+    </AdminLangProvider>
+  )
+}
+
+function AdminLayoutInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router   = useRouter()
   const [open, setOpen]   = useState(false)
@@ -399,7 +408,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           ))}
         </div>
 
-        <div className="px-3 py-4 border-t border-gray-800">
+        <div className="px-3 py-3 border-t border-gray-800 space-y-1">
+          <LangSwitcherSidebar />
           <button onClick={logout}
             className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-red-400 transition-colors">
             <LogOut className="w-5 h-5" />
@@ -466,7 +476,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 )
               })}
             </nav>
-            <div className="px-3 py-4 border-t border-gray-800">
+            <div className="px-3 py-4 border-t border-gray-800 space-y-1">
+              <LangSwitcherSidebar />
               <button onClick={logout}
                 className="flex items-center gap-3 w-full px-3 py-3 rounded-xl text-gray-400 hover:bg-gray-800 hover:text-red-400">
                 <LogOut className="w-5 h-5" />
@@ -500,6 +511,38 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           actionInFlight={gateAction}
         />
       )}
+    </div>
+  )
+}
+
+// ── LangSwitcherSidebar ───────────────────────────────────────────────────────
+
+function LangSwitcherSidebar() {
+  const { lang, setLang } = useLang()
+  const LANGS: { code: AdminLang; flag: string }[] = [
+    { code: 'ar', flag: '🇲🇦' },
+    { code: 'en', flag: '🇬🇧' },
+    { code: 'fr', flag: '🇫🇷' },
+    { code: 'es', flag: '🇪🇸' },
+  ]
+  return (
+    <div className="flex items-center gap-1 px-3 py-2">
+      <Languages className="w-4 h-4 text-gray-500 shrink-0" />
+      <div className="flex gap-0.5 flex-1">
+        {LANGS.map(({ code, flag }) => (
+          <button
+            key={code}
+            onClick={() => setLang(code)}
+            className={`flex-1 py-1 rounded-md text-xs font-bold transition-all ${
+              lang === code
+                ? 'bg-emerald-600 text-white'
+                : 'text-gray-500 hover:bg-gray-800 hover:text-white'
+            }`}
+          >
+            {flag} {code.toUpperCase()}
+          </button>
+        ))}
+      </div>
     </div>
   )
 }

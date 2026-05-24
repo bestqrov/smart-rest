@@ -8,10 +8,15 @@ import {
   Bell, CheckCheck, Wallet, AlertTriangle, Loader2,
   ChefHat, Heart, Activity, UserPlus
 } from 'lucide-react'
+import { useLang } from '../lang-context'
+import { A } from '../../../lib/adminI18n'
 
 type WaiterCall = { id: number; tableId: number; type: string; message?: string; createdAt: string }
 
 export default function DashboardPage() {
+  const { lang, isRTL } = useLang()
+  const t = A[lang]
+
   const [stats, setStats]     = useState<any>(null)
   const [billing, setBilling] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -65,7 +70,7 @@ export default function DashboardPage() {
   const bal      = Number(billing?.walletBalance || 0)
 
   return (
-    <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6" dir="rtl">
+    <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6" dir={isRTL ? 'rtl' : 'ltr'}>
 
       {/* ── System Health: zero-staff alert ──────────────────────── */}
       {staffCount === 0 && (
@@ -121,7 +126,7 @@ export default function DashboardPage() {
                 onClick={() => ackCall(c)}
                 className="flex items-center gap-1 bg-amber-500 hover:bg-amber-600 text-white text-sm px-3 py-1.5 rounded-lg font-medium transition-colors"
               >
-                <CheckCheck className="w-4 h-4" /> في الطريق
+                <CheckCheck className="w-4 h-4" /> {t.ack}
               </button>
             </div>
           ))}
@@ -132,24 +137,24 @@ export default function DashboardPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <KpiCard
           icon={TrendingUp} color="emerald"
-          label="مبيعات اليوم" value={`${Number(stats.revenue.today).toFixed(0)} ${currency}`}
-          sub={`الأسبوع: ${Number(stats.revenue.week).toFixed(0)}`}
+          label={t.revenue} value={`${Number(stats.revenue.today).toFixed(0)} ${currency}`}
+          sub={`${t.week}: ${Number(stats.revenue.week).toFixed(0)}`}
         />
         <KpiCard
           icon={ShoppingBag} color="blue"
-          label="طلبات اليوم" value={String(stats.ordersCountToday)}
-          sub={`متوسط: ${Number(stats.aov).toFixed(0)} ${currency}`}
+          label={t.todayOrders} value={String(stats.ordersCountToday)}
+          sub={`avg: ${Number(stats.aov).toFixed(0)} ${currency}`}
         />
         <KpiCard
           icon={Activity} color="orange"
-          label="طلبات نشطة الآن" value={String(stats.activeOrders ?? 0)}
-          sub="قيد التحضير أو انتظار"
+          label={t.orders} value={String(stats.activeOrders ?? 0)}
+          sub={t.preparing}
           pulse={stats.activeOrders > 0}
         />
         <KpiCard
           icon={ChefHat} color="violet"
-          label="عمال حاضرون" value={String(stats.activeStaff ?? 0)}
-          sub="في وردية نشطة الآن"
+          label={t.activeStaff} value={String(stats.activeStaff ?? 0)}
+          sub={t.active}
         />
       </div>
 
@@ -157,13 +162,13 @@ export default function DashboardPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <KpiCard
           icon={Users} color="sky"
-          label="زبناء جدد" value={String(stats.newCustomers)}
-          sub="آخر 30 يوم"
+          label={t.staff} value={String(stats.newCustomers)}
+          sub="30d"
         />
         <KpiCard
           icon={Wallet} color={bal < 0 ? 'red' : 'emerald'}
-          label="الرصيد" value={`${bal.toFixed(2)} ${currency}`}
-          sub={billing?.inTrial ? 'فترة تجريبية' : billing?.billingStatus === 'SUSPENDED' ? '⚠ موقوف' : 'نشط'}
+          label={t.walletBalance} value={`${bal.toFixed(2)} ${currency}`}
+          sub={billing?.inTrial ? t.trialEnds : billing?.billingStatus === 'SUSPENDED' ? '⚠' : t.active}
         />
         <div className="col-span-2 bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
           <h3 className="font-bold text-gray-800 mb-2 flex items-center gap-2 text-sm">
@@ -184,7 +189,7 @@ export default function DashboardPage() {
       {/* ── Charts row ────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2 bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-          <h3 className="font-bold text-gray-800 mb-4">مبيعات 30 يوم الأخيرة</h3>
+          <h3 className="font-bold text-gray-800 mb-4">{t.totalRevenue}</h3>
           <div style={{ height: 240 }}>
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={stats.dailySales}>
@@ -201,7 +206,7 @@ export default function DashboardPage() {
         <div className="space-y-4">
           {/* Top products */}
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-            <h3 className="font-bold text-gray-800 mb-3">أكثر المنتجات مبيعاً</h3>
+            <h3 className="font-bold text-gray-800 mb-3">{t.products}</h3>
             <ul className="space-y-2">
               {stats.top.map((t: any, i: number) => (
                 <li key={t.productId} className="flex items-center justify-between gap-2">
@@ -240,15 +245,15 @@ export default function DashboardPage() {
 
       {/* ── Recent orders ──────────────────────────────────────────── */}
       <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-        <h3 className="font-bold text-gray-800 mb-4">آخر الطلبات المكتملة</h3>
+        <h3 className="font-bold text-gray-800 mb-4">{t.recentOrders}</h3>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-gray-400 border-b border-gray-100">
-                <th className="py-2 font-medium text-right">الطلب</th>
-                <th className="py-2 font-medium text-right">الطاولة</th>
-                <th className="py-2 font-medium text-right">المبلغ</th>
-                <th className="py-2 font-medium text-right">التاريخ</th>
+                <th className="py-2 font-medium text-right">{t.orders}</th>
+                <th className="py-2 font-medium text-right">{t.table}</th>
+                <th className="py-2 font-medium text-right">{t.revenue}</th>
+                <th className="py-2 font-medium text-right">{t.dateRange}</th>
               </tr>
             </thead>
             <tbody>

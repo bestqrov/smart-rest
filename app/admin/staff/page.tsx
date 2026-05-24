@@ -7,6 +7,7 @@ import {
   RefreshCw, Bell, Trash2, Coffee, Utensils, Brush, Waves, PersonStanding,
   CheckCircle, AlertCircle
 } from 'lucide-react'
+import { useLang } from '../lang-context'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -199,9 +200,8 @@ function tabFilter(members: StaffMember[], tab: Tab) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function AdminStaffPage() {
-  const [lang,     setLang]     = useState<Lang>('ar')
-  const isRTL = lang === 'ar'
-  const t     = T[lang]
+  const { lang, isRTL } = useLang()
+  const t = T[lang]
 
   const [tab,    setTab]    = useState<Tab>('all')
   const [staff,  setStaff]  = useState<StaffMember[]>([])
@@ -325,12 +325,6 @@ export default function AdminStaffPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {(['ar','fr','en','es'] as Lang[]).map(l => (
-            <button key={l} onClick={() => setLang(l)}
-              className={`px-2 py-1 rounded text-xs font-bold ${lang === l ? 'bg-amber-500 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
-              {l.toUpperCase()}
-            </button>
-          ))}
           <button onClick={() => { setShowForm(true); setFormErr('') }}
             className="flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-white rounded-xl text-sm font-semibold transition-colors">
             <Plus className="w-4 h-4" /> {t.addStaff}
