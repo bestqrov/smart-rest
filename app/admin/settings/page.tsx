@@ -20,6 +20,7 @@ type Profile = {
   logoUrl:      string
   accentColor:  string
   primaryFont:  string
+  localIp:      string
 }
 
 type StaffMember = {
@@ -92,7 +93,7 @@ export default function SettingsPage() {
 
   const [profile, setProfile] = useState<Profile>({
     businessName: '', name: '', country: '', currency: '',
-    logoUrl: '', accentColor: '#059669', primaryFont: 'Cairo'
+    logoUrl: '', accentColor: '#059669', primaryFont: 'Cairo', localIp: ''
   })
 
   useEffect(() => {
@@ -109,6 +110,7 @@ export default function SettingsPage() {
           logoUrl:      d.logoUrl ?? '',
           accentColor:  d.accentColor ?? '#059669',
           primaryFont:  d.primaryFont ?? 'Cairo',
+          localIp:      d.localIp ?? '',
         })
       })
   }, [router])
@@ -124,6 +126,7 @@ export default function SettingsPage() {
           logoUrl:      profile.logoUrl || null,
           accentColor:  profile.accentColor,
           primaryFont:  profile.primaryFont,
+          localIp:      profile.localIp || null,
         })
       })
       if (res.ok) showToast('تم الحفظ بنجاح ✓', 'success')
@@ -276,6 +279,18 @@ export default function SettingsPage() {
                 <input value={profile.currency} readOnly className="input bg-gray-50 text-gray-400 cursor-not-allowed" />
               </Field>
             </div>
+
+            <Field label={t.localIpLabel}>
+              <input
+                value={profile.localIp}
+                onChange={e => setProfile(p => ({ ...p, localIp: e.target.value.trim() }))}
+                placeholder="192.168.1.100"
+                className="input font-mono"
+                inputMode="url"
+                spellCheck={false}
+              />
+              <p className="text-xs text-gray-400 mt-1">{t.localIpHint}</p>
+            </Field>
           </div>
 
           <SaveButton saving={saving} onClick={saveProfile} label={t.saveChanges} />

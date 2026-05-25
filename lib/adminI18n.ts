@@ -118,6 +118,8 @@ export const A = {
     changePassword:'تغيير كلمة المرور',
     saveChanges:   'حفظ التغييرات',
     preview:       'معاينة',
+    localIpLabel:  'عنوان IP المحلي (LAN)',
+    localIpHint:   'IP جهاز السيرفر على الشبكة المحلية — يُستخدم لإرسال الطلبات عند انقطاع الإنترنت (مثال: 192.168.1.100)',
 
     // Billing
     walletBalance: 'رصيد المحفظة',
@@ -268,6 +270,8 @@ export const A = {
     changePassword:'Change Password',
     saveChanges:   'Save Changes',
     preview:       'Preview',
+    localIpLabel:  'Local IP Address (LAN)',
+    localIpHint:   'Server IP on the local network — used to send orders when internet is down (e.g. 192.168.1.100)',
 
     walletBalance: 'Wallet Balance',
     monthlyFee:    'Monthly Subscription',
@@ -413,6 +417,8 @@ export const A = {
     changePassword:'Changer le mot de passe',
     saveChanges:   'Enregistrer les modifications',
     preview:       'Aperçu',
+    localIpLabel:  'Adresse IP locale (LAN)',
+    localIpHint:   'IP du serveur sur le réseau local — utilisé pour envoyer les commandes sans internet (ex: 192.168.1.100)',
 
     walletBalance: 'Solde portefeuille',
     monthlyFee:    'Abonnement mensuel',
@@ -558,6 +564,8 @@ export const A = {
     changePassword:'Cambiar contraseña',
     saveChanges:   'Guardar cambios',
     preview:       'Vista previa',
+    localIpLabel:  'Dirección IP local (LAN)',
+    localIpHint:   'IP del servidor en la red local — para enviar pedidos sin internet (ej: 192.168.1.100)',
 
     walletBalance: 'Saldo de billetera',
     monthlyFee:    'Suscripción mensual',
