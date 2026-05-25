@@ -19,7 +19,7 @@ router.get('/api/menu/public', async (req: Request, res: Response) => {
     const [cafe, categories] = await Promise.all([
       prisma.cafe.findUnique({
         where: { id: table.cafeId },
-        select: { name: true, isActive: true, logoUrl: true, currency: true }
+        select: { name: true, isActive: true, logoUrl: true, currency: true, country: true, localIp: true, accentColor: true, primaryFont: true }
       }),
       prisma.category.findMany({
         where: { cafeId: table.cafeId },
@@ -30,7 +30,21 @@ router.get('/api/menu/public', async (req: Request, res: Response) => {
 
     if (!cafe?.isActive) return res.status(403).json({ error: 'Venue is currently unavailable' })
 
-    return res.json({ cafeName: cafe.name, cafeLogoUrl: cafe.logoUrl, currency: cafe.currency, categories })
+    // Derive marketType from country (Africa + MENA = Local, rest = Global)
+    const LOCAL_COUNTRIES = ['MA','SN','CI','MR','TN','DZ','LY','SD','NG','GH','KE','TZ','UG','ZM','CM','BJ','TG','ML','BF','NE','GN','SL','LR','GM','GW','MZ','AO','CD','CG','GA']
+    const marketType = LOCAL_COUNTRIES.includes(cafe.country ?? 'MA') ? 'Local' : 'Global'
+
+    return res.json({
+      cafeName:    cafe.name,
+      cafeLogoUrl: cafe.logoUrl,
+      currency:    cafe.currency,
+      accentColor: cafe.accentColor,
+      primaryFont: cafe.primaryFont,
+      country:     cafe.country,
+      marketType,
+      localIp:     cafe.localIp ?? null,
+      categories,
+    })
   } catch (err) {
     return res.status(500).json({ error: 'Failed to fetch menu' })
   }

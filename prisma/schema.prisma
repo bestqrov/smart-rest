@@ -121,6 +121,7 @@ model Cafe {
   // ── Branding (QR menu appearance) ────────────────────────────────────────
   accentColor  String @default("#059669")  // hex color for QR menu theme
   primaryFont  String @default("Cairo")    // Google Font name
+  localIp      String?                     // LAN IP for offline fallback (set in Settings → e.g. 192.168.1.100)
 
   // ── Per-restaurant feature flags (toggled by superadmin) ──────────────────
   smartWifiEnabled  Boolean @default(false)

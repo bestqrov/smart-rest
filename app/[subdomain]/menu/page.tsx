@@ -11,6 +11,9 @@ import ReviewPrompt from './ReviewPrompt'
 import SmartWifiCard from './SmartWifiCard'
 import ErrorBoundary from '../../../src/components/ErrorBoundary'
 import NProgressProvider from '../../../src/components/NProgressProvider'
+import { useOffline } from './hooks/useOffline'
+import { useLocalRouter } from './hooks/useLocalRouter'
+import OfflineModal from './components/OfflineModal'
 
 const theme = {
   primary: 'bg-emerald-600',
@@ -37,10 +40,12 @@ type Category = {
 }
 
 type MenuData = {
-  cafeId: number
-  tableId: number
-  cafe: { id: number; name: string; logoUrl?: string | null }
-  categories: Category[]
+  cafeId:      number
+  tableId:     number
+  marketType?: 'Local' | 'Global'
+  localIp?:    string | null
+  cafe:        { id: number; name: string; logoUrl?: string | null }
+  categories:  Category[]
 }
 
 type CartItem = { product: Product; qty: number }
@@ -66,6 +71,27 @@ function MenuContent({ params }: { params: { subdomain: string } }) {
   const { lang, tCategory, tProduct } = useTranslation()
   const isRtl = lang === 'ar'
 
+  // ── PWA: register service worker once ───────────────────────────────────────
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker
+        .register('/sw.js', { scope: '/', updateViaCache: 'none' })
+        .then(reg => {
+          // When a new SW is waiting, activate it immediately
+          if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' })
+          reg.addEventListener('updatefound', () => {
+            const sw = reg.installing
+            sw?.addEventListener('statechange', () => {
+              if (sw.state === 'installed' && navigator.serviceWorker.controller) {
+                sw.postMessage({ type: 'SKIP_WAITING' })
+              }
+            })
+          })
+        })
+        .catch(() => {}) // SW not supported in dev / HTTP — silent fail
+    }
+  }, [])
+
   const [menuData, setMenuData] = useState<MenuData | null>(null)
   const [loadingMenu, setLoadingMenu] = useState(true)
   const [menuError, setMenuError] = useState<string | null>(null)
@@ -84,6 +110,12 @@ function MenuContent({ params }: { params: { subdomain: string } }) {
   const [flashedPrices, setFlashedPrices] = useState<Set<string>>(new Set())
 
   const sectionRefs = useRef<Record<number, HTMLElement | null>>({})
+
+  // ── Offline + LAN fallback ───────────────────────────────────────────────────
+  const { conn, lanEndpoint, queuedOrders } = useOffline({
+    localIp: menuData?.localIp ?? null,
+  })
+  const { smartPost } = useLocalRouter({ conn, lanEndpoint })
 
   // Step 1: request GPS then fetch menu with location headers
   useEffect(() => {
@@ -220,32 +252,38 @@ function MenuContent({ params }: { params: { subdomain: string } }) {
     if (!menuData || itemsArray.length === 0 || submitting) return
     setSubmitting(true)
     try {
-      const res = await fetch('/api/orders', {
-        method: 'POST',
+      const payload = {
+        tableToken,
+        items: itemsArray.map((it) => ({ productId: it.product.id, quantity: it.qty }))
+      }
+
+      // smartPost: tries cloud → LAN → SW offline queue automatically
+      const result = await smartPost({
+        url:  '/api/orders',
+        body: payload,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tableToken,
-          items: itemsArray.map((it) => ({ productId: it.product.id, quantity: it.qty }))
-        })
       })
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}))
-        alert(body.error ?? 'فشل إرسال الطلب.')
+
+      if (!result.ok && !result.queued) {
+        alert('فشل إرسال الطلب. يرجى المحاولة مجدداً.')
         return
       }
+
       setOrderSent(true)
       setCart({})
       setDrawerOpen(false)
 
-      // After order confirmed, try to fetch Smart WiFi credentials
-      try {
-        const wifiRes = await fetch(`/api/menu/wifi?tableToken=${encodeURIComponent(tableToken)}`)
-        if (wifiRes.ok) {
-          const wifi = await wifiRes.json()
-          if (wifi.ssid) setWifiData(wifi)
+      // After order confirmed, try to fetch Smart WiFi credentials (best-effort)
+      if (result.via !== 'sw-queue') {
+        try {
+          const wifiRes = await fetch(`/api/menu/wifi?tableToken=${encodeURIComponent(tableToken)}`)
+          if (wifiRes.ok) {
+            const wifi = await wifiRes.json()
+            if (wifi.ssid) setWifiData(wifi)
+          }
+        } catch {
+          // WiFi feature unavailable — silently ignore
         }
-      } catch {
-        // WiFi feature unavailable — silently ignore
       }
     } catch {
       alert('خطأ في الشبكة. يرجى المحاولة مجدداً.')
@@ -319,6 +357,15 @@ function MenuContent({ params }: { params: { subdomain: string } }) {
   return (
     <ErrorBoundary>
       <NProgressProvider />
+
+      {/* ── Offline modal / LAN toast ──────────────────────────────────────── */}
+      <OfflineModal
+        conn={conn}
+        marketType={menuData?.marketType ?? 'Local'}
+        lang={lang}
+        queuedOrders={queuedOrders}
+      />
+
       <div dir={isRtl ? 'rtl' : 'ltr'} className="relative min-h-screen bg-gray-50 text-gray-900">
 
         {/* Watermark — cafe logo at 5% opacity, fixed behind all content */}
