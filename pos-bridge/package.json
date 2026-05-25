@@ -1,0 +1,23 @@
+{
+  "name": "smartresto-pos-bridge",
+  "version": "1.0.0",
+  "description": "SmartResto POS Bridge — intercepts ESC/POS print jobs, parses receipts, syncs to cloud",
+  "main": "pos-bridge.js",
+  "scripts": {
+    "start":             "node pos-bridge.js",
+    "install-service":   "node install-service.js",
+    "uninstall-service": "node install-service.js --uninstall",
+    "build-exe":         "pkg pos-bridge.js --targets node18-win-x64 --output dist/SmartRestoPOSBridge.exe --compress GZip"
+  },
+  "dependencies": {
+    "@seald-io/nedb": "^4.0.4"
+  },
+  "devDependencies": {
+    "node-windows": "^1.0.0-beta.8",
+    "pkg":          "^5.8.1"
+  },
+  "pkg": {
+    "assets": ["config.json"],
+    "scripts": ["pos-bridge.js"]
+  }
+}

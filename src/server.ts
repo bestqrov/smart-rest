@@ -40,6 +40,7 @@ import adminPayrollRouter from './routes/adminPayroll'
 import menuGenerationRouter from './routes/menuGeneration'
 import suppliersRouter from './routes/suppliers'
 import reservationsRouter from './routes/reservations'
+import posParserRouter from './routes/posParser'
 import { registerSocketHandlers } from './socket/handlers'
 import { startWeeklyBillingCron } from './cron/weeklyBilling'
 import { initChangeStreams, closeChangeStreams } from './services/changeStreams'
@@ -117,6 +118,7 @@ async function main() {
   app.use(menuGenerationRouter)
   app.use(suppliersRouter)
   app.use(reservationsRouter)
+  app.use(posParserRouter)
 
   // health
   app.get('/health', (req, res) => res.json({ ok: true }))
