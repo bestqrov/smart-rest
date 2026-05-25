@@ -219,6 +219,21 @@ function MenuContent({ params }: { params: { subdomain: string } }) {
     return () => { socket.disconnect() }
   }, [menuData?.cafeId, tableToken]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // QR session heartbeat — pings every 2 min so anti-fraud engine tracks active duration
+  useEffect(() => {
+    if (!tableToken) return
+    const ping = () => {
+      fetch('/api/v1/integrations/qr-heartbeat', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ tableToken }),
+      }).catch(() => null) // fire-and-forget, never block UI
+    }
+    ping() // immediate first ping on mount
+    const id = setInterval(ping, 2 * 60 * 1000) // every 2 minutes
+    return () => clearInterval(id)
+  }, [tableToken])
+
   const itemsArray = useMemo(() => Object.values(cart), [cart])
   const totalQty = itemsArray.reduce((s, it) => s + it.qty, 0)
   const totalPrice = itemsArray.reduce((s, it) => s + it.qty * it.product.price, 0)
@@ -272,6 +287,13 @@ function MenuContent({ params }: { params: { subdomain: string } }) {
       setOrderSent(true)
       setCart({})
       setDrawerOpen(false)
+
+      // Mark this session as "has placed an order" for anti-fraud tracking
+      fetch('/api/v1/integrations/qr-heartbeat', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ tableToken, hasOrder: true }),
+      }).catch(() => null)
 
       // After order confirmed, try to fetch Smart WiFi credentials (best-effort)
       if (result.via !== 'sw-queue') {

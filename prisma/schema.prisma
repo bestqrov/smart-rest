@@ -191,6 +191,12 @@ model Cafe {
   paymentRequests PaymentRequest[]
   reservations    Reservation[]
   onlinePayments  OnlinePayment[]
+  recipes         Recipe[]
+  stockItems      StockItem[]
+  printerLogs     PrinterLog[]
+  qrScans         QrScan[]
+  fraudAlerts     FraudAlert[]
+  feedbacks       Feedback[]
 
 }
 
@@ -280,6 +286,7 @@ model Product {
   tags           String[] @default([])
 
   orderItems OrderItem[]
+  recipe     Recipe?
 
   @@index([categoryId])
 }
@@ -580,6 +587,121 @@ model Reservation {
   @@index([cafeId])
   @@index([status])
   @@index([date])
+}
+
+// ─── Smart Costing — Recipes & Ingredients ───────────────────────────────────
+
+type RecipeIngredient {
+  ingredientName     String
+  quantityGramsOrMl  Float
+  costPerUnit        Float   // cost per gram / ml in local currency
+}
+
+model Recipe {
+  id               String             @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId           String             @db.ObjectId
+  cafe             Cafe               @relation(fields: [cafeId], references: [id])
+  productId        String             @db.ObjectId @unique
+  product          Product            @relation(fields: [productId], references: [id])
+  costingMode      String             @default("Standard")  // Standard | Smart_Costing
+  ingredients      RecipeIngredient[]
+  calculatedCost   Float              @default(0)
+  profitMargin     Float              @default(0)           // product.price - calculatedCost
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  @@index([cafeId])
+}
+
+// ─── Inventory Stock ──────────────────────────────────────────────────────────
+
+model StockItem {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId            String   @db.ObjectId
+  cafe              Cafe     @relation(fields: [cafeId], references: [id])
+  ingredientName    String
+  unit              String   @default("g")   // g | ml | pcs
+  currentQty        Float    @default(0)
+  minimumThreshold  Float    @default(0)     // alert fires below this
+  costPerUnit       Float    @default(0)
+  isLow             Boolean  @default(false)
+  lastRestockedAt   DateTime?
+  updatedAt         DateTime @updatedAt
+
+  @@unique([cafeId, ingredientName])
+  @@index([cafeId])
+  @@index([isLow])
+}
+
+// ─── Printer Logs (ingested from Silent Print Spy / POS Bridge) ───────────────
+
+model PrinterLog {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId     String   @db.ObjectId
+  cafe       Cafe     @relation(fields: [cafeId], references: [id])
+  tableNumber Int?
+  items      Json     // [{ name, price, qty }]
+  totalPrice Float
+  source     String   @default("pos_bridge")  // pos_bridge | manual
+  receivedAt DateTime @default(now())
+
+  @@index([cafeId])
+  @@index([receivedAt])
+  @@index([tableNumber])
+}
+
+// ─── QR Scan Activity (anti-fraud session tracking) ──────────────────────────
+
+model QrScan {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId         String   @db.ObjectId
+  cafe           Cafe     @relation(fields: [cafeId], references: [id])
+  tableNumber    Int
+  tableToken     String
+  scanTime       DateTime @default(now())
+  lastActiveAt   DateTime @default(now())   // bumped by heartbeat
+  activeDurationMin Int   @default(0)       // minutes since first scan
+  orderedItems   Json?    // snapshot of items added to cart (set on order)
+  hasOrder       Boolean  @default(false)   // true once /api/orders is called
+
+  @@index([cafeId])
+  @@index([scanTime])
+  @@index([tableNumber])
+}
+
+// ─── Fraud Alerts ─────────────────────────────────────────────────────────────
+
+model FraudAlert {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId      String   @db.ObjectId
+  cafe        Cafe     @relation(fields: [cafeId], references: [id])
+  tableNumber Int
+  detectedAt  DateTime @default(now())
+  details     String
+  status      String   @default("Pending")  // Pending | Reviewed | Dismissed
+  resolvedAt  DateTime?
+
+  @@index([cafeId])
+  @@index([status])
+  @@index([detectedAt])
+}
+
+// ─── Customer Feedback (direct-to-owner, bypasses staff) ─────────────────────
+
+model Feedback {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId      String   @db.ObjectId
+  cafe        Cafe     @relation(fields: [cafeId], references: [id])
+  tableNumber Int?
+  tableToken  String?
+  score       Int      // 1–5
+  comment     String   @default("")
+  lang        String   @default("ar")
+  createdAt   DateTime @default(now())
+
+  @@index([cafeId])
+  @@index([score])
+  @@index([createdAt])
 }
 
 // ─── Online Payment Sessions (Gulf Stripe / Africa Mobile Money) ─────────────

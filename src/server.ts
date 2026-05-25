@@ -43,8 +43,12 @@ import reservationsRouter from './routes/reservations'
 import posParserRouter from './routes/posParser'
 import paymentRouter from './routes/payment'
 import whatsappWebhookRouter from './routes/whatsappWebhook'
+import recipesRouter from './routes/recipes'
+import antiFraudRouter from './routes/antiFraud'
+import feedbackRouter from './routes/feedback'
 import { registerSocketHandlers } from './socket/handlers'
 import { startWeeklyBillingCron } from './cron/weeklyBilling'
+import { startNightlyCron } from './cron/nightly'
 import { initChangeStreams, closeChangeStreams } from './services/changeStreams'
 
 async function main() {
@@ -127,6 +131,9 @@ async function main() {
   app.use(posParserRouter)
   app.use(paymentRouter)
   app.use(whatsappWebhookRouter)
+  app.use(recipesRouter)
+  app.use(antiFraudRouter)
+  app.use(feedbackRouter)
 
   // health (both paths — /api/health used by SW offline detection)
   app.get(['/health', '/api/health'], (req, res) => res.json({ ok: true }))
@@ -151,6 +158,8 @@ async function main() {
 
   // Start automated billing governance cron
   startWeeklyBillingCron()
+  // Start nightly anti-fraud + EOD WhatsApp report cron
+  startNightlyCron()
 
   httpServer.listen(port, '0.0.0.0', () => {
     logger.info({ msg: 'Server started', port, host: '0.0.0.0' })
