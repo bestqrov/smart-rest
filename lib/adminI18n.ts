@@ -146,6 +146,21 @@ export const A = {
     delivered:     'تم التسليم',
     completed:     'مكتمل',
     cancelled:     'ملغي',
+
+    // Dashboard extra
+    loadError:           'فشل تحميل البيانات',
+    mostLiked:           'الأكثر إعجاباً',
+    noDataYet:           'لا توجد بيانات بعد',
+    sales:               'المبيعات',
+    peakHours:           'أوقات الذروة',
+    settleNow:           'تسوية الآن',
+    restaurantSuspended: 'المطعم موقوف مؤقتاً',
+    negBalanceMsg:       'رصيدك سالب. قم بتسوية الدين لاستعادة الخدمة.',
+    tableRequestsHelp:   'تطلب المساعدة',
+    addStaffNow:         'إضافة موظف الآن',
+    setupAlert:          'تنبيه إعداد النظام',
+    setupAlertMsg:       'المرجو إضافة نادل أو موظف لتفعيل النظام والبدء في استقبال الطلبات ميدانياً.',
+    dateLocale:          'ar-MA',
   },
 
   en: {
@@ -277,6 +292,20 @@ export const A = {
     delivered:     'Delivered',
     completed:     'Completed',
     cancelled:     'Cancelled',
+
+    loadError:           'Failed to load data',
+    mostLiked:           'Most Liked',
+    noDataYet:           'No data yet',
+    sales:               'Sales',
+    peakHours:           'Peak Hours',
+    settleNow:           'Settle Now',
+    restaurantSuspended: 'Restaurant Suspended',
+    negBalanceMsg:       'Your balance is negative. Settle the debt to restore service.',
+    tableRequestsHelp:   'requests help',
+    addStaffNow:         'Add Staff Now',
+    setupAlert:          'System Setup Alert',
+    setupAlertMsg:       'Please add a waiter or staff member to activate the system and start receiving orders.',
+    dateLocale:          'en-GB',
   },
 
   fr: {
@@ -408,6 +437,20 @@ export const A = {
     delivered:     'Livré',
     completed:     'Terminé',
     cancelled:     'Annulé',
+
+    loadError:           'Échec du chargement',
+    mostLiked:           'Les plus aimés',
+    noDataYet:           'Aucune donnée pour l\'instant',
+    sales:               'Ventes',
+    peakHours:           'Heures de pointe',
+    settleNow:           'Régler maintenant',
+    restaurantSuspended: 'Restaurant suspendu',
+    negBalanceMsg:       'Votre solde est négatif. Réglez la dette pour rétablir le service.',
+    tableRequestsHelp:   'demande de l\'aide',
+    addStaffNow:         'Ajouter un employé',
+    setupAlert:          'Alerte configuration système',
+    setupAlertMsg:       'Veuillez ajouter un serveur ou un employé pour activer le système et commencer à recevoir des commandes.',
+    dateLocale:          'fr-FR',
   },
 
   es: {
@@ -539,6 +582,20 @@ export const A = {
     delivered:     'Entregado',
     completed:     'Completado',
     cancelled:     'Cancelado',
+
+    loadError:           'Error al cargar datos',
+    mostLiked:           'Más gustados',
+    noDataYet:           'Sin datos aún',
+    sales:               'Ventas',
+    peakHours:           'Horas pico',
+    settleNow:           'Pagar ahora',
+    restaurantSuspended: 'Restaurante suspendido',
+    negBalanceMsg:       'Tu saldo es negativo. Liquida la deuda para restaurar el servicio.',
+    tableRequestsHelp:   'solicita ayuda',
+    addStaffNow:         'Añadir personal ahora',
+    setupAlert:          'Alerta de configuración',
+    setupAlertMsg:       'Por favor, añade un camarero o empleado para activar el sistema y comenzar a recibir pedidos.',
+    dateLocale:          'es-ES',
   },
 } as const
 

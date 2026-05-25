@@ -64,7 +64,7 @@ export default function DashboardPage() {
       <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
     </div>
   )
-  if (!stats) return <div className="p-6 text-red-500">فشل تحميل البيانات</div>
+  if (!stats) return <div className="p-6 text-red-500">{t.loadError}</div>
 
   const currency = billing?.currency || 'MAD'
   const bal      = Number(billing?.walletBalance || 0)
@@ -74,23 +74,14 @@ export default function DashboardPage() {
 
       {/* ── System Health: zero-staff alert ──────────────────────── */}
       {staffCount === 0 && (
-        <div className="bg-red-50 border-2 border-red-300 rounded-2xl p-4 flex items-start gap-3 animate-pulse-slow">
-          <Bell className="w-6 h-6 text-red-500 shrink-0 mt-0.5 animate-[bell-ring_1s_ease-in-out_infinite]" style={{
-            animation: 'ring 0.8s ease-in-out infinite alternate'
-          }} />
+        <div className="bg-red-50 border-2 border-red-300 rounded-2xl p-4 flex items-start gap-3">
+          <Bell className="w-6 h-6 text-red-500 shrink-0 mt-0.5" style={{ animation: 'ring 0.8s ease-in-out infinite alternate' }} />
           <div className="flex-1">
-            <p className="font-extrabold text-red-800 text-base">
-              🔴 تنبيه إعداد النظام — Alerte configuration système
-            </p>
-            <div className="mt-1 space-y-0.5 text-sm text-red-700">
-              <p>🇸🇦 <strong>المرجو إضافة نادل أو موظف</strong> لتفعيل النظام والبدء في استقبال الطلبات ميدانياً.</p>
-              <p>🇫🇷 <strong>Veuillez ajouter un serveur ou un employé</strong> pour activer le système et commencer à recevoir des commandes.</p>
-              <p>🇬🇧 <strong>Please add a waiter or staff member</strong> to activate the system and start receiving orders in the field.</p>
-              <p>🇪🇸 <strong>Por favor, añade un camarero o empleado</strong> para activar el sistema y comenzar a recibir pedidos.</p>
-            </div>
+            <p className="font-extrabold text-red-800 text-base">🔴 {t.setupAlert}</p>
+            <p className="mt-1 text-sm text-red-700">{t.setupAlertMsg}</p>
             <a href="/admin/staff"
               className="mt-3 inline-flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white text-sm font-bold px-4 py-2 rounded-xl transition-colors">
-              <Users className="w-4 h-4" /> إضافة موظف الآن / Add Staff Now
+              <Users className="w-4 h-4" /> {t.addStaffNow}
             </a>
           </div>
         </div>
@@ -101,10 +92,10 @@ export default function DashboardPage() {
         <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-start gap-3">
           <AlertTriangle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
           <div>
-            <p className="font-bold text-red-800">المطعم موقوف مؤقتاً</p>
-            <p className="text-red-600 text-sm mt-0.5">رصيدك سالب ({bal.toFixed(2)} {currency}). قم بتسوية الدين لاستعادة الخدمة.</p>
+            <p className="font-bold text-red-800">{t.restaurantSuspended}</p>
+            <p className="text-red-600 text-sm mt-0.5">{t.negBalanceMsg} ({bal.toFixed(2)} {currency})</p>
             <a href="/admin/billing" className="mt-2 inline-block text-sm font-bold text-white bg-red-500 px-4 py-1.5 rounded-lg">
-              تسوية الآن
+              {t.settleNow}
             </a>
           </div>
         </div>
@@ -118,7 +109,7 @@ export default function DashboardPage() {
               <div className="flex items-center gap-3">
                 <Bell className="w-5 h-5 text-amber-600 shrink-0 animate-bounce" />
                 <div>
-                  <p className="font-semibold text-amber-900">الطاولة {c.tableId} تطلب المساعدة</p>
+                  <p className="font-semibold text-amber-900">{t.table} {c.tableId} {t.tableRequestsHelp}</p>
                   <p className="text-amber-700 text-xs">{c.type}{c.message ? ` — ${c.message}` : ''}</p>
                 </div>
               </div>
@@ -172,7 +163,7 @@ export default function DashboardPage() {
         />
         <div className="col-span-2 bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
           <h3 className="font-bold text-gray-800 mb-2 flex items-center gap-2 text-sm">
-            <Heart className="w-4 h-4 text-rose-500" /> الأكثر إعجاباً
+            <Heart className="w-4 h-4 text-rose-500" /> {t.mostLiked}
           </h3>
           <div className="flex flex-wrap gap-2">
             {(stats.mostLiked ?? []).slice(0,5).map((p: any) => (
@@ -181,7 +172,7 @@ export default function DashboardPage() {
                 <span className="text-xs text-rose-400">❤ {p.likesCount}</span>
               </div>
             ))}
-            {(stats.mostLiked ?? []).length === 0 && <span className="text-xs text-gray-400">لا توجد بيانات بعد</span>}
+            {(stats.mostLiked ?? []).length === 0 && <span className="text-xs text-gray-400">{t.noDataYet}</span>}
           </div>
         </div>
       </div>
@@ -196,7 +187,7 @@ export default function DashboardPage() {
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                 <XAxis dataKey="date" tickFormatter={(d: string) => d.slice(5)} tick={{ fontSize: 11 }} />
                 <YAxis tick={{ fontSize: 11 }} />
-                <Tooltip formatter={(v: number) => [`${v} ${currency}`, 'المبيعات']} />
+                <Tooltip formatter={(v: number) => [`${v} ${currency}`, t.sales]} />
                 <Line type="monotone" dataKey="total" stroke="#10B981" strokeWidth={2.5} dot={false} />
               </LineChart>
             </ResponsiveContainer>
@@ -223,7 +214,7 @@ export default function DashboardPage() {
           {/* Peak hours */}
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
             <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
-              <Clock className="w-4 h-4 text-amber-500" /> أوقات الذروة
+              <Clock className="w-4 h-4 text-amber-500" /> {t.peakHours}
             </h3>
             <div className="space-y-2">
               {stats.peakHours.map((p: any) => (
@@ -262,7 +253,7 @@ export default function DashboardPage() {
                   <td className="py-3 font-mono text-gray-600">#{o.id}</td>
                   <td className="py-3 text-gray-700">{o.tableId ? `T${o.tableId}` : '—'}</td>
                   <td className="py-3 font-semibold text-emerald-600">{Number(o.totalPrice).toFixed(2)} {currency}</td>
-                  <td className="py-3 text-gray-400 text-xs">{new Date(o.createdAt).toLocaleString('ar-MA')}</td>
+                  <td className="py-3 text-gray-400 text-xs">{new Date(o.createdAt).toLocaleString(t.dateLocale)}</td>
                 </tr>
               ))}
             </tbody>
