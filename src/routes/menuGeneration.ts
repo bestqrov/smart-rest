@@ -23,10 +23,31 @@ import prisma from '../prisma'
 const router = express.Router()
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } })
 
-function getGemini() {
+// Primary: gemini-2.0-flash — fallback: gemini-2.0-flash-lite (separate quota pool)
+const GEMINI_MODELS = ['gemini-2.0-flash', 'gemini-2.0-flash-lite', 'gemini-1.5-flash-latest']
+
+function getGemini(modelIndex = 0) {
   const key = process.env.GEMINI_API_KEY
   if (!key) throw new Error('GEMINI_API_KEY not set')
-  return new GoogleGenerativeAI(key).getGenerativeModel({ model: 'gemini-2.0-flash' })
+  const model = GEMINI_MODELS[modelIndex] ?? GEMINI_MODELS[0]
+  return new GoogleGenerativeAI(key).getGenerativeModel({ model })
+}
+
+async function geminiGenerate(prompt: string | object, modelIndex = 0): Promise<string> {
+  try {
+    const model  = getGemini(modelIndex)
+    const result = typeof prompt === 'string'
+      ? await model.generateContent(prompt)
+      : await model.generateContent(prompt as any)
+    return result.response.text()
+  } catch (err: any) {
+    const is429 = err?.message?.includes('429') || err?.status === 429
+    if (is429 && modelIndex < GEMINI_MODELS.length - 1) {
+      return geminiGenerate(prompt, modelIndex + 1)
+    }
+    if (is429) throw Object.assign(new Error('AI_QUOTA_EXCEEDED'), { status: 429 })
+    throw err
+  }
 }
 
 // ── PATCH /api/admin/cafe/tier-upgrade ───────────────────────────────────────
@@ -95,7 +116,6 @@ router.post('/api/admin/menu-gen/from-url', authorizeAdmin, async (req: Request,
     $('script, style, nav, footer, header').remove()
     const text = $('body').text().replace(/\s+/g, ' ').trim().slice(0, 8000)
 
-    const model  = getGemini()
     const prompt = `
 You are a menu extraction AI. From this restaurant webpage text, extract ALL menu items.
 Return ONLY a valid JSON array with no extra text. Each item must have exactly these fields:
@@ -110,13 +130,14 @@ Rules:
 Webpage text:
 ${text}
 `
-    const result = await model.generateContent(prompt)
-    const parsed = parseGeminiJson(result.response.text())
-    if (!parsed) return res.status(422).json({ error: 'Could not parse menu from this URL', raw: result.response.text().slice(0, 500) })
+    const text2  = await geminiGenerate(prompt)
+    const parsed = parseGeminiJson(text2)
+    if (!parsed) return res.status(422).json({ error: 'Could not parse menu from this URL', raw: text2.slice(0, 500) })
     return res.json({ items: Array.isArray(parsed) ? parsed : parsed.items ?? [] })
   } catch (err: any) {
     logger.error({ msg: 'menu-gen from-url error', err })
-    return res.status(500).json({ error: err?.message ?? 'Failed to scrape URL' })
+    const status = (err as any).status === 429 ? 429 : 500
+    return res.status(status).json({ error: status === 429 ? 'AI quota exceeded — please try again later or enable billing at aistudio.google.com' : (err?.message ?? 'Failed to scrape URL') })
   }
 })
 
@@ -127,7 +148,6 @@ router.post('/api/admin/menu-gen/from-images', authorizeAdmin, async (req: Reque
     const { images } = req.body as { images?: { data: string; mimeType: string }[] }
     if (!images?.length) return res.status(400).json({ error: 'No images provided' })
 
-    const model = getGemini()
     const parts: any[] = [
       { text: `You are a menu OCR AI. Extract ALL menu items from these images of a printed/physical menu.
 Return ONLY a valid JSON array. Each item: {"nameAr":"","nameEn":"","nameFr":"","nameEs":"","price":0,"category":"","description":""}
@@ -138,13 +158,14 @@ JSON array only, no extra text:` },
       ...images.map(img => ({ inlineData: { data: img.data, mimeType: img.mimeType } }))
     ]
 
-    const result = await model.generateContent({ contents: [{ role: 'user', parts }] })
-    const parsed = parseGeminiJson(result.response.text())
-    if (!parsed) return res.status(422).json({ error: 'Could not extract menu from images', raw: result.response.text().slice(0, 500) })
+    const text2  = await geminiGenerate({ contents: [{ role: 'user', parts }] })
+    const parsed = parseGeminiJson(text2)
+    if (!parsed) return res.status(422).json({ error: 'Could not extract menu from images', raw: text2.slice(0, 500) })
     return res.json({ items: Array.isArray(parsed) ? parsed : parsed.items ?? [] })
   } catch (err: any) {
     logger.error({ msg: 'menu-gen from-images error', err })
-    return res.status(500).json({ error: err?.message ?? 'Gemini Vision failed' })
+    const status = (err as any).status === 429 ? 429 : 500
+    return res.status(status).json({ error: status === 429 ? 'AI quota exceeded — please try again later or enable billing at aistudio.google.com' : (err?.message ?? 'Gemini Vision failed') })
   }
 })
 
@@ -186,7 +207,6 @@ router.post('/api/admin/menu-gen/from-file', authorizeAdmin, upload.single('file
 
     if (!text.trim()) return res.status(422).json({ error: 'Could not extract text from file' })
 
-    const model  = getGemini()
     const prompt = `
 You are a menu extraction AI. From this menu document text, extract ALL menu items.
 Return ONLY a valid JSON array. Each item: {"nameAr":"","nameEn":"","nameFr":"","nameEs":"","price":0,"category":"","description":""}
@@ -197,13 +217,14 @@ Return ONLY a valid JSON array. Each item: {"nameAr":"","nameEn":"","nameFr":"",
 Document text (first 6000 chars):
 ${text.slice(0, 6000)}
 `
-    const result = await model.generateContent(prompt)
-    const parsed = parseGeminiJson(result.response.text())
-    if (!parsed) return res.status(422).json({ error: 'Could not parse menu from file', raw: result.response.text().slice(0, 500) })
+    const text2  = await geminiGenerate(prompt)
+    const parsed = parseGeminiJson(text2)
+    if (!parsed) return res.status(422).json({ error: 'Could not parse menu from file', raw: text2.slice(0, 500) })
     return res.json({ items: Array.isArray(parsed) ? parsed : parsed.items ?? [] })
   } catch (err: any) {
     logger.error({ msg: 'menu-gen from-file error', err })
-    return res.status(500).json({ error: err?.message ?? 'File parse failed' })
+    const status = (err as any).status === 429 ? 429 : 500
+    return res.status(status).json({ error: status === 429 ? 'AI quota exceeded — please try again later or enable billing at aistudio.google.com' : (err?.message ?? 'File parse failed') })
   }
 })
 
@@ -214,7 +235,6 @@ router.post('/api/admin/menu-gen/enhance', authorizeAdmin, async (req: Request, 
     const { items, country, currency } = req.body as { items: RawItem[]; country?: string; currency?: string }
     if (!items?.length) return res.status(400).json({ error: 'items required' })
 
-    const model  = getGemini()
     const prompt = `
 You are a restaurant menu AI assistant. Enhance these menu items for a restaurant in ${country ?? 'Morocco'} (currency: ${currency ?? 'MAD'}).
 
@@ -242,13 +262,14 @@ ${JSON.stringify(items.slice(0, 50), null, 0)}
 
 Return ONLY a JSON array, no extra text.
 `
-    const result = await model.generateContent(prompt)
-    const parsed = parseGeminiJson(result.response.text())
-    if (!parsed) return res.status(422).json({ error: 'AI enhancement failed', raw: result.response.text().slice(0, 500) })
+    const text2  = await geminiGenerate(prompt)
+    const parsed = parseGeminiJson(text2)
+    if (!parsed) return res.status(422).json({ error: 'AI enhancement failed', raw: text2.slice(0, 500) })
     return res.json({ items: Array.isArray(parsed) ? parsed : parsed.items ?? [] })
   } catch (err: any) {
     logger.error({ msg: 'menu-gen enhance error', err })
-    return res.status(500).json({ error: err?.message ?? 'Enhancement failed' })
+    const status = (err as any).status === 429 ? 429 : 500
+    return res.status(status).json({ error: status === 429 ? 'AI quota exceeded — please try again later or enable billing at aistudio.google.com' : (err?.message ?? 'Enhancement failed') })
   }
 })
 
@@ -259,7 +280,6 @@ router.post('/api/admin/menu-gen/price-suggest', authorizeAdmin, async (req: Req
     const { items, country, currency, city } = req.body as { items: { nameEn: string; nameAr: string; category: string }[]; country?: string; currency?: string; city?: string }
     if (!items?.length) return res.status(400).json({ error: 'items required' })
 
-    const model  = getGemini()
     const prompt = `
 You are a restaurant pricing expert. Suggest realistic menu prices for items served in a restaurant/cafe located in:
 - City: ${city ?? 'unknown'}
@@ -274,12 +294,13 @@ ${items.map((it, i) => `${i + 1}. ${it.nameEn ?? it.nameAr} (${it.category})`).j
 Return ONLY a JSON array with one object per item: [{"index":0,"price":25.0}, ...]
 Prices must be realistic for that market. No extra text.
 `
-    const result = await model.generateContent(prompt)
-    const parsed = parseGeminiJson(result.response.text())
+    const text2  = await geminiGenerate(prompt)
+    const parsed = parseGeminiJson(text2)
     if (!parsed) return res.status(422).json({ error: 'Price suggestion failed' })
     return res.json({ prices: Array.isArray(parsed) ? parsed : [] })
   } catch (err: any) {
-    return res.status(500).json({ error: err?.message ?? 'Price suggestion failed' })
+    const status = (err as any).status === 429 ? 429 : 500
+    return res.status(status).json({ error: status === 429 ? 'AI quota exceeded — please try again later or enable billing at aistudio.google.com' : (err?.message ?? 'Price suggestion failed') })
   }
 })
 
