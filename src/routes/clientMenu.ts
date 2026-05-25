@@ -19,7 +19,7 @@ router.get('/api/menu/public', async (req: Request, res: Response) => {
     const [cafe, categories] = await Promise.all([
       prisma.cafe.findUnique({
         where: { id: table.cafeId },
-        select: { name: true, isActive: true, logoUrl: true, currency: true, country: true, localIp: true, accentColor: true, primaryFont: true }
+        select: { name: true, isActive: true, logoUrl: true, currency: true, country: true, localIp: true, accentColor: true, primaryFont: true, paymentConfig: true }
       }),
       prisma.category.findMany({
         where: { cafeId: table.cafeId },
@@ -30,19 +30,35 @@ router.get('/api/menu/public', async (req: Request, res: Response) => {
 
     if (!cafe?.isActive) return res.status(403).json({ error: 'Venue is currently unavailable' })
 
-    // Derive marketType from country (Africa + MENA = Local, rest = Global)
-    const LOCAL_COUNTRIES = ['MA','SN','CI','MR','TN','DZ','LY','SD','NG','GH','KE','TZ','UG','ZM','CM','BJ','TG','ML','BF','NE','GN','SL','LR','GM','GW','MZ','AO','CD','CG','GA']
-    const marketType = LOCAL_COUNTRIES.includes(cafe.country ?? 'MA') ? 'Local' : 'Global'
+    // Derive marketType from country
+    const GULF_COUNTRIES   = ['SA','AE','KW','QA','BH','OM']
+    const AFRICA_COUNTRIES = ['MA','SN','CI','MR','TN','DZ','LY','SD','NG','GH','KE','TZ','UG','ZM','CM','BJ','TG','ML','BF','NE','GN','SL','LR','GM','GW','MZ','AO','CD','CG','GA']
+    const country    = cafe.country ?? 'MA'
+    const marketType = GULF_COUNTRIES.includes(country) ? 'Gulf'
+                     : AFRICA_COUNTRIES.includes(country) ? 'Africa'
+                     : 'Global'
+
+    // Expose only the public-facing payment config (no secrets)
+    const pc = cafe.paymentConfig
+    const paymentGateway = pc ? {
+      hasOrangeMoney:       !!pc.orangeMoneyNumber,
+      hasMtnMomo:           !!pc.mtnMoMoNumber,
+      hasWave:              !!pc.waveWallet,
+      moyasarPublishableKey: pc.moyasarPublishableKey || null,
+      hasStripe:            !!pc.stripeAccountId || !!process.env.STRIPE_SECRET_KEY,
+      whatsappNumber:       pc.whatsappNumber || null,
+    } : null
 
     return res.json({
-      cafeName:    cafe.name,
-      cafeLogoUrl: cafe.logoUrl,
-      currency:    cafe.currency,
-      accentColor: cafe.accentColor,
-      primaryFont: cafe.primaryFont,
-      country:     cafe.country,
+      cafeName:       cafe.name,
+      cafeLogoUrl:    cafe.logoUrl,
+      currency:       cafe.currency,
+      accentColor:    cafe.accentColor,
+      primaryFont:    cafe.primaryFont,
+      country,
       marketType,
-      localIp:     cafe.localIp ?? null,
+      localIp:        cafe.localIp ?? null,
+      paymentGateway,
       categories,
     })
   } catch (err) {

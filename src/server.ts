@@ -41,6 +41,8 @@ import menuGenerationRouter from './routes/menuGeneration'
 import suppliersRouter from './routes/suppliers'
 import reservationsRouter from './routes/reservations'
 import posParserRouter from './routes/posParser'
+import paymentRouter from './routes/payment'
+import whatsappWebhookRouter from './routes/whatsappWebhook'
 import { registerSocketHandlers } from './socket/handlers'
 import { startWeeklyBillingCron } from './cron/weeklyBilling'
 import { initChangeStreams, closeChangeStreams } from './services/changeStreams'
@@ -70,6 +72,10 @@ async function main() {
     cors({ origin: allowedOrigin === '*' ? true : allowedOrigin, credentials: true })
   )
   logger.info({ msg: 'CORS/socket origin', allowedOrigin })
+
+  // Stripe webhook needs raw body — mount BEFORE bodyParser.json()
+  app.use('/api/payment/gulf/stripe-webhook', express.raw({ type: 'application/json' }))
+
   app.use(bodyParser.json())
 
   // Rate limiting — protects against brute force and volumetric attacks
@@ -119,6 +125,8 @@ async function main() {
   app.use(suppliersRouter)
   app.use(reservationsRouter)
   app.use(posParserRouter)
+  app.use(paymentRouter)
+  app.use(whatsappWebhookRouter)
 
   // health (both paths — /api/health used by SW offline detection)
   app.get(['/health', '/api/health'], (req, res) => res.json({ ok: true }))

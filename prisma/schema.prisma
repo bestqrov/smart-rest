@@ -62,10 +62,42 @@ type SmartWifi {
   showAfterOrder Boolean @default(true)
 }
 
+// Embedded document — Mobile Money / Gulf payment gateway config
+type PaymentConfig {
+  // Africa Mobile Money
+  orangeMoneyNumber String @default("")
+  mtnMoMoNumber     String @default("")
+  waveWallet        String @default("")
+  // Gulf (Moyasar) — public/secret kept in env; only publishable key stored here
+  moyasarPublishableKey String @default("")
+  // Stripe Connect (future direct charges to cafe's connected account)
+  stripeAccountId  String @default("")
+  // WhatsApp zero-rating ingest
+  whatsappNumber   String @default("")  // restaurant's WhatsApp number for *6 orders
+}
+
 enum BillingStatus {
   GRACE_PERIOD
   COLLECTING_DEBT
   SUSPENDED
+}
+
+// ─── Online Payment ───────────────────────────────────────────────────────────
+
+enum OnlinePaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  EXPIRED
+}
+
+enum OnlinePaymentMethod {
+  STRIPE
+  MOYASAR
+  ORANGE_MONEY
+  MTN_MOMO
+  WAVE
+  WHATSAPP_ORDER   // zero-rated WhatsApp ingest
 }
 
 enum WalletLogType {
@@ -123,6 +155,9 @@ model Cafe {
   primaryFont  String @default("Cairo")    // Google Font name
   localIp      String?                     // LAN IP for offline fallback (set in Settings → e.g. 192.168.1.100)
 
+  // ── Payment gateway configuration (set in Settings → Payments) ────────────
+  paymentConfig PaymentConfig?
+
   // ── Per-restaurant feature flags (toggled by superadmin) ──────────────────
   smartWifiEnabled  Boolean @default(false)
   cashierPosEnabled Boolean @default(true)
@@ -139,22 +174,23 @@ model Cafe {
   sandwichRefPrice  Float?    // reference sandwich price (auto-detected or manual)
   weeklyOrderCount  Int?      // order count captured at last trial-end analysis
 
-  categories     Category[]
-  tables         Table[]
-  seats          Seat[]
-  orders         Order[]
-  billRequests   BillRequest[]
-  users          User[]
-  waiterCalls    WaiterCall[]
-  walletLogs     WalletLog[]
-  billingTiers   BillingTier[]
-  staff          Staff[]
-  cashierShifts  CashierShift[]
-  waiterShifts   WaiterShift[]
+  categories      Category[]
+  tables          Table[]
+  seats           Seat[]
+  orders          Order[]
+  billRequests    BillRequest[]
+  users           User[]
+  waiterCalls     WaiterCall[]
+  walletLogs      WalletLog[]
+  billingTiers    BillingTier[]
+  staff           Staff[]
+  cashierShifts   CashierShift[]
+  waiterShifts    WaiterShift[]
   waiterQRTokens  WaiterQRToken[]
   expenses        Expense[]
   paymentRequests PaymentRequest[]
   reservations    Reservation[]
+  onlinePayments  OnlinePayment[]
 
 }
 
@@ -544,6 +580,51 @@ model Reservation {
   @@index([cafeId])
   @@index([status])
   @@index([date])
+}
+
+// ─── Online Payment Sessions (Gulf Stripe / Africa Mobile Money) ─────────────
+
+model OnlinePayment {
+  id            String              @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId        String              @db.ObjectId
+  cafe          Cafe                @relation(fields: [cafeId], references: [id])
+  orderId       String?             @db.ObjectId   // null until order confirmed post-payment
+  amount        Float
+  currency      String
+  method        OnlinePaymentMethod
+  status        OnlinePaymentStatus @default(PENDING)
+
+  // Stripe fields (Gulf)
+  stripeSessionId     String?
+  stripePaymentIntent String?
+
+  // Moyasar fields (Gulf alternative)
+  moyasarPaymentId    String?
+
+  // Mobile Money fields (Africa)
+  mobileMoneyOperator String?        // orange | mtn | wave
+  mobileMoneyRef      String?        // reference code returned by operator
+
+  // WhatsApp ingest (zero-rating)
+  whatsappMessageId   String?
+  rawWhatsappText     String?        // original message body
+
+  // Table context (carried through payment flow before order creation)
+  tableToken          String?
+  seatToken           String?
+  customerPhone       String?
+  itemsSnapshot       Json?          // [{productId, quantity, notes}] at time of initiation
+
+  expiresAt     DateTime
+  confirmedAt   DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@index([cafeId])
+  @@index([status])
+  @@index([stripeSessionId])
+  @@index([stripePaymentIntent])
+  @@index([moyasarPaymentId])
+  @@index([createdAt])
 }
 
 // ─── Payment Requests (Superadmin Payment Gateway) ────────────────────────────
