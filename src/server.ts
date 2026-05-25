@@ -120,8 +120,8 @@ async function main() {
   app.use(reservationsRouter)
   app.use(posParserRouter)
 
-  // health
-  app.get('/health', (req, res) => res.json({ ok: true }))
+  // health (both paths — /api/health used by SW offline detection)
+  app.get(['/health', '/api/health'], (req, res) => res.json({ ok: true }))
 
   // Next.js handles all non-API routes (pages, assets, etc.)
   app.use((req, res) => {
