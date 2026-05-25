@@ -15,7 +15,7 @@ import multer from 'multer'
 import * as cheerio from 'cheerio'
 import * as https from 'https'
 import * as http from 'http'
-import { GoogleGenerativeAI } from '@google/generative-ai'
+import Groq from 'groq-sdk'
 import { authorizeAdmin } from '../middleware/authorizeAdmin'
 import logger from '../logger'
 import prisma from '../prisma'
@@ -23,28 +23,23 @@ import prisma from '../prisma'
 const router = express.Router()
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } })
 
-// Primary: gemini-2.0-flash — fallback: gemini-2.0-flash-lite (separate quota pool)
-const GEMINI_MODELS = ['gemini-2.0-flash', 'gemini-2.0-flash-lite', 'gemini-1.5-flash-latest']
-
-function getGemini(modelIndex = 0) {
-  const key = process.env.GEMINI_API_KEY
-  if (!key) throw new Error('GEMINI_API_KEY not set')
-  const model = GEMINI_MODELS[modelIndex] ?? GEMINI_MODELS[0]
-  return new GoogleGenerativeAI(key).getGenerativeModel({ model })
+function getGroq() {
+  const key = process.env.GROQ_API_KEY
+  if (!key) throw new Error('GROQ_API_KEY not set')
+  return new Groq({ apiKey: key })
 }
 
-async function geminiGenerate(prompt: string | object, modelIndex = 0): Promise<string> {
+async function aiGenerate(prompt: string): Promise<string> {
   try {
-    const model  = getGemini(modelIndex)
-    const result = typeof prompt === 'string'
-      ? await model.generateContent(prompt)
-      : await model.generateContent(prompt as any)
-    return result.response.text()
+    const groq = getGroq()
+    const res  = await groq.chat.completions.create({
+      model:    'llama-3.3-70b-versatile',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.3,
+    })
+    return res.choices[0]?.message?.content ?? ''
   } catch (err: any) {
-    const is429 = err?.message?.includes('429') || err?.status === 429
-    if (is429 && modelIndex < GEMINI_MODELS.length - 1) {
-      return geminiGenerate(prompt, modelIndex + 1)
-    }
+    const is429 = err?.status === 429 || err?.message?.includes('429')
     if (is429) throw Object.assign(new Error('AI_QUOTA_EXCEEDED'), { status: 429 })
     throw err
   }
@@ -99,7 +94,7 @@ function fetchUrl(url: string): Promise<string> {
 
 interface RawItem { nameAr: string; nameEn: string; nameFr: string; nameEs: string; price: number; category: string; description?: string }
 
-function parseGeminiJson(text: string): any {
+function parseAiJson(text: string): any {
   const match = text.match(/```json\s*([\s\S]*?)```/) || text.match(/(\[[\s\S]*\]|\{[\s\S]*\})/)
   try { return JSON.parse(match ? match[1] ?? match[0] : text.trim()) } catch { return null }
 }
@@ -130,14 +125,14 @@ Rules:
 Webpage text:
 ${text}
 `
-    const text2  = await geminiGenerate(prompt)
-    const parsed = parseGeminiJson(text2)
+    const text2  = await aiGenerate(prompt)
+    const parsed = parseAiJson(text2)
     if (!parsed) return res.status(422).json({ error: 'Could not parse menu from this URL', raw: text2.slice(0, 500) })
     return res.json({ items: Array.isArray(parsed) ? parsed : parsed.items ?? [] })
   } catch (err: any) {
     logger.error({ msg: 'menu-gen from-url error', err })
     const status = (err as any).status === 429 ? 429 : 500
-    return res.status(status).json({ error: status === 429 ? 'AI quota exceeded — please try again later or enable billing at aistudio.google.com' : (err?.message ?? 'Failed to scrape URL') })
+    return res.status(status).json({ error: status === 429 ? 'AI quota exceeded — please try again later or enable billing at console.groq.com' : (err?.message ?? 'Failed to scrape URL') })
   }
 })
 
@@ -148,24 +143,38 @@ router.post('/api/admin/menu-gen/from-images', authorizeAdmin, async (req: Reque
     const { images } = req.body as { images?: { data: string; mimeType: string }[] }
     if (!images?.length) return res.status(400).json({ error: 'No images provided' })
 
-    const parts: any[] = [
-      { text: `You are a menu OCR AI. Extract ALL menu items from these images of a printed/physical menu.
+    // Groq uses vision via llama-3.2-90b-vision — send images as image_url content parts
+    const groq = getGroq()
+    const imageContent = images.map(img => ({
+      type: 'image_url' as const,
+      image_url: { url: `data:${img.mimeType};base64,${img.data}` }
+    }))
+
+    const res2 = await groq.chat.completions.create({
+      model: 'llama-3.2-90b-vision-preview',
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'text', text: `You are a menu OCR AI. Extract ALL menu items from these menu images.
 Return ONLY a valid JSON array. Each item: {"nameAr":"","nameEn":"","nameFr":"","nameEs":"","price":0,"category":"","description":""}
 - Translate names to all 4 languages
 - price is numeric (0 if unreadable)
 - Group by category (Drinks, Starters, Main Dishes, Desserts…)
 JSON array only, no extra text:` },
-      ...images.map(img => ({ inlineData: { data: img.data, mimeType: img.mimeType } }))
-    ]
+          ...imageContent
+        ]
+      }],
+      temperature: 0.3,
+    })
 
-    const text2  = await geminiGenerate({ contents: [{ role: 'user', parts }] })
-    const parsed = parseGeminiJson(text2)
+    const text2  = res2.choices[0]?.message?.content ?? ''
+    const parsed = parseAiJson(text2)
     if (!parsed) return res.status(422).json({ error: 'Could not extract menu from images', raw: text2.slice(0, 500) })
     return res.json({ items: Array.isArray(parsed) ? parsed : parsed.items ?? [] })
   } catch (err: any) {
     logger.error({ msg: 'menu-gen from-images error', err })
     const status = (err as any).status === 429 ? 429 : 500
-    return res.status(status).json({ error: status === 429 ? 'AI quota exceeded — please try again later or enable billing at aistudio.google.com' : (err?.message ?? 'Gemini Vision failed') })
+    return res.status(status).json({ error: status === 429 ? 'AI quota exceeded — please try again later' : (err?.message ?? 'Vision AI failed') })
   }
 })
 
@@ -217,14 +226,14 @@ Return ONLY a valid JSON array. Each item: {"nameAr":"","nameEn":"","nameFr":"",
 Document text (first 6000 chars):
 ${text.slice(0, 6000)}
 `
-    const text2  = await geminiGenerate(prompt)
-    const parsed = parseGeminiJson(text2)
+    const text2  = await aiGenerate(prompt)
+    const parsed = parseAiJson(text2)
     if (!parsed) return res.status(422).json({ error: 'Could not parse menu from file', raw: text2.slice(0, 500) })
     return res.json({ items: Array.isArray(parsed) ? parsed : parsed.items ?? [] })
   } catch (err: any) {
     logger.error({ msg: 'menu-gen from-file error', err })
     const status = (err as any).status === 429 ? 429 : 500
-    return res.status(status).json({ error: status === 429 ? 'AI quota exceeded — please try again later or enable billing at aistudio.google.com' : (err?.message ?? 'File parse failed') })
+    return res.status(status).json({ error: status === 429 ? 'AI quota exceeded — please try again later or enable billing at console.groq.com' : (err?.message ?? 'File parse failed') })
   }
 })
 
@@ -262,14 +271,14 @@ ${JSON.stringify(items.slice(0, 50), null, 0)}
 
 Return ONLY a JSON array, no extra text.
 `
-    const text2  = await geminiGenerate(prompt)
-    const parsed = parseGeminiJson(text2)
+    const text2  = await aiGenerate(prompt)
+    const parsed = parseAiJson(text2)
     if (!parsed) return res.status(422).json({ error: 'AI enhancement failed', raw: text2.slice(0, 500) })
     return res.json({ items: Array.isArray(parsed) ? parsed : parsed.items ?? [] })
   } catch (err: any) {
     logger.error({ msg: 'menu-gen enhance error', err })
     const status = (err as any).status === 429 ? 429 : 500
-    return res.status(status).json({ error: status === 429 ? 'AI quota exceeded — please try again later or enable billing at aistudio.google.com' : (err?.message ?? 'Enhancement failed') })
+    return res.status(status).json({ error: status === 429 ? 'AI quota exceeded — please try again later or enable billing at console.groq.com' : (err?.message ?? 'Enhancement failed') })
   }
 })
 
@@ -294,13 +303,13 @@ ${items.map((it, i) => `${i + 1}. ${it.nameEn ?? it.nameAr} (${it.category})`).j
 Return ONLY a JSON array with one object per item: [{"index":0,"price":25.0}, ...]
 Prices must be realistic for that market. No extra text.
 `
-    const text2  = await geminiGenerate(prompt)
-    const parsed = parseGeminiJson(text2)
+    const text2  = await aiGenerate(prompt)
+    const parsed = parseAiJson(text2)
     if (!parsed) return res.status(422).json({ error: 'Price suggestion failed' })
     return res.json({ prices: Array.isArray(parsed) ? parsed : [] })
   } catch (err: any) {
     const status = (err as any).status === 429 ? 429 : 500
-    return res.status(status).json({ error: status === 429 ? 'AI quota exceeded — please try again later or enable billing at aistudio.google.com' : (err?.message ?? 'Price suggestion failed') })
+    return res.status(status).json({ error: status === 429 ? 'AI quota exceeded — please try again later or enable billing at console.groq.com' : (err?.message ?? 'Price suggestion failed') })
   }
 })
 
