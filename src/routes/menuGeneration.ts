@@ -26,7 +26,7 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 
 function getGemini() {
   const key = process.env.GEMINI_API_KEY
   if (!key) throw new Error('GEMINI_API_KEY not set')
-  return new GoogleGenerativeAI(key).getGenerativeModel({ model: 'gemini-1.5-flash' })
+  return new GoogleGenerativeAI(key).getGenerativeModel({ model: 'gemini-2.0-flash' })
 }
 
 // ── PATCH /api/admin/cafe/tier-upgrade ───────────────────────────────────────
