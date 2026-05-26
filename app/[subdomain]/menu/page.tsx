@@ -39,10 +39,12 @@ type Category = {
   products: Product[]
 }
 
+type MarketType = 'Local' | 'Global' | 'Africa' | 'Gulf'
+
 type MenuData = {
   cafeId:      string
   tableId:     string
-  marketType?: string
+  marketType?: MarketType
   localIp?:    string | null
   cafe:        { name: string; logoUrl?: string | null }
   categories:  Category[]
@@ -147,7 +149,7 @@ function MenuContent({ params }: { params: { subdomain: string } }) {
           const data: MenuData = {
             cafeId:     raw.cafeId,
             tableId:    raw.tableId,
-            marketType: raw.marketType,
+            marketType: raw.marketType as MarketType | undefined,
             localIp:    raw.localIp ?? null,
             cafe:       { name: raw.cafeName, logoUrl: raw.cafeLogoUrl ?? null },
             categories: raw.categories,
