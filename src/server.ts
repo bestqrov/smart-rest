@@ -80,7 +80,7 @@ async function main() {
   // Stripe webhook needs raw body — mount BEFORE bodyParser.json()
   app.use('/api/payment/gulf/stripe-webhook', express.raw({ type: 'application/json' }))
 
-  app.use(bodyParser.json())
+  app.use(bodyParser.json({ limit: '10mb' }))
 
   // Rate limiting — protects against brute force and volumetric attacks
   const apiLimiter = rateLimit({

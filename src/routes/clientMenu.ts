@@ -7,13 +7,13 @@ const router = express.Router()
 
 router.get('/api/menu/public', async (req: Request, res: Response) => {
   try {
-    const tableId = req.query.tableId as string
-    if (!tableId) return res.status(400).json({ error: 'tableId required' })
+    const tableId    = req.query.tableId    as string | undefined
+    const tableToken = req.query.tableToken as string | undefined
+    if (!tableId && !tableToken) return res.status(400).json({ error: 'tableId or tableToken required' })
 
-    const table = await prisma.table.findUnique({
-      where: { id: tableId },
-      select: { cafeId: true, isActive: true }
-    })
+    const table = tableId
+      ? await prisma.table.findUnique({ where: { id: tableId }, select: { id: true, cafeId: true, isActive: true } })
+      : await prisma.table.findFirst({ where: { qrToken: tableToken }, select: { id: true, cafeId: true, isActive: true } })
     if (!table || !table.isActive) return res.status(404).json({ error: 'Table not found' })
 
     const [cafe, categories] = await Promise.all([
@@ -50,6 +50,8 @@ router.get('/api/menu/public', async (req: Request, res: Response) => {
     } : null
 
     return res.json({
+      tableId:        table.id,
+      cafeId:         table.cafeId,
       cafeName:       cafe.name,
       cafeLogoUrl:    cafe.logoUrl,
       currency:       cafe.currency,

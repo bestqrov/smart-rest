@@ -40,11 +40,11 @@ type Category = {
 }
 
 type MenuData = {
-  cafeId:      number
-  tableId:     number
-  marketType?: 'Local' | 'Global'
+  cafeId:      string
+  tableId:     string
+  marketType?: string
   localIp?:    string | null
-  cafe:        { id: number; name: string; logoUrl?: string | null }
+  cafe:        { name: string; logoUrl?: string | null }
   categories:  Category[]
 }
 
@@ -136,20 +136,22 @@ function MenuContent({ params }: { params: { subdomain: string } }) {
       async (pos) => {
         setGpsState('granted')
         try {
-          const res = await fetch(`/${params.subdomain}/menu?tableToken=${tableToken}`, {
-            headers: {
-              'x-user-lat': String(pos.coords.latitude),
-              'x-user-lng': String(pos.coords.longitude),
-              'x-table-token': tableToken
-            }
-          })
+          const res = await fetch(`/api/menu/public?tableToken=${tableToken}`)
           if (!res.ok) {
             const body = await res.json().catch(() => ({}))
             setMenuError(body.error ?? 'فشل تحميل القائمة. يرجى المحاولة مجدداً.')
             setLoadingMenu(false)
             return
           }
-          const data: MenuData = await res.json()
+          const raw = await res.json()
+          const data: MenuData = {
+            cafeId:     raw.cafeId,
+            tableId:    raw.tableId,
+            marketType: raw.marketType,
+            localIp:    raw.localIp ?? null,
+            cafe:       { name: raw.cafeName, logoUrl: raw.cafeLogoUrl ?? null },
+            categories: raw.categories,
+          }
           setMenuData(data)
         } catch {
           setMenuError('خطأ في الشبكة. يرجى التحقق من اتصالك بالإنترنت.')
