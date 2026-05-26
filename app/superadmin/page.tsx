@@ -277,6 +277,10 @@ export default function SuperAdminPage() {
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             {sweepMsg && <span className="text-emerald-400 text-xs bg-emerald-950/50 border border-emerald-700 px-3 py-1 rounded-full">{sweepMsg}</span>}
+            <a href="/superadmin/landing"
+              className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 text-gray-200 px-4 py-2 rounded-xl text-sm font-bold transition-colors">
+              <Globe className="w-4 h-4" /> Landing Page
+            </a>
             <button onClick={runSweep} disabled={sweeping}
               className="flex items-center gap-2 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white px-4 py-2 rounded-xl text-sm font-bold transition-colors"
             >

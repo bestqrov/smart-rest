@@ -749,6 +749,15 @@ model OnlinePayment {
   @@index([createdAt])
 }
 
+// ─── Site Config (editable landing page content) ─────────────────────────────
+
+model SiteConfig {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  key       String   @unique
+  value     Json
+  updatedAt DateTime @updatedAt
+}
+
 // ─── Payment Requests (Superadmin Payment Gateway) ────────────────────────────
 
 model PaymentRequest {

@@ -387,6 +387,15 @@ const FAQS = [
   },
 ]
 
+// ─── Landing config (loaded from DB, overrides static defaults) ───────────────
+
+type LandingConfig = {
+  stats?: { value: string; en: string; fr: string; ar: string }[]
+  testimonials?: { name: string; role: { en: string; fr: string; ar: string }; rating: number; text: { en: string; fr: string; ar: string }; avatarUrl?: string }[]
+  contact?: { whatsapp?: string; email?: string; location?: { en: string; fr: string; ar: string } }
+  heroImageUrl?: string
+}
+
 // ─── Cookie Banner ─────────────────────────────────────────────────────────────
 
 function CookieBanner({ lang, t }: { lang: Lang; t: (k: string) => string }) {
@@ -428,6 +437,20 @@ export default function LandingPage() {
   const [ctaLoading, setCtaLoading] = useState(false)
   const [ctaError, setCtaError] = useState('')
   const [openFaq, setOpenFaq] = useState<number | null>(null)
+  const [cfg, setCfg] = useState<LandingConfig>({})
+
+  useEffect(() => {
+    fetch('/api/public/landing-config')
+      .then(r => r.ok ? r.json() : {})
+      .then(d => setCfg(d ?? {}))
+      .catch(() => {})
+  }, [])
+
+  const stats        = cfg.stats        ?? STATS
+  const testimonials = cfg.testimonials ?? TESTIMONIALS
+  const heroImageUrl = cfg.heroImageUrl ?? '/assets/mobile.png'
+  const contactPhone = cfg.contact?.whatsapp ?? '+212 6 00 00 00 00'
+  const contactEmail = cfg.contact?.email    ?? 'contact@smartmenu.ma'
 
   const isRtl = lang === 'ar'
 
@@ -461,8 +484,8 @@ export default function LandingPage() {
       <div className="bg-gray-900 text-gray-400 text-xs py-2 px-4">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-1">
           <div className="flex items-center gap-4 flex-wrap">
-            <span className="flex items-center gap-1"><Phone className="w-3 h-3" /> +212 6 00 00 00 00</span>
-            <span className="flex items-center gap-1"><Mail className="w-3 h-3" /> contact@smartmenu.ma</span>
+            <span className="flex items-center gap-1"><Phone className="w-3 h-3" /> {contactPhone}</span>
+            <span className="flex items-center gap-1"><Mail className="w-3 h-3" /> {contactEmail}</span>
             <span className="hidden sm:inline"><Globe2 className="w-3 h-3 inline mr-1" />MA · SA · AE · SN · CI · GA · KE</span>
           </div>
           <div className="flex items-center gap-3">
@@ -575,12 +598,13 @@ export default function LandingPage() {
               <div className="absolute -inset-6 rounded-full bg-emerald-500/20 blur-3xl" />
               <div className="absolute -inset-12 rounded-full bg-teal-500/10 blur-[60px]" />
               <Image
-                src="/assets/mobile.png"
+                src={heroImageUrl}
                 alt="SmartMenu — Digital Menu on Mobile"
                 width={1213}
                 height={1297}
                 className="relative w-full h-auto object-contain drop-shadow-[0_30px_60px_rgba(0,0,0,0.5)]"
                 priority
+                unoptimized={heroImageUrl.startsWith('http')}
               />
             </div>
           </div>
@@ -594,7 +618,7 @@ export default function LandingPage() {
         <div className="max-w-5xl mx-auto px-4">
           <p className={`text-emerald-200 text-xs font-semibold uppercase tracking-widest text-center mb-6`}>{t('statsLabel')}</p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-            {STATS.map(s => (
+            {stats.map(s => (
               <div key={s.value}>
                 <div className="text-4xl font-extrabold text-white">{s.value}</div>
                 <div className="text-emerald-200 text-sm mt-1 font-medium">{tl(s, lang)}</div>
@@ -775,7 +799,7 @@ export default function LandingPage() {
             <h2 className="text-4xl font-extrabold text-gray-900">{t('testimonialTitle')}</h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {TESTIMONIALS.map((tm, i) => (
+            {testimonials.map((tm, i) => (
               <div key={i} className={`bg-gray-50 rounded-2xl p-6 border border-gray-100 ${isRtl ? 'text-right' : ''}`}>
                 <div className={`flex gap-1 mb-4 ${isRtl ? 'flex-row-reverse justify-end' : ''}`}>
                   {Array.from({ length: tm.rating }).map((_, j) => (
@@ -784,9 +808,10 @@ export default function LandingPage() {
                 </div>
                 <p className="text-gray-700 text-sm leading-relaxed mb-5">"{tl(tm.text, lang)}"</p>
                 <div className={`flex items-center gap-3 ${isRtl ? 'flex-row-reverse' : ''}`}>
-                  <div className="w-9 h-9 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-sm shrink-0">
-                    {tm.name[0]}
-                  </div>
+                  {tm.avatarUrl
+                    ? <img src={tm.avatarUrl} alt={tm.name} className="w-9 h-9 rounded-full object-cover shrink-0" />
+                    : <div className="w-9 h-9 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-sm shrink-0">{tm.name[0]}</div>
+                  }
                   <div>
                     <p className="font-bold text-gray-900 text-sm">{tm.name}</p>
                     <p className="text-gray-400 text-xs">{tl(tm.role, lang)}</p>
@@ -897,8 +922,8 @@ export default function LandingPage() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {[
-              { icon: MessageCircle, label: 'WhatsApp', value: '+212 6 00 00 00 00', sub: lang === 'ar' ? 'رد خلال دقائق' : lang === 'fr' ? 'Réponse en minutes' : 'Response in minutes', color: 'text-green-600', bg: 'bg-green-50' },
-              { icon: Mail, label: lang === 'ar' ? 'البريد الإلكتروني' : 'Email', value: 'contact@smartmenu.ma', sub: lang === 'ar' ? 'رد خلال ساعة' : lang === 'fr' ? 'Réponse en 1h' : 'Reply within 1 hour', color: 'text-blue-600', bg: 'bg-blue-50' },
+              { icon: MessageCircle, label: 'WhatsApp', value: contactPhone, sub: lang === 'ar' ? 'رد خلال دقائق' : lang === 'fr' ? 'Réponse en minutes' : 'Response in minutes', color: 'text-green-600', bg: 'bg-green-50' },
+              { icon: Mail, label: lang === 'ar' ? 'البريد الإلكتروني' : 'Email', value: contactEmail, sub: lang === 'ar' ? 'رد خلال ساعة' : lang === 'fr' ? 'Réponse en 1h' : 'Reply within 1 hour', color: 'text-blue-600', bg: 'bg-blue-50' },
               { icon: MapPin, label: lang === 'ar' ? 'المقر الرئيسي' : lang === 'fr' ? 'Siège Social' : 'Headquarters', value: lang === 'ar' ? 'الدار البيضاء، المغرب' : 'Casablanca, Morocco', sub: 'MA · SA · AE · SN · CI · KE', color: 'text-amber-600', bg: 'bg-amber-50' },
             ].map((c, i) => {
               const Icon = c.icon
