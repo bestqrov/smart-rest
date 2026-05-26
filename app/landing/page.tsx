@@ -6,11 +6,11 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   QrCode, Zap, BarChart3, Star, CheckCircle, Menu, X,
-  MessageCircle, ArrowRight, Loader2, Smartphone, ChefHat,
+  MessageCircle, ArrowRight, Loader2, ChefHat,
   CreditCard, Bell, Languages, Layers, TrendingUp,
   Shield, Phone, Mail, MapPin, ChevronDown, ChevronUp,
   Utensils, Coffee, Building2, ShoppingBag, Package,
-  ThumbsUp, AlertTriangle, Wallet, Globe2,
+  ThumbsUp, AlertTriangle, Wallet, Globe2, UserCircle, Share2,
 } from 'lucide-react'
 
 // ─── Types & i18n ──────────────────────────────────────────────────────────────
@@ -27,10 +27,10 @@ const T: Record<Lang, Record<string, string | string[]>> = {
     badges: ['No contract', '5-min setup', 'Support 24/7', 'No credit card'],
     whoLabel: 'Who Is It For', whoTitle: 'Built For Every F&B Business',
     whoSub: 'From solo cafés to hotel chains — SmartMenu adapts to your scale',
-    howLabel: 'How It Works', howTitle: 'Live in 4 Steps',
+    howLabel: 'How It Works', howTitle: 'Live in 5 Steps',
     howSub: 'From signup to first order in under 30 minutes',
     featLabel: 'Features', featTitle: 'Everything in One Platform',
-    featSub: '14 professional features built for MENA & Africa markets',
+    featSub: '15 professional features built for MENA & Africa markets',
     pricingLabel: 'Pricing', pricingTitle: 'Pay Only Per Completed Order',
     pricingSub: 'No monthly fee · No fixed costs · Tiny auto-calculated commission per order',
     trialBig: '7-Day Free Trial', trialSub: 'Start today — no credit card, no commitment',
@@ -64,10 +64,10 @@ const T: Record<Lang, Record<string, string | string[]>> = {
     badges: ['Sans engagement', 'Config 5 min', 'Support 24/7', 'Sans carte bancaire'],
     whoLabel: 'Pour Qui', whoTitle: 'Conçu pour Chaque Business F&B',
     whoSub: "Du café solo aux chaînes hôtelières — SmartMenu s'adapte à votre échelle",
-    howLabel: 'Comment Ça Marche', howTitle: 'Opérationnel en 4 Étapes',
+    howLabel: 'Comment Ça Marche', howTitle: 'Opérationnel en 5 Étapes',
     howSub: "De l'inscription à la première commande en moins de 30 minutes",
     featLabel: 'Fonctionnalités', featTitle: 'Tout en Une Plateforme',
-    featSub: '14 fonctionnalités pro pour les marchés MENA & Afrique',
+    featSub: '15 fonctionnalités pro pour les marchés MENA & Afrique',
     pricingLabel: 'Tarifs', pricingTitle: 'Payez Uniquement par Commande Complétée',
     pricingSub: "Pas d'abonnement · Pas de frais fixes · Petite commission auto-calculée",
     trialBig: '7 Jours Gratuits', trialSub: "Commencez aujourd'hui — sans carte bancaire",
@@ -101,10 +101,10 @@ const T: Record<Lang, Record<string, string | string[]>> = {
     badges: ['بدون عقد', 'إعداد 5 دقائق', 'دعم 24/7', 'لا بطاقة بنكية'],
     whoLabel: 'الاستهداف', whoTitle: 'مصمم لكل قطاع F&B',
     whoSub: 'من المقاهي الصغيرة إلى سلاسل الفنادق — SmartMenu يتكيف مع احتياجاتك',
-    howLabel: 'كيف يعمل', howTitle: 'جاهز في 4 خطوات',
+    howLabel: 'كيف يعمل', howTitle: 'جاهز في 5 خطوات',
     howSub: 'من التسجيل إلى أول طلب في أقل من 30 دقيقة',
     featLabel: 'المميزات', featTitle: 'كل ما تحتاجه في منصة واحدة',
-    featSub: '14 ميزة احترافية للسوق العربي والأفريقي',
+    featSub: '15 ميزة احترافية للسوق العربي والأفريقي',
     pricingLabel: 'الأسعار', pricingTitle: 'تدفع فقط على الطلبات المكتملة',
     pricingSub: 'لا اشتراك شهري · لا رسوم ثابتة · عمولة رمزية تُحسب تلقائياً',
     trialBig: '7 أيام مجاناً', trialSub: 'ابدأ اليوم — لا بطاقة بنكية، لا التزام',
@@ -176,25 +176,30 @@ const PERSONAS = [
 ]
 
 const HOW_IT_WORKS = [
-  { step: '01', icon: MessageCircle,
-    en: { title: 'Register via WhatsApp', desc: 'Enter your WhatsApp number — get your login link instantly. No email, no password.' },
-    fr: { title: 'Inscription WhatsApp',  desc: 'Entrez votre numéro WhatsApp — recevez le lien de connexion immédiatement.' },
-    ar: { title: 'سجّل بواتساب',          desc: 'أدخل رقم واتساب — نرسل لك رابط الدخول فوراً. لا إيميل ولا كلمة مرور.' },
+  { step: '01', icon: Mail,
+    en: { title: 'Sign Up with Email',     desc: 'Create your account with your email address — quick verification, no friction.' },
+    fr: { title: 'Inscription par Email',  desc: 'Créez votre compte avec votre adresse email — vérification rapide, sans friction.' },
+    ar: { title: 'سجّل بالإيميل',          desc: 'أنشئ حسابك بعنوان بريدك الإلكتروني — تحقق سريع، بدون تعقيد.' },
   },
-  { step: '02', icon: QrCode,
-    en: { title: 'Build Your Menu',       desc: 'Add items in Arabic, French, English — or use our ready demo menu in seconds.' },
-    fr: { title: 'Créez votre Menu',      desc: 'Ajoutez vos plats en arabe, français, anglais — ou utilisez notre menu demo.' },
-    ar: { title: 'أضف منيوك',             desc: 'أضف أصنافك بالعربية والفرنسية — أو استخدم منيونا التجريبي الجاهز.' },
+  { step: '02', icon: UserCircle,
+    en: { title: 'Customise Your Profile', desc: 'Add your restaurant name, logo, colours and contact info — your brand, your identity.' },
+    fr: { title: 'Personnalisez votre Profil', desc: 'Ajoutez nom, logo, couleurs et contacts — votre marque, votre identité.' },
+    ar: { title: 'خصّص ملفك الشخصي',       desc: 'أضف اسم مطعمك، شعارك، ألوانك ومعلومات التواصل — هويتك، علامتك.' },
   },
-  { step: '03', icon: Utensils,
-    en: { title: 'Print Table QR Codes',  desc: 'Print a QR sticker per table — each seat gets its own unique code.' },
-    fr: { title: 'Imprimez les QR',       desc: 'Imprimez une étiquette QR par table — chaque place a son propre code.' },
-    ar: { title: 'اطبع QR الطاولات',      desc: 'اطبع ملصق QR لكل طاولة — كل مقعد عنده رمز خاص.' },
+  { step: '03', icon: QrCode,
+    en: { title: 'Build Your Menu',        desc: 'Add items in Arabic, French, English — or use our ready demo menu in seconds.' },
+    fr: { title: 'Créez votre Menu',       desc: 'Ajoutez vos plats en arabe, français, anglais — ou utilisez notre menu demo.' },
+    ar: { title: 'أضف منيوك',              desc: 'أضف أصنافك بالعربية والفرنسية — أو استخدم منيونا التجريبي الجاهز.' },
   },
-  { step: '04', icon: Zap,
+  { step: '04', icon: Utensils,
+    en: { title: 'Print Table QR Codes',   desc: 'Print a QR sticker per table — each seat gets its own unique code.' },
+    fr: { title: 'Imprimez les QR',        desc: 'Imprimez une étiquette QR par table — chaque place a son propre code.' },
+    ar: { title: 'اطبع QR الطاولات',       desc: 'اطبع ملصق QR لكل طاولة — كل مقعد عنده رمز خاص.' },
+  },
+  { step: '05', icon: Zap,
     en: { title: 'Receive Orders Instantly', desc: 'Guests scan and order — you receive in real time on dashboard & kitchen screen.' },
-    fr: { title: 'Recevez les Commandes', desc: 'Les clients scannent et commandent — vous recevez en temps réel.' },
-    ar: { title: 'استقبل الطلبات',         desc: 'الزبون يمسح ويطلب — أنت تستقبل فوراً على لوحة التحكم والمطبخ.' },
+    fr: { title: 'Recevez les Commandes',  desc: 'Les clients scannent et commandent — vous recevez en temps réel.' },
+    ar: { title: 'استقبل الطلبات',          desc: 'الزبون يمسح ويطلب — أنت تستقبل فوراً على لوحة التحكم والمطبخ.' },
   },
 ]
 
@@ -268,6 +273,11 @@ const FEATURES = [
     en: { title: 'International Payments',   desc: 'Gulf: Stripe · Africa: Mobile Money (Wave, M-Pesa) · WhatsApp zero-rating.' },
     fr: { title: 'Paiements Internationaux', desc: 'Golfe: Stripe · Afrique: Mobile Money (Wave, M-Pesa) · WhatsApp zero-rating.' },
     ar: { title: 'مدفوعات دولية',            desc: 'الخليج: Stripe · أفريقيا: Mobile Money (Wave, M-Pesa) · واتساب بدون بيانات.' },
+  },
+  { icon: Share2,
+    en: { title: 'Visitor-Powered Marketing', desc: 'Every guest who scans your QR becomes a marketing channel — prompt them to share dishes on Instagram, tag your café, and invite friends. Turn every table into a free ad.' },
+    fr: { title: 'Marketing par vos Visiteurs', desc: 'Chaque client qui scanne votre QR devient un canal marketing — incitez-les à partager des plats sur Instagram, taguer votre café et inviter des amis. Chaque table devient une pub gratuite.' },
+    ar: { title: 'تسويق عبر زبائنك',         desc: 'كل زبون يمسح QR مطعمك يصبح قناة تسويقية — شجّعه على مشاركة صور الأطباق على إنستغرام وتاغ مقهاك ودعوة أصدقائه. كل طاولة إعلان مجاني.' },
   },
 ]
 
@@ -657,7 +667,7 @@ export default function LandingPage() {
           </div>
           <div className="relative">
             <div className="hidden lg:block absolute top-11 left-[12.5%] right-[12.5%] h-0.5 bg-gradient-to-r from-emerald-100 via-emerald-400 to-emerald-100" />
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
               {HOW_IT_WORKS.map((step, i) => {
                 const Icon = step.icon
                 const d = tl(step, lang)
