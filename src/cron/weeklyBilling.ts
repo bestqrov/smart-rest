@@ -84,7 +84,7 @@ async function fireSuspensionWebhook(cafeId: string, subdomain: string, balance:
         subdomain,
         balance:     balance.toFixed(2),
         country,
-        paymentLink: `${process.env.FRONTEND_URL || 'https://smartrestau.digima.cloud'}/admin/billing`,
+        paymentLink: `${process.env.FRONTEND_URL || 'https://smartrestau.com'}/admin/billing`,
         timestamp:   new Date().toISOString()
       })
     })

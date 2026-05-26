@@ -470,7 +470,7 @@ router.get('/api/superadmin/webhooks/expiring-tomorrow', requireSuperAdmin, asyn
         coffeePrice:      c.coffeeRefPrice    ?? (c as any).coffeePrice,
         sandwichPrice:    c.sandwichRefPrice  ?? (c as any).sandwichPrice,
         isPreview:        (c as any).preview ?? false,
-        paymentLink: `${process.env.FRONTEND_URL || 'https://smartrestau.digima.cloud'}/admin/billing`
+        paymentLink: `${process.env.FRONTEND_URL || 'https://smartrestau.com'}/admin/billing`
       }))
     })
   } catch (err) {

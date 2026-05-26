@@ -37,7 +37,7 @@ const CONFIG = {
   LISTEN_PORT:        9100,          // TCP port — configure Windows printer to 127.0.0.1:9100
   FORWARD_HOST:       null,          // Real printer IP, e.g. "192.168.1.50"  (null = disabled)
   FORWARD_PORT:       9100,
-  API_BASE:           'https://smartrestau.digima.cloud',
+  API_BASE:           'https://smartrestau.com',
   API_TOKEN:          '',            // JWT token from admin panel (Settings → POS Bridge)
   CAFE_ID:            '',            // cafeId from admin panel
   RETRY_INTERVAL_MS:  30_000,        // How often to retry offline queue

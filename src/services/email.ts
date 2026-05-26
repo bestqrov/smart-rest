@@ -7,7 +7,7 @@ import logger from '../logger'
 import { t, type Lang, isRTL } from '../lib/i18n'
 
 const API_KEY = process.env.RESEND_API_KEY ?? process.env.SMTP_PASS ?? ''
-const FROM    = process.env.RESEND_FROM ?? 'Smart Resto <noreply@smartrestau.digima.cloud>'
+const FROM    = process.env.RESEND_FROM ?? 'Smart Resto <noreply@smartrestau.com>'
 
 logger.info({ msg: '📧 Resend API config', from: FROM, keySet: !!API_KEY })
 

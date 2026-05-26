@@ -224,7 +224,7 @@ router.post('/api/auth/quick-register', async (req: Request, res: Response) => {
 
     // Issue a short-lived magic link token (15 min)
     const magicToken = jwt.sign({ userId: user.id, cafeId: cafe.id, magic: true }, JWT_SECRET, { expiresIn: '15m' })
-    const magicLink  = `${process.env.FRONTEND_URL || 'https://smartrestau.digima.cloud'}/admin/magic?token=${magicToken}`
+    const magicLink  = `${process.env.FRONTEND_URL || 'https://smartrestau.com'}/admin/magic?token=${magicToken}`
 
     // ── n8n webhook — send WhatsApp magic link ───────────────────────────────
     const n8nWebhook = process.env.N8N_WHATSAPP_WEBHOOK
@@ -354,7 +354,7 @@ router.post('/api/auth/magic-send', async (req: Request, res: Response) => {
     })
 
     // ── Build and send magic link ─────────────────────────────────────────────
-    const base      = process.env.FRONTEND_URL ?? 'https://smartrestau.digima.cloud'
+    const base      = process.env.FRONTEND_URL ?? 'https://smartrestau.com'
     const magicLink = `${base}/api/auth/magic-verify?token=${rawToken}&lang=${lang}`
 
     await sendMagicLink({ to: cleanEmail, magicLink, lang, cafeName: cafeName.trim() })
@@ -377,7 +377,7 @@ router.get('/api/auth/test-email', async (req: Request, res: Response) => {
   }
   const to = (req.query['to'] as string) || 'advicermano@gmail.com'
   try {
-    await sendMagicLink({ to, magicLink: 'https://smartrestau.digima.cloud', lang: 'en', cafeName: 'Test Cafe' })
+    await sendMagicLink({ to, magicLink: 'https://smartrestau.com', lang: 'en', cafeName: 'Test Cafe' })
     return res.json({ ok: true, to })
   } catch (err: unknown) {
     const e = err as Record<string, unknown>
@@ -403,7 +403,7 @@ router.get('/api/auth/magic-verify', async (req: Request, res: Response) => {
 
   function fail(status: number, msg: string) {
     if (wantsJson) return res.status(status).json({ error: msg })
-    const base = process.env.FRONTEND_URL ?? 'https://smartrestau.digima.cloud'
+    const base = process.env.FRONTEND_URL ?? 'https://smartrestau.com'
     return res.redirect(`${base}/signup?verifyError=${encodeURIComponent(msg)}&lang=${lang}`)
   }
 
@@ -507,7 +507,7 @@ router.get('/api/auth/magic-verify', async (req: Request, res: Response) => {
     }
 
     // Browser redirect — embed token in query so the dashboard page picks it up
-    const base = process.env.FRONTEND_URL ?? 'https://smartrestau.digima.cloud'
+    const base = process.env.FRONTEND_URL ?? 'https://smartrestau.com'
     return res.redirect(
       `${base}/verify-success?token=${sessionToken}&cafeId=${cafe.id}&subdomain=${cafe.subdomain}&lang=${lang}`
     )

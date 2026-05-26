@@ -205,7 +205,7 @@ export default function POSPage() {
 
   // ── Auto-detect subdomain from hostname, then fetch cafe branding ──────────
   useEffect(() => {
-    const hostname = window.location.hostname   // e.g. "plage.smartrestau.digima.cloud"
+    const hostname = window.location.hostname   // e.g. "plage.smartrestau.com"
     const parts    = hostname.split('.')
     // subdomain exists when there are 3+ parts and the first part isn't "www"
     const detected = parts.length >= 3 && parts[0] !== 'www' ? parts[0] : ''
