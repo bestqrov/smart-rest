@@ -52,6 +52,7 @@ const T: Record<Lang, Record<string, string>> = {
 // ─── Demo accounts ─────────────────────────────────────────────────────────────
 
 const DEMO_ACCOUNTS = [
+  // ── Gulf & Middle East ──────────────────────────────────────────────────────
   {
     flag: '🇲🇦',
     country: { en: 'Morocco', fr: 'Maroc', ar: 'المغرب' },
@@ -81,6 +82,68 @@ const DEMO_ACCOUNTS = [
     password: 'demo1234',
     color: 'border-red-700/50 hover:border-red-500 hover:bg-red-950/40',
     badge: 'bg-red-900/60 text-red-300',
+  },
+  // ── North Africa ────────────────────────────────────────────────────────────
+  {
+    flag: '🇩🇿',
+    country: { en: 'Algeria', fr: 'Algérie', ar: 'الجزائر' },
+    name: 'مطعم القصبة',
+    city: { en: 'Algiers', fr: 'Alger', ar: 'الجزائر العاصمة' },
+    email: 'casbah@demo.com',
+    password: 'demo1234',
+    color: 'border-teal-700/50 hover:border-teal-500 hover:bg-teal-950/40',
+    badge: 'bg-teal-900/60 text-teal-300',
+  },
+  {
+    flag: '🇹🇳',
+    country: { en: 'Tunisia', fr: 'Tunisie', ar: 'تونس' },
+    name: 'مطعم سيدي بوسعيد',
+    city: { en: 'Tunis', fr: 'Tunis', ar: 'تونس' },
+    email: 'sidi@demo.com',
+    password: 'demo1234',
+    color: 'border-rose-700/50 hover:border-rose-500 hover:bg-rose-950/40',
+    badge: 'bg-rose-900/60 text-rose-300',
+  },
+  {
+    flag: '🇱🇾',
+    country: { en: 'Libya', fr: 'Libye', ar: 'ليبيا' },
+    name: 'مطعم طرابلس',
+    city: { en: 'Tripoli', fr: 'Tripoli', ar: 'طرابلس' },
+    email: 'tripoli@demo.com',
+    password: 'demo1234',
+    color: 'border-sky-700/50 hover:border-sky-500 hover:bg-sky-950/40',
+    badge: 'bg-sky-900/60 text-sky-300',
+  },
+  {
+    flag: '🇪🇬',
+    country: { en: 'Egypt', fr: 'Égypte', ar: 'مصر' },
+    name: 'مطعم النيل',
+    city: { en: 'Cairo', fr: 'Le Caire', ar: 'القاهرة' },
+    email: 'nil@demo.com',
+    password: 'demo1234',
+    color: 'border-amber-700/50 hover:border-amber-500 hover:bg-amber-950/40',
+    badge: 'bg-amber-900/60 text-amber-300',
+  },
+  // ── Sub-Saharan Africa ───────────────────────────────────────────────────────
+  {
+    flag: '🇸🇳',
+    country: { en: 'Senegal', fr: 'Sénégal', ar: 'السنغال' },
+    name: 'Restaurant Teranga',
+    city: { en: 'Dakar', fr: 'Dakar', ar: 'داكار' },
+    email: 'teranga@demo.com',
+    password: 'demo1234',
+    color: 'border-yellow-700/50 hover:border-yellow-500 hover:bg-yellow-950/40',
+    badge: 'bg-yellow-900/60 text-yellow-300',
+  },
+  {
+    flag: '🇨🇮',
+    country: { en: "Côte d'Ivoire", fr: "Côte d'Ivoire", ar: 'ساحل العاج' },
+    name: 'Maquis Le Baobab',
+    city: { en: 'Abidjan', fr: 'Abidjan', ar: 'أبيدجان' },
+    email: 'baobab@demo.com',
+    password: 'demo1234',
+    color: 'border-orange-700/50 hover:border-orange-500 hover:bg-orange-950/40',
+    badge: 'bg-orange-900/60 text-orange-300',
   },
 ]
 
@@ -241,7 +304,7 @@ export default function LoginPage() {
             <p className="text-xs text-gray-500 mt-0.5">{t('demoSub')}</p>
           </div>
 
-          <div className="space-y-2.5">
+          <div className="space-y-2 max-h-72 overflow-y-auto pr-1 scrollbar-thin scrollbar-track-gray-900 scrollbar-thumb-gray-700">
             {DEMO_ACCOUNTS.map(acc => (
               <button
                 key={acc.email}
