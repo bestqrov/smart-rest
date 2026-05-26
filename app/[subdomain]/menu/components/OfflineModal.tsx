@@ -4,7 +4,7 @@ import { ConnState } from '../hooks/useOffline'
 
 interface Props {
   conn:       ConnState
-  marketType: 'Local' | 'Global'
+  marketType: 'Local' | 'Global' | 'Africa' | 'Gulf'
   lang?:      string
   queuedOrders: number
 }
@@ -104,7 +104,8 @@ const USSD_CODES: Record<string, string> = {
   DZ: '*100#',NG: '*323#',  GH: '*124#',  KE: '*144#',
 }
 
-export default function OfflineModal({ conn, marketType, lang = 'ar', queuedOrders }: Props) {
+export default function OfflineModal({ conn, marketType: rawMarketType, lang = 'ar', queuedOrders }: Props) {
+  const marketType: 'Local' | 'Global' = rawMarketType === 'Local' ? 'Local' : 'Global'
   const [step,       setStep]       = useState<1 | 2>(1)
   const [copied,     setCopied]     = useState<string | null>(null)
   const [dismissed,  setDismissed]  = useState(false)
