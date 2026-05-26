@@ -193,6 +193,245 @@ const AE_PRODUCTS: PrdDef[] = [
 ]
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// 🇩🇿  ALGERIA — مطعم القصبة، الجزائر  (currency: DZD)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const DZ_CATS: CatDef[] = [
+  { nameEn: 'Breakfast',                  nameAr: 'الفطور',                    order: 1 },
+  { nameEn: 'Soups & Starters',           nameAr: 'الشوربات والمقبلات',        order: 2 },
+  { nameEn: 'Traditional Algerian',       nameAr: 'الأطباق الجزائرية التقليدية', order: 3 },
+  { nameEn: 'Grills & Sandwiches',        nameAr: 'مشاوي وسندويشات',           order: 4 },
+  { nameEn: 'Hot Drinks',                 nameAr: 'مشروبات ساخنة',             order: 5 },
+  { nameEn: 'Cold Drinks & Juices',       nameAr: 'مشروبات باردة وعصائر',     order: 6 },
+  { nameEn: 'Algerian Pastries',          nameAr: 'الحلويات الجزائرية',        order: 7 },
+]
+
+const DZ_PRODUCTS: PrdDef[] = [
+  { cat: 'Breakfast', nameEn: 'Msemen with Honey & Butter', nameAr: 'مسمن بالعسل والزبدة', price: 180, description: 'رغائف مقرمشة مع عسل بلدي وزبدة طازجة' },
+  { cat: 'Breakfast', nameEn: 'Algerian Café Crème', nameAr: 'قهوة كريم جزائرية', price: 150, description: 'إسبريسو مع حليب مع كرواسون الزبدة' },
+  { cat: 'Breakfast', nameEn: 'Khobz Dar (Home Bread)', nameAr: 'خبز الدار', price: 120, description: 'خبز بيتي ساخن مع زيت الزيتون والجبن' },
+  { cat: 'Soups & Starters', nameEn: 'Chorba Frik', nameAr: 'شوربة فريك', price: 200, description: 'شوربة القمح المجروش مع الدجاج والكزبرة' },
+  { cat: 'Soups & Starters', nameEn: 'Harira Algérienne', nameAr: 'حريرة جزائرية', price: 180, description: 'شوربة الطماطم والحمص والعدس بالكرفس' },
+  { cat: 'Soups & Starters', nameEn: 'Salata Méchouia', nameAr: 'سلطة مشوية', price: 220, description: 'فلفل وطماطم مشوية بالثوم وزيت الزيتون' },
+  { cat: 'Soups & Starters', nameEn: 'Dolma (4 pcs)', nameAr: 'دولمة (4 حبات)', price: 280, description: 'فلفل ألوان محشو بالأرز واللحم المفروم والبهارات' },
+  { cat: 'Traditional Algerian', nameEn: 'Couscous à l\'Agneau', nameAr: 'كسكس بلحم الغنم', price: 900, description: 'كسكس جزائري بسبع خضراوات ولحم الغنم الطري' },
+  { cat: 'Traditional Algerian', nameEn: 'Tajine Zitoune', nameAr: 'طاجين زيتون', price: 800, description: 'دجاج مطهو مع زيتون أخضر وليمون ومشمش مجفف' },
+  { cat: 'Traditional Algerian', nameEn: 'Chakhchouka', nameAr: 'شخشوخة', price: 500, description: 'طماطم وفلفل مع البيض المقلي والبهارات' },
+  { cat: 'Traditional Algerian', nameEn: 'Rechta aux Légumes', nameAr: 'رشتة بالخضر', price: 600, description: 'معكرونة رفيعة مصنوعة يدوياً مع خضروات موسمية' },
+  { cat: 'Traditional Algerian', nameEn: 'Berkoukes (Lamb)', nameAr: 'بركوكس باللحم', price: 700, description: 'حبات عجين مطهوة مع مرق الخروف والخضروات' },
+  { cat: 'Grills & Sandwiches', nameEn: 'Mixed Grill Platter', nameAr: 'مشاوي مشكلة', price: 750, description: 'مرقاز + كباب لحم + دجاج مشوي مع الفريت' },
+  { cat: 'Grills & Sandwiches', nameEn: 'Merguez Sandwich', nameAr: 'سندويش مرقاز', price: 350, description: 'مرقاز حار في خبز فرنسي مع حريصة وخضروات' },
+  { cat: 'Grills & Sandwiches', nameEn: 'Hamburger Maison', nameAr: 'برغر منزلي', price: 550, description: 'برغر لحم عجل مع الجبن والخضروات والصلصة الخاصة' },
+  { cat: 'Hot Drinks', nameEn: 'Café Express', nameAr: 'قهوة إكسبريس', price: 150, description: 'إسبريسو مركّز من أراببكا عالية الجودة' },
+  { cat: 'Hot Drinks', nameEn: 'Thé à la Menthe', nameAr: 'شاي بالنعناع', price: 120, description: 'شاي أخضر بالنعناع الطازج على الطريقة الجزائرية' },
+  { cat: 'Hot Drinks', nameEn: 'Café au Lait', nameAr: 'قهوة بالحليب', price: 180, description: 'قهوة قوية مع حليب ساخن وكريمة' },
+  { cat: 'Cold Drinks & Juices', nameEn: 'Citronnade Maison', nameAr: 'عصير الليمون البيتي', price: 200, description: 'ليمون طازج مع نعناع ومياه غازية وثلج' },
+  { cat: 'Cold Drinks & Juices', nameEn: 'Fresh Orange Juice', nameAr: 'عصير برتقال طازج', price: 250, description: 'برتقال جزائري طازج بدون سكر' },
+  { cat: 'Cold Drinks & Juices', nameEn: 'Mineral Water', nameAr: 'مياه معدنية', price: 80, description: 'ساكنة أو غازية' },
+  { cat: 'Algerian Pastries', nameEn: 'Makroud au Miel', nameAr: 'مقروض بالعسل', price: 150, description: 'حلوى السميد والتمر المقلية بالعسل البلدي' },
+  { cat: 'Algerian Pastries', nameEn: 'Zlabia', nameAr: 'زلابية', price: 120, description: 'عجين مقلي محلى بشيرة العسل والماء الزهر' },
+  { cat: 'Algerian Pastries', nameEn: 'Baklawa Algérienne', nameAr: 'بقلاوة جزائرية', price: 200, description: 'طبقات الفيلو باللوز والفستق وشيرة الزهر' },
+]
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 🇹🇳  TUNISIA — مطعم سيدي بوسعيد، تونس  (currency: TND)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const TN_CATS: CatDef[] = [
+  { nameEn: 'Starters',               nameAr: 'المقبلات',                  order: 1 },
+  { nameEn: 'Salads',                  nameAr: 'السلطات',                   order: 2 },
+  { nameEn: 'Traditional Tunisian',    nameAr: 'الأطباق التونسية التقليدية', order: 3 },
+  { nameEn: 'Grills & Sandwiches',     nameAr: 'مشاوي وسندويشات',          order: 4 },
+  { nameEn: 'Hot Drinks',              nameAr: 'مشروبات ساخنة',            order: 5 },
+  { nameEn: 'Fresh Juices',            nameAr: 'عصائر طازجة',              order: 6 },
+  { nameEn: 'Pastries & Desserts',     nameAr: 'حلويات ومعجنات',           order: 7 },
+]
+
+const TN_PRODUCTS: PrdDef[] = [
+  { cat: 'Starters', nameEn: 'Brik à l\'Oeuf', nameAr: 'بريك بالبيض', price: 6, description: 'ورقة مقرمشة محشوة بالبيض والتونة والبقدونس' },
+  { cat: 'Starters', nameEn: 'Lablabi (Bowl)', nameAr: 'لبلابي', price: 7, description: 'حمص في مرق الكمون مع الخبز والبيض والكبر' },
+  { cat: 'Starters', nameEn: 'Fricassé Tunisien', nameAr: 'فريكاسي تونسي', price: 5, description: 'خبز مقلي محشو بالتونة والزيتون والبيض المسلوق' },
+  { cat: 'Starters', nameEn: 'Harissa & Khobz', nameAr: 'حريصة وخبز', price: 4, description: 'حريصة تونسية مصنوعة يدوياً مع خبز طازج وزيت الزيتون' },
+  { cat: 'Salads', nameEn: 'Salade Tunisienne', nameAr: 'سلطة تونسية', price: 7, description: 'طماطم وخيار وبصل وفلفل مع تونة وزيتون وزيت الزيتون' },
+  { cat: 'Salads', nameEn: 'Salade Méchouia', nameAr: 'سلطة مشوية', price: 8, description: 'فلفل وطماطم مشوية بالثوم والكمون وزيت الزيتون' },
+  { cat: 'Traditional Tunisian', nameEn: 'Couscous au Poisson', nameAr: 'كسكس بالسمك', price: 22, description: 'كسكس تونسي مع سمك البلطي وشوربة الخضار الحارة' },
+  { cat: 'Traditional Tunisian', nameEn: 'Ojja Merguez', nameAr: 'عجة مرقاز', price: 16, description: 'مرقاز في صلصة الطماطم الحارة مع البيض والفلفل' },
+  { cat: 'Traditional Tunisian', nameEn: 'Kafteji', nameAr: 'كفتاجي', price: 14, description: 'خضروات مقلية (قرع، بطاطس، فلفل) مع البيض والتونة' },
+  { cat: 'Traditional Tunisian', nameEn: 'Couscous à l\'Agneau', nameAr: 'كسكس بلحم الغنم', price: 25, description: 'كسكس تونسي تقليدي مع لحم الغنم وخضروات موسمية' },
+  { cat: 'Traditional Tunisian', nameEn: 'Chakchouka Tunisienne', nameAr: 'شكشوكة تونسية', price: 13, description: 'بيض مقلي في صلصة الفلفل والطماطم الحارة' },
+  { cat: 'Grills & Sandwiches', nameEn: 'Brochettes Mixtes', nameAr: 'مشاوي مشكلة', price: 18, description: 'تشكيلة من مرقاز وكباب وفيليه دجاج مع الفريت' },
+  { cat: 'Grills & Sandwiches', nameEn: 'Sandwich Merguez', nameAr: 'سندويش مرقاز', price: 8, description: 'مرقاز مشوي في خبز فرنسي مع حريصة وطماطم' },
+  { cat: 'Grills & Sandwiches', nameEn: 'Sandwich Kefta', nameAr: 'سندويش كفتة', price: 9, description: 'كفتة مشوية مع حريصة وخضار طازجة' },
+  { cat: 'Hot Drinks', nameEn: 'Café Express', nameAr: 'قهوة إكسبريس', price: 3, description: 'قهوة مركّزة تونسية الطريقة' },
+  { cat: 'Hot Drinks', nameEn: 'Thé à la Menthe', nameAr: 'شاي بالنعناع', price: 3, description: 'شاي أخضر بالنعناع والصنوبر' },
+  { cat: 'Hot Drinks', nameEn: 'Café au Lait', nameAr: 'قهوة بالحليب', price: 4, description: 'قهوة تونسية مع حليب ساخن' },
+  { cat: 'Fresh Juices', nameEn: 'Citronnade à la Menthe', nameAr: 'ليمون بالنعناع', price: 6, description: 'ليمون طازج مع نعناع وثلج' },
+  { cat: 'Fresh Juices', nameEn: 'Jus d\'Orange Frais', nameAr: 'عصير برتقال طازج', price: 7, description: 'برتقال طازج معصور لحظياً' },
+  { cat: 'Fresh Juices', nameEn: 'Eau Minérale', nameAr: 'مياه معدنية', price: 2, description: 'ساكنة أو غازية' },
+  { cat: 'Pastries & Desserts', nameEn: 'Makroud au Miel', nameAr: 'مقروض بالعسل', price: 5, description: 'حلوى السميد والتمر بالعسل وماء الزهر' },
+  { cat: 'Pastries & Desserts', nameEn: 'Assida Zgougou', nameAr: 'عصيدة الزقوق', price: 8, description: 'عصيدة الصنوبر التونسية التقليدية مع الكريمة' },
+  { cat: 'Pastries & Desserts', nameEn: 'Baklawa Tunisienne', nameAr: 'بقلاوة تونسية', price: 6, description: 'معجنات الفيلو باللوز والفستق وشيرة الزهر' },
+]
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 🇱🇾  LIBYA — مطعم طرابلس، طرابلس  (currency: LYD)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const LY_CATS: CatDef[] = [
+  { nameEn: 'Starters & Soups',       nameAr: 'المقبلات والشوربات',        order: 1 },
+  { nameEn: 'Traditional Libyan',     nameAr: 'الأطباق الليبية التقليدية', order: 2 },
+  { nameEn: 'Grills & Rice',          nameAr: 'مشاوي وأرز',                order: 3 },
+  { nameEn: 'Sandwiches & Fast Food', nameAr: 'سندويشات ووجبات سريعة',    order: 4 },
+  { nameEn: 'Hot Drinks',             nameAr: 'مشروبات ساخنة',             order: 5 },
+  { nameEn: 'Cold Drinks & Juices',   nameAr: 'مشروبات باردة وعصائر',     order: 6 },
+  { nameEn: 'Desserts & Sweets',      nameAr: 'حلويات وحلوى',             order: 7 },
+]
+
+const LY_PRODUCTS: PrdDef[] = [
+  { cat: 'Starters & Soups', nameEn: 'Sharba Libiya', nameAr: 'شوربة ليبية', price: 8, description: 'شوربة الطماطم واللحم بالمعكرونة والكزبرة — الطبق الرمضاني الليبي' },
+  { cat: 'Starters & Soups', nameEn: 'Salata Arabiyya', nameAr: 'سلطة عربية', price: 6, description: 'طماطم وخيار وبصل وفلفل مع زيت الزيتون والليمون' },
+  { cat: 'Starters & Soups', nameEn: 'Hummus bil Tahini', nameAr: 'حمص بالطحينة', price: 7, description: 'حمص ناعم بالطحينة وزيت الزيتون والكمون' },
+  { cat: 'Traditional Libyan', nameEn: 'Bazin', nameAr: 'بازين', price: 12, description: 'عجينة الشعير المطبوخة مع مرق اللحم والبيض — الطبق الوطني الليبي' },
+  { cat: 'Traditional Libyan', nameEn: 'Asida with Rub & Honey', nameAr: 'عصيدة بالرب والعسل', price: 10, description: 'عصيدة القمح بالرب (ديبس التمر) والعسل البلدي' },
+  { cat: 'Traditional Libyan', nameEn: 'Mbakbaka', nameAr: 'مبكبكة', price: 15, description: 'معكرونة في مرق الطماطم الحار مع اللحم والخضروات' },
+  { cat: 'Traditional Libyan', nameEn: 'Couscous Tarablusi', nameAr: 'كسكس طرابلسي', price: 20, description: 'كسكس طرابلسي بلحم الغنم والخضار والتوابل الليبية' },
+  { cat: 'Traditional Libyan', nameEn: 'Usban (Stuffed Intestine)', nameAr: 'عصبان', price: 18, description: 'أمعاء محشوة بالأرز والأعشاب مطبوخة في المرق' },
+  { cat: 'Grills & Rice', nameEn: 'Kofta Mshwiya', nameAr: 'كفتة مشوية', price: 18, description: 'كفتة اللحم المتبلة مشوية على الفحم مع الخبز' },
+  { cat: 'Grills & Rice', nameEn: 'Mixed Grill', nameAr: 'مشاوي مشكلة', price: 25, description: 'تشكيلة من كباب وكفتة ودجاج مشوي مع الأرز' },
+  { cat: 'Grills & Rice', nameEn: 'Lamb Kabsa', nameAr: 'كبسة لحم', price: 22, description: 'أرز الكبسة مع لحم الغنم والتوابل الليبية' },
+  { cat: 'Sandwiches & Fast Food', nameEn: 'Sandwich Kofta', nameAr: 'سندويش كفتة', price: 8, description: 'كفتة مشوية في خبز مع الطماطم والبقدونس والطحينة' },
+  { cat: 'Sandwiches & Fast Food', nameEn: 'Shawarma Dajaj', nameAr: 'شاورما دجاج', price: 10, description: 'شاورما دجاج بالثوم والخضار في خبز عربي' },
+  { cat: 'Hot Drinks', nameEn: 'Libyan Tea (Atay)', nameAr: 'أتاي ليبي', price: 3, description: 'شاي أخضر بالنعناع مع الصنوبر — يُقدَّم ثلاث مرات' },
+  { cat: 'Hot Drinks', nameEn: 'Arabic Coffee', nameAr: 'قهوة عربية', price: 4, description: 'قهوة بالهيل والزنجبيل — يُقدَّم مع التمر' },
+  { cat: 'Cold Drinks & Juices', nameEn: 'Fresh Orange Juice', nameAr: 'عصير برتقال طازج', price: 5, description: 'برتقال طازج معصور لحظياً' },
+  { cat: 'Cold Drinks & Juices', nameEn: 'Lemon Mint', nameAr: 'ليمون نعناع', price: 5, description: 'ليمون طازج مع نعناع وماء غازي' },
+  { cat: 'Cold Drinks & Juices', nameEn: 'Mineral Water', nameAr: 'مياه معدنية', price: 2, description: 'ساكنة أو غازية' },
+  { cat: 'Desserts & Sweets', nameEn: 'Zlabia', nameAr: 'زلابية', price: 5, description: 'عجين مقلي مغموس بالعسل وماء الزهر' },
+  { cat: 'Desserts & Sweets', nameEn: 'Basbousa', nameAr: 'بسبوسة', price: 6, description: 'حلوى السميد بجوز الهند والقطر والمكسرات' },
+  { cat: 'Desserts & Sweets', nameEn: 'Qashta Cream', nameAr: 'قشطة بالعسل', price: 7, description: 'قشطة طازجة مع عسل بلدي وفستق حلبي' },
+]
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 🇪🇬  EGYPT — مطعم النيل، القاهرة  (currency: EGP)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const EG_CATS: CatDef[] = [
+  { nameEn: 'Egyptian Breakfast',     nameAr: 'الفطور المصري',              order: 1 },
+  { nameEn: 'Street Food Classics',   nameAr: 'أكل الشارع المصري',          order: 2 },
+  { nameEn: 'Main Dishes',            nameAr: 'الأطباق الرئيسية',           order: 3 },
+  { nameEn: 'Grills',                 nameAr: 'المشاوي',                    order: 4 },
+  { nameEn: 'Hot Drinks',             nameAr: 'مشروبات ساخنة',             order: 5 },
+  { nameEn: 'Fresh Juices & Drinks',  nameAr: 'عصائر ومشروبات باردة',      order: 6 },
+  { nameEn: 'Desserts',               nameAr: 'الحلويات',                   order: 7 },
+]
+
+const EG_PRODUCTS: PrdDef[] = [
+  { cat: 'Egyptian Breakfast', nameEn: 'Ful Medames', nameAr: 'فول مدمس', price: 25, description: 'فول بلدي بزيت الزيتون والكمون والليمون — وجبة مصر الصباحية' },
+  { cat: 'Egyptian Breakfast', nameEn: 'Ta\'ameya (Falafel)', nameAr: 'طعمية', price: 30, description: 'فلافل الفول الأخضر المصرية الأصيلة — مقرمشة ومتبلة' },
+  { cat: 'Egyptian Breakfast', nameEn: 'Ful & Ta\'ameya Combo', nameAr: 'كومبو فول وطعمية', price: 50, description: 'فول مدمس مع طعمية وخبز بلدي وطحينة وطماطم' },
+  { cat: 'Egyptian Breakfast', nameEn: 'Feteer Meshaltet', nameAr: 'فطير مشلتت', price: 55, description: 'فطير مصري طازج بالزبدة مع عسل أو جبنة' },
+  { cat: 'Street Food Classics', nameEn: 'Koshari (Regular)', nameAr: 'كشري', price: 35, description: 'أرز وعدس ومكرونة وصلصة طماطم حارة وبصل مقلي — الطبق الوطني' },
+  { cat: 'Street Food Classics', nameEn: 'Koshari (Large)', nameAr: 'كشري كبير', price: 50, description: 'كشري بورشن كبير مع صلصة إضافية وبصل إضافي' },
+  { cat: 'Street Food Classics', nameEn: 'Hawawshi', nameAr: 'حواوشي', price: 45, description: 'خبز بلدي محشو باللحم المفروم والبصل والبهارات — مشوي بالفرن' },
+  { cat: 'Main Dishes', nameEn: 'Molokhiya with Chicken', nameAr: 'ملوخية بالدجاج', price: 80, description: 'ملوخية خضراء طازجة مع دجاج مشوي وأرز أبيض وخبز' },
+  { cat: 'Main Dishes', nameEn: 'Mahshi (Mixed Stuffed Veg)', nameAr: 'محشي مشكل', price: 70, description: 'كوسة وورق عنب وفلفل محشو بالأرز واللحم والبهارات' },
+  { cat: 'Main Dishes', nameEn: 'Hamam Meshwi (Grilled Pigeon)', nameAr: 'حمام مشوي', price: 120, description: 'حمامة مشوية محشوة بالأرز والكبد والأعشاب' },
+  { cat: 'Main Dishes', nameEn: 'Fried Fish (Bolti)', nameAr: 'سمك بلطي مقلي', price: 85, description: 'سمكة بلطي طازجة مقلية مع سلطة وأرز وطحينة' },
+  { cat: 'Grills', nameEn: 'Kofta & Shish Tawook', nameAr: 'كفتة وشيش طاووق', price: 95, description: 'كفتة اللحم مع دجاج متبل مشوي على الفحم مع أرز' },
+  { cat: 'Grills', nameEn: 'Mixed Grill Platter', nameAr: 'مشاوي مشكلة', price: 110, description: 'كفتة + شيش لحم + شيش دجاج + سجق مشوي' },
+  { cat: 'Grills', nameEn: 'Grilled Kebab', nameAr: 'كباب مشوي', price: 90, description: 'كباب لحم عجل على الفحم مع الفريت والسلطة' },
+  { cat: 'Hot Drinks', nameEn: 'Karkadeh (Hibiscus)', nameAr: 'كركديه', price: 25, description: 'كركديه ساخن أو بارد — شراب مصر الأحمر الأيقوني' },
+  { cat: 'Hot Drinks', nameEn: 'Sahlab', nameAr: 'سحلب', price: 35, description: 'مشروب الأوركيد الدافئ بالحليب والمكسرات وجوز الهند' },
+  { cat: 'Hot Drinks', nameEn: 'Egyptian Tea (Shai)', nameAr: 'شاي مصري', price: 15, description: 'شاي أسود مركّز بالنعناع — يُقدَّم بالسكر على الجانب' },
+  { cat: 'Fresh Juices & Drinks', nameEn: 'Sugarcane Juice', nameAr: 'عصير قصب', price: 30, description: 'عصير قصب السكر الطازج المعصور أمامك' },
+  { cat: 'Fresh Juices & Drinks', nameEn: 'Mango Juice', nameAr: 'عصير مانجو', price: 40, description: 'مانجو مصري أصيل طازج ومعصور' },
+  { cat: 'Fresh Juices & Drinks', nameEn: 'Lemon Mint', nameAr: 'ليمون بالنعناع', price: 30, description: 'ليمون طازج مع نعناع وماء غازي' },
+  { cat: 'Fresh Juices & Drinks', nameEn: 'Mineral Water', nameAr: 'مياه معدنية', price: 12, description: 'ساكنة أو غازية' },
+  { cat: 'Desserts', nameEn: 'Om Ali', nameAr: 'أم علي', price: 50, description: 'خبز الفينو بالحليب والكريمة والمكسرات مخبوز ساخن' },
+  { cat: 'Desserts', nameEn: 'Basbousa', nameAr: 'بسبوسة', price: 35, description: 'بسبوسة جوز الهند بالقطر وماء الزهر' },
+  { cat: 'Desserts', nameEn: 'Konafa bil-Cream', nameAr: 'كنافة بالكريمة', price: 55, description: 'كنافة ناعمة محشوة بالكريمة الطازجة وشيرة الزهر' },
+]
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 🇸🇳  SENEGAL — Restaurant Teranga، داكار  (currency: XOF)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const SN_CATS: CatDef[] = [
+  { nameEn: 'Starters & Salads',          nameAr: 'مقبلات وسلطات',             order: 1 },
+  { nameEn: 'Traditional Senegalese',     nameAr: 'الأطباق السنغالية التقليدية', order: 2 },
+  { nameEn: 'Grills & Brochettes',        nameAr: 'مشاوي وبرشات',              order: 3 },
+  { nameEn: 'Sandwiches',                 nameAr: 'سندويشات',                  order: 4 },
+  { nameEn: 'Hot Drinks',                 nameAr: 'مشروبات ساخنة',             order: 5 },
+  { nameEn: 'Traditional Drinks & Juices', nameAr: 'مشروبات تقليدية وعصائر',  order: 6 },
+  { nameEn: 'Desserts',                   nameAr: 'الحلويات',                  order: 7 },
+]
+
+const SN_PRODUCTS: PrdDef[] = [
+  { cat: 'Starters & Salads', nameEn: 'Accras de Crevettes', nameAr: 'بفريتير الروبيان', price: 1500, description: 'كرات الروبيان المقلية المتبلة بالبهارات الإفريقية' },
+  { cat: 'Starters & Salads', nameEn: 'Salade Verte Maison', nameAr: 'سلطة خضراء بيتية', price: 1000, description: 'خضروات طازجة مع صلصة الخردل والليمون' },
+  { cat: 'Starters & Salads', nameEn: 'Thiakry (Starter)', nameAr: 'تياكري مقبلات', price: 1200, description: 'كسكس دخن مخمر مع لبن الزبادي — حلو ومنعش' },
+  { cat: 'Traditional Senegalese', nameEn: 'Thiéboudienne (Fish & Rice)', nameAr: 'تييبوديين — الطبق الوطني', price: 3500, description: 'أرز مطهو في مرق السمك مع الخضروات — الطبق الوطني السنغالي' },
+  { cat: 'Traditional Senegalese', nameEn: 'Yassa Poulet', nameAr: 'ياسا دجاج', price: 3000, description: 'دجاج مشوي في صلصة البصل والليمون والخردل مع الأرز' },
+  { cat: 'Traditional Senegalese', nameEn: 'Mafé Agneau', nameAr: 'مافيه لحم غنم', price: 3500, description: 'يخنة لحم الغنم في صلصة الفول السوداني مع الأرز' },
+  { cat: 'Traditional Senegalese', nameEn: 'Thiou Poisson', nameAr: 'تيو سمك', price: 2800, description: 'سمك في صلصة طماطم غنية مع الأرز والخضروات' },
+  { cat: 'Traditional Senegalese', nameEn: 'Domoda (Peanut Stew)', nameAr: 'دومودا — يخنة الفول السوداني', price: 2500, description: 'يخنة اللحم مع صلصة الفول السوداني والطماطم والخضار' },
+  { cat: 'Traditional Senegalese', nameEn: 'Caldou (Fish Broth)', nameAr: 'كالدو — مرق السمك', price: 2200, description: 'مرق سمك خفيف بالليمون والأرز — طبق ساحلي داكار' },
+  { cat: 'Grills & Brochettes', nameEn: 'Brochettes Boeuf', nameAr: 'شيش لحم بقر', price: 2500, description: 'شيش لحم بقر متبل على الفحم مع صلصة الديجون' },
+  { cat: 'Grills & Brochettes', nameEn: 'Poisson Braisé', nameAr: 'سمك مشوي', price: 3000, description: 'سمكة طازجة مشوية بأعشاب داكار مع أتيكي' },
+  { cat: 'Sandwiches', nameEn: 'Sandwich Dibi', nameAr: 'سندويش ديبي', price: 1500, description: 'لحم الغنم المشوي في الخبز مع البصل والخردل السنغالي' },
+  { cat: 'Sandwiches', nameEn: 'Sandwich Thon-Alloco', nameAr: 'سندويش تونة-ألوكو', price: 1200, description: 'تونة مع موز مقلي وحريصة في الخبز الفرنسي' },
+  { cat: 'Hot Drinks', nameEn: 'Café Touba', nameAr: 'قهوة طوبا', price: 500, description: 'قهوة سنغالية مميزة بالقرنفل والفلفل الأسود — مقدسة ومنعشة' },
+  { cat: 'Hot Drinks', nameEn: 'Thé Vert Attaya', nameAr: 'أتايا — شاي الضيافة', price: 500, description: 'شاي أخضر بالنعناع يُقدَّم ثلاث مرات في الجلسة' },
+  { cat: 'Traditional Drinks & Juices', nameEn: 'Bissap (Hibiscus)', nameAr: 'بيساب — عصير الكركديه', price: 800, description: 'عصير الكركديه الطازج المحلى بالسكر — المشروب الوطني السنغالي' },
+  { cat: 'Traditional Drinks & Juices', nameEn: 'Ginger Juice (Gnamakoudji)', nameAr: 'عصير الزنجبيل', price: 800, description: 'زنجبيل طازج مع ليمون وسكر — منشط وصحي' },
+  { cat: 'Traditional Drinks & Juices', nameEn: 'Bouye (Baobab Juice)', nameAr: 'عصير البوباب', price: 1000, description: 'عصير ثمرة شجرة البوباب الغنية بفيتامين C' },
+  { cat: 'Traditional Drinks & Juices', nameEn: 'Mineral Water', nameAr: 'مياه معدنية', price: 500, description: 'ساكنة أو غازية' },
+  { cat: 'Desserts', nameEn: 'Thiakry (Sweet Millet)', nameAr: 'تياكري — كسكس دخن محلى', price: 1200, description: 'كسكس الدخن المخمر مع لبن الزبادي والزبيب والجوز' },
+  { cat: 'Desserts', nameEn: 'Beignets Maison', nameAr: 'بنييه بيتية', price: 800, description: 'دونات مقلية طازجة محلاة بمربى الفواكه' },
+  { cat: 'Desserts', nameEn: 'Ngalax', nameAr: 'نغالاكس', price: 1000, description: 'كسكس بزبدة الفول السوداني والسكر وماء الزهر — حلوى الأعياد' },
+]
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 🇨🇮  CÔTE D'IVOIRE — Maquis Le Baobab، أبيدجان  (currency: XOF)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const CI_CATS: CatDef[] = [
+  { nameEn: 'Starters',                   nameAr: 'المقبلات',                   order: 1 },
+  { nameEn: 'Ivorian Traditional Dishes', nameAr: 'الأطباق الإيفوارية التقليدية', order: 2 },
+  { nameEn: 'Grills & Brochettes',        nameAr: 'مشاوي وبرشات',               order: 3 },
+  { nameEn: 'Fast Plates',                nameAr: 'أطباق سريعة',                order: 4 },
+  { nameEn: 'Hot Drinks',                 nameAr: 'مشروبات ساخنة',              order: 5 },
+  { nameEn: 'Fresh Drinks & Juices',      nameAr: 'مشروبات طازجة وعصائر',      order: 6 },
+  { nameEn: 'Desserts',                   nameAr: 'الحلويات',                   order: 7 },
+]
+
+const CI_PRODUCTS: PrdDef[] = [
+  { cat: 'Starters', nameEn: 'Alloco (Fried Plantain)', nameAr: 'ألوكو — موز مقلي', price: 1000, description: 'موز مقلي بالزيت الذهبي مع صلصة الفلفل الحار' },
+  { cat: 'Starters', nameEn: 'Salade Ivoirienne', nameAr: 'سلطة إيفوارية', price: 1200, description: 'خضروات طازجة مع أفوكادو وبيضة وصلصة الليمون' },
+  { cat: 'Starters', nameEn: 'Acras de Morue', nameAr: 'بفريتير السمك المملح', price: 1500, description: 'كرات السمك المملح المقلية المتبلة' },
+  { cat: 'Ivorian Traditional Dishes', nameEn: 'Garba (Attiéké + Thon)', nameAr: 'غاربا — أتيكي وتونة', price: 2000, description: 'كسكس الكسافا (أتيكي) مع تونة مشوية — الطبق الشعبي رقم 1 في أبيدجان' },
+  { cat: 'Ivorian Traditional Dishes', nameEn: 'Attiéké au Poisson Braisé', nameAr: 'أتيكي مع سمك مشوي', price: 3000, description: 'كسكس الكسافا مع سمكة مشوية كاملة وصلصة الطماطم' },
+  { cat: 'Ivorian Traditional Dishes', nameEn: 'Kedjenou Poulet', nameAr: 'كيدجينو دجاج', price: 3500, description: 'دجاج مطهو ببطء بالأعشاب والفلفل في وعاء مغلق — طبق إيفواري أصيل' },
+  { cat: 'Ivorian Traditional Dishes', nameEn: 'Foutou Igname Sauce Graine', nameAr: 'فوتو إينيام بصلصة النخيل', price: 2500, description: 'عجينة اليام مع صلصة بذور النخيل والدجاج' },
+  { cat: 'Ivorian Traditional Dishes', nameEn: 'Riz Sauce Arachide', nameAr: 'أرز بصلصة الفول السوداني', price: 2000, description: 'أرز مع صلصة الفول السوداني الغنية واللحم' },
+  { cat: 'Ivorian Traditional Dishes', nameEn: 'Aloko Chicken', nameAr: 'دجاج بالموز المقلي', price: 2800, description: 'دجاج مشوي مع موز مقلي وأرز وصلصة الفلفل' },
+  { cat: 'Grills & Brochettes', nameEn: 'Brochettes Boeuf', nameAr: 'شيش لحم بقر', price: 2000, description: 'شيش لحم بقر مشوي على الفحم مع الموز المقلي' },
+  { cat: 'Grills & Brochettes', nameEn: 'Poisson Braisé Entier', nameAr: 'سمكة مشوية كاملة', price: 3500, description: 'سمكة طازجة مشوية بأعشاب ساحل العاج مع أتيكي' },
+  { cat: 'Grills & Brochettes', nameEn: 'Poulet Braisé (Half)', nameAr: 'نصف دجاجة مشوية', price: 2500, description: 'نصف دجاجة مشوية بالأعشاب مع أرز أو أتيكي' },
+  { cat: 'Fast Plates', nameEn: 'Riz Sauté Légumes', nameAr: 'أرز مقلي بالخضار', price: 1500, description: 'أرز مقلي بالخضار والبيض والصلصة الخاصة' },
+  { cat: 'Fast Plates', nameEn: 'Sandwich Alloco-Thon', nameAr: 'سندويش ألوكو وتونة', price: 1200, description: 'خبز فرنسي مع موز مقلي وتونة وصلصة حارة' },
+  { cat: 'Hot Drinks', nameEn: 'Café Ivoirien', nameAr: 'قهوة إيفوارية', price: 500, description: 'قهوة من حبوب ساحل العاج الأصيلة' },
+  { cat: 'Hot Drinks', nameEn: 'Thé au Gingembre', nameAr: 'شاي بالزنجبيل', price: 600, description: 'شاي بالزنجبيل الطازج والعسل' },
+  { cat: 'Fresh Drinks & Juices', nameEn: 'Gnamakoudji (Ginger Juice)', nameAr: 'غنامكودجي — عصير الزنجبيل', price: 800, description: 'زنجبيل طازج مع ليمون وسكر — المشروب التقليدي المنشط' },
+  { cat: 'Fresh Drinks & Juices', nameEn: 'Jus de Bissap', nameAr: 'عصير الكركديه', price: 800, description: 'كركديه طازج محلى — أحمر وبارد ومنعش' },
+  { cat: 'Fresh Drinks & Juices', nameEn: 'Jus de Tamarin', nameAr: 'عصير التمر هندي', price: 800, description: 'تمر هندي طازج حامض ومحلى — لا مثيل له في الحرارة' },
+  { cat: 'Fresh Drinks & Juices', nameEn: 'Mineral Water', nameAr: 'مياه معدنية', price: 500, description: 'ساكنة أو غازية' },
+  { cat: 'Desserts', nameEn: 'Beignets Soufflés', nameAr: 'بنييه إيفوارية', price: 800, description: 'دونات مقلية طازجة منفوخة مع سكر البودرة' },
+  { cat: 'Desserts', nameEn: 'Banane Flambée', nameAr: 'موز محرق بالكراميل', price: 1500, description: 'موز مقلي بالزبدة والسكر البني وعصير الليمون' },
+  { cat: 'Desserts', nameEn: 'Gâteau au Coco', nameAr: 'كيك جوز الهند', price: 1200, description: 'كعكة جوز الهند الطازجة الإيفوارية' },
+]
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // Helpers
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -285,7 +524,7 @@ async function upsertTablesAndSeats(cafeId: string, subdomain: string, tableCoun
 
 async function main() {
   if (!process.env.DATABASE_URL) { console.error('DATABASE_URL missing'); process.exit(1) }
-  console.log('🌱 Seeding 3 demo cafes…\n')
+  console.log('🌱 Seeding 9 demo cafes…\n')
 
   // ── 🇲🇦 Morocco ──────────────────────────────────────────────────────────────
   console.log('🇲🇦  Morocco — Café de la Plage (Agadir)')
@@ -311,7 +550,55 @@ async function main() {
   await upsertTablesAndSeats(aeCafe.id, 'khalij')
   await upsertDemoStaff(aeCafe.id)
 
-  console.log('\n🎉 All 3 cafes seeded.')
+  // ── 🇩🇿 Algeria ──────────────────────────────────────────────────────────────
+  console.log('\n🇩🇿  Algeria — مطعم القصبة (Algiers)')
+  const dzCafe = await upsertCafe({ subdomain: 'casbah', name: 'مطعم القصبة', country: 'DZ', currency: 'DZD', lat: 36.7372, lng: 3.0868, adminEmail: 'casbah@demo.com', adminPassword: 'demo1234' })
+  const dzStats = await upsertMenu(dzCafe.id, DZ_CATS, DZ_PRODUCTS)
+  console.log(`  ✅ ${dzStats.cats} categories · ${dzStats.products} products`)
+  await upsertTablesAndSeats(dzCafe.id, 'casbah')
+  await upsertDemoStaff(dzCafe.id)
+
+  // ── 🇹🇳 Tunisia ──────────────────────────────────────────────────────────────
+  console.log('\n🇹🇳  Tunisia — مقهى سيدي بوسعيد (Tunis)')
+  const tnCafe = await upsertCafe({ subdomain: 'sidi', name: 'مقهى سيدي بوسعيد', country: 'TN', currency: 'TND', lat: 36.8065, lng: 10.1815, adminEmail: 'sidi@demo.com', adminPassword: 'demo1234' })
+  const tnStats = await upsertMenu(tnCafe.id, TN_CATS, TN_PRODUCTS)
+  console.log(`  ✅ ${tnStats.cats} categories · ${tnStats.products} products`)
+  await upsertTablesAndSeats(tnCafe.id, 'sidi')
+  await upsertDemoStaff(tnCafe.id)
+
+  // ── 🇱🇾 Libya ─────────────────────────────────────────────────────────────────
+  console.log('\n🇱🇾  Libya — مطعم طرابلس الكبير (Tripoli)')
+  const lyCafe = await upsertCafe({ subdomain: 'tripoli', name: 'مطعم طرابلس الكبير', country: 'LY', currency: 'LYD', lat: 32.8872, lng: 13.1913, adminEmail: 'tripoli@demo.com', adminPassword: 'demo1234' })
+  const lyStats = await upsertMenu(lyCafe.id, LY_CATS, LY_PRODUCTS)
+  console.log(`  ✅ ${lyStats.cats} categories · ${lyStats.products} products`)
+  await upsertTablesAndSeats(lyCafe.id, 'tripoli')
+  await upsertDemoStaff(lyCafe.id)
+
+  // ── 🇪🇬 Egypt ─────────────────────────────────────────────────────────────────
+  console.log('\n🇪🇬  Egypt — مطعم النيل الأزرق (Cairo)')
+  const egCafe = await upsertCafe({ subdomain: 'nil', name: 'مطعم النيل الأزرق', country: 'EG', currency: 'EGP', lat: 30.0444, lng: 31.2357, adminEmail: 'nil@demo.com', adminPassword: 'demo1234' })
+  const egStats = await upsertMenu(egCafe.id, EG_CATS, EG_PRODUCTS)
+  console.log(`  ✅ ${egStats.cats} categories · ${egStats.products} products`)
+  await upsertTablesAndSeats(egCafe.id, 'nil')
+  await upsertDemoStaff(egCafe.id)
+
+  // ── 🇸🇳 Senegal ───────────────────────────────────────────────────────────────
+  console.log('\n🇸🇳  Senegal — Restaurant Teranga (Dakar)')
+  const snCafe = await upsertCafe({ subdomain: 'teranga', name: 'Restaurant Teranga', country: 'SN', currency: 'XOF', lat: 14.7167, lng: -17.4677, adminEmail: 'teranga@demo.com', adminPassword: 'demo1234' })
+  const snStats = await upsertMenu(snCafe.id, SN_CATS, SN_PRODUCTS)
+  console.log(`  ✅ ${snStats.cats} categories · ${snStats.products} products`)
+  await upsertTablesAndSeats(snCafe.id, 'teranga')
+  await upsertDemoStaff(snCafe.id)
+
+  // ── 🇨🇮 Côte d'Ivoire ────────────────────────────────────────────────────────
+  console.log('\n🇨🇮  Côte d\'Ivoire — Restaurant Le Baobab (Abidjan)')
+  const ciCafe = await upsertCafe({ subdomain: 'baobab', name: 'Restaurant Le Baobab', country: 'CI', currency: 'XOF', lat: 5.3600, lng: -4.0083, adminEmail: 'baobab@demo.com', adminPassword: 'demo1234' })
+  const ciStats = await upsertMenu(ciCafe.id, CI_CATS, CI_PRODUCTS)
+  console.log(`  ✅ ${ciStats.cats} categories · ${ciStats.products} products`)
+  await upsertTablesAndSeats(ciCafe.id, 'baobab')
+  await upsertDemoStaff(ciCafe.id)
+
+  console.log('\n🎉 All 9 cafes seeded.')
 }
 
 export default main
