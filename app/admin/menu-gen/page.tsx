@@ -62,6 +62,13 @@ const T = {
     back:      'رجوع',
     items:     'وجبة',
     categories:'أقسام',
+    modeTitle:       'كيف تريد تطبيق هذا المنيو؟',
+    modeAdd:         'إضافة إلى المنيو الحالي',
+    modeAddSub:      'يتم دمج الوجبات الجديدة مع المنيو الموجود',
+    modeReplace:     'استبدال المنيو بالكامل',
+    modeReplaceSub:  'يتم حذف كل الوجبات الحالية واستبدالها بهذا المنيو',
+    modeReplaceWarn: 'تحذير: سيتم حذف المنيو الحالي نهائياً',
+    existingItems:   'وجبة موجودة حالياً',
     ai:        'AI',
     price:     'السعر', calories: 'سعرات', tags: 'وسوم', category: 'القسم',
     editName:  'تعديل الاسم',
@@ -113,6 +120,13 @@ const T = {
     back:      'Retour',
     items:     'plat(s)',
     categories:'catégories',
+    modeTitle:       'Comment appliquer ce menu ?',
+    modeAdd:         'Ajouter au menu existant',
+    modeAddSub:      'Les nouveaux plats seront fusionnés avec le menu actuel',
+    modeReplace:     'Remplacer tout le menu',
+    modeReplaceSub:  'Tous les plats actuels seront supprimés et remplacés',
+    modeReplaceWarn: 'Attention : le menu actuel sera définitivement supprimé',
+    existingItems:   'plat(s) déjà dans le menu',
     ai:        'IA',
     price:     'Prix', calories: 'Calories', tags: 'Étiquettes', category: 'Catégorie',
     editName:  'Modifier',
@@ -164,6 +178,13 @@ const T = {
     back:      'Back',
     items:     'item(s)',
     categories:'categories',
+    modeTitle:       'How do you want to apply this menu?',
+    modeAdd:         'Add to existing menu',
+    modeAddSub:      'New items will be merged with your current menu',
+    modeReplace:     'Replace entire menu',
+    modeReplaceSub:  'All current items will be deleted and replaced',
+    modeReplaceWarn: 'Warning: your current menu will be permanently deleted',
+    existingItems:   'item(s) already in your menu',
     ai:        'AI',
     price:     'Price', calories: 'Calories', tags: 'Tags', category: 'Category',
     editName:  'Edit',
@@ -215,6 +236,13 @@ const T = {
     back:      'Atrás',
     items:     'plato(s)',
     categories:'categorías',
+    modeTitle:       '¿Cómo aplicar este menú?',
+    modeAdd:         'Agregar al menú existente',
+    modeAddSub:      'Los nuevos platos se fusionarán con el menú actual',
+    modeReplace:     'Reemplazar todo el menú',
+    modeReplaceSub:  'Todos los platos actuales serán eliminados y reemplazados',
+    modeReplaceWarn: 'Advertencia: tu menú actual será eliminado permanentemente',
+    existingItems:   'plato(s) ya en el menú',
     ai:        'IA',
     price:     'Precio', calories: 'Calorías', tags: 'Etiquetas', category: 'Categoría',
     editName:  'Editar',
@@ -337,7 +365,11 @@ export default function MenuGenPage() {
   const [published, setPublished]   = useState(false)
   const [editingKey, setEditingKey] = useState<string | null>(null)
 
-  // Load cafe tier on mount
+  // Publish mode
+  const [publishMode, setPublishMode] = useState<'add' | 'replace'>('add')
+  const [existingCount, setExistingCount] = useState(0)
+
+  // Load cafe tier and existing menu count on mount
   useEffect(() => {
     fetch('/api/admin/cafe/tier', { headers: authHeader() })
       .then(r => r.ok ? r.json() : null)
@@ -345,6 +377,14 @@ export default function MenuGenPage() {
         if (d?.tier) setTier(d.tier)
         if (d?.country)  setCountry(d.country)
         if (d?.currency) setCurrency(d.currency)
+      })
+    fetch('/api/admin/menu', { headers: authHeader() })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (Array.isArray(d)) {
+          const count = d.reduce((sum: number, cat: any) => sum + (cat.products?.length ?? 0), 0)
+          setExistingCount(count)
+        }
       })
   }, [])
 
@@ -458,7 +498,7 @@ export default function MenuGenPage() {
     try {
       const res = await fetch('/api/admin/menu-gen/publish-draft', {
         method: 'POST', headers: authHeader(),
-        body: JSON.stringify({ items, publishNow })
+        body: JSON.stringify({ items, publishNow, mode: publishMode })
       })
       if (!res.ok) { const d = await res.json(); setErrMsg(d.error ?? 'Publish failed'); return }
       setPublished(true); setStage('done')
@@ -730,6 +770,49 @@ export default function MenuGenPage() {
             {errMsg && (
               <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-red-700 text-sm flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 shrink-0" /> {errMsg}
+              </div>
+            )}
+
+            {/* Publish mode selector */}
+            {items.length > 0 && (
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 space-y-3">
+                <p className="font-semibold text-slate-700 text-sm">{t.modeTitle}</p>
+                {existingCount > 0 && (
+                  <p className="text-xs text-slate-400">{existingCount} {t.existingItems}</p>
+                )}
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => setPublishMode('add')}
+                    className={`rounded-xl border-2 p-3 text-start transition-all ${
+                      publishMode === 'add'
+                        ? 'border-emerald-400 bg-emerald-50'
+                        : 'border-slate-200 hover:border-emerald-200'
+                    }`}>
+                    <p className={`font-bold text-sm ${publishMode === 'add' ? 'text-emerald-700' : 'text-slate-700'}`}>
+                      {publishMode === 'add' && <Check className="w-3.5 h-3.5 inline me-1" />}
+                      {t.modeAdd}
+                    </p>
+                    <p className="text-xs text-slate-400 mt-0.5">{t.modeAddSub}</p>
+                  </button>
+                  <button
+                    onClick={() => setPublishMode('replace')}
+                    className={`rounded-xl border-2 p-3 text-start transition-all ${
+                      publishMode === 'replace'
+                        ? 'border-red-400 bg-red-50'
+                        : 'border-slate-200 hover:border-red-200'
+                    }`}>
+                    <p className={`font-bold text-sm ${publishMode === 'replace' ? 'text-red-700' : 'text-slate-700'}`}>
+                      {publishMode === 'replace' && <Check className="w-3.5 h-3.5 inline me-1" />}
+                      {t.modeReplace}
+                    </p>
+                    <p className="text-xs text-slate-400 mt-0.5">{t.modeReplaceSub}</p>
+                  </button>
+                </div>
+                {publishMode === 'replace' && existingCount > 0 && (
+                  <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-3 py-2 text-red-700 text-xs font-medium">
+                    <AlertTriangle className="w-3.5 h-3.5 shrink-0" /> {t.modeReplaceWarn}
+                  </div>
+                )}
               </div>
             )}
 

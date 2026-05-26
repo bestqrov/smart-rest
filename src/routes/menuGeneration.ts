@@ -318,17 +318,27 @@ Prices must be realistic for that market. No extra text.
 router.post('/api/admin/menu-gen/publish-draft', authorizeAdmin, async (req: Request, res: Response) => {
   try {
     const cafeId = req.admin!.cafeId
-    const { items, publishNow } = req.body as {
+    const { items, publishNow, mode = 'add' } = req.body as {
       items: {
         nameAr: string; nameEn: string; nameFr?: string; nameEs?: string
         descriptionAr?: string; descriptionEn?: string; descriptionFr?: string; descriptionEs?: string
         price: number; calories?: number; tags?: string[]; category: string; imageUrl?: string
       }[]
       publishNow?: boolean
+      mode?: 'add' | 'replace'
     }
     if (!items?.length) return res.status(400).json({ error: 'items required' })
 
     const status = publishNow ? 'published' : 'draft'
+
+    // Replace mode: wipe existing menu first
+    if (mode === 'replace') {
+      const oldCats = await prisma.category.findMany({ where: { cafeId }, select: { id: true } })
+      if (oldCats.length) {
+        await prisma.product.deleteMany({ where: { categoryId: { in: oldCats.map(c => c.id) } } })
+        await prisma.category.deleteMany({ where: { cafeId } })
+      }
+    }
 
     // Group by category — create categories that don't exist yet
     const categoryNames = [...new Set(items.map(i => i.category.trim()).filter(Boolean))]
