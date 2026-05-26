@@ -2,21 +2,102 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Loader2 } from 'lucide-react'
 import Image from 'next/image'
+import Link from 'next/link'
+import { Loader2, Mail, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react'
+
+// ─── i18n ─────────────────────────────────────────────────────────────────────
+
+type Lang = 'en' | 'fr' | 'ar'
+
+const T: Record<Lang, Record<string, string>> = {
+  en: {
+    tagline: 'Restaurant Management Dashboard',
+    email: 'Email Address', emailPh: 'admin@restaurant.com',
+    password: 'Password', passwordPh: '••••••••',
+    submit: 'Sign In', submitting: 'Signing in...',
+    demoTitle: 'Try a Demo Account',
+    demoSub: 'Click any account to auto-fill credentials',
+    demoSignIn: 'Sign in as',
+    noAccount: "Don't have an account?", signup: 'Sign up free',
+    forgotPassword: 'Forgot password?',
+    country: 'Country', restaurant: 'Restaurant',
+  },
+  fr: {
+    tagline: 'Tableau de bord Restaurant',
+    email: 'Adresse Email', emailPh: 'admin@restaurant.com',
+    password: 'Mot de passe', passwordPh: '••••••••',
+    submit: 'Se connecter', submitting: 'Connexion...',
+    demoTitle: 'Essayer un Compte Démo',
+    demoSub: 'Cliquez sur un compte pour remplir automatiquement',
+    demoSignIn: 'Se connecter en tant que',
+    noAccount: "Pas encore de compte ?", signup: 'Inscription gratuite',
+    forgotPassword: 'Mot de passe oublié ?',
+    country: 'Pays', restaurant: 'Restaurant',
+  },
+  ar: {
+    tagline: 'لوحة تحكم المطعم',
+    email: 'البريد الإلكتروني', emailPh: 'admin@restaurant.com',
+    password: 'كلمة المرور', passwordPh: '••••••••',
+    submit: 'تسجيل الدخول', submitting: 'جاري تسجيل الدخول...',
+    demoTitle: 'جرّب حساباً تجريبياً',
+    demoSub: 'اضغط على أي حساب لملء البيانات تلقائياً',
+    demoSignIn: 'الدخول كـ',
+    noAccount: 'ليس لديك حساب؟', signup: 'ابدأ مجاناً',
+    forgotPassword: 'نسيت كلمة المرور؟',
+    country: 'الدولة', restaurant: 'المطعم',
+  },
+}
+
+// ─── Demo accounts ─────────────────────────────────────────────────────────────
 
 const DEMO_ACCOUNTS = [
-  { label: 'Café de la Plage 🇲🇦', email: 'plage@demo.com',  password: 'demo1234' },
-  { label: 'مطعم نجد الأصيل 🇸🇦',  email: 'najd@demo.com',   password: 'demo1234' },
-  { label: 'مطعم الخليج 🇦🇪',        email: 'khalij@demo.com', password: 'demo1234' },
+  {
+    flag: '🇲🇦',
+    country: { en: 'Morocco', fr: 'Maroc', ar: 'المغرب' },
+    name: 'Café de la Plage',
+    city: { en: 'Agadir', fr: 'Agadir', ar: 'أكادير' },
+    email: 'plage@demo.com',
+    password: 'demo1234',
+    color: 'border-emerald-700/50 hover:border-emerald-500 hover:bg-emerald-950/40',
+    badge: 'bg-emerald-900/60 text-emerald-300',
+  },
+  {
+    flag: '🇸🇦',
+    country: { en: 'Saudi Arabia', fr: 'Arabie Saoudite', ar: 'السعودية' },
+    name: 'مطعم نجد الأصيل',
+    city: { en: 'Riyadh', fr: 'Riyad', ar: 'الرياض' },
+    email: 'najd@demo.com',
+    password: 'demo1234',
+    color: 'border-green-700/50 hover:border-green-500 hover:bg-green-950/40',
+    badge: 'bg-green-900/60 text-green-300',
+  },
+  {
+    flag: '🇦🇪',
+    country: { en: 'UAE', fr: 'Émirats', ar: 'الإمارات' },
+    name: 'مطعم الخليج',
+    city: { en: 'Dubai', fr: 'Dubaï', ar: 'دبي' },
+    email: 'khalij@demo.com',
+    password: 'demo1234',
+    color: 'border-red-700/50 hover:border-red-500 hover:bg-red-950/40',
+    badge: 'bg-red-900/60 text-red-300',
+  },
 ]
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function LoginPage() {
   const router = useRouter()
+  const [lang, setLang] = useState<Lang>('en')
   const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
+  const [showPw, setShowPw]     = useState(false)
   const [error, setError]       = useState('')
   const [loading, setLoading]   = useState(false)
+  const [activeDemo, setActiveDemo] = useState<string | null>(null)
+
+  const isRtl = lang === 'ar'
+  const t = (k: string) => T[lang][k] ?? k
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
@@ -35,7 +116,7 @@ export default function LoginPage() {
       localStorage.setItem('subdomain', data.subdomain ?? '')
       router.push('/admin/dashboard')
     } catch {
-      setError('Network error — is the server running?')
+      setError(lang === 'ar' ? 'خطأ في الشبكة' : lang === 'fr' ? 'Erreur réseau' : 'Network error')
     } finally {
       setLoading(false)
     }
@@ -44,75 +125,163 @@ export default function LoginPage() {
   function fillDemo(acc: typeof DEMO_ACCOUNTS[0]) {
     setEmail(acc.email)
     setPassword(acc.password)
+    setActiveDemo(acc.email)
     setError('')
   }
 
+  const LANGS: { code: Lang; label: string }[] = [
+    { code: 'en', label: 'EN' },
+    { code: 'fr', label: 'FR' },
+    { code: 'ar', label: 'AR' },
+  ]
+
   return (
-    <div className="min-h-screen bg-gray-950 flex items-center justify-center p-4" dir="rtl">
-      <div className="w-full max-w-md space-y-6">
+    <div
+      dir={isRtl ? 'rtl' : 'ltr'}
+      className="min-h-screen bg-gray-950 flex flex-col items-center justify-center p-4 relative overflow-hidden"
+    >
+      {/* Background glow */}
+      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-emerald-900/20 rounded-full blur-[100px] pointer-events-none" />
 
-        {/* Logo */}
-        <div className="text-center">
-          <Image src="/assets/logo.png" alt="Smart Menu" width={140} height={140} className="mx-auto mb-2 drop-shadow-lg" />
-          <p className="text-gray-400 text-sm">لوحة تحكم المطعم</p>
+      {/* Language switcher — top right */}
+      <div className={`absolute top-5 ${isRtl ? 'left-5' : 'right-5'} flex items-center bg-gray-900 rounded-lg p-0.5 border border-gray-800`}>
+        {LANGS.map(l => (
+          <button key={l.code} onClick={() => setLang(l.code)}
+            className={`px-2.5 py-1.5 rounded-md text-xs font-bold transition-all ${lang === l.code ? 'bg-emerald-600 text-white' : 'text-gray-500 hover:text-gray-300'}`}>
+            {l.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="relative w-full max-w-md space-y-5">
+
+        {/* ── Logo & tagline ── */}
+        <div className="text-center mb-2">
+          <Image
+            src="/assets/logo.png"
+            alt="SmartMenu"
+            width={72}
+            height={72}
+            className="mx-auto mb-4 object-contain drop-shadow-[0_0_20px_rgba(16,185,129,0.3)]"
+          />
+          <h1 className="text-2xl font-extrabold text-white tracking-tight">SmartMenu</h1>
+          <p className="text-gray-500 text-sm mt-1">{t('tagline')}</p>
         </div>
 
-        {/* Demo accounts */}
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4 space-y-2">
-          <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide mb-3">حسابات تجريبية</p>
-          {DEMO_ACCOUNTS.map(acc => (
-            <button
-              key={acc.email}
-              onClick={() => fillDemo(acc)}
-              className="w-full text-right px-3 py-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-200 text-sm transition-colors flex items-center justify-between group"
-            >
-              <span>{acc.label}</span>
-              <span className="text-xs text-gray-500 group-hover:text-emerald-400 transition-colors">{acc.email}</span>
-            </button>
-          ))}
-        </div>
-
-        {/* Login form */}
-        <form onSubmit={handleLogin} className="bg-gray-900 border border-gray-800 rounded-2xl p-6 space-y-4">
+        {/* ── Login form ── */}
+        <div className="bg-gray-900/80 backdrop-blur border border-gray-800 rounded-2xl p-6 shadow-2xl">
           {error && (
-            <div className="bg-red-900/40 border border-red-700 text-red-300 text-sm rounded-xl px-4 py-3">
+            <div className="bg-red-900/40 border border-red-700/60 text-red-300 text-sm rounded-xl px-4 py-3 mb-4 flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />
               {error}
             </div>
           )}
 
-          <div>
-            <label className="block text-sm text-gray-400 mb-1.5">البريد الإلكتروني</label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              placeholder="admin@example.com"
-              className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-3 text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-            />
+          <form onSubmit={handleLogin} className="space-y-4">
+            {/* Email */}
+            <div>
+              <label className="block text-sm text-gray-400 font-medium mb-1.5">{t('email')}</label>
+              <div className="relative">
+                <Mail className={`absolute ${isRtl ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500`} />
+                <input
+                  type="email" required
+                  value={email} onChange={e => setEmail(e.target.value)}
+                  placeholder={t('emailPh')}
+                  dir="ltr"
+                  className={`w-full bg-gray-800 border border-gray-700 text-white rounded-xl ${isRtl ? 'pr-10 pl-4' : 'pl-10 pr-4'} py-3 text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all`}
+                />
+              </div>
+            </div>
+
+            {/* Password */}
+            <div>
+              <div className={`flex items-center justify-between mb-1.5`}>
+                <label className="text-sm text-gray-400 font-medium">{t('password')}</label>
+                <a href="#" className="text-xs text-emerald-500 hover:text-emerald-400 transition-colors">{t('forgotPassword')}</a>
+              </div>
+              <div className="relative">
+                <Lock className={`absolute ${isRtl ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500`} />
+                <input
+                  type={showPw ? 'text' : 'password'} required
+                  value={password} onChange={e => setPassword(e.target.value)}
+                  placeholder={t('passwordPh')}
+                  dir="ltr"
+                  className={`w-full bg-gray-800 border border-gray-700 text-white rounded-xl ${isRtl ? 'pr-10 pl-10' : 'pl-10 pr-10'} py-3 text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all`}
+                />
+                <button type="button" onClick={() => setShowPw(!showPw)}
+                  className={`absolute ${isRtl ? 'left-3' : 'right-3'} top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition-colors`}>
+                  {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            <button
+              type="submit" disabled={loading}
+              className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/40 mt-2"
+            >
+              {loading
+                ? <><Loader2 className="w-4 h-4 animate-spin" />{t('submitting')}</>
+                : <>{t('submit')}<ArrowRight className="w-4 h-4" /></>
+              }
+            </button>
+          </form>
+
+          <p className={`mt-5 text-center text-sm text-gray-500`}>
+            {t('noAccount')}{' '}
+            <Link href="/signup" className="text-emerald-400 hover:text-emerald-300 font-semibold transition-colors">
+              {t('signup')}
+            </Link>
+          </p>
+        </div>
+
+        {/* ── Demo accounts ── */}
+        <div className="bg-gray-900/60 border border-gray-800 rounded-2xl p-5">
+          <div className="mb-4">
+            <p className="text-sm font-bold text-white">{t('demoTitle')}</p>
+            <p className="text-xs text-gray-500 mt-0.5">{t('demoSub')}</p>
           </div>
 
-          <div>
-            <label className="block text-sm text-gray-400 mb-1.5">كلمة المرور</label>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              placeholder="••••••••"
-              className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-3 text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-            />
+          <div className="space-y-2.5">
+            {DEMO_ACCOUNTS.map(acc => (
+              <button
+                key={acc.email}
+                onClick={() => fillDemo(acc)}
+                className={`w-full border rounded-xl p-3.5 transition-all text-left group ${acc.color} ${activeDemo === acc.email ? 'ring-1 ring-emerald-500' : ''}`}
+              >
+                <div className={`flex items-start justify-between gap-3 ${isRtl ? 'flex-row-reverse' : ''}`}>
+                  {/* Left: flag + name */}
+                  <div className={`flex items-center gap-2.5 ${isRtl ? 'flex-row-reverse' : ''}`}>
+                    <span className="text-2xl leading-none">{acc.flag}</span>
+                    <div className={isRtl ? 'text-right' : ''}>
+                      <p className="text-sm font-bold text-white leading-tight">{acc.name}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        {acc.country[lang]} · {acc.city[lang]}
+                      </p>
+                    </div>
+                  </div>
+                  {/* Right: credentials */}
+                  <div className={`shrink-0 ${isRtl ? 'text-left' : 'text-right'}`}>
+                    <p className="text-xs text-gray-400 font-mono leading-tight">{acc.email}</p>
+                    <span className={`inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded-md ${acc.badge}`}>
+                      demo1234
+                    </span>
+                  </div>
+                </div>
+                {activeDemo === acc.email && (
+                  <p className="text-xs text-emerald-400 font-semibold mt-2 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
+                    {t('demoSignIn')} {acc.name}
+                  </p>
+                )}
+              </button>
+            ))}
           </div>
+        </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-bold py-3 rounded-xl transition-colors flex items-center justify-center gap-2"
-          >
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-            {loading ? 'جاري تسجيل الدخول...' : 'تسجيل الدخول'}
-          </button>
-        </form>
+        {/* Footer */}
+        <p className="text-center text-xs text-gray-700 pb-4">
+          © {new Date().getFullYear()} SmartMenu · MA · SA · AE · SN · CI · KE
+        </p>
 
       </div>
     </div>
