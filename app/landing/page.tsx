@@ -573,15 +573,17 @@ export default function LandingPage() {
           </div>
 
           {/* Hero image — mobile.png */}
-          <div className="flex-1 flex items-center justify-center">
-            <div className="relative w-full max-w-sm lg:max-w-md">
-              <div className="absolute -inset-8 rounded-full bg-emerald-500/10 blur-3xl" />
+          <div className="flex-1 flex items-center justify-center mt-6 lg:mt-0">
+            <div className="relative w-full max-w-xs sm:max-w-sm lg:max-w-lg xl:max-w-xl">
+              {/* Glow rings */}
+              <div className="absolute -inset-6 rounded-full bg-emerald-500/20 blur-3xl" />
+              <div className="absolute -inset-12 rounded-full bg-teal-500/10 blur-[60px]" />
               <Image
                 src="/assets/mobile.png"
-                alt="SmartMenu digital menu on mobile"
+                alt="SmartMenu — Digital Menu on Mobile"
                 width={1213}
                 height={1297}
-                className="relative w-full h-auto object-contain drop-shadow-2xl"
+                className="relative w-full h-auto object-contain drop-shadow-[0_30px_60px_rgba(0,0,0,0.5)]"
                 priority
               />
             </div>
