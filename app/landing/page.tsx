@@ -424,9 +424,9 @@ export default function LandingPage() {
   const router = useRouter()
   const [lang, setLang] = useState<Lang>('en')
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [phone, setPhone] = useState('')
-  const [waLoading, setWaLoading] = useState(false)
-  const [waError, setWaError] = useState('')
+  const [email, setEmail] = useState('')
+  const [ctaLoading, setCtaLoading] = useState(false)
+  const [ctaError, setCtaError] = useState('')
   const [openFaq, setOpenFaq] = useState<number | null>(null)
 
   const isRtl = lang === 'ar'
@@ -440,24 +440,10 @@ export default function LandingPage() {
     return Array.isArray(val) ? val : [String(val)]
   }
 
-  async function handleWhatsAppRegister(e: React.FormEvent) {
+  function handleEmailCta(e: React.FormEvent) {
     e.preventDefault()
-    setWaError('')
-    setWaLoading(true)
-    try {
-      const res = await fetch('/api/auth/quick-register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, country: 'MA' }),
-      })
-      const data = await res.json()
-      if (!res.ok) { setWaError(data.error || 'Error'); return }
-      router.push('/whatsapp-sent')
-    } catch {
-      setWaError('Connection error')
-    } finally {
-      setWaLoading(false)
-    }
+    if (!email.trim()) return
+    router.push(`/signup?email=${encodeURIComponent(email.trim())}`)
   }
 
   const LANGS: { code: Lang; label: string }[] = [
@@ -813,36 +799,56 @@ export default function LandingPage() {
       </section>
 
       {/* ══════════════════════════════════════════════════════════════════════ */}
-      {/* WHATSAPP CTA */}
+      {/* EMAIL CTA */}
       {/* ══════════════════════════════════════════════════════════════════════ */}
       <section className="py-24 bg-gradient-to-br from-gray-950 via-emerald-950 to-gray-950 relative overflow-hidden">
         <div className="absolute inset-0 opacity-5" style={{ backgroundImage: 'radial-gradient(circle,#fff 1px,transparent 1px)', backgroundSize: '30px 30px' }} />
         <div className="relative max-w-2xl mx-auto px-4 text-center">
-          <div className="inline-flex items-center gap-2 bg-green-900/50 border border-green-700/50 text-green-300 px-5 py-2 rounded-full text-sm mb-8">
-            <MessageCircle className="w-4 h-4 fill-green-400" />
-            {lang === 'ar' ? 'تفعيل فوري عبر واتساب — بدون إيميل ولا كلمة مرور' : lang === 'fr' ? 'Activation instantanée via WhatsApp — sans email ni mot de passe' : 'Instant activation via WhatsApp — no email, no password'}
+
+          <div className="inline-flex items-center gap-2 bg-emerald-900/50 border border-emerald-700/50 text-emerald-300 px-5 py-2 rounded-full text-sm mb-8">
+            <Mail className="w-4 h-4" />
+            {lang === 'ar' ? 'تسجيل سريع بالإيميل — بدون بطاقة بنكية'
+              : lang === 'fr' ? 'Inscription rapide par email — sans carte bancaire'
+              : 'Quick email signup — no credit card required'}
           </div>
+
           <h2 className="text-4xl sm:text-5xl font-extrabold text-white mb-4">
             {t('finalTitle')}<br />
-            <span className="text-green-400">{lang === 'ar' ? 'بضغطة واحدة' : lang === 'fr' ? "En Un Clic" : 'In One Click'}</span>
+            <span className="text-emerald-400">
+              {lang === 'ar' ? 'بإيميلك فقط' : lang === 'fr' ? 'Avec votre Email' : 'With Your Email'}
+            </span>
           </h2>
-          <p className="text-gray-400 mb-10 text-lg">{lang === 'ar' ? 'أدخل رقم واتساب وسنرسل لك رابط الدخول الفوري.' : lang === 'fr' ? "Entrez votre numéro WhatsApp et recevez votre lien de connexion." : 'Enter your WhatsApp number and get your instant login link.'}</p>
 
-          <form onSubmit={handleWhatsAppRegister} className="max-w-md mx-auto">
+          <p className="text-gray-400 mb-10 text-lg">
+            {lang === 'ar' ? 'أدخل إيميلك وابدأ تجربتك المجانية فوراً — خصّص ملفك وأضف منيوك في دقائق.'
+              : lang === 'fr' ? "Entrez votre email et démarrez votre essai gratuit — personnalisez votre profil et créez votre menu en minutes."
+              : 'Enter your email and start your free trial instantly — customise your profile and build your menu in minutes.'}
+          </p>
+
+          <form onSubmit={handleEmailCta} className="max-w-md mx-auto">
             <div className="flex flex-col sm:flex-row gap-3">
               <div className="flex-1 relative">
-                <span className={`absolute ${isRtl ? 'left-4' : 'right-4'} top-1/2 -translate-y-1/2 text-gray-400 text-sm font-mono select-none`} dir="ltr">+212</span>
-                <input type="tel" value={phone} onChange={e => setPhone(e.target.value)}
-                  placeholder="6 12 34 56 78" required dir="ltr"
-                  className={`w-full ${isRtl ? 'pl-16 pr-4' : 'pr-16 pl-4'} py-4 rounded-2xl text-gray-900 font-mono text-lg focus:outline-none focus:ring-2 focus:ring-green-400 bg-white`} />
+                <Mail className={`absolute ${isRtl ? 'right-4' : 'left-4'} top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400`} />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  placeholder={lang === 'ar' ? 'your@email.com' : lang === 'fr' ? 'votre@email.com' : 'your@email.com'}
+                  required
+                  dir="ltr"
+                  className={`w-full ${isRtl ? 'pr-10 pl-4' : 'pl-10 pr-4'} py-4 rounded-2xl text-gray-900 text-base focus:outline-none focus:ring-2 focus:ring-emerald-400 bg-white`}
+                />
               </div>
-              <button type="submit" disabled={waLoading}
-                className="flex items-center justify-center gap-2 bg-green-500 hover:bg-green-400 disabled:bg-gray-600 text-white font-bold px-6 py-4 rounded-2xl transition-all shadow-xl whitespace-nowrap">
-                {waLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <MessageCircle className="w-5 h-5" />}
-                {waLoading ? '...' : lang === 'ar' ? 'أرسل لي الرابط' : lang === 'fr' ? 'Envoyer le lien' : 'Send My Link'}
+              <button type="submit" disabled={ctaLoading}
+                className="flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-400 disabled:bg-gray-600 text-white font-bold px-6 py-4 rounded-2xl transition-all shadow-xl shadow-emerald-900/40 whitespace-nowrap">
+                {ctaLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <ArrowRight className="w-5 h-5" />}
+                {ctaLoading ? '...'
+                  : lang === 'ar' ? 'ابدأ مجاناً'
+                  : lang === 'fr' ? 'Commencer'
+                  : 'Get Started'}
               </button>
             </div>
-            {waError && <p className="mt-3 text-red-400 text-sm">{waError}</p>}
+            {ctaError && <p className="mt-3 text-red-400 text-sm">{ctaError}</p>}
             <p className="mt-4 text-gray-500 text-xs">{t('finalNote')}</p>
           </form>
         </div>
