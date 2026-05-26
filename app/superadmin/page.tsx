@@ -85,6 +85,7 @@ function trialDaysLeft(iso: string | null): number | null {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function SuperAdminPage() {
+  const [email,    setEmail]    = useState('')
   const [secret,   setSecret]   = useState('')
   const [authed,   setAuthed]   = useState(false)
   const [overview, setOverview] = useState<Overview | null>(null)
@@ -106,8 +107,12 @@ export default function SuperAdminPage() {
   const secretRef = useRef(secret)
   useEffect(() => { secretRef.current = secret }, [secret])
 
+  const emailRef = useRef(email)
+  useEffect(() => { emailRef.current = email }, [email])
+
   const superHeader = useCallback(() => ({
     'x-superadmin-secret': secretRef.current,
+    'x-superadmin-email':  emailRef.current,
     'Content-Type':        'application/json'
   }), [])
 
@@ -132,7 +137,20 @@ export default function SuperAdminPage() {
     } finally { setLoading(false) }
   }, [superHeader, filterCountry, filterStatus, filterTier])
 
-  function login() { if (secret.trim()) setAuthed(true) }
+  const [loginErr, setLoginErr] = useState(false)
+
+  async function login() {
+    if (!email.trim() || !secret.trim()) return
+    setLoginErr(false)
+    const res = await fetch('/api/superadmin/overview', {
+      headers: { 'x-superadmin-secret': secret, 'x-superadmin-email': email, 'Content-Type': 'application/json' }
+    })
+    if (res.ok) {
+      setAuthed(true)
+    } else {
+      setLoginErr(true)
+    }
+  }
   useEffect(() => { if (authed) loadAll(1) }, [authed, loadAll])
 
   async function runSweep() {
@@ -241,13 +259,25 @@ export default function SuperAdminPage() {
             </div>
           </div>
           <input
+            type="email"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && login()}
+            placeholder="البريد الإلكتروني"
+            dir="ltr"
+            className="w-full bg-gray-800 border border-gray-700 rounded-2xl px-4 py-3.5 text-white placeholder-gray-500 outline-none focus:border-emerald-500 mb-3 text-sm"
+          />
+          <input
             type="password"
             value={secret}
             onChange={e => setSecret(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && login()}
-            placeholder="الكود السري"
-            className="w-full bg-gray-800 border border-gray-700 rounded-2xl px-4 py-3.5 text-white placeholder-gray-500 outline-none focus:border-emerald-500 mb-4 text-center tracking-[0.4em] text-base"
+            placeholder="كلمة المرور"
+            className="w-full bg-gray-800 border border-gray-700 rounded-2xl px-4 py-3.5 text-white placeholder-gray-500 outline-none focus:border-emerald-500 mb-4 text-center tracking-[0.3em] text-base"
           />
+          {loginErr && (
+            <p className="text-red-400 text-xs text-center mb-3">البريد الإلكتروني أو كلمة المرور غير صحيحة</p>
+          )}
           <button onClick={login}
             className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-3.5 rounded-2xl font-extrabold transition-colors active:scale-95"
           >

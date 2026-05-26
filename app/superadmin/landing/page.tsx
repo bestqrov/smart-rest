@@ -69,8 +69,8 @@ const DEFAULT_CONFIG: LandingConfig = {
   heroImageUrl: '/assets/mobile.png',
 }
 
-function superHeader(secret: string) {
-  return { 'x-superadmin-secret': secret, 'Content-Type': 'application/json' }
+function superHeader(secret: string, email = '') {
+  return { 'x-superadmin-secret': secret, 'x-superadmin-email': email, 'Content-Type': 'application/json' }
 }
 
 // ─── Small helpers ─────────────────────────────────────────────────────────────
@@ -103,6 +103,7 @@ function LangTabs({ active, onChange }: { active: 'en' | 'fr' | 'ar'; onChange: 
 
 export default function LandingEditorPage() {
   const router = useRouter()
+  const [email,  setEmail]  = useState('')
   const [secret, setSecret] = useState('')
   const [authed, setAuthed] = useState(false)
   const [cfg, setCfg] = useState<LandingConfig>(DEFAULT_CONFIG)
@@ -115,7 +116,7 @@ export default function LandingEditorPage() {
   async function login() {
     if (!secret.trim()) return
     setLoading(true); setAuthErr(false)
-    const r = await fetch('/api/superadmin/landing-config', { headers: superHeader(secret) })
+    const r = await fetch('/api/superadmin/landing-config', { headers: superHeader(secret, email) })
     setLoading(false)
     if (!r.ok) { setAuthErr(true); return }
     const d = await r.json()
@@ -128,7 +129,7 @@ export default function LandingEditorPage() {
     try {
       await fetch('/api/superadmin/landing-config', {
         method: 'PUT',
-        headers: superHeader(secret),
+        headers: superHeader(secret, email),
         body: JSON.stringify(cfg),
       })
       setSaved(true)
@@ -175,13 +176,22 @@ export default function LandingEditorPage() {
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-8 w-full max-w-sm space-y-4">
         <h1 className="font-extrabold text-slate-800 text-xl text-center">Landing Editor</h1>
-        <p className="text-xs text-slate-400 text-center">Enter the superadmin secret to continue</p>
+        <p className="text-xs text-slate-400 text-center">Sign in with your superadmin credentials</p>
+        <input
+          type="email"
+          value={email}
+          onChange={e => setEmail(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && login()}
+          placeholder="Email"
+          dir="ltr"
+          className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
+        />
         <input
           type="password"
           value={secret}
           onChange={e => setSecret(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && login()}
-          placeholder="Superadmin secret"
+          placeholder="Password"
           className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
         />
         {authErr && <p className="text-red-500 text-xs text-center">Wrong secret</p>}
