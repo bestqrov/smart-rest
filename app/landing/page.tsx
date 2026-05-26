@@ -336,19 +336,22 @@ const MARKETS = [
   },
 ]
 
-const TESTIMONIALS = [
+const TESTIMONIALS: LandingConfig['testimonials'] = [
   {
-    name: 'Mohammed Idrissi', role: { en: 'Owner, Brahim Restaurant — Marrakech', fr: 'Propriétaire, Restaurant Brahim — Marrakech', ar: 'صاحب مطعم ببراهيم، مراكش' },
+    name: 'Mohammed Idrissi', avatarUrl: undefined,
+    role: { en: 'Owner, Brahim Restaurant — Marrakech', fr: 'Propriétaire, Restaurant Brahim — Marrakech', ar: 'صاحب مطعم ببراهيم، مراكش' },
     rating: 5,
     text: { en: 'Before SmartMenu we lost so much time on wrong orders. Now the kitchen reads everything clearly — and guests love the digital experience.', fr: 'Avant SmartMenu, nous perdions beaucoup de temps sur les erreurs. Maintenant la cuisine reçoit tout clairement.', ar: 'قبل SmartMenu كنت نخسر وقت كبير في الطلبات الغلوطة. دابا المطبخ كيقرا كل شيء واضح.' },
   },
   {
-    name: 'Fatima Bouzidi', role: { en: 'Manager, Café Latte — Agadir', fr: 'Directrice, Café Latte — Agadir', ar: 'مديرة كافي لاتيه، أكادير' },
+    name: 'Fatima Bouzidi', avatarUrl: undefined,
+    role: { en: 'Manager, Café Latte — Agadir', fr: 'Directrice, Café Latte — Agadir', ar: 'مديرة كافي لاتيه، أكادير' },
     rating: 5,
     text: { en: 'Setup was incredibly easy — in under an hour the menu was live and QR stickers printed on tables. Foreign guests love the English menu.', fr: "Configuration incroyablement facile — en moins d'une heure le menu était en ligne. Les clients étrangers adorent le menu en anglais.", ar: 'إعداد سهل جداً — في أقل من ساعة كان المنيو جاهز. الزبائن الأجانب مسرورين بالمنيو بالإنجليزية.' },
   },
   {
-    name: 'Khalid Al-Omari', role: { en: 'Owner, Food Court — Riyadh', fr: 'Propriétaire, Food Court — Riyad', ar: 'صاحب فود كورت، الرياض' },
+    name: 'Khalid Al-Omari', avatarUrl: undefined,
+    role: { en: 'Owner, Food Court — Riyadh', fr: 'Propriétaire, Food Court — Riyad', ar: 'صاحب فود كورت، الرياض' },
     rating: 5,
     text: { en: 'The table merge feature solved a huge problem for large families. One unified bill, no collection issues at all.', fr: 'La fusion de tables a résolu un énorme problème pour les grandes familles. Une facture unifiée, zéro problème de caisse.', ar: 'نظام دمج الطاولات للعائلات الكبيرة حل لنا مشكلة كبيرة. الفاتورة تجي موحدة وما كاين مشاكل.' },
   },
