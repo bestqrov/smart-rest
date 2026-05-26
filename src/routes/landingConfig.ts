@@ -1,10 +1,16 @@
-import express, { Request, Response } from 'express'
+import express, { Request, Response, NextFunction } from 'express'
 import prisma from '../prisma'
-import { verifyToken } from '../middleware/auth'
 
 const router = express.Router()
 
 const CONFIG_KEY = 'landing_page'
+
+function requireSuperAdmin(req: Request, res: Response, next: NextFunction) {
+  const secret = req.header('x-superadmin-secret')
+  const expected = process.env.SUPERADMIN_SECRET
+  if (!expected || secret !== expected) return res.status(401).json({ error: 'Unauthorized' })
+  return next()
+}
 
 // ─── GET /api/public/landing-config — no auth ─────────────────────────────────
 
@@ -17,10 +23,9 @@ router.get('/api/public/landing-config', async (_req: Request, res: Response) =>
   }
 })
 
-// ─── GET /api/superadmin/landing-config — superadmin only ────────────────────
+// ─── GET /api/superadmin/landing-config ───────────────────────────────────────
 
-router.get('/api/superadmin/landing-config', verifyToken, async (req: Request, res: Response) => {
-  if ((req as any).user?.role !== 'SUPERADMIN') return res.status(403).json({ error: 'Forbidden' })
+router.get('/api/superadmin/landing-config', requireSuperAdmin, async (_req: Request, res: Response) => {
   try {
     const row = await prisma.siteConfig.findUnique({ where: { key: CONFIG_KEY } })
     return res.json(row ? row.value : {})
@@ -29,10 +34,9 @@ router.get('/api/superadmin/landing-config', verifyToken, async (req: Request, r
   }
 })
 
-// ─── PUT /api/superadmin/landing-config — superadmin only ────────────────────
+// ─── PUT /api/superadmin/landing-config ───────────────────────────────────────
 
-router.put('/api/superadmin/landing-config', verifyToken, async (req: Request, res: Response) => {
-  if ((req as any).user?.role !== 'SUPERADMIN') return res.status(403).json({ error: 'Forbidden' })
+router.put('/api/superadmin/landing-config', requireSuperAdmin, async (req: Request, res: Response) => {
   try {
     const value = req.body
     await prisma.siteConfig.upsert({

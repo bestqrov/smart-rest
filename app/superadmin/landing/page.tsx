@@ -69,9 +69,8 @@ const DEFAULT_CONFIG: LandingConfig = {
   heroImageUrl: '/assets/mobile.png',
 }
 
-function authHeader() {
-  const tk = typeof window !== 'undefined' ? localStorage.getItem('token') : null
-  return { Authorization: `Bearer ${tk ?? ''}`, 'Content-Type': 'application/json' }
+function superHeader(secret: string) {
+  return { 'x-superadmin-secret': secret, 'Content-Type': 'application/json' }
 }
 
 // ─── Small helpers ─────────────────────────────────────────────────────────────
@@ -104,29 +103,32 @@ function LangTabs({ active, onChange }: { active: 'en' | 'fr' | 'ar'; onChange: 
 
 export default function LandingEditorPage() {
   const router = useRouter()
+  const [secret, setSecret] = useState('')
+  const [authed, setAuthed] = useState(false)
   const [cfg, setCfg] = useState<LandingConfig>(DEFAULT_CONFIG)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [activeTestiLang, setActiveTestiLang] = useState<'en' | 'fr' | 'ar'>('en')
+  const [authErr, setAuthErr] = useState(false)
 
-  useEffect(() => {
-    fetch('/api/superadmin/landing-config', { headers: authHeader() })
-      .then(r => r.ok ? r.json() : null)
-      .then(d => {
-        if (d && Object.keys(d).length > 0) {
-          setCfg({ ...DEFAULT_CONFIG, ...d })
-        }
-      })
-      .finally(() => setLoading(false))
-  }, [])
+  async function login() {
+    if (!secret.trim()) return
+    setLoading(true); setAuthErr(false)
+    const r = await fetch('/api/superadmin/landing-config', { headers: superHeader(secret) })
+    setLoading(false)
+    if (!r.ok) { setAuthErr(true); return }
+    const d = await r.json()
+    if (d && Object.keys(d).length > 0) setCfg({ ...DEFAULT_CONFIG, ...d })
+    setAuthed(true)
+  }
 
   async function save() {
     setSaving(true); setSaved(false)
     try {
       await fetch('/api/superadmin/landing-config', {
         method: 'PUT',
-        headers: authHeader(),
+        headers: superHeader(secret),
         body: JSON.stringify(cfg),
       })
       setSaved(true)
@@ -169,9 +171,25 @@ export default function LandingEditorPage() {
     }))
   }
 
-  if (loading) return (
-    <div className="min-h-screen flex items-center justify-center">
-      <Loader2 className="w-6 h-6 animate-spin text-emerald-600" />
+  if (!authed) return (
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-8 w-full max-w-sm space-y-4">
+        <h1 className="font-extrabold text-slate-800 text-xl text-center">Landing Editor</h1>
+        <p className="text-xs text-slate-400 text-center">Enter the superadmin secret to continue</p>
+        <input
+          type="password"
+          value={secret}
+          onChange={e => setSecret(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && login()}
+          placeholder="Superadmin secret"
+          className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
+        />
+        {authErr && <p className="text-red-500 text-xs text-center">Wrong secret</p>}
+        <button onClick={login} disabled={loading}
+          className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2">
+          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Continue'}
+        </button>
+      </div>
     </div>
   )
 
