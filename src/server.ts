@@ -149,7 +149,7 @@ async function main() {
   // error handler must be absolute last — after Next.js handler
   app.use(errorHandler)
 
-  const port = Number(process.env.PORT || 4000)
+  const port = Number(process.env.PORT || 3000)
   const httpServer = http.createServer(app)
 
   const io = new SocketIOServer(httpServer, {
