@@ -137,12 +137,20 @@ export default function SuperAdminPage() {
     } finally { setLoading(false) }
   }, [superHeader, filterCountry, filterStatus, filterTier])
 
-  const [loginErr, setLoginErr] = useState(false)
+  const [loginErr,     setLoginErr]     = useState('')
+  const [loginLoading, setLoginLoading] = useState(false)
 
-  function login() {
-    if (!email.trim() || !secret.trim()) { setLoginErr(true); return }
-    setLoginErr(false)
-    setAuthed(true)
+  async function login() {
+    if (!email.trim() || !secret.trim()) { setLoginErr('يرجى إدخال البريد الإلكتروني وكلمة المرور'); return }
+    setLoginErr(''); setLoginLoading(true)
+    try {
+      const res = await fetch('/api/superadmin/billing/overview', {
+        headers: { 'x-superadmin-secret': secret, 'x-superadmin-email': email }
+      })
+      if (!res.ok) { setLoginErr('بيانات الدخول غير صحيحة'); return }
+      setAuthed(true)
+    } catch { setLoginErr('خطأ في الشبكة') }
+    finally   { setLoginLoading(false) }
   }
   useEffect(() => { if (authed) loadAll(1) }, [authed, loadAll])
 
@@ -269,12 +277,12 @@ export default function SuperAdminPage() {
             className="w-full bg-gray-800 border border-gray-700 rounded-2xl px-4 py-3.5 text-white placeholder-gray-500 outline-none focus:border-emerald-500 mb-4 text-center tracking-[0.3em] text-base"
           />
           {loginErr && (
-            <p className="text-red-400 text-xs text-center mb-3">يرجى إدخال البريد الإلكتروني وكلمة المرور</p>
+            <p className="text-red-400 text-xs text-center mb-3">{loginErr}</p>
           )}
-          <button onClick={login}
-            className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-3.5 rounded-2xl font-extrabold transition-colors active:scale-95"
+          <button onClick={login} disabled={loginLoading}
+            className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white py-3.5 rounded-2xl font-extrabold transition-colors active:scale-95 flex items-center justify-center gap-2"
           >
-            دخول →
+            {loginLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'دخول →'}
           </button>
         </div>
       </div>
