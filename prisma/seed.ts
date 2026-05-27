@@ -451,12 +451,13 @@ async function upsertCafe(data: {
     create: { ...cafeData, isActive: true, billingStatus: 'GRACE_PERIOD' },
   })
 
+  const passwordHash = await hashPassword(adminPassword)
   const existingUser = await prisma.user.findUnique({ where: { email: adminEmail } })
   if (!existingUser) {
-    const passwordHash = await hashPassword(adminPassword)
     await prisma.user.create({ data: { email: adminEmail, passwordHash, cafeId: cafe.id } })
     console.log(`  👤 Admin created: ${adminEmail} / ${adminPassword}`)
   } else {
+    await prisma.user.update({ where: { email: adminEmail }, data: { passwordHash, cafeId: cafe.id } })
     console.log(`  👤 Admin exists:  ${adminEmail}`)
   }
 

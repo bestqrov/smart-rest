@@ -68,6 +68,7 @@ async function main() {
   })
 
   const app = express()
+  app.set('trust proxy', 1)
 
   const allowedOrigin =
     process.env.FRONTEND_URL || process.env.NEXT_PUBLIC_SOCKET_URL || (dev ? 'http://localhost:3000' : '*')
