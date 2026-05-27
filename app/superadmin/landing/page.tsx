@@ -108,8 +108,9 @@ export default function LandingEditorPage() {
   const [authed, setAuthed] = useState(false)
   const [cfg, setCfg] = useState<LandingConfig>(DEFAULT_CONFIG)
   const [loading, setLoading] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
+  const [saving, setSaving]   = useState(false)
+  const [saved, setSaved]     = useState(false)
+  const [saveErr, setSaveErr] = useState('')
   const [activeTestiLang, setActiveTestiLang] = useState<'en' | 'fr' | 'ar'>('en')
   const [authErr, setAuthErr] = useState(false)
 
@@ -125,15 +126,22 @@ export default function LandingEditorPage() {
   }
 
   async function save() {
-    setSaving(true); setSaved(false)
+    setSaving(true); setSaved(false); setSaveErr('')
     try {
-      await fetch('/api/superadmin/landing-config', {
+      const r = await fetch('/api/superadmin/landing-config', {
         method: 'PUT',
         headers: superHeader(secret, email),
         body: JSON.stringify(cfg),
       })
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}))
+        setSaveErr(d.error ?? `Error ${r.status}`)
+        return
+      }
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
+    } catch {
+      setSaveErr('Network error')
     } finally {
       setSaving(false)
     }
@@ -221,6 +229,7 @@ export default function LandingEditorPage() {
             className="text-xs text-emerald-600 hover:underline font-medium px-3 py-1.5 border border-emerald-200 rounded-lg">
             Preview →
           </a>
+          {saveErr && <span className="text-xs text-red-500 font-medium">{saveErr}</span>}
           <button onClick={save} disabled={saving}
             className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white rounded-xl font-bold text-sm transition-all">
             {saving
