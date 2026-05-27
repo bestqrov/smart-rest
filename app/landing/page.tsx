@@ -607,7 +607,7 @@ export default function LandingPage() {
                 height={1297}
                 className="relative w-full h-auto object-contain drop-shadow-[0_30px_60px_rgba(0,0,0,0.5)]"
                 priority
-                unoptimized={heroImageUrl.startsWith('http')}
+                unoptimized={!heroImageUrl.startsWith('/')}
               />
             </div>
           </div>

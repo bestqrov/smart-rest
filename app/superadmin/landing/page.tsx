@@ -108,9 +108,10 @@ export default function LandingEditorPage() {
   const [authed, setAuthed] = useState(false)
   const [cfg, setCfg] = useState<LandingConfig>(DEFAULT_CONFIG)
   const [loading, setLoading] = useState(false)
-  const [saving, setSaving]   = useState(false)
-  const [saved, setSaved]     = useState(false)
-  const [saveErr, setSaveErr] = useState('')
+  const [saving, setSaving]           = useState(false)
+  const [saved, setSaved]             = useState(false)
+  const [saveErr, setSaveErr]         = useState('')
+  const [uploadingHero, setUploadingHero] = useState(false)
   const [activeTestiLang, setActiveTestiLang] = useState<'en' | 'fr' | 'ar'>('en')
   const [authErr, setAuthErr] = useState(false)
 
@@ -247,16 +248,62 @@ export default function LandingEditorPage() {
         {/* ── Hero Image ──────────────────────────────────────────────────── */}
         <section className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
           <SectionTitle icon={ImageIcon} title="Hero Image" />
-          <p className="text-xs text-slate-400 mb-3">URL or path to the hero screenshot (e.g. /assets/mobile.png or https://…)</p>
+
+          {/* Upload button */}
+          <div className="mb-3">
+            <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-xl text-sm font-semibold transition-colors">
+              {uploadingHero
+                ? <><Loader2 className="w-4 h-4 animate-spin" /> Uploading…</>
+                : <><ImageIcon className="w-4 h-4" /> Upload Image</>
+              }
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                disabled={uploadingHero}
+                onChange={async e => {
+                  const file = e.target.files?.[0]
+                  if (!file) return
+                  setUploadingHero(true)
+                  try {
+                    const fd = new FormData()
+                    fd.append('image', file)
+                    const r = await fetch('/api/superadmin/landing-config/upload-hero', {
+                      method: 'POST',
+                      headers: { 'x-superadmin-secret': secret, 'x-superadmin-email': email },
+                      body: fd,
+                    })
+                    const d = await r.json()
+                    if (r.ok && d.url) {
+                      setCfg(c => ({ ...c, heroImageUrl: d.url }))
+                    } else {
+                      alert(d.error ?? 'Upload failed')
+                    }
+                  } catch {
+                    alert('Network error during upload')
+                  } finally {
+                    setUploadingHero(false)
+                    e.target.value = ''
+                  }
+                }}
+              />
+            </label>
+            <span className="text-xs text-slate-400 ml-3">Max 5 MB · JPG / PNG / WebP</span>
+          </div>
+
+          {/* Manual URL fallback */}
+          <p className="text-xs text-slate-400 mb-1.5">Or enter a URL manually:</p>
           <input
             value={cfg.heroImageUrl}
             onChange={e => setCfg(c => ({ ...c, heroImageUrl: e.target.value }))}
             placeholder="/assets/mobile.png"
             className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
           />
+
+          {/* Preview */}
           {cfg.heroImageUrl && (
-            <div className="mt-3 max-h-40 overflow-hidden rounded-xl border border-slate-100">
-              <img src={cfg.heroImageUrl} alt="preview" className="w-auto max-h-40 object-contain mx-auto" />
+            <div className="mt-3 max-h-48 overflow-hidden rounded-xl border border-slate-100 bg-slate-50 flex items-center justify-center">
+              <img src={cfg.heroImageUrl} alt="preview" className="max-h-48 w-auto object-contain" />
             </div>
           )}
         </section>

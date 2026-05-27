@@ -1,4 +1,7 @@
 import express, { Request, Response, NextFunction } from 'express'
+import multer from 'multer'
+import path from 'path'
+import fs from 'fs'
 import prisma from '../prisma'
 
 const router = express.Router()
@@ -14,6 +17,40 @@ function requireSuperAdmin(req: Request, res: Response, next: NextFunction) {
   if (expectedEmail && email !== expectedEmail)      return res.status(401).json({ error: 'Unauthorized' })
   return next()
 }
+
+// ─── Multer — save hero images to public/uploads/ ─────────────────────────────
+
+const uploadsDir = path.join(process.cwd(), 'public', 'uploads')
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true })
+
+const storage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, uploadsDir),
+  filename:    (_req, file, cb) => {
+    const ext  = path.extname(file.originalname).toLowerCase() || '.jpg'
+    cb(null, `hero-${Date.now()}${ext}`)
+  },
+})
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
+  fileFilter: (_req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) cb(null, true)
+    else cb(new Error('Only image files are allowed'))
+  },
+})
+
+// ─── POST /api/superadmin/landing-config/upload-hero ─────────────────────────
+
+router.post(
+  '/api/superadmin/landing-config/upload-hero',
+  requireSuperAdmin,
+  upload.single('image'),
+  (req: Request, res: Response) => {
+    if (!req.file) return res.status(400).json({ error: 'No file received' })
+    const url = `/uploads/${req.file.filename}`
+    return res.json({ url })
+  }
+)
 
 // ─── GET /api/public/landing-config — no auth ─────────────────────────────────
 
