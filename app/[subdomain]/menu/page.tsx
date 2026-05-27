@@ -42,12 +42,13 @@ type Category = {
 type MarketType = 'Local' | 'Global' | 'Africa' | 'Gulf'
 
 type MenuData = {
-  cafeId:      string
-  tableId:     string
-  marketType?: MarketType
-  localIp?:    string | null
-  cafe:        { name: string; logoUrl?: string | null }
-  categories:  Category[]
+  cafeId:               string
+  tableId:              string
+  marketType?:          MarketType
+  localIp?:             string | null
+  reservationsEnabled?: boolean
+  cafe:                 { name: string; logoUrl?: string | null }
+  categories:           Category[]
 }
 
 type CartItem = { product: Product; qty: number }
@@ -147,12 +148,13 @@ function MenuContent({ params }: { params: { subdomain: string } }) {
           }
           const raw = await res.json()
           const data: MenuData = {
-            cafeId:     raw.cafeId,
-            tableId:    raw.tableId,
-            marketType: raw.marketType as MarketType | undefined,
-            localIp:    raw.localIp ?? null,
-            cafe:       { name: raw.cafeName, logoUrl: raw.cafeLogoUrl ?? null },
-            categories: raw.categories,
+            cafeId:               raw.cafeId,
+            tableId:              raw.tableId,
+            marketType:           raw.marketType as MarketType | undefined,
+            localIp:              raw.localIp ?? null,
+            reservationsEnabled:  raw.reservationsEnabled ?? true,
+            cafe:                 { name: raw.cafeName, logoUrl: raw.cafeLogoUrl ?? null },
+            categories:           raw.categories,
           }
           setMenuData(data)
         } catch {
@@ -596,7 +598,7 @@ function MenuContent({ params }: { params: { subdomain: string } }) {
         </AnimatePresence>
 
         {/* Floating reservation button */}
-        {!orderSent && totalQty === 0 && (
+        {!orderSent && totalQty === 0 && menuData?.reservationsEnabled !== false && (
           <button
             onClick={() => setResOpen(true)}
             className="fixed bottom-4 right-4 z-30 flex items-center gap-2 bg-violet-600 hover:bg-violet-500 active:scale-95 text-white font-semibold text-sm px-4 py-2.5 rounded-full shadow-xl transition-all"

@@ -172,7 +172,7 @@ router.delete('/api/admin/products/:id', authorizeAdmin, async (req: Request, re
 router.put('/api/admin/cafe/profile', authorizeAdmin, async (req: Request, res: Response) => {
   try {
     const cafeId = req.admin!.cafeId
-    const { businessName, logoUrl, socialLinks, hasSocialShareAddon, lat, lng, accentColor, primaryFont, localIp } = req.body
+    const { businessName, logoUrl, socialLinks, hasSocialShareAddon, lat, lng, accentColor, primaryFont, localIp, reservationsEnabled } = req.body
     const cafe = await prisma.cafe.update({
       where: { id: cafeId },
       data: {
@@ -185,6 +185,7 @@ router.put('/api/admin/cafe/profile', authorizeAdmin, async (req: Request, res: 
         ...(accentColor !== undefined && { accentColor }),
         ...(primaryFont !== undefined && { primaryFont }),
         ...(localIp !== undefined && { localIp: localIp || null }),
+        ...(reservationsEnabled !== undefined && { reservationsEnabled: Boolean(reservationsEnabled) }),
       }
     })
     return res.json(cafe)
@@ -206,7 +207,8 @@ router.get('/api/admin/cafe/profile', authorizeAdmin, async (req: Request, res: 
         hasExtendedTrial: true, totalSeats: true, isProfileComplete: true,
         coffeeRefPrice: true, sandwichRefPrice: true,
         monthlyFee: true, subscriptionTier: true,
-        accentColor: true, primaryFont: true, localIp: true
+        accentColor: true, primaryFont: true, localIp: true,
+        reservationsEnabled: true
       }
     })
     return res.json(cafe)

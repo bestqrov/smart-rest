@@ -158,10 +158,11 @@ model Cafe {
   // ── Payment gateway configuration (set in Settings → Payments) ────────────
   paymentConfig PaymentConfig?
 
-  // ── Per-restaurant feature flags (toggled by superadmin) ──────────────────
-  smartWifiEnabled  Boolean @default(false)
-  cashierPosEnabled Boolean @default(true)
-  orderingEnabled   Boolean @default(true)
+  // ── Per-restaurant feature flags (toggled by superadmin or admin) ──────────
+  smartWifiEnabled      Boolean @default(false)
+  cashierPosEnabled     Boolean @default(true)
+  orderingEnabled       Boolean @default(true)
+  reservationsEnabled   Boolean @default(true)
 
   // ── Supplier-finder quota (resets monthly, Premium plan only) ─────────────
   supplierSearchesUsed Int       @default(0)

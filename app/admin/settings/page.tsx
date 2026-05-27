@@ -13,14 +13,15 @@ import { A } from '../../../lib/adminI18n'
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Profile = {
-  businessName: string
-  name:         string
-  country:      string
-  currency:     string
-  logoUrl:      string
-  accentColor:  string
-  primaryFont:  string
-  localIp:      string
+  businessName:        string
+  name:                string
+  country:             string
+  currency:            string
+  logoUrl:             string
+  accentColor:         string
+  primaryFont:         string
+  localIp:             string
+  reservationsEnabled: boolean
 }
 
 type StaffMember = {
@@ -93,7 +94,8 @@ export default function SettingsPage() {
 
   const [profile, setProfile] = useState<Profile>({
     businessName: '', name: '', country: '', currency: '',
-    logoUrl: '', accentColor: '#059669', primaryFont: 'Cairo', localIp: ''
+    logoUrl: '', accentColor: '#059669', primaryFont: 'Cairo', localIp: '',
+    reservationsEnabled: true,
   })
 
   useEffect(() => {
@@ -103,14 +105,15 @@ export default function SettingsPage() {
       .then(r => r.ok ? r.json() : null)
       .then(d => {
         if (d) setProfile({
-          businessName: d.businessName ?? '',
-          name:         d.name ?? '',
-          country:      d.country ?? '',
-          currency:     d.currency ?? '',
-          logoUrl:      d.logoUrl ?? '',
-          accentColor:  d.accentColor ?? '#059669',
-          primaryFont:  d.primaryFont ?? 'Cairo',
-          localIp:      d.localIp ?? '',
+          businessName:        d.businessName ?? '',
+          name:                d.name ?? '',
+          country:             d.country ?? '',
+          currency:            d.currency ?? '',
+          logoUrl:             d.logoUrl ?? '',
+          accentColor:         d.accentColor ?? '#059669',
+          primaryFont:         d.primaryFont ?? 'Cairo',
+          localIp:             d.localIp ?? '',
+          reservationsEnabled: d.reservationsEnabled ?? true,
         })
       })
   }, [router])
@@ -122,11 +125,12 @@ export default function SettingsPage() {
         method: 'PUT',
         headers: authHeader(),
         body: JSON.stringify({
-          businessName: profile.businessName,
-          logoUrl:      profile.logoUrl || null,
-          accentColor:  profile.accentColor,
-          primaryFont:  profile.primaryFont,
-          localIp:      profile.localIp || null,
+          businessName:        profile.businessName,
+          logoUrl:             profile.logoUrl || null,
+          accentColor:         profile.accentColor,
+          primaryFont:         profile.primaryFont,
+          localIp:             profile.localIp || null,
+          reservationsEnabled: profile.reservationsEnabled,
         })
       })
       if (res.ok) showToast('تم الحفظ بنجاح ✓', 'success')
@@ -291,6 +295,33 @@ export default function SettingsPage() {
               />
               <p className="text-xs text-gray-400 mt-1">{t.localIpHint}</p>
             </Field>
+          </div>
+
+          {/* Reservations toggle */}
+          <div className="flex items-center justify-between py-3 border-t border-gray-100">
+            <div>
+              <p className="text-sm font-semibold text-gray-800">📅 نظام الحجز</p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                {profile.reservationsEnabled ? 'الحجز مفعّل — يظهر زر الحجز في قائمة العملاء' : 'الحجز موقوف — زر الحجز مخفي من قائمة العملاء'}
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                const next = !profile.reservationsEnabled
+                setProfile(p => ({ ...p, reservationsEnabled: next }))
+                fetch('/api/admin/cafe/profile', {
+                  method: 'PUT',
+                  headers: authHeader(),
+                  body: JSON.stringify({ reservationsEnabled: next }),
+                }).then(r => {
+                  if (r.ok) showToast(next ? 'تم تفعيل الحجز ✓' : 'تم إيقاف الحجز ✓', 'success')
+                  else showToast('فشل التحديث', 'error')
+                })
+              }}
+              className={`relative w-12 h-6 rounded-full transition-colors ${profile.reservationsEnabled ? 'bg-emerald-500' : 'bg-gray-300'}`}
+            >
+              <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${profile.reservationsEnabled ? 'translate-x-6' : 'translate-x-0.5'}`} />
+            </button>
           </div>
 
           <SaveButton saving={saving} onClick={saveProfile} label={t.saveChanges} />
