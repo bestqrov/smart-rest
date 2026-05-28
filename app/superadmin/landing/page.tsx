@@ -237,7 +237,7 @@ export default function LandingEditorPage() {
             Preview →
           </a>
           {saveErr && <span className="text-xs text-red-500 font-medium">{saveErr}</span>}
-          <button onClick={save} disabled={saving}
+          <button onClick={() => save()} disabled={saving}
             className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white rounded-xl font-bold text-sm transition-all">
             {saving
               ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</>
@@ -559,7 +559,7 @@ export default function LandingEditorPage() {
 
         {/* Save footer */}
         <div className="flex justify-end pb-8">
-          <button onClick={save} disabled={saving}
+          <button onClick={() => save()} disabled={saving}
             className="flex items-center gap-2 px-8 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white rounded-xl font-bold transition-all shadow-lg shadow-emerald-900/20">
             {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</> : saved ? <><CheckCircle className="w-4 h-4" /> Saved!</> : <><Save className="w-4 h-4" /> Save All Changes</>}
           </button>
