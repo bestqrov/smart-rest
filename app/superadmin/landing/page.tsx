@@ -19,6 +19,13 @@ type Testimonial = {
   avatarUrl?: string
 }
 
+type HeroTextLang = {
+  tagline?: string; h1a?: string; h1b?: string; h1c?: string
+  desc?: string; cta1?: string; cta2?: string; featTitle?: string; featSub?: string
+}
+
+type FaqItem = { en: { q: string; a: string }; fr: { q: string; a: string }; ar: { q: string; a: string } }
+
 type LandingConfig = {
   stats: Stat[]
   testimonials: Testimonial[]
@@ -26,6 +33,8 @@ type LandingConfig = {
   heroImageUrl: string
   platformImageUrl: string
   logoImageUrl: string
+  text: { ar: HeroTextLang; en: HeroTextLang; fr: HeroTextLang }
+  faqs: FaqItem[]
 }
 
 const DEFAULT_CONFIG: LandingConfig = {
@@ -71,6 +80,8 @@ const DEFAULT_CONFIG: LandingConfig = {
   heroImageUrl: '/assets/mobile.png',
   platformImageUrl: '',
   logoImageUrl: '',
+  text: { ar: {}, en: {}, fr: {} },
+  faqs: [],
 }
 
 function superHeader(secret: string, email = '') {
@@ -119,6 +130,7 @@ export default function LandingEditorPage() {
   const [uploadingPlatform, setUploadingPlatform] = useState(false)
   const [uploadingLogo, setUploadingLogo]         = useState(false)
   const [activeTestiLang, setActiveTestiLang] = useState<'en' | 'fr' | 'ar'>('en')
+  const [activeLang, setActiveLang] = useState<'ar' | 'en' | 'fr'>('ar')
   const [authErr, setAuthErr] = useState(false)
 
   async function login() {
@@ -183,6 +195,34 @@ export default function LandingEditorPage() {
       ...c,
       testimonials: c.testimonials.map((t, idx) =>
         idx === i ? { ...t, [subField]: { ...t[subField], [lang]: val } } : t
+      ),
+    }))
+  }
+
+  // ─── Text helpers ──────────────────────────────────────────────────────────
+
+  function updateText(lang: 'ar' | 'en' | 'fr', field: keyof HeroTextLang, val: string) {
+    setCfg(c => ({ ...c, text: { ...c.text, [lang]: { ...c.text[lang], [field]: val } } }))
+  }
+
+  // ─── FAQ helpers ───────────────────────────────────────────────────────────
+
+  function addFaq() {
+    const blank: FaqItem = {
+      en: { q: '', a: '' }, fr: { q: '', a: '' }, ar: { q: '', a: '' },
+    }
+    setCfg(c => ({ ...c, faqs: [...c.faqs, blank] }))
+  }
+
+  function removeFaq(i: number) {
+    setCfg(c => ({ ...c, faqs: c.faqs.filter((_, idx) => idx !== i) }))
+  }
+
+  function updateFaq(i: number, lang: 'en' | 'fr' | 'ar', field: 'q' | 'a', val: string) {
+    setCfg(c => ({
+      ...c,
+      faqs: c.faqs.map((faq, idx) =>
+        idx === i ? { ...faq, [lang]: { ...faq[lang], [field]: val } } : faq
       ),
     }))
   }
@@ -311,6 +351,73 @@ export default function LandingEditorPage() {
               <img src={cfg.logoImageUrl} alt="logo preview" className="h-16 w-auto object-contain" />
             </div>
           )}
+        </section>
+
+        {/* ── Hero Text ───────────────────────────────────────────────────── */}
+        <section className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+          <SectionTitle icon={MessageSquare} title="Hero Text Overrides" />
+          <p className="text-xs text-slate-400 mb-4">Leave blank to use the hardcoded defaults. Fill in to override for that language.</p>
+          <LangTabs active={activeLang} onChange={setActiveLang} />
+          {(() => {
+            const L = activeLang
+            const isAr = L === 'ar'
+            const DEFAULTS: Record<'ar' | 'en' | 'fr', Record<string, string>> = {
+              ar: {
+                tagline: 'منصة إدارة المطاعم والمقاهي #1',
+                h1a: 'أدِر مطعمك بالكامل', h1b: 'من مكان واحد',
+                h1c: 'منيو QR · طلبات مباشرة · مطبخ ذكي · موظفين وحسابات',
+                desc: 'أكثر من مجرد منيو رقمي...',
+                cta1: 'ابدأ مجاناً 7 أيام', cta2: 'شاهد كيف يعمل',
+                featTitle: 'كل ما تحتاجه في منصة واحدة',
+                featSub: '15 ميزة احترافية للسوق العربي والأفريقي',
+              },
+              en: {
+                tagline: '#1 Management Platform for Restaurants & Cafés',
+                h1a: 'Run Your Restaurant', h1b: 'From One Platform',
+                h1c: 'QR Menu · Live Orders · Smart Kitchen · Staff & Finance',
+                desc: 'More than a QR menu...',
+                cta1: 'Start Free 7-Day Trial', cta2: 'See How It Works',
+                featTitle: 'Everything in One Platform',
+                featSub: '15 professional features built for MENA & Africa markets',
+              },
+              fr: {
+                tagline: 'La plateforme de gestion #1 pour les restaurants',
+                h1a: 'Gérez Votre Restaurant', h1b: 'En Un Seul Endroit',
+                h1c: 'Menu QR · Commandes Live · Cuisine Smart · Staff & Finance',
+                desc: "Plus qu'un menu QR...",
+                cta1: 'Essai Gratuit 7 Jours', cta2: 'Voir Comment Ça Marche',
+                featTitle: 'Tout en Une Plateforme',
+                featSub: '15 fonctionnalités pro pour les marchés MENA & Afrique',
+              },
+            }
+            const fields: { key: keyof HeroTextLang; label: string }[] = [
+              { key: 'tagline', label: 'Tagline (badge above h1)' },
+              { key: 'h1a', label: 'H1 Line 1 (h1a)' },
+              { key: 'h1b', label: 'H1 Line 2 — gradient (h1b)' },
+              { key: 'h1c', label: 'H1 Line 3 — subtext (h1c)' },
+              { key: 'desc', label: 'Description paragraph' },
+              { key: 'cta1', label: 'CTA Button 1' },
+              { key: 'cta2', label: 'CTA Button 2' },
+              { key: 'featTitle', label: 'Features section title' },
+              { key: 'featSub', label: 'Features section subtitle' },
+            ]
+            return (
+              <div className="space-y-3">
+                {fields.map(({ key, label }) => (
+                  <div key={key}>
+                    <label className="text-xs font-semibold text-slate-500 mb-1 block">{label}</label>
+                    <input
+                      value={cfg.text[L][key] ?? ''}
+                      onChange={e => updateText(L, key, e.target.value)}
+                      placeholder={DEFAULTS[L][key]}
+                      dir={isAr ? 'rtl' : 'ltr'}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                    />
+                  </div>
+                ))}
+              </div>
+            )
+          })()}
         </section>
 
         {/* ── Hero Image ──────────────────────────────────────────────────── */}
@@ -552,6 +659,61 @@ export default function LandingEditorPage() {
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-400"
                   />
                 </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* ── FAQ ──────────────────────────────────────────────────────────── */}
+        <section className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
+                <MessageSquare className="w-4 h-4 text-emerald-600" />
+              </div>
+              <h2 className="font-bold text-slate-800">FAQ</h2>
+            </div>
+            <button onClick={addFaq}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg text-xs font-bold transition-colors">
+              <Plus className="w-3.5 h-3.5" /> Add FAQ
+            </button>
+          </div>
+
+          {cfg.faqs.length === 0 && (
+            <p className="text-xs text-slate-400 italic mb-3">
+              Using default FAQs — add a custom one to override all
+            </p>
+          )}
+
+          <div className="space-y-5">
+            {cfg.faqs.map((faq, i) => (
+              <div key={i} className="border border-slate-100 rounded-xl p-4 space-y-3">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-bold text-slate-500">FAQ #{i + 1}</span>
+                  <button onClick={() => removeFaq(i)} className="p-1.5 text-slate-300 hover:text-red-500 rounded-lg transition-colors">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+                {(['en', 'fr', 'ar'] as const).map(lang => (
+                  <div key={lang} className="space-y-1.5">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">{lang}</span>
+                    <input
+                      value={faq[lang].q}
+                      onChange={e => updateFaq(i, lang, 'q', e.target.value)}
+                      placeholder={`Question (${lang.toUpperCase()})`}
+                      dir={lang === 'ar' ? 'rtl' : 'ltr'}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                    />
+                    <textarea
+                      value={faq[lang].a}
+                      onChange={e => updateFaq(i, lang, 'a', e.target.value)}
+                      placeholder={`Answer (${lang.toUpperCase()})`}
+                      rows={2}
+                      dir={lang === 'ar' ? 'rtl' : 'ltr'}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                    />
+                  </div>
+                ))}
               </div>
             ))}
           </div>

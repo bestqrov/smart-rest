@@ -399,6 +399,12 @@ type LandingConfig = {
   heroImageUrl?: string
   platformImageUrl?: string
   logoImageUrl?: string
+  text?: {
+    ar?: { tagline?: string; h1a?: string; h1b?: string; h1c?: string; desc?: string; cta1?: string; cta2?: string; featTitle?: string; featSub?: string }
+    en?: { tagline?: string; h1a?: string; h1b?: string; h1c?: string; desc?: string; cta1?: string; cta2?: string; featTitle?: string; featSub?: string }
+    fr?: { tagline?: string; h1a?: string; h1b?: string; h1c?: string; desc?: string; cta1?: string; cta2?: string; featTitle?: string; featSub?: string }
+  }
+  faqs?: { en: { q: string; a: string }; fr: { q: string; a: string }; ar: { q: string; a: string } }[]
 }
 
 // ─── Cookie Banner ─────────────────────────────────────────────────────────────
@@ -462,6 +468,8 @@ export default function LandingPage() {
   const isRtl = lang === 'ar'
 
   function t(key: string): string {
+    const override = (cfg.text as any)?.[lang]?.[key]
+    if (override) return override
     const val = T[lang][key]
     return Array.isArray(val) ? val.join(', ') : val ?? key
   }
@@ -908,7 +916,7 @@ export default function LandingPage() {
             <h2 className="text-4xl font-extrabold text-gray-900">{t('faqTitle')}</h2>
           </div>
           <div className="space-y-3">
-            {FAQS.map((faq, i) => {
+            {(cfg.faqs && cfg.faqs.length > 0 ? cfg.faqs : FAQS).map((faq, i) => {
               const d = tl(faq, lang)
               return (
                 <div key={i} className={`border rounded-2xl overflow-hidden transition-all ${openFaq === i ? 'border-emerald-300 shadow-sm' : 'border-gray-200'}`}>
