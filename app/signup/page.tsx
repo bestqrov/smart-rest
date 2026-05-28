@@ -92,19 +92,24 @@ function toSlug(name: string): string {
 
 // ─── Inner component (needs useSearchParams, must be inside Suspense) ─────────
 
+// Arab League country codes
+const ARAB_COUNTRIES = new Set(['DZ','BH','KM','DJ','EG','IQ','JO','KW','LB','LY','MR','MA','OM','PS','QA','SA','SO','SD','SY','TN','AE','YE'])
+// French-speaking (non-Arab)
+const FRENCH_COUNTRIES = new Set(['FR','BE','LU','CH','SN','CI','CM','ML','BF','NE','GN','CD','CG','MG','RW','BI','TG','BJ','GA','GQ','MU','SC','HT','VU','NC','PF','RE','GP','MQ','GF','PM'])
+// Spanish-speaking
+const SPANISH_COUNTRIES = new Set(['ES','MX','AR','CO','PE','VE','CL','EC','BO','PY','UY','CR','PA','DO','GT','HN','SV','NI','CU','PR'])
+
 function SignupInner() {
   const params = useSearchParams()
 
-  const initialLang: Lang = (() => {
-    const q = params.get('lang')
-    if (q === 'ar' || q === 'fr' || q === 'en' || q === 'es') return q
-    return 'ar'
-  })()
+  const urlLang = params.get('lang')
+  const hasUrlLang = urlLang === 'ar' || urlLang === 'fr' || urlLang === 'en' || urlLang === 'es'
 
-  const [lang, setLang]   = useState<Lang>(initialLang)
+  const [lang, setLang]   = useState<Lang>(hasUrlLang ? (urlLang as Lang) : 'ar')
   const isRTL             = lang === 'ar'
   const dir               = isRTL ? 'rtl' : 'ltr'
 
+  const [logoUrl, setLogoUrl] = useState('/assets/logo.png')
   const [form, setForm]   = useState({ cafeName: '', subdomain: '', email: '', country: 'MA' })
   const [manualSub, setManualSub] = useState(false)
   const [loading, setLoading]     = useState(false)
@@ -112,6 +117,29 @@ function SignupInner() {
   const [emailTaken, setEmailTaken] = useState(false)
   const [sent,    setSent]        = useState(false)
   const [sentEmail, setSentEmail] = useState('')
+
+  // Fetch logo from landing config
+  useEffect(() => {
+    fetch('/api/public/landing-config')
+      .then(r => r.ok ? r.json() : {})
+      .then(d => { if (d?.logoImageUrl) setLogoUrl(d.logoImageUrl) })
+      .catch(() => {})
+  }, [])
+
+  // IP-based language detection (only when no ?lang= param)
+  useEffect(() => {
+    if (hasUrlLang) return
+    fetch('https://ipapi.co/json/')
+      .then(r => r.ok ? r.json() : {})
+      .then(d => {
+        const cc: string = (d?.country_code ?? '').toUpperCase()
+        if (ARAB_COUNTRIES.has(cc))   setLang('ar')
+        else if (FRENCH_COUNTRIES.has(cc)) setLang('fr')
+        else if (SPANISH_COUNTRIES.has(cc)) setLang('es')
+        else if (cc)                   setLang('en')
+      })
+      .catch(() => {})
+  }, [hasUrlLang])
 
   // Pick up inline error from magic-verify redirect
   useEffect(() => {
@@ -210,7 +238,7 @@ function SignupInner() {
 
       {/* Brand */}
       <Link href="/landing" className="mb-8 flex flex-col items-center gap-2">
-        <Image src="/assets/logo.png" alt="Smart Resto" width={56} height={56} className="rounded-2xl shadow-lg" />
+        <Image src={logoUrl} alt="Smart Resto" width={56} height={56} className="rounded-2xl shadow-lg" unoptimized={!logoUrl.startsWith('/')} />
         <span className="text-white text-xl font-extrabold">Smart Resto</span>
         <span className="text-emerald-300 text-sm">{tx('brand_tagline', lang)}</span>
       </Link>
