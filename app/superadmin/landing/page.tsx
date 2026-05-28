@@ -24,6 +24,8 @@ type LandingConfig = {
   testimonials: Testimonial[]
   contact: { whatsapp: string; email: string }
   heroImageUrl: string
+  platformImageUrl: string
+  logoImageUrl: string
 }
 
 const DEFAULT_CONFIG: LandingConfig = {
@@ -67,6 +69,8 @@ const DEFAULT_CONFIG: LandingConfig = {
   ],
   contact: { whatsapp: '+212 6 00 00 00 00', email: 'contact@smartmenu.ma' },
   heroImageUrl: '/assets/mobile.png',
+  platformImageUrl: '',
+  logoImageUrl: '',
 }
 
 function superHeader(secret: string, email = '') {
@@ -112,6 +116,8 @@ export default function LandingEditorPage() {
   const [saved, setSaved]             = useState(false)
   const [saveErr, setSaveErr]         = useState('')
   const [uploadingHero, setUploadingHero] = useState(false)
+  const [uploadingPlatform, setUploadingPlatform] = useState(false)
+  const [uploadingLogo, setUploadingLogo]         = useState(false)
   const [activeTestiLang, setActiveTestiLang] = useState<'en' | 'fr' | 'ar'>('en')
   const [authErr, setAuthErr] = useState(false)
 
@@ -126,13 +132,13 @@ export default function LandingEditorPage() {
     setAuthed(true)
   }
 
-  async function save() {
+  async function save(overrideCfg?: typeof cfg) {
     setSaving(true); setSaved(false); setSaveErr('')
     try {
       const r = await fetch('/api/superadmin/landing-config', {
         method: 'PUT',
         headers: superHeader(secret, email),
-        body: JSON.stringify(cfg),
+        body: JSON.stringify(overrideCfg ?? cfg),
       })
       if (!r.ok) {
         const d = await r.json().catch(() => ({}))
@@ -245,6 +251,68 @@ export default function LandingEditorPage() {
 
       <main className="max-w-4xl mx-auto p-4 sm:p-6 space-y-8">
 
+        {/* ── Logo ────────────────────────────────────────────────────────── */}
+        <section className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+          <SectionTitle icon={ImageIcon} title="Logo (Navbar & Footer)" />
+
+          <div className="mb-3">
+            <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-xl text-sm font-semibold transition-colors">
+              {uploadingLogo
+                ? <><Loader2 className="w-4 h-4 animate-spin" /> Uploading…</>
+                : <><ImageIcon className="w-4 h-4" /> Upload Logo</>
+              }
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                disabled={uploadingLogo}
+                onChange={async e => {
+                  const file = e.target.files?.[0]
+                  if (!file) return
+                  setUploadingLogo(true)
+                  try {
+                    const fd = new FormData()
+                    fd.append('image', file)
+                    const r = await fetch('/api/superadmin/landing-config/upload-hero', {
+                      method: 'POST',
+                      headers: { 'x-superadmin-secret': secret, 'x-superadmin-email': email },
+                      body: fd,
+                    })
+                    const d = await r.json()
+                    if (r.ok && d.url) {
+                      const updated = { ...cfg, logoImageUrl: d.url }
+                      setCfg(updated)
+                      await save(updated)
+                    } else {
+                      alert(d.error ?? 'Upload failed')
+                    }
+                  } catch {
+                    alert('Network error during upload')
+                  } finally {
+                    setUploadingLogo(false)
+                    e.target.value = ''
+                  }
+                }}
+              />
+            </label>
+            <span className="text-xs text-slate-400 ml-3">Max 5 MB · PNG / WebP recommended</span>
+          </div>
+
+          <p className="text-xs text-slate-400 mb-1.5">Or enter a URL manually:</p>
+          <input
+            value={cfg.logoImageUrl}
+            onChange={e => setCfg(c => ({ ...c, logoImageUrl: e.target.value }))}
+            placeholder="https://res.cloudinary.com/..."
+            className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
+          />
+
+          {cfg.logoImageUrl && (
+            <div className="mt-3 h-20 overflow-hidden rounded-xl border border-slate-100 bg-slate-50 flex items-center justify-center">
+              <img src={cfg.logoImageUrl} alt="logo preview" className="h-16 w-auto object-contain" />
+            </div>
+          )}
+        </section>
+
         {/* ── Hero Image ──────────────────────────────────────────────────── */}
         <section className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
           <SectionTitle icon={ImageIcon} title="Hero Image" />
@@ -275,7 +343,9 @@ export default function LandingEditorPage() {
                     })
                     const d = await r.json()
                     if (r.ok && d.url) {
-                      setCfg(c => ({ ...c, heroImageUrl: d.url }))
+                      const updated = { ...cfg, heroImageUrl: d.url }
+                      setCfg(updated)
+                      await save(updated)
                     } else {
                       alert(d.error ?? 'Upload failed')
                     }
@@ -304,6 +374,68 @@ export default function LandingEditorPage() {
           {cfg.heroImageUrl && (
             <div className="mt-3 max-h-48 overflow-hidden rounded-xl border border-slate-100 bg-slate-50 flex items-center justify-center">
               <img src={cfg.heroImageUrl} alt="preview" className="max-h-48 w-auto object-contain" />
+            </div>
+          )}
+        </section>
+
+        {/* ── Platform Image ──────────────────────────────────────────────── */}
+        <section className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+          <SectionTitle icon={ImageIcon} title="Platform Image (after «Everything in One Platform»)" />
+
+          <div className="mb-3">
+            <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-xl text-sm font-semibold transition-colors">
+              {uploadingPlatform
+                ? <><Loader2 className="w-4 h-4 animate-spin" /> Uploading…</>
+                : <><ImageIcon className="w-4 h-4" /> Upload Image</>
+              }
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                disabled={uploadingPlatform}
+                onChange={async e => {
+                  const file = e.target.files?.[0]
+                  if (!file) return
+                  setUploadingPlatform(true)
+                  try {
+                    const fd = new FormData()
+                    fd.append('image', file)
+                    const r = await fetch('/api/superadmin/landing-config/upload-hero', {
+                      method: 'POST',
+                      headers: { 'x-superadmin-secret': secret, 'x-superadmin-email': email },
+                      body: fd,
+                    })
+                    const d = await r.json()
+                    if (r.ok && d.url) {
+                      const updated = { ...cfg, platformImageUrl: d.url }
+                      setCfg(updated)
+                      await save(updated)
+                    } else {
+                      alert(d.error ?? 'Upload failed')
+                    }
+                  } catch {
+                    alert('Network error during upload')
+                  } finally {
+                    setUploadingPlatform(false)
+                    e.target.value = ''
+                  }
+                }}
+              />
+            </label>
+            <span className="text-xs text-slate-400 ml-3">Max 5 MB · JPG / PNG / WebP</span>
+          </div>
+
+          <p className="text-xs text-slate-400 mb-1.5">Or enter a URL manually:</p>
+          <input
+            value={cfg.platformImageUrl}
+            onChange={e => setCfg(c => ({ ...c, platformImageUrl: e.target.value }))}
+            placeholder="https://res.cloudinary.com/..."
+            className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
+          />
+
+          {cfg.platformImageUrl && (
+            <div className="mt-3 max-h-48 overflow-hidden rounded-xl border border-slate-100 bg-slate-50 flex items-center justify-center">
+              <img src={cfg.platformImageUrl} alt="platform preview" className="max-h-48 w-auto object-contain" />
             </div>
           )}
         </section>

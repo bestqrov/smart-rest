@@ -3,6 +3,7 @@ dotenv.config()
 
 import express from 'express'
 import http from 'http'
+import path from 'path'
 import cors from 'cors'
 import bodyParser from 'body-parser'
 import { Server as SocketIOServer } from 'socket.io'
@@ -101,6 +102,10 @@ async function main() {
   })
   app.use('/api/auth', authLimiter)
   app.use('/api', apiLimiter)
+
+  // Serve uploaded hero images directly — must come before Next.js catch-all
+  const uploadsDir = path.join(process.cwd(), 'public', 'uploads')
+  app.use('/uploads', express.static(uploadsDir))
 
   // mount API routes first so /api/* handled by Express
   app.use(authRouter)

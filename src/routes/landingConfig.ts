@@ -1,12 +1,17 @@
 import express, { Request, Response, NextFunction } from 'express'
 import multer from 'multer'
-import path from 'path'
-import fs from 'fs'
+import { v2 as cloudinary } from 'cloudinary'
 import prisma from '../prisma'
 
 const router = express.Router()
 
 const CONFIG_KEY = 'landing_page'
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key:    process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+})
 
 function requireSuperAdmin(req: Request, res: Response, next: NextFunction) {
   const secret         = req.header('x-superadmin-secret')
@@ -18,20 +23,10 @@ function requireSuperAdmin(req: Request, res: Response, next: NextFunction) {
   return next()
 }
 
-// ─── Multer — save hero images to public/uploads/ ─────────────────────────────
+// ─── Multer — memory storage, file goes straight to Cloudinary ───────────────
 
-const uploadsDir = path.join(process.cwd(), 'public', 'uploads')
-if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true })
-
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, uploadsDir),
-  filename:    (_req, file, cb) => {
-    const ext  = path.extname(file.originalname).toLowerCase() || '.jpg'
-    cb(null, `hero-${Date.now()}${ext}`)
-  },
-})
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
   fileFilter: (_req, file, cb) => {
     if (file.mimetype.startsWith('image/')) cb(null, true)
@@ -39,16 +34,40 @@ const upload = multer({
   },
 })
 
+function uploadToCloudinary(buffer: Buffer): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      { folder: 'smart-menu/hero', resource_type: 'image' },
+      (error, result) => {
+        if (error || !result) return reject(error ?? new Error('Cloudinary upload failed'))
+        resolve(result.secure_url)
+      }
+    )
+    stream.end(buffer)
+  })
+}
+
 // ─── POST /api/superadmin/landing-config/upload-hero ─────────────────────────
 
 router.post(
   '/api/superadmin/landing-config/upload-hero',
   requireSuperAdmin,
-  upload.single('image'),
-  (req: Request, res: Response) => {
-    if (!req.file) return res.status(400).json({ error: 'No file received' })
-    const url = `/uploads/${req.file.filename}`
-    return res.json({ url })
+  (req: Request, res: Response, next: NextFunction) => {
+    upload.single('image')(req, res, async (err) => {
+      if (err) {
+        const msg = err.code === 'LIMIT_FILE_SIZE'
+          ? 'File too large (max 5 MB)'
+          : err.message ?? 'Upload failed'
+        return res.status(400).json({ error: msg })
+      }
+      if (!req.file) return res.status(400).json({ error: 'No file received' })
+      try {
+        const url = await uploadToCloudinary(req.file.buffer)
+        return res.json({ url })
+      } catch (e: any) {
+        return res.status(500).json({ error: e?.message ?? 'Cloudinary upload failed' })
+      }
+    })
   }
 )
 

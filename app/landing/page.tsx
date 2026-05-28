@@ -19,10 +19,10 @@ type Lang = 'en' | 'fr' | 'ar'
 
 const T: Record<Lang, Record<string, string | string[]>> = {
   en: {
-    tagline: '#1 Digital Platform for Restaurants & Cafés',
-    h1a: 'QR Menu', h1b: 'No App Needed',
-    h1c: 'Instant orders · Smart analytics · Zero friction',
-    desc: 'Transform your restaurant into a full digital experience. Guests scan, order instantly — kitchen gets it in seconds. You track everything from your phone.',
+    tagline: '#1 Management Platform for Restaurants & Cafés',
+    h1a: 'Run Your Restaurant', h1b: 'From One Platform',
+    h1c: 'QR Menu · Live Orders · Smart Kitchen · Staff & Finance',
+    desc: 'More than a QR menu — a complete system to manage your restaurant or café. Handle orders, kitchen, staff, tables, billing and analytics all in one place. Your guest scans, orders instantly, the kitchen gets it in seconds, you control everything from your phone.',
     cta1: 'Start Free 7-Day Trial', cta2: 'See How It Works',
     badges: ['No contract', '5-min setup', 'Support 24/7', 'No credit card'],
     whoLabel: 'Who Is It For', whoTitle: 'Built For Every F&B Business',
@@ -56,10 +56,10 @@ const T: Record<Lang, Record<string, string | string[]>> = {
     statsLabel: 'Trusted globally',
   },
   fr: {
-    tagline: 'La plateforme digitale #1 pour les restaurants',
-    h1a: 'Menu QR', h1b: 'Sans Application',
-    h1c: 'Commandes instantanées · Analytics · Zéro friction',
-    desc: "Transformez votre restaurant en expérience digitale complète. Les clients scannent et commandent — la cuisine reçoit en quelques secondes.",
+    tagline: 'La plateforme de gestion #1 pour les restaurants',
+    h1a: 'Gérez Votre Restaurant', h1b: 'En Un Seul Endroit',
+    h1c: 'Menu QR · Commandes Live · Cuisine Smart · Staff & Finance',
+    desc: "Plus qu'un menu QR — un système complet pour gérer votre restaurant ou café. Commandes, cuisine, personnel, tables, facturation et analytics dans une seule plateforme. Le client scanne, commande instantanément, la cuisine reçoit en quelques secondes.",
     cta1: 'Essai Gratuit 7 Jours', cta2: 'Voir Comment Ça Marche',
     badges: ['Sans engagement', 'Config 5 min', 'Support 24/7', 'Sans carte bancaire'],
     whoLabel: 'Pour Qui', whoTitle: 'Conçu pour Chaque Business F&B',
@@ -93,10 +93,10 @@ const T: Record<Lang, Record<string, string | string[]>> = {
     statsLabel: 'Reconnu mondialement',
   },
   ar: {
-    tagline: 'منصة المطاعم الرقمية #1',
-    h1a: 'منيو QR', h1b: 'بدون تطبيق',
-    h1c: 'طلبات فورية · إحصاءات ذكية · تجربة سلسة',
-    desc: 'حوّل مطعمك أو مقهاك لتجربة رقمية كاملة — الزبون يمسح QR ويطلب مباشرة، المطبخ يستقبل في الثانية، وأنت تتابع كل شيء من هاتفك.',
+    tagline: 'منصة إدارة المطاعم والمقاهي #1',
+    h1a: 'أدِر مطعمك بالكامل', h1b: 'من مكان واحد',
+    h1c: 'منيو QR · طلبات مباشرة · مطبخ ذكي · موظفين وحسابات',
+    desc: 'أكثر من مجرد منيو رقمي — نظام متكامل لإدارة مطعمك أو مقهاك. طلبات، مطبخ، موظفين، طاولات، فواتير وإحصاءات، كل شيء في منصة واحدة. الزبون يمسح QR ويطلب فوراً، المطبخ يستقبل في الثانية، وأنت تتحكم في كل شيء من هاتفك.',
     cta1: 'ابدأ مجاناً 7 أيام', cta2: 'شاهد كيف يعمل',
     badges: ['بدون عقد', 'إعداد 5 دقائق', 'دعم 24/7', 'لا بطاقة بنكية'],
     whoLabel: 'الاستهداف', whoTitle: 'مصمم لكل قطاع F&B',
@@ -397,6 +397,8 @@ type LandingConfig = {
   testimonials?: { name: string; role: { en: string; fr: string; ar: string }; rating: number; text: { en: string; fr: string; ar: string }; avatarUrl?: string }[]
   contact?: { whatsapp?: string; email?: string; location?: { en: string; fr: string; ar: string } }
   heroImageUrl?: string
+  platformImageUrl?: string
+  logoImageUrl?: string
 }
 
 // ─── Cookie Banner ─────────────────────────────────────────────────────────────
@@ -449,9 +451,11 @@ export default function LandingPage() {
       .catch(() => {})
   }, [])
 
-  const stats        = cfg.stats        ?? STATS
-  const testimonials = cfg.testimonials ?? TESTIMONIALS
-  const heroImageUrl = cfg.heroImageUrl ?? '/assets/mobile.png'
+  const stats           = cfg.stats        ?? STATS
+  const testimonials    = cfg.testimonials ?? TESTIMONIALS
+  const heroImageUrl    = cfg.heroImageUrl    ?? '/assets/mobile.png'
+  const platformImageUrl = cfg.platformImageUrl ?? ''
+  const logoImageUrl     = cfg.logoImageUrl     ?? '/assets/logo.png'
   const contactPhone = cfg.contact?.whatsapp ?? '+212 6 00 00 00 00'
   const contactEmail = cfg.contact?.email    ?? 'contact@smartmenu.ma'
 
@@ -505,7 +509,7 @@ export default function LandingPage() {
 
           {/* Logo */}
           <div className="flex items-center gap-2.5 shrink-0">
-            <Image src="/assets/logo.png" alt="SmartMenu" width={38} height={38} className="rounded-xl shadow-sm object-contain" />
+            <Image src={logoImageUrl} alt="SmartMenu" width={38} height={38} className="rounded-xl shadow-sm object-contain" unoptimized={!logoImageUrl.startsWith('/') || logoImageUrl.startsWith('/uploads/')} />
             <div className="leading-tight">
               <span className="font-extrabold text-lg text-gray-900 tracking-tight">SmartMenu</span>
               <span className="hidden sm:block text-[10px] text-emerald-600 font-semibold leading-none">SCAN · ORDER · MANAGE</span>
@@ -607,7 +611,7 @@ export default function LandingPage() {
                 height={1297}
                 className="relative w-full h-auto object-contain drop-shadow-[0_30px_60px_rgba(0,0,0,0.5)]"
                 priority
-                unoptimized={!heroImageUrl.startsWith('/')}
+                unoptimized={!heroImageUrl.startsWith('/') || heroImageUrl.startsWith('/uploads/')}
               />
             </div>
           </div>
@@ -711,6 +715,18 @@ export default function LandingPage() {
             <span className="inline-block bg-emerald-100 text-emerald-700 px-4 py-1 rounded-full text-sm font-semibold mb-4">{t('featLabel')}</span>
             <h2 className="text-4xl font-extrabold text-gray-900">{t('featTitle')}</h2>
             <p className="mt-3 text-gray-500 text-lg max-w-2xl mx-auto">{t('featSub')}</p>
+            {platformImageUrl && (
+              <div className="mt-10 flex justify-center">
+                <Image
+                  src={platformImageUrl}
+                  alt="Platform overview"
+                  width={900}
+                  height={500}
+                  className="w-full max-w-3xl h-auto rounded-2xl shadow-lg object-contain"
+                  unoptimized={!platformImageUrl.startsWith('/') || platformImageUrl.startsWith('/uploads/')}
+                />
+              </div>
+            )}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {FEATURES.map((f, i) => {
@@ -970,7 +986,7 @@ export default function LandingPage() {
             {/* Brand */}
             <div className="col-span-2 md:col-span-1">
               <div className={`flex items-center gap-2 mb-4 ${isRtl ? 'flex-row-reverse' : ''}`}>
-                <Image src="/assets/logo.png" alt="SmartMenu" width={36} height={36} className="rounded-xl object-contain" />
+                <Image src={logoImageUrl} alt="SmartMenu" width={36} height={36} className="rounded-xl object-contain" unoptimized={!logoImageUrl.startsWith('/') || logoImageUrl.startsWith('/uploads/')} />
                 <span className="text-white font-extrabold text-lg">SmartMenu</span>
               </div>
               <p className="text-sm leading-relaxed mb-4">{t('madeWith')}</p>
