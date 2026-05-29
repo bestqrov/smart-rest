@@ -138,8 +138,8 @@ router.patch('/api/orders/:orderId/status', authorizeAdmin, async (req: Request,
     }
 
     const order = await prisma.order.findUnique({
-      where: { id: orderId },
-      select: { id: true, cafeId: true, status: true, totalPrice: true, tableId: true }
+      where:  { id: orderId },
+      select: { id: true, cafeId: true, status: true, totalPrice: true, tableId: true, _count: { select: { items: true } } }
     })
     if (!order) return res.status(404).json({ error: 'Order not found' })
     if (order.cafeId !== cafeId) return res.status(403).json({ error: 'Forbidden' })
@@ -150,7 +150,7 @@ router.patch('/api/orders/:orderId/status', authorizeAdmin, async (req: Request,
     await prisma.$transaction(async (tx) => {
       await tx.order.update({ where: { id: orderId }, data: { status: status as any } })
       if (status === 'COMPLETED' && order.status !== 'COMPLETED') {
-        await applyOrderFee(tx, cafeId, orderId, order.totalPrice, cafe?.country ?? 'MA', false)
+        await applyOrderFee(tx, cafeId, orderId, order.totalPrice, cafe?.country ?? 'MA', false, order._count.items)
       }
     })
 

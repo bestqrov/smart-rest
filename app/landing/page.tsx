@@ -289,11 +289,14 @@ const MARKETS = [
     ar: { country: 'المغرب',  cities: 'أكادير · مراكش · كازابلانكا · فاس · الرباط' },
     color: 'from-emerald-700 to-emerald-900',
     pricing: [
-      { en: 'Under 20 MAD', fr: 'Moins de 20 MAD', ar: 'أقل من 20 درهم', fee: '1 MAD' },
-      { en: '20 — 50 MAD',  fr: '20 — 50 MAD',     ar: '20 — 50 درهم',   fee: '3 MAD' },
-      { en: '50 — 100 MAD', fr: '50 — 100 MAD',    ar: '50 — 100 درهم',  fee: '5–7 MAD' },
-      { en: 'Over 100 MAD', fr: 'Plus de 100 MAD', ar: 'أكثر من 100',    fee: '10–15 MAD' },
+      { en: 'Under 20 MAD',   fr: 'Moins de 20 MAD',  ar: 'أقل من 20 درهم',   fee: '0.50 MAD' },
+      { en: '20 — 50 MAD',    fr: '20 — 50 MAD',      ar: '20 — 50 درهم',     fee: '3 MAD'    },
+      { en: '50 — 80 MAD',    fr: '50 — 80 MAD',      ar: '50 — 80 درهم',     fee: '5 MAD'    },
+      { en: '80 — 100 MAD',   fr: '80 — 100 MAD',     ar: '80 — 100 درهم',    fee: '7 MAD'    },
+      { en: '100 — 150 MAD',  fr: '100 — 150 MAD',    ar: '100 — 150 درهم',   fee: '10 MAD'   },
+      { en: 'Over 150 MAD',   fr: 'Plus de 150 MAD',  ar: 'أكثر من 150 درهم', fee: '15 MAD'   },
     ],
+    note: { en: '−5% if order has 2+ items', fr: '−5% dès 2 articles', ar: 'خصم 5% عند طلب منتجين أو أكثر' },
   },
   {
     flag: '🇸🇦', currency: 'SAR',
@@ -302,11 +305,14 @@ const MARKETS = [
     ar: { country: 'السعودية',        cities: 'الرياض · جدة · مكة · الدمام · المدينة' },
     color: 'from-green-700 to-green-900',
     pricing: [
-      { en: 'Under 10 SAR', fr: 'Moins de 10 SAR', ar: 'أقل من 10 ريال', fee: '2 SAR' },
-      { en: '10 — 40 SAR',  fr: '10 — 40 SAR',     ar: '10 — 40 ريال',   fee: '5–8 SAR' },
-      { en: '40 — 75 SAR',  fr: '40 — 75 SAR',     ar: '40 — 75 ريال',   fee: '10–14 SAR' },
-      { en: 'Over 75 SAR',  fr: 'Plus de 75 SAR',  ar: 'أكثر من 75',     fee: '20 SAR' },
+      { en: 'Under 15 SAR',  fr: 'Moins de 15 SAR', ar: 'أقل من 15 ريال',  fee: '1 SAR'  },
+      { en: '15 — 40 SAR',   fr: '15 — 40 SAR',     ar: '15 — 40 ريال',    fee: '3 SAR'  },
+      { en: '40 — 70 SAR',   fr: '40 — 70 SAR',     ar: '40 — 70 ريال',    fee: '6 SAR'  },
+      { en: '70 — 120 SAR',  fr: '70 — 120 SAR',    ar: '70 — 120 ريال',   fee: '10 SAR' },
+      { en: '120 — 200 SAR', fr: '120 — 200 SAR',   ar: '120 — 200 ريال',  fee: '15 SAR' },
+      { en: 'Over 200 SAR',  fr: 'Plus de 200 SAR', ar: 'أكثر من 200 ريال',fee: '22 SAR' },
     ],
+    note: { en: '−5% if order has 2+ items', fr: '−5% dès 2 articles', ar: 'خصم 5% عند طلب منتجين أو أكثر' },
   },
   {
     flag: '🇦🇪', currency: 'AED',
@@ -315,24 +321,58 @@ const MARKETS = [
     ar: { country: 'الإمارات',  cities: 'دبي · أبوظبي · الشارقة · عجمان' },
     color: 'from-red-700 to-red-900',
     pricing: [
-      { en: 'Under 15 AED', fr: 'Moins de 15 AED', ar: 'أقل من 15 درهم', fee: '2 AED' },
-      { en: '15 — 50 AED',  fr: '15 — 50 AED',     ar: '15 — 50 درهم',   fee: '5–8 AED' },
-      { en: '50 — 100 AED', fr: '50 — 100 AED',    ar: '50 — 100 درهم',  fee: '10–14 AED' },
-      { en: 'Over 100 AED', fr: 'Plus de 100 AED', ar: 'أكثر من 100',    fee: '20 AED' },
+      { en: 'Under 15 AED',  fr: 'Moins de 15 AED', ar: 'أقل من 15 درهم',  fee: '1 AED'  },
+      { en: '15 — 40 AED',   fr: '15 — 40 AED',     ar: '15 — 40 درهم',    fee: '3 AED'  },
+      { en: '40 — 80 AED',   fr: '40 — 80 AED',     ar: '40 — 80 درهم',    fee: '6 AED'  },
+      { en: '80 — 130 AED',  fr: '80 — 130 AED',    ar: '80 — 130 درهم',   fee: '10 AED' },
+      { en: '130 — 200 AED', fr: '130 — 200 AED',   ar: '130 — 200 درهم',  fee: '15 AED' },
+      { en: 'Over 200 AED',  fr: 'Plus de 200 AED', ar: 'أكثر من 200 درهم',fee: '22 AED' },
     ],
+    note: { en: '−5% if order has 2+ items', fr: '−5% dès 2 articles', ar: 'خصم 5% عند طلب منتجين أو أكثر' },
   },
   {
-    flag: '🌍', currency: 'XOF/KES',
-    en: { country: 'Africa',  cities: 'Senegal · Côte d\'Ivoire · Gabon · Kenya · Cameroon' },
-    fr: { country: 'Afrique', cities: 'Sénégal · Côte d\'Ivoire · Gabon · Kenya · Cameroun' },
-    ar: { country: 'أفريقيا', cities: 'السنغال · ساحل العاج · الغابون · كينيا · الكاميرون' },
+    flag: '🇩🇿🇹🇳🇪🇬', currency: 'DZD/TND/EGP',
+    en: { country: 'North Africa', cities: 'Algiers · Tunis · Cairo · Tripoli · Oran' },
+    fr: { country: 'Afrique du Nord', cities: 'Alger · Tunis · Le Caire · Tripoli · Oran' },
+    ar: { country: 'شمال أفريقيا', cities: 'الجزائر · تونس · القاهرة · طرابلس · وهران' },
+    color: 'from-sky-700 to-sky-900',
+    pricing: [
+      { en: 'Algeria (DZD)',  fr: 'Algérie (DZD)', ar: 'الجزائر (دينار)', fee: '15 → 450 DZD' },
+      { en: 'Tunisia (TND)',  fr: 'Tunisie (TND)', ar: 'تونس (دينار)',    fee: '0.15 → 5 TND' },
+      { en: 'Egypt (EGP)',    fr: 'Égypte (EGP)',  ar: 'مصر (جنيه)',      fee: '2 → 60 EGP'   },
+      { en: 'Libya (LYD)',    fr: 'Libye (LYD)',   ar: 'ليبيا (دينار)',   fee: '0.30 → 8 LYD' },
+    ],
+    note: { en: '−5% if order has 2+ items', fr: '−5% dès 2 articles', ar: 'خصم 5% عند طلب منتجين أو أكثر' },
+  },
+  {
+    flag: '🇫🇷🇪🇸🇧🇪', currency: 'EUR',
+    en: { country: 'Europe', cities: 'Paris · Madrid · Brussels · Berlin · Rome · Amsterdam' },
+    fr: { country: 'Europe', cities: 'Paris · Madrid · Bruxelles · Berlin · Rome · Amsterdam' },
+    ar: { country: 'أوروبا', cities: 'باريس · مدريد · بروكسل · برلين · روما · أمستردام' },
+    color: 'from-blue-700 to-blue-900',
+    pricing: [
+      { en: 'Under €5',    fr: 'Moins de 5€',  ar: 'أقل من 5 يورو',   fee: '€0.10' },
+      { en: '€5 — €12',   fr: '5€ — 12€',     ar: '5 — 12 يورو',     fee: '€0.25' },
+      { en: '€12 — €25',  fr: '12€ — 25€',    ar: '12 — 25 يورو',    fee: '€0.50' },
+      { en: '€25 — €50',  fr: '25€ — 50€',    ar: '25 — 50 يورو',    fee: '€0.80' },
+      { en: '€50 — €100', fr: '50€ — 100€',   ar: '50 — 100 يورو',   fee: '€1.20' },
+      { en: 'Over €100',  fr: 'Plus de 100€', ar: 'أكثر من 100 يورو', fee: '€2.00' },
+    ],
+    note: { en: '−5% if order has 2+ items', fr: '−5% dès 2 articles', ar: 'خصم 5% عند طلب منتجين أو أكثر' },
+  },
+  {
+    flag: '🌍', currency: 'XOF/KES/XAF',
+    en: { country: 'Sub-Saharan Africa', cities: 'Dakar · Abidjan · Nairobi · Libreville · Yaoundé' },
+    fr: { country: 'Afrique subsaharienne', cities: 'Dakar · Abidjan · Nairobi · Libreville · Yaoundé' },
+    ar: { country: 'أفريقيا جنوب الصحراء', cities: 'داكار · أبيدجان · نيروبي · ليبرفيل · ياوندي' },
     color: 'from-orange-700 to-orange-900',
     pricing: [
-      { en: 'Mobile Money', fr: 'Mobile Money', ar: 'موبايل موني', fee: 'Wave / M-Pesa' },
-      { en: 'WhatsApp Zero-Rating', fr: 'WhatsApp Gratuit', ar: 'واتساب بدون بيانات', fee: '✓' },
-      { en: 'Local Currency', fr: 'Monnaie Locale', ar: 'عملة محلية', fee: 'XOF · KES · XAF' },
-      { en: 'Offline Mode', fr: 'Mode Hors Ligne', ar: 'وضع بدون إنترنت', fee: '✓ PWA' },
+      { en: 'Senegal/CI (XOF)',  fr: 'Sénégal/CI (XOF)',   ar: 'السنغال/ساحل العاج', fee: '25 → 600 XOF' },
+      { en: 'Gabon/Cam (XAF)',   fr: 'Gabon/Cam (XAF)',    ar: 'الغابون/الكاميرون',  fee: '25 → 550 XAF' },
+      { en: 'Kenya (KES)',        fr: 'Kenya (KES)',         ar: 'كينيا (شلن)',         fee: '10 → 180 KES' },
+      { en: 'Mobile Money',       fr: 'Mobile Money',        ar: 'موبايل موني',         fee: 'Wave · M-Pesa' },
     ],
+    note: { en: '−5% if order has 2+ items', fr: '−5% dès 2 articles', ar: 'خصم 5% عند طلب منتجين أو أكثر' },
   },
 ]
 
@@ -790,7 +830,7 @@ export default function LandingPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
             {MARKETS.map((m, idx) => {
               const d = tl(m, lang)
               return (
@@ -801,7 +841,7 @@ export default function LandingPage() {
                     <p className="text-white/60 text-xs mt-1">{d.cities}</p>
                   </div>
                   <div className="px-5 py-4">
-                    <div className="space-y-2 mb-4">
+                    <div className="space-y-2 mb-3">
                       {m.pricing.map((p, pi) => (
                         <div key={pi} className="flex items-center justify-between text-sm">
                           <span className="text-gray-500">{tl(p, lang)}</span>
@@ -809,8 +849,13 @@ export default function LandingPage() {
                         </div>
                       ))}
                     </div>
+                    {'note' in m && m.note && (
+                      <p className="text-[10px] text-blue-600 font-semibold bg-blue-50 rounded-lg px-2 py-1 mb-3">
+                        {(m.note as Record<string, string>)[lang] ?? (m.note as Record<string, string>).en}
+                      </p>
+                    )}
                     <Link href="/signup" className="block text-center bg-gray-900 hover:bg-gray-800 text-white py-2.5 rounded-xl font-bold text-xs transition-colors">
-                      {lang === 'ar' ? `ابدأ في ${d.country}` : lang === 'fr' ? `Démarrer au ${d.country}` : `Start in ${d.country}`}
+                      {lang === 'ar' ? `ابدأ في ${d.country}` : lang === 'fr' ? `Démarrer en ${d.country}` : `Start in ${d.country}`}
                     </Link>
                   </div>
                 </div>

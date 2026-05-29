@@ -150,7 +150,7 @@ async function createWhatsAppOrder(
 
   await applyOrderFee(
     prisma as unknown as import('@prisma/client').Prisma.TransactionClient,
-    cafeId, order.id, total, cafe.country
+    cafeId, order.id, total, cafe.country, false, parsed.items.length
   )
 
   if (io) await emitKdsTicket(io, order.id)

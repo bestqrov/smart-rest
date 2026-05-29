@@ -174,7 +174,7 @@ async function confirmAndCreateOrder(opts: {
   if (cafe) {
     await applyOrderFee(
       prisma as unknown as import('@prisma/client').Prisma.TransactionClient,
-      cafeId, order.id, totalPrice, cafe.country
+      cafeId, order.id, totalPrice, cafe.country, false, items.length
     )
   }
 
