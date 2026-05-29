@@ -276,6 +276,47 @@ router.get('/api/auth/magic', async (req: Request, res: Response) => {
   }
 })
 
+// ─── POST /api/auth/magic-login-send — send login link to EXISTING user ──────
+//
+// For users created via magic-link (no password set).
+// Looks up the user by email, creates a short-lived JWT, and emails it.
+
+router.post('/api/auth/magic-login-send', async (req: Request, res: Response) => {
+  const lang: Lang = resolveLang(req.body?.lang ?? req.query['lang'] as string)
+  try {
+    const { email } = req.body as { email: string }
+    if (!email) return res.status(400).json({ error: t('error_fields_required', lang) })
+
+    const cleanEmail = email.trim().toLowerCase()
+
+    // Always return 200 to avoid leaking whether the email exists
+    const user = await prisma.user.findUnique({
+      where: { email: cleanEmail },
+      select: { id: true, cafeId: true, cafe: { select: { subdomain: true } } }
+    })
+
+    if (user) {
+      const loginToken = jwt.sign(
+        { userId: user.id, cafeId: user.cafeId, magic: true },
+        JWT_SECRET,
+        { expiresIn: '15m' }
+      )
+      const base      = process.env.FRONTEND_URL ?? 'https://smartrestau.com'
+      const magicLink = `${base}/api/auth/magic?token=${loginToken}`
+
+      await sendMagicLink({ to: cleanEmail, magicLink, lang, cafeName: '' }).catch(e =>
+        logger.warn({ msg: 'magic-login-send: email failed', err: e.message })
+      )
+      logger.info({ msg: 'magic-login-send: link issued', email: cleanEmail })
+    }
+
+    return res.json({ sent: true })
+  } catch (err) {
+    logger.error({ msg: 'magic-login-send error', err })
+    return res.status(500).json({ error: t('error_server', lang) })
+  }
+})
+
 // ─── POST /api/auth/magic-send ────────────────────────────────────────────────
 //
 // Step 1 of magic-link registration:

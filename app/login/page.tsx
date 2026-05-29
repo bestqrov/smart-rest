@@ -158,6 +158,9 @@ export default function LoginPage() {
   const [error, setError]       = useState('')
   const [loading, setLoading]   = useState(false)
   const [activeDemo, setActiveDemo] = useState<string | null>(null)
+  const [showMagicOption, setShowMagicOption] = useState(false)
+  const [magicSent, setMagicSent]             = useState(false)
+  const [magicLoading, setMagicLoading]       = useState(false)
 
   const isRtl = lang === 'ar'
   const t = (k: string) => T[lang][k] ?? k
@@ -173,7 +176,11 @@ export default function LoginPage() {
         body: JSON.stringify({ email, password }),
       })
       const data = await res.json()
-      if (!res.ok) { setError(data.error || 'Login failed'); return }
+      if (!res.ok) {
+        setError(data.error || 'Login failed')
+        setShowMagicOption(true)
+        return
+      }
       localStorage.setItem('token',     data.token)
       localStorage.setItem('cafeId',    data.cafeId)
       localStorage.setItem('subdomain', data.subdomain ?? '')
@@ -182,6 +189,21 @@ export default function LoginPage() {
       setError(lang === 'ar' ? 'خطأ في الشبكة' : lang === 'fr' ? 'Erreur réseau' : 'Network error')
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function sendMagicLogin() {
+    if (!email) return
+    setMagicLoading(true)
+    try {
+      await fetch('/api/auth/magic-login-send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, lang }),
+      })
+      setMagicSent(true)
+    } finally {
+      setMagicLoading(false)
     }
   }
 
@@ -225,6 +247,7 @@ export default function LoginPage() {
             alt="SmartMenu"
             width={72}
             height={72}
+            priority
             className="mx-auto mb-4 object-contain drop-shadow-[0_0_20px_rgba(16,185,129,0.3)]"
           />
           <h1 className="text-2xl font-extrabold text-white tracking-tight">SmartMenu</h1>
@@ -234,9 +257,34 @@ export default function LoginPage() {
         {/* ── Login form ── */}
         <div className="bg-gray-900/80 backdrop-blur border border-gray-800 rounded-2xl p-6 shadow-2xl">
           {error && (
-            <div className="bg-red-900/40 border border-red-700/60 text-red-300 text-sm rounded-xl px-4 py-3 mb-4 flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />
-              {error}
+            <div className="mb-4 space-y-2">
+              <div className="bg-red-900/40 border border-red-700/60 text-red-300 text-sm rounded-xl px-4 py-3 flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />
+                {error}
+              </div>
+              {showMagicOption && !magicSent && (
+                <div className="bg-emerald-900/30 border border-emerald-700/40 rounded-xl px-4 py-3 text-sm text-emerald-300">
+                  <p className="mb-2">
+                    {lang === 'ar' ? 'سجّلت عبر رابط البريد؟ أرسل رابط تسجيل دخول:' :
+                     lang === 'fr' ? 'Compte créé via lien magique ? Recevez un lien de connexion :' :
+                     'Signed up via email link? Get a login link:'}
+                  </p>
+                  <button type="button" onClick={sendMagicLogin} disabled={magicLoading || !email}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 text-white rounded-lg text-xs font-semibold transition-colors">
+                    {magicLoading
+                      ? <Loader2 className="w-3 h-3 animate-spin" />
+                      : <ArrowRight className="w-3 h-3" />}
+                    {lang === 'ar' ? 'إرسال رابط الدخول' : lang === 'fr' ? 'Envoyer le lien' : 'Send login link'}
+                  </button>
+                </div>
+              )}
+              {magicSent && (
+                <div className="bg-emerald-900/30 border border-emerald-700/40 rounded-xl px-4 py-3 text-sm text-emerald-300">
+                  {lang === 'ar' ? '✅ تم إرسال رابط الدخول — تحقق من بريدك' :
+                   lang === 'fr' ? '✅ Lien envoyé — vérifiez votre boîte mail' :
+                   '✅ Login link sent — check your inbox'}
+                </div>
+              )}
             </div>
           )}
 
