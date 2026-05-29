@@ -143,7 +143,7 @@ router.post('/api/admin/menu-gen/from-images', authorizeAdmin, async (req: Reque
     const { images } = req.body as { images?: { data: string; mimeType: string }[] }
     if (!images?.length) return res.status(400).json({ error: 'No images provided' })
 
-    // Groq uses vision via llama-3.2-90b-vision — send images as image_url content parts
+    // Groq vision — llama-4-scout supports image_url content parts
     const groq = getGroq()
     const imageContent = images.map(img => ({
       type: 'image_url' as const,
@@ -151,7 +151,7 @@ router.post('/api/admin/menu-gen/from-images', authorizeAdmin, async (req: Reque
     }))
 
     const res2 = await groq.chat.completions.create({
-      model: 'llama-3.2-90b-vision-preview',
+      model: 'meta-llama/llama-4-scout-17b-16e-instruct',
       messages: [{
         role: 'user',
         content: [
