@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Save, Plus, Trash2, ArrowLeft, Loader2, CheckCircle,
-  Star, Image as ImageIcon, Phone, Mail, BarChart3, MessageSquare,
+  Star, Image as ImageIcon, Phone, Mail, BarChart3, MessageSquare, Globe2 as Globe2Icon,
 } from 'lucide-react'
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
@@ -35,6 +35,7 @@ type LandingConfig = {
   logoImageUrl: string
   text: { ar: HeroTextLang; en: HeroTextLang; fr: HeroTextLang }
   faqs: FaqItem[]
+  footer: { brandName: string; flags: string; whatsapp: string; email: string; copyright: string }
 }
 
 const DEFAULT_CONFIG: LandingConfig = {
@@ -82,6 +83,7 @@ const DEFAULT_CONFIG: LandingConfig = {
   logoImageUrl: '',
   text: { ar: {}, en: {}, fr: {} },
   faqs: [],
+  footer: { brandName: 'SmartMenu', flags: '🇲🇦,🇸🇦,🇦🇪,🇸🇳,🇨🇮,🇰🇪', whatsapp: '+212 6 00 00 00 00', email: 'contact@smartmenu.ma', copyright: `© ${new Date().getFullYear()} SmartMenu` },
 }
 
 function superHeader(secret: string, email = '') {
@@ -717,6 +719,73 @@ export default function LandingEditorPage() {
               </div>
             ))}
           </div>
+        </section>
+
+        {/* ── Footer ───────────────────────────────────────────────────────── */}
+        <section className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+          <SectionTitle icon={Globe2Icon} title="Footer" />
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-semibold text-slate-500 mb-1.5 block">Brand Name</label>
+              <input
+                value={cfg.footer.brandName}
+                onChange={e => setCfg(c => ({ ...c, footer: { ...c.footer, brandName: e.target.value } }))}
+                placeholder="SmartMenu"
+                className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-500 mb-1.5 block">Copyright Text</label>
+              <input
+                value={cfg.footer.copyright}
+                onChange={e => setCfg(c => ({ ...c, footer: { ...c.footer, copyright: e.target.value } }))}
+                placeholder={`© ${new Date().getFullYear()} SmartMenu`}
+                className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-500 mb-1.5 block flex items-center gap-1">
+                <Phone className="w-3 h-3" /> Footer Phone / WhatsApp
+              </label>
+              <input
+                value={cfg.footer.whatsapp}
+                onChange={e => setCfg(c => ({ ...c, footer: { ...c.footer, whatsapp: e.target.value } }))}
+                placeholder="+212 6 00 00 00 00"
+                className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-500 mb-1.5 block flex items-center gap-1">
+                <Mail className="w-3 h-3" /> Footer Email
+              </label>
+              <input
+                value={cfg.footer.email}
+                onChange={e => setCfg(c => ({ ...c, footer: { ...c.footer, email: e.target.value } }))}
+                placeholder="contact@smartmenu.ma"
+                className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="text-xs font-semibold text-slate-500 mb-1.5 block">Country Flags (comma separated emojis)</label>
+              <input
+                value={cfg.footer.flags}
+                onChange={e => setCfg(c => ({ ...c, footer: { ...c.footer, flags: e.target.value } }))}
+                placeholder="🇲🇦,🇸🇦,🇦🇪,🇸🇳,🇨🇮,🇰🇪"
+                className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                dir="ltr"
+              />
+              <p className="text-xs text-slate-400 mt-1">Example: 🇲🇦,🇸🇦,🇦🇪,🇫🇷</p>
+            </div>
+          </div>
+
+          {/* Live preview */}
+          {cfg.footer.flags && (
+            <div className="mt-4 p-3 bg-slate-50 rounded-xl flex items-center gap-2 flex-wrap">
+              <span className="text-xs text-slate-400 mr-1">Preview:</span>
+              {cfg.footer.flags.split(',').map((f, i) => <span key={i} className="text-xl">{f.trim()}</span>)}
+            </div>
+          )}
         </section>
 
         {/* Save footer */}

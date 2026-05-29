@@ -122,7 +122,7 @@ function SignupInner() {
   useEffect(() => {
     fetch('/api/public/landing-config')
       .then(r => r.ok ? r.json() : {})
-      .then(d => { if (d?.logoImageUrl) setLogoUrl(d.logoImageUrl) })
+      .then((d: any) => { if (d?.logoImageUrl) setLogoUrl(d.logoImageUrl) })
       .catch(() => {})
   }, [])
 
@@ -131,7 +131,7 @@ function SignupInner() {
     if (hasUrlLang) return
     fetch('https://ipapi.co/json/')
       .then(r => r.ok ? r.json() : {})
-      .then(d => {
+      .then((d: any) => {
         const cc: string = (d?.country_code ?? '').toUpperCase()
         if (ARAB_COUNTRIES.has(cc))   setLang('ar')
         else if (FRENCH_COUNTRIES.has(cc)) setLang('fr')

@@ -405,6 +405,13 @@ type LandingConfig = {
     fr?: { tagline?: string; h1a?: string; h1b?: string; h1c?: string; desc?: string; cta1?: string; cta2?: string; featTitle?: string; featSub?: string }
   }
   faqs?: { en: { q: string; a: string }; fr: { q: string; a: string }; ar: { q: string; a: string } }[]
+  footer?: {
+    brandName?: string
+    flags?: string[]
+    whatsapp?: string
+    email?: string
+    copyright?: string
+  }
 }
 
 // ─── Cookie Banner ─────────────────────────────────────────────────────────────
@@ -462,8 +469,15 @@ export default function LandingPage() {
   const heroImageUrl    = cfg.heroImageUrl    ?? '/assets/mobile.png'
   const platformImageUrl = cfg.platformImageUrl ?? ''
   const logoImageUrl     = cfg.logoImageUrl     ?? '/assets/logo.png'
-  const contactPhone = cfg.contact?.whatsapp ?? '+212 6 00 00 00 00'
-  const contactEmail = cfg.contact?.email    ?? 'contact@smartmenu.ma'
+  const contactPhone  = cfg.contact?.whatsapp ?? '+212 6 00 00 00 00'
+  const contactEmail  = cfg.contact?.email    ?? 'contact@smartmenu.ma'
+  const footerBrand   = cfg.footer?.brandName ?? 'SmartMenu'
+  const footerFlags   = cfg.footer?.flags
+    ? (Array.isArray(cfg.footer.flags) ? cfg.footer.flags : String(cfg.footer.flags).split(',').map(f => f.trim()).filter(Boolean))
+    : ['🇲🇦','🇸🇦','🇦🇪','🇸🇳','🇨🇮','🇰🇪']
+  const footerPhone   = cfg.footer?.whatsapp  ?? contactPhone
+  const footerEmail   = cfg.footer?.email     ?? contactEmail
+  const footerCopy    = cfg.footer?.copyright ?? `© ${new Date().getFullYear()} SmartMenu`
 
   const isRtl = lang === 'ar'
 
@@ -994,12 +1008,12 @@ export default function LandingPage() {
             {/* Brand */}
             <div className="col-span-2 md:col-span-1">
               <div className={`flex items-center gap-2 mb-4 ${isRtl ? 'flex-row-reverse' : ''}`}>
-                <Image src={logoImageUrl} alt="SmartMenu" width={36} height={36} className="rounded-xl object-contain" unoptimized={!logoImageUrl.startsWith('/') || logoImageUrl.startsWith('/uploads/')} />
-                <span className="text-white font-extrabold text-lg">SmartMenu</span>
+                <Image src={logoImageUrl} alt={footerBrand} width={36} height={36} className="rounded-xl object-contain" unoptimized={!logoImageUrl.startsWith('/') || logoImageUrl.startsWith('/uploads/')} />
+                <span className="text-white font-extrabold text-lg">{footerBrand}</span>
               </div>
               <p className="text-sm leading-relaxed mb-4">{t('madeWith')}</p>
               <div className={`flex gap-2 flex-wrap ${isRtl ? 'justify-end' : ''}`}>
-                {['🇲🇦', '🇸🇦', '🇦🇪', '🇸🇳', '🇨🇮', '🇰🇪'].map(f => <span key={f} className="text-lg">{f}</span>)}
+                {footerFlags.map(f => <span key={f} className="text-lg">{f}</span>)}
               </div>
               {/* Compliance badges */}
               <div className={`flex gap-2 mt-4 flex-wrap ${isRtl ? 'justify-end' : ''}`}>
@@ -1041,8 +1055,8 @@ export default function LandingPage() {
             <div>
               <h4 className="text-white font-bold mb-4 text-sm">{t('contactLabel')}</h4>
               <ul className="space-y-3 text-sm">
-                <li className={`flex items-center gap-2 ${isRtl ? 'flex-row-reverse' : ''}`}><Phone className="w-4 h-4 text-emerald-500 shrink-0" /> +212 6 00 00 00 00</li>
-                <li className={`flex items-center gap-2 ${isRtl ? 'flex-row-reverse' : ''}`}><Mail className="w-4 h-4 text-emerald-500 shrink-0" /> contact@smartmenu.ma</li>
+                <li className={`flex items-center gap-2 ${isRtl ? 'flex-row-reverse' : ''}`}><Phone className="w-4 h-4 text-emerald-500 shrink-0" /> {footerPhone}</li>
+                <li className={`flex items-center gap-2 ${isRtl ? 'flex-row-reverse' : ''}`}><Mail className="w-4 h-4 text-emerald-500 shrink-0" /> {footerEmail}</li>
                 <li className={`flex items-center gap-2 ${isRtl ? 'flex-row-reverse' : ''}`}><MessageCircle className="w-4 h-4 text-green-500 shrink-0" /> WhatsApp</li>
                 <li className={`flex items-center gap-2 ${isRtl ? 'flex-row-reverse' : ''}`}><Globe2 className="w-4 h-4 text-blue-500 shrink-0" /> AR · FR · EN</li>
               </ul>
@@ -1050,7 +1064,7 @@ export default function LandingPage() {
           </div>
 
           <div className={`border-t border-gray-800 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs ${isRtl ? 'sm:flex-row-reverse' : ''}`}>
-            <span>© {new Date().getFullYear()} SmartMenu — {t('allRights')}</span>
+            <span>{footerCopy} — {t('allRights')}</span>
             <div className="flex items-center gap-4 text-gray-600">
               <a href="/privacy" className="hover:text-gray-400 transition-colors">{t('privacy')}</a>
               <span>·</span>
