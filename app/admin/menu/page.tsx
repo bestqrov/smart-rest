@@ -14,6 +14,13 @@ type Product  = { id: number; categoryId: number; nameAr: string; nameEn: string
 const EMPTY_CAT: Omit<Category, 'id' | 'order' | '_count'> = { nameAr: '', nameEn: '', nameFr: '', nameEs: '', nameDe: '' }
 const EMPTY_PRD = { categoryId: 0, nameAr: '', nameEn: '', nameFr: '', price: '', description: '', imageUrl: '' }
 
+function getName(item: { nameAr: string; nameEn: string; nameFr?: string; nameEs?: string }, lang: string): string {
+  if (lang === 'ar') return item.nameAr || item.nameEn || item.nameFr || ''
+  if (lang === 'fr') return item.nameFr || item.nameEn || item.nameAr || ''
+  if (lang === 'es') return (item.nameEs ?? '') || item.nameEn || item.nameAr || ''
+  return item.nameEn || item.nameAr || item.nameFr || ''
+}
+
 export default function MenuPage() {
   const { lang, isRTL } = useLang()
   const t = A[lang]
@@ -151,8 +158,8 @@ export default function MenuPage() {
             <div key={cat.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
               <div className="flex items-center justify-between px-4 py-3">
                 <div>
-                  <p className="font-bold text-gray-900">{cat.nameAr}</p>
-                  <p className="text-xs text-gray-400">{cat.nameEn} · {cat._count?.products ?? 0} منتج</p>
+                  <p className="font-bold text-gray-900">{getName(cat, lang)}</p>
+                  <p className="text-xs text-gray-400">{cat._count?.products ?? 0} {t.products}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <button onClick={() => setCatModal({ open: true, data: { nameAr: cat.nameAr, nameEn: cat.nameEn, nameFr: cat.nameFr, nameEs: cat.nameEs, nameDe: cat.nameDe }, id: cat.id })}
@@ -184,7 +191,7 @@ export default function MenuPage() {
                 >
                   <div className="flex items-center gap-2">
                     <Tag className="w-4 h-4 text-emerald-500" />
-                    <span className="font-bold text-gray-900">{cat.nameAr}</span>
+                    <span className="font-bold text-gray-900">{getName(cat, lang)}</span>
                     <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">{catProducts.length}</span>
                   </div>
                   {expanded ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
@@ -206,8 +213,8 @@ export default function MenuPage() {
                         </div>
                         {/* Info */}
                         <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-gray-900 text-sm truncate">{p.nameAr}</p>
-                          <p className="text-xs text-gray-400 truncate">{p.nameEn}</p>
+                          <p className="font-semibold text-gray-900 text-sm truncate">{getName(p, lang)}</p>
+                          <p className="text-xs text-gray-400 truncate">{lang !== 'en' ? p.nameEn : p.nameAr}</p>
                           <p className="text-sm font-bold text-emerald-600 mt-0.5">{Number(p.price).toFixed(2)}</p>
                         </div>
                         {/* Actions */}
