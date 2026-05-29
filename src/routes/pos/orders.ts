@@ -171,4 +171,28 @@ router.get('/api/pos/orders/table/:tableId', authorizePOS, async (req: Request, 
   }
 })
 
+// ─── GET /api/pos/menu — fetch menu categories + products for POS browser ─────
+
+router.get('/api/pos/menu', authorizePOS, async (req: Request, res: Response) => {
+  try {
+    const { cafeId } = req.staff!
+    const cafe = await prisma.cafe.findUnique({ where: { id: cafeId }, select: { currency: true } })
+    const categories = await prisma.category.findMany({
+      where: { cafeId },
+      orderBy: { order: 'asc' },
+      include: {
+        products: {
+          where:   { isAvailable: true },
+          orderBy: { nameEn: 'asc' },
+          select:  { id: true, nameAr: true, nameEn: true, nameFr: true, price: true, imageUrl: true }
+        }
+      }
+    })
+    return res.json({ categories, currency: cafe?.currency ?? 'MAD' })
+  } catch (err) {
+    logger.error({ msg: 'GET /api/pos/menu error', err })
+    return res.status(500).json({ error: 'Failed to fetch menu' })
+  }
+})
+
 export default router
