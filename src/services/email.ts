@@ -21,6 +21,9 @@ function buildEmailHtml(magicLink: string, lang: Lang, cafeName: string): string
                  : lang === 'es' ? 'O copia este enlace:'
                  :                 'Or copy this link:'
 
+  const baseUrl  = (process.env.FRONTEND_URL ?? 'https://smartrestau.digima.cloud').replace(/\/$/, '')
+  const logoUrl  = `${baseUrl}/assets/logo.png`
+
   return `<!DOCTYPE html>
 <html lang="${lang}" dir="${dir}">
 <head>
@@ -34,10 +37,11 @@ function buildEmailHtml(magicLink: string, lang: Lang, cafeName: string): string
       <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
 
         <tr>
-          <td style="background:linear-gradient(135deg,#f59e0b,#d97706);padding:36px 40px;text-align:center;">
-            <div style="font-size:32px;margin-bottom:8px;">☾</div>
-            <div style="color:#ffffff;font-size:22px;font-weight:800;">Smart Resto</div>
-            <div style="color:#fef3c7;font-size:13px;margin-top:4px;">${t('brand_tagline', lang)}</div>
+          <td style="background:linear-gradient(135deg,#111827,#1f2937);padding:36px 40px;text-align:center;">
+            <img src="${logoUrl}" alt="SmartMenu" width="64" height="64"
+                 style="display:block;margin:0 auto 12px;border-radius:14px;object-fit:contain;" />
+            <div style="color:#ffffff;font-size:22px;font-weight:800;letter-spacing:-0.5px;">SmartMenu</div>
+            <div style="color:#6b7280;font-size:13px;margin-top:4px;">${t('brand_tagline', lang)}</div>
           </td>
         </tr>
 
@@ -51,14 +55,14 @@ function buildEmailHtml(magicLink: string, lang: Lang, cafeName: string): string
             <table width="100%" cellpadding="0" cellspacing="0">
               <tr><td style="text-align:center;">
                 <a href="${magicLink}"
-                   style="display:inline-block;background:linear-gradient(135deg,#f59e0b,#d97706);color:#ffffff;font-size:16px;font-weight:800;text-decoration:none;padding:16px 40px;border-radius:14px;">
+                   style="display:inline-block;background:linear-gradient(135deg,#059669,#047857);color:#ffffff;font-size:16px;font-weight:800;text-decoration:none;padding:16px 40px;border-radius:14px;box-shadow:0 4px 14px rgba(5,150,105,0.35);">
                   ${t('email_cta', lang)}
                 </a>
               </td></tr>
             </table>
             <p style="margin:28px 0 0;color:#9ca3af;font-size:12px;word-break:break-all;text-align:${align};">
               ${fallback}<br/>
-              <a href="${magicLink}" style="color:#f59e0b;">${magicLink}</a>
+              <a href="${magicLink}" style="color:#059669;">${magicLink}</a>
             </p>
           </td>
         </tr>
