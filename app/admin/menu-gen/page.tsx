@@ -52,6 +52,9 @@ const T = {
     suggestPrices: 'اقتراح أسعار تلقائياً',
     enhanceBtn: '✨ تحسين بالذكاء الاصطناعي (أوصاف، سعرات، وسوم)',
     enhancing: 'جارٍ التحسين بالذكاء الاصطناعي…',
+    fetchImagesBtn: '🖼️ جلب صور المنتجات تلقائياً',
+    fetchingImages: 'جارٍ البحث عن الصور…',
+    imagesFetched: 'تم جلب الصور ✓',
     reviewTitle:'مراجعة المنيو المسودة',
     reviewSub: 'راجع وعدّل كل وجبة قبل النشر النهائي',
     publishDraft: 'حفظ كمسودة',
@@ -112,6 +115,9 @@ const T = {
     suggestPrices: 'Suggérer des prix automatiquement',
     enhanceBtn: '✨ Améliorer avec l\'IA',
     enhancing: 'Amélioration IA en cours…',
+    fetchImagesBtn: '🖼️ Récupérer les images automatiquement',
+    fetchingImages: 'Recherche des images…',
+    imagesFetched: 'Images récupérées ✓',
     reviewTitle:'Révision du menu',
     reviewSub: 'Vérifiez et modifiez chaque plat avant publication',
     publishDraft: 'Sauvegarder comme brouillon',
@@ -172,6 +178,9 @@ const T = {
     suggestPrices: 'Auto-suggest prices',
     enhanceBtn: '✨ AI Enhance (descriptions, calories, tags)',
     enhancing: 'AI enhancing your menu…',
+    fetchImagesBtn: '🖼️ Auto-fetch product images',
+    fetchingImages: 'Searching for images…',
+    imagesFetched: 'Images fetched ✓',
     reviewTitle:'Menu Draft Review',
     reviewSub: 'Review and edit each item before final publish',
     publishDraft: 'Save as Draft',
@@ -232,6 +241,9 @@ const T = {
     suggestPrices: 'Sugerir precios automáticamente',
     enhanceBtn: '✨ Mejorar con IA',
     enhancing: 'Mejorando con IA…',
+    fetchImagesBtn: '🖼️ Buscar imágenes automáticamente',
+    fetchingImages: 'Buscando imágenes…',
+    imagesFetched: 'Imágenes encontradas ✓',
     reviewTitle:'Revisión del menú borrador',
     reviewSub: 'Revisa y edita cada plato antes de publicar',
     publishDraft: 'Guardar como borrador',
@@ -370,7 +382,9 @@ export default function MenuGenPage() {
 
   // Draft items
   const [items, setItems]    = useState<DraftItem[]>([])
-  const [enhanced, setEnhanced] = useState(false)
+  const [enhanced,       setEnhanced]       = useState(false)
+  const [fetchingImages, setFetchingImages] = useState(false)
+  const [imagesFetched,  setImagesFetched]  = useState(false)
   const [publishing, setPublishing] = useState(false)
   const [published, setPublished]   = useState(false)
   const [editingKey, setEditingKey] = useState<string | null>(null)
@@ -511,6 +525,30 @@ export default function MenuGenPage() {
       setEnhanced(true)
       setStage('review')
     } catch { setErrMsg('Enhancement failed'); setStage('review') }
+  }
+
+  // ── Fetch product images ──────────────────────────────────────────────────
+  async function fetchImages() {
+    const itemsWithoutImage = items
+      .map((it, i) => ({ index: i, nameEn: it.nameEn, nameAr: it.nameAr, category: it.category }))
+      .filter((_, i) => !items[i].imageUrl)
+    if (!itemsWithoutImage.length) return
+    setFetchingImages(true)
+    try {
+      const res  = await fetch('/api/admin/menu-gen/fetch-images', {
+        method: 'POST', headers: authHeader(),
+        body: JSON.stringify({ items: itemsWithoutImage })
+      })
+      const data = await res.json()
+      if (!res.ok || !data.results) return
+      const results: { index: number; imageUrl: string }[] = data.results
+      setItems(prev => prev.map((it, i) => {
+        const found = results.find(r => r.index === i)
+        return found ? { ...it, imageUrl: found.imageUrl } : it
+      }))
+      setImagesFetched(true)
+    } catch {}
+    finally { setFetchingImages(false) }
   }
 
   // ── Publish ───────────────────────────────────────────────────────────────
@@ -815,6 +853,18 @@ export default function MenuGenPage() {
                 {enhanced && (
                   <span className="flex items-center gap-1 text-xs font-semibold text-violet-600 bg-violet-50 px-3 py-1.5 rounded-full border border-violet-100">
                     <Check className="w-3.5 h-3.5" /> {t.ai} Enhanced
+                  </span>
+                )}
+                {!imagesFetched ? (
+                  <button onClick={fetchImages} disabled={fetchingImages}
+                    className="flex items-center gap-2 px-4 py-2 bg-sky-500 hover:bg-sky-400 disabled:opacity-50 text-white rounded-xl text-sm font-bold transition-all active:scale-95">
+                    {fetchingImages
+                      ? <><Loader2 className="w-4 h-4 animate-spin" /> {t.fetchingImages}</>
+                      : <>{t.fetchImagesBtn}</>}
+                  </button>
+                ) : (
+                  <span className="flex items-center gap-1 text-xs font-semibold text-sky-600 bg-sky-50 px-3 py-1.5 rounded-full border border-sky-100">
+                    <Check className="w-3.5 h-3.5" /> {t.imagesFetched}
                   </span>
                 )}
               </div>

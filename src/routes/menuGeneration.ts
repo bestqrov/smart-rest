@@ -388,4 +388,49 @@ router.post('/api/admin/menu-gen/publish-draft', authorizeAdmin, async (req: Req
   }
 })
 
+// ── POST /api/admin/menu-gen/fetch-images ─────────────────────────────────────
+// For each item without an image, searches TheMealDB (free, no key) then
+// falls back to Unsplash Source URL based on the product name.
+
+router.post('/api/admin/menu-gen/fetch-images', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const { items } = req.body as { items: { index: number; nameEn: string; nameAr: string; category: string }[] }
+    if (!items?.length) return res.status(400).json({ error: 'items[] required' })
+
+    const results: { index: number; imageUrl: string }[] = []
+
+    for (const item of items) {
+      // Build a clean search term (English preferred, strip special chars)
+      const query = (item.nameEn || item.nameAr || '').trim().replace(/[^a-zA-Z0-9 ]/g, '').slice(0, 40)
+      if (!query) continue
+
+      let imageUrl: string | null = null
+
+      // 1. Try TheMealDB (free, permanent URLs, best quality)
+      try {
+        const mealRes = await fetch(`https://www.themealdb.com/api/json/v1/1/search.php?s=${encodeURIComponent(query)}`)
+        if (mealRes.ok) {
+          const mealData = await mealRes.json() as { meals: { strMealThumb: string }[] | null }
+          if (mealData.meals?.[0]?.strMealThumb) {
+            imageUrl = mealData.meals[0].strMealThumb
+          }
+        }
+      } catch {}
+
+      // 2. Fallback: Unsplash Source (no key, random matching photo)
+      if (!imageUrl) {
+        const foodTerms = `food,${encodeURIComponent(query)}`
+        imageUrl = `https://source.unsplash.com/300x300/?${foodTerms}`
+      }
+
+      results.push({ index: item.index, imageUrl })
+    }
+
+    return res.json({ results })
+  } catch (err: any) {
+    logger.error({ msg: 'fetch-images error', err })
+    return res.status(500).json({ error: err?.message ?? 'Image fetch failed' })
+  }
+})
+
 export default router
