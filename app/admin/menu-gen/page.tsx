@@ -376,7 +376,7 @@ export default function MenuGenPage() {
   const [editingKey, setEditingKey] = useState<string | null>(null)
 
   // Publish mode
-  const [publishMode, setPublishMode] = useState<'add' | 'replace'>('add')
+  const [publishMode, setPublishMode] = useState<'add' | 'replace'>('replace')
   const [existingCount, setExistingCount] = useState(0)
 
   // Load cafe tier and existing menu count on mount
@@ -394,6 +394,7 @@ export default function MenuGenPage() {
         if (Array.isArray(d)) {
           const count = d.reduce((sum: number, cat: any) => sum + (cat.products?.length ?? 0), 0)
           setExistingCount(count)
+          if (count > 0) setPublishMode('replace')
         }
       })
   }, [])
@@ -761,6 +762,40 @@ export default function MenuGenPage() {
         {/* ── Stage: Review ── */}
         {stage === 'review' && (
           <div className="space-y-4">
+
+            {/* ── Apply mode banner — shown FIRST when existing menu exists ── */}
+            {existingCount > 0 && (
+              <div className="rounded-2xl border-2 overflow-hidden">
+                <div className="bg-amber-50 border-b border-amber-200 px-4 py-2.5 flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span className="text-sm font-bold text-amber-700">{t.modeTitle}</span>
+                  <span className="text-xs text-amber-500 ms-auto">{existingCount} {t.existingItems}</span>
+                </div>
+                <div className="grid grid-cols-2 divide-x divide-slate-200 bg-white">
+                  <button onClick={() => setPublishMode('replace')}
+                    className={`p-4 text-start transition-all ${publishMode === 'replace' ? 'bg-red-50' : 'hover:bg-slate-50'}`}>
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${publishMode === 'replace' ? 'border-red-500 bg-red-500' : 'border-slate-300'}`}>
+                        {publishMode === 'replace' && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                      </div>
+                      <span className={`font-bold text-sm ${publishMode === 'replace' ? 'text-red-700' : 'text-slate-700'}`}>{t.modeReplace}</span>
+                    </div>
+                    <p className="text-xs text-slate-400 ps-6">{t.modeReplaceSub}</p>
+                  </button>
+                  <button onClick={() => setPublishMode('add')}
+                    className={`p-4 text-start transition-all ${publishMode === 'add' ? 'bg-emerald-50' : 'hover:bg-slate-50'}`}>
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${publishMode === 'add' ? 'border-emerald-500 bg-emerald-500' : 'border-slate-300'}`}>
+                        {publishMode === 'add' && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                      </div>
+                      <span className={`font-bold text-sm ${publishMode === 'add' ? 'text-emerald-700' : 'text-slate-700'}`}>{t.modeAdd}</span>
+                    </div>
+                    <p className="text-xs text-slate-400 ps-6">{t.modeAddSub}</p>
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Review header */}
             <div className="flex items-center justify-between flex-wrap gap-3">
               <div>
@@ -824,48 +859,6 @@ export default function MenuGenPage() {
               </div>
             )}
 
-            {/* Publish mode selector */}
-            {items.length > 0 && (
-              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 space-y-3">
-                <p className="font-semibold text-slate-700 text-sm">{t.modeTitle}</p>
-                {existingCount > 0 && (
-                  <p className="text-xs text-slate-400">{existingCount} {t.existingItems}</p>
-                )}
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    onClick={() => setPublishMode('add')}
-                    className={`rounded-xl border-2 p-3 text-start transition-all ${
-                      publishMode === 'add'
-                        ? 'border-emerald-400 bg-emerald-50'
-                        : 'border-slate-200 hover:border-emerald-200'
-                    }`}>
-                    <p className={`font-bold text-sm ${publishMode === 'add' ? 'text-emerald-700' : 'text-slate-700'}`}>
-                      {publishMode === 'add' && <Check className="w-3.5 h-3.5 inline me-1" />}
-                      {t.modeAdd}
-                    </p>
-                    <p className="text-xs text-slate-400 mt-0.5">{t.modeAddSub}</p>
-                  </button>
-                  <button
-                    onClick={() => setPublishMode('replace')}
-                    className={`rounded-xl border-2 p-3 text-start transition-all ${
-                      publishMode === 'replace'
-                        ? 'border-red-400 bg-red-50'
-                        : 'border-slate-200 hover:border-red-200'
-                    }`}>
-                    <p className={`font-bold text-sm ${publishMode === 'replace' ? 'text-red-700' : 'text-slate-700'}`}>
-                      {publishMode === 'replace' && <Check className="w-3.5 h-3.5 inline me-1" />}
-                      {t.modeReplace}
-                    </p>
-                    <p className="text-xs text-slate-400 mt-0.5">{t.modeReplaceSub}</p>
-                  </button>
-                </div>
-                {publishMode === 'replace' && existingCount > 0 && (
-                  <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-3 py-2 text-red-700 text-xs font-medium">
-                    <AlertTriangle className="w-3.5 h-3.5 shrink-0" /> {t.modeReplaceWarn}
-                  </div>
-                )}
-              </div>
-            )}
 
             {/* Publish buttons */}
             {items.length > 0 && (
