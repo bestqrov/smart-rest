@@ -33,7 +33,7 @@ const T = {
     paths: {
       url:    { label: 'رابط الموقع', sub: 'استخراج المنيو من موقعك الإلكتروني تلقائياً' },
       file:   { label: 'ملف رقمي', sub: 'رفع Excel أو Word أو PDF' },
-      camera: { label: 'كاميرا المنيو الورقي', sub: 'صوّر قائمتك الورقية وسيقرأها الذكاء الاصطناعي' },
+      camera: { label: 'صورة المنيو', sub: 'ارفع صورة أو صوّر قائمتك الورقية' },
       manual: { label: 'إدخال يدوي', sub: 'أدخل أسماء الوجبات وسيقترح النظام الأسعار تلقائياً' },
     },
     pathTitle: 'اختر طريقة إنشاء المنيو',
@@ -43,8 +43,10 @@ const T = {
     extracting:'جارٍ الاستخراج…',
     uploadFile:'رفع الملف (Excel / Word / PDF)',
     analyzing: 'جارٍ التحليل…',
-    addPhoto:  'إضافة صورة',
-    capture:   'تحليل الصور',
+    addPhoto:  'التقاط صورة بالكاميرا',
+    uploadPhoto: 'رفع صورة من الجهاز',
+    dragDrop:  'اسحب وأفلت الصور هنا أو',
+    capture:   'تحليل الصور بالذكاء الاصطناعي',
     manualItems:'أسماء الوجبات (كل وجبة في سطر)',
     manualPh:  'مثال:\nقهوة عربية\nبيتزا مارغريتا\nعصير برتقال',
     suggestPrices: 'اقتراح أسعار تلقائياً',
@@ -91,7 +93,7 @@ const T = {
     paths: {
       url:    { label: 'Lien du site web', sub: 'Extrayez automatiquement le menu de votre site' },
       file:   { label: 'Fichier numérique', sub: 'Importez Excel, Word ou PDF' },
-      camera: { label: 'Appareil photo', sub: 'Photographiez votre menu papier' },
+      camera: { label: 'Photo du menu', sub: 'Importez ou photographiez votre menu papier' },
       manual: { label: 'Saisie manuelle', sub: 'Entrez les noms, l\'IA suggère les prix' },
     },
     pathTitle: 'Choisissez votre méthode',
@@ -101,8 +103,10 @@ const T = {
     extracting:'Extraction en cours…',
     uploadFile:'Télécharger (Excel / Word / PDF)',
     analyzing: 'Analyse en cours…',
-    addPhoto:  'Ajouter une photo',
-    capture:   'Analyser les photos',
+    addPhoto:  'Prendre une photo',
+    uploadPhoto: 'Importer depuis l\'appareil',
+    dragDrop:  'Glissez-déposez les images ici ou',
+    capture:   'Analyser les photos par IA',
     manualItems:'Noms des plats (un par ligne)',
     manualPh:  'Café arabique\nPizza Margherita\nJus d\'orange',
     suggestPrices: 'Suggérer des prix automatiquement',
@@ -149,7 +153,7 @@ const T = {
     paths: {
       url:    { label: 'Website URL', sub: 'Auto-extract menu from your website' },
       file:   { label: 'Digital File', sub: 'Upload Excel, Word or PDF' },
-      camera: { label: 'Camera / Paper Menu', sub: 'Photograph your printed menu for AI reading' },
+      camera: { label: 'Menu Photo', sub: 'Upload or photograph your printed menu' },
       manual: { label: 'Manual Entry', sub: 'Enter dish names, AI suggests prices' },
     },
     pathTitle: 'Choose your menu creation method',
@@ -159,8 +163,10 @@ const T = {
     extracting:'Extracting…',
     uploadFile:'Upload File (Excel / Word / PDF)',
     analyzing: 'Analyzing…',
-    addPhoto:  'Add Photo',
-    capture:   'Analyze Photos',
+    addPhoto:  'Take Photo (Camera)',
+    uploadPhoto: 'Upload from Device',
+    dragDrop:  'Drag & drop images here or',
+    capture:   'Analyze Photos with AI',
     manualItems:'Dish names (one per line)',
     manualPh:  'Arabic coffee\nMargherita pizza\nOrange juice',
     suggestPrices: 'Auto-suggest prices',
@@ -207,7 +213,7 @@ const T = {
     paths: {
       url:    { label: 'URL del sitio web', sub: 'Extrae automáticamente el menú de tu sitio' },
       file:   { label: 'Archivo digital', sub: 'Sube Excel, Word o PDF' },
-      camera: { label: 'Cámara / Menú impreso', sub: 'Fotografía tu menú para que la IA lo lea' },
+      camera: { label: 'Foto del menú', sub: 'Sube o fotografía tu menú impreso' },
       manual: { label: 'Entrada manual', sub: 'Ingresa nombres, la IA sugiere precios' },
     },
     pathTitle: 'Elige tu método',
@@ -217,8 +223,10 @@ const T = {
     extracting:'Extrayendo…',
     uploadFile:'Subir archivo (Excel / Word / PDF)',
     analyzing: 'Analizando…',
-    addPhoto:  'Agregar foto',
-    capture:   'Analizar fotos',
+    addPhoto:  'Tomar foto (cámara)',
+    uploadPhoto: 'Subir desde dispositivo',
+    dragDrop:  'Arrastra imágenes aquí o',
+    capture:   'Analizar fotos con IA',
     manualItems:'Nombres de platos (uno por línea)',
     manualPh:  'Café árabe\nPizza Margarita\nJugo de naranja',
     suggestPrices: 'Sugerir precios automáticamente',
@@ -335,8 +343,10 @@ function PaywallOverlay({ t, onUpgrade, onSkip, tier }: {
 
 export default function MenuGenPage() {
   const router  = useRouter()
-  const fileRef = useRef<HTMLInputElement>(null)
-  const camRef  = useRef<HTMLInputElement>(null)
+  const fileRef    = useRef<HTMLInputElement>(null)
+  const camRef     = useRef<HTMLInputElement>(null)
+  const imgUploadRef = useRef<HTMLInputElement>(null)
+  const [dragOver, setDragOver] = useState(false)
 
   const { lang, isRTL } = useLang()
   const t = T[lang]
@@ -422,9 +432,10 @@ export default function MenuGenPage() {
   }
 
   // ── Path: Camera / images ─────────────────────────────────────────────────
-  function handleCamCapture(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(e.target.files ?? [])
-    Promise.all(files.map(f => new Promise<{ data: string; mimeType: string; preview: string }>((res) => {
+  function readImageFiles(files: File[]) {
+    const imageFiles = files.filter(f => f.type.startsWith('image/'))
+    if (!imageFiles.length) return
+    Promise.all(imageFiles.map(f => new Promise<{ data: string; mimeType: string; preview: string }>((res) => {
       const reader = new FileReader()
       reader.onload = () => {
         const base64 = (reader.result as string).split(',')[1]
@@ -432,6 +443,15 @@ export default function MenuGenPage() {
       }
       reader.readAsDataURL(f)
     }))).then(imgs => setCamImages(prev => [...prev, ...imgs]))
+  }
+
+  function handleCamCapture(e: React.ChangeEvent<HTMLInputElement>) {
+    readImageFiles(Array.from(e.target.files ?? []))
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault(); setDragOver(false)
+    readImageFiles(Array.from(e.dataTransfer.files))
   }
 
   async function extractFromImages() {
@@ -639,32 +659,63 @@ export default function MenuGenPage() {
               </div>
             )}
 
-            {/* Camera */}
+            {/* Camera / Image Upload */}
             {path === 'camera' && (
-              <div className="space-y-3">
+              <div className="space-y-4">
+
+                {/* Drop zone */}
+                <div
+                  onDragOver={e => { e.preventDefault(); setDragOver(true) }}
+                  onDragLeave={() => setDragOver(false)}
+                  onDrop={handleDrop}
+                  onClick={() => imgUploadRef.current?.click()}
+                  className={`relative w-full border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all ${
+                    dragOver
+                      ? 'border-emerald-400 bg-emerald-50'
+                      : 'border-slate-300 hover:border-emerald-400 hover:bg-emerald-50/40'
+                  }`}
+                >
+                  <Camera className="w-10 h-10 mx-auto text-slate-300 mb-3" />
+                  <p className="text-sm font-semibold text-slate-600">{t.dragDrop}</p>
+                  <p className="text-xs text-emerald-600 font-bold mt-1 underline">{t.uploadPhoto}</p>
+                  <p className="text-xs text-slate-400 mt-2">JPG · PNG · WEBP · HEIC — max 10 MB / image</p>
+                </div>
+
+                {/* Hidden inputs */}
+                <input ref={imgUploadRef} type="file" accept="image/*" multiple className="hidden"
+                  onChange={e => { readImageFiles(Array.from(e.target.files ?? [])); e.target.value = '' }} />
+                <input ref={camRef} type="file" accept="image/*" multiple capture="environment" className="hidden"
+                  onChange={handleCamCapture} />
+
+                {/* Mobile camera button */}
+                <button onClick={e => { e.stopPropagation(); camRef.current?.click() }}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-semibold text-sm transition-colors w-full justify-center">
+                  <Camera className="w-4 h-4" /> {t.addPhoto}
+                </button>
+
+                {/* Previews */}
                 {camImages.length > 0 && (
                   <div className="flex gap-2 flex-wrap">
                     {camImages.map((img, i) => (
-                      <div key={i} className="relative w-20 h-20">
-                        <img src={img.preview} className="w-full h-full rounded-xl object-cover border border-slate-200" />
+                      <div key={i} className="relative w-24 h-24">
+                        <img src={img.preview} className="w-full h-full rounded-xl object-cover border-2 border-emerald-200 shadow-sm" alt="" />
                         <button onClick={() => setCamImages(p => p.filter((_, idx) => idx !== i))}
-                          className="absolute -top-1.5 -end-1.5 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
+                          className="absolute -top-1.5 -end-1.5 w-5 h-5 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center transition-colors">
                           <X className="w-3 h-3 text-white" />
                         </button>
                       </div>
                     ))}
                   </div>
                 )}
-                <button onClick={() => camRef.current?.click()}
-                  className="flex items-center gap-2 px-5 py-3 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 rounded-xl font-semibold text-sm transition-colors">
-                  <Camera className="w-4 h-4" /> {t.addPhoto}
-                </button>
-                <input ref={camRef} type="file" accept="image/*" multiple capture="environment" className="hidden"
-                  onChange={handleCamCapture} />
+
+                {/* Analyze button */}
                 {camImages.length > 0 && (
                   <button onClick={extractFromImages} disabled={loading}
-                    className="flex items-center gap-2 px-6 py-3 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-white rounded-xl font-bold text-sm transition-all">
-                    {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> {t.analyzing}</> : <><Sparkles className="w-4 h-4" /> {t.capture}</>}
+                    className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-white rounded-xl font-bold text-sm transition-all shadow-lg shadow-emerald-500/20">
+                    {loading
+                      ? <><Loader2 className="w-4 h-4 animate-spin" /> {t.analyzing}</>
+                      : <><Sparkles className="w-4 h-4" /> {t.capture} ({camImages.length} {camImages.length === 1 ? 'image' : 'images'})</>
+                    }
                   </button>
                 )}
               </div>
