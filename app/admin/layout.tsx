@@ -349,19 +349,19 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
       <aside className="hidden md:flex flex-col w-64 bg-gray-900 min-h-screen shrink-0">
         <div className="px-5 py-5 border-b border-gray-800">
           <Link href="/admin/dashboard" className="flex items-center gap-2">
-            <Image src="/assets/logo.png" alt="Smart Menu" width={36} height={36} className="rounded-lg shrink-0" />
-            <div className="flex-1 min-w-0">
-              <div className="text-white font-bold text-sm">SmartMenu</div>
-              {cafe && <div className="text-gray-400 text-xs truncate">{cafe.subdomain}.smartmenu.ma</div>}
-            </div>
-            {/* Cafe logo — top right of sidebar header */}
-            {cafe?.logoUrl && (
+            {cafe?.logoUrl ? (
               <img
                 src={cafe.logoUrl}
                 alt={cafe.name}
                 className="w-9 h-9 rounded-lg object-contain aspect-square bg-white/10 shrink-0 border border-gray-700"
               />
+            ) : (
+              <Image src="/assets/logo.png" alt="Smart Menu" width={36} height={36} className="rounded-lg shrink-0" />
             )}
+            <div className="flex-1 min-w-0">
+              <div className="text-white font-bold text-sm">SmartMenu</div>
+              {cafe && <div className="text-gray-400 text-xs truncate">{cafe.subdomain}.smartmenu.ma</div>}
+            </div>
           </Link>
           {/* Cafe name under the logo row */}
           {cafe?.name && (

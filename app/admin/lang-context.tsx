@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useState } from 'react'
 
 export type AdminLang = 'ar' | 'en' | 'fr' | 'es'
 
@@ -15,12 +15,11 @@ interface LangCtx {
 const LangContext = createContext<LangCtx>({ lang: 'ar', setLang: () => {}, isRTL: true })
 
 export function AdminLangProvider({ children }: { children: React.ReactNode }) {
-  const [lang, setLangState] = useState<AdminLang>('ar')
-
-  useEffect(() => {
+  const [lang, setLangState] = useState<AdminLang>(() => {
+    if (typeof window === 'undefined') return 'ar'
     const saved = localStorage.getItem(STORAGE_KEY) as AdminLang | null
-    if (saved && ['ar', 'en', 'fr', 'es'].includes(saved)) setLangState(saved)
-  }, [])
+    return saved && ['ar', 'en', 'fr', 'es'].includes(saved) ? saved : 'ar'
+  })
 
   function setLang(l: AdminLang) {
     setLangState(l)

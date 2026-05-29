@@ -536,7 +536,7 @@ export default function OnboardingPage() {
                 </div>
                 <p className="text-xs text-slate-400 mt-1">📐 الأبعاد المثلى: <strong>512 × 512 px</strong> · PNG شفاف · 2 MB max</p>
                 {data.logoUrl && (
-                  <div className="mt-2 flex items-center gap-3">
+                  <div className="mt-2 flex items-center gap-3" style={{ animation: 'logoFadeIn 0.3s ease' }}>
                     <img src={data.logoUrl} alt="logo" className="w-14 h-14 rounded-xl object-contain aspect-square border border-slate-200 shadow-sm bg-slate-50" />
                     <span className="text-xs text-slate-400">Preview ✓</span>
                   </div>
@@ -579,10 +579,10 @@ export default function OnboardingPage() {
                   <div key={i} className="flex items-center gap-2">
                     <div className="w-6 h-6 rounded-full bg-amber-100 text-amber-700 text-xs font-bold flex items-center justify-center shrink-0">{i + 1}</div>
                     <input value={zone.name} onChange={e => updateZone(i, 'name', e.target.value)}
-                      placeholder={t.step3.zoneName} className="input flex-1" />
+                      placeholder={t.step3.zoneName} className="input flex-1 min-w-0" />
                     <input type="number" min="1" max="50" value={zone.tableCount}
                       onChange={e => updateZone(i, 'tableCount', Number(e.target.value))}
-                      className="input w-20 text-center" />
+                      className="input shrink-0 text-center" style={{ width: '5rem' }} />
                     {data.zones.length > 1 && (
                       <button type="button" onClick={() => removeZone(i)}
                         className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
@@ -672,6 +672,7 @@ export default function OnboardingPage() {
       <style jsx global>{`
         .input { width: 100%; padding: 0.625rem 0.875rem; border: 1px solid #e2e8f0; border-radius: 0.75rem; font-size: 0.875rem; outline: none; background: white; transition: box-shadow 0.15s; }
         .input:focus { box-shadow: 0 0 0 2px rgba(245,158,11,0.4); border-color: #f59e0b; }
+        @keyframes logoFadeIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
       `}</style>
     </div>
   )
