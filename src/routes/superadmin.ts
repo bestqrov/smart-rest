@@ -518,6 +518,64 @@ router.patch('/api/superadmin/tenants/:id/features', requireSuperAdmin, async (r
   }
 })
 
+// ─── DELETE /api/superadmin/tenants/:id ───────────────────────────────────────
+// Permanently deletes a cafe and ALL its associated data.
+// Cascades through every model that references cafeId.
+
+router.delete('/api/superadmin/tenants/:id', requireSuperAdmin, async (req: Request, res: Response) => {
+  const id = req.params['id'] as string
+  try {
+    const cafe = await prisma.cafe.findUnique({
+      where:  { id },
+      select: { id: true, businessName: true, subdomain: true }
+    })
+    if (!cafe) return res.status(404).json({ error: 'Cafe not found' })
+
+    // Delete in dependency order (children before parents)
+    await prisma.walletLog.deleteMany({ where: { cafeId: id } })
+    await prisma.fraudAlert.deleteMany({ where: { cafeId: id } })
+    await prisma.feedback.deleteMany({ where: { cafeId: id } })
+    await prisma.qrScan.deleteMany({ where: { cafeId: id } })
+    await prisma.printerLog.deleteMany({ where: { cafeId: id } })
+    await prisma.onlinePayment.deleteMany({ where: { cafeId: id } })
+    await prisma.paymentRequest.deleteMany({ where: { cafeId: id } })
+    await prisma.billRequest.deleteMany({ where: { cafeId: id } })
+    await prisma.waiterCall.deleteMany({ where: { cafeId: id } })
+    await prisma.reservation.deleteMany({ where: { cafeId: id } })
+    await prisma.expense.deleteMany({ where: { cafeId: id } })
+    await prisma.stockItem.deleteMany({ where: { cafeId: id } })
+    await prisma.recipe.deleteMany({ where: { cafeId: id } })
+    // OrderItems via orders
+    const orderIds = (await prisma.order.findMany({ where: { cafeId: id }, select: { id: true } })).map(o => o.id)
+    if (orderIds.length > 0) {
+      await prisma.orderItem.deleteMany({ where: { orderId: { in: orderIds } } })
+    }
+    await prisma.order.deleteMany({ where: { cafeId: id } })
+    await prisma.cashierShift.deleteMany({ where: { cafeId: id } })
+    await prisma.waiterShift.deleteMany({ where: { cafeId: id } })
+    await prisma.waiterQRToken.deleteMany({ where: { cafeId: id } })
+    await prisma.billingTier.deleteMany({ where: { cafeId: id } })
+    await prisma.staff.deleteMany({ where: { cafeId: id } })
+    // Seats before tables
+    await prisma.seat.deleteMany({ where: { cafeId: id } })
+    await prisma.table.deleteMany({ where: { cafeId: id } })
+    // Products before categories
+    const catIds = (await prisma.category.findMany({ where: { cafeId: id }, select: { id: true } })).map(c => c.id)
+    if (catIds.length > 0) {
+      await prisma.product.deleteMany({ where: { categoryId: { in: catIds } } })
+    }
+    await prisma.category.deleteMany({ where: { cafeId: id } })
+    await prisma.user.deleteMany({ where: { cafeId: id } })
+    await prisma.cafe.delete({ where: { id } })
+
+    logger.warn({ msg: 'SuperAdmin permanently deleted cafe', cafeId: id, subdomain: cafe.subdomain })
+    return res.json({ deleted: true, cafeId: id, subdomain: cafe.subdomain })
+  } catch (err) {
+    logger.error({ msg: 'DELETE tenant error', cafeId: id, err })
+    return res.status(500).json({ error: 'Failed to delete tenant' })
+  }
+})
+
 // ─── POST /api/superadmin/tenants/:id/impersonate ─────────────────────────────
 // Generate a short-lived 1h JWT allowing the superadmin to log in as any
 // restaurant admin. The token is flagged with `impersonated: true` so audit

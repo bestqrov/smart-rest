@@ -5,7 +5,7 @@ import Image from 'next/image'
 import {
   Shield, RefreshCw, Loader2, Filter,
   TrendingUp, Users, AlertTriangle, CheckCircle,
-  Wallet, Globe, Ban, Edit3,
+  Wallet, Globe, Ban, Edit3, Trash2,
   ChevronDown, ChevronUp, X, Play, CalendarPlus,
   Coffee, Zap, BarChart3, Sandwich
 } from 'lucide-react'
@@ -103,6 +103,8 @@ export default function SuperAdminPage() {
 
   const [modal,    setModal]    = useState<ModalState | null>(null)
   const [actionId, setActionId] = useState<string | null>(null)
+  const [deleteConfirm, setDeleteConfirm] = useState<Tenant | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   const secretRef = useRef(secret)
   useEffect(() => { secretRef.current = secret }, [secret])
@@ -177,6 +179,15 @@ export default function SuperAdminPage() {
       method: 'POST', headers: superHeader(), body: JSON.stringify({ clearDebt: false })
     })
     setActionId(null); loadAll(1)
+  }
+
+  async function deleteTenant(id: string) {
+    setDeleting(true)
+    try {
+      await fetch(`/api/superadmin/tenants/${id}`, { method: 'DELETE', headers: superHeader() })
+      setDeleteConfirm(null)
+      loadAll(1)
+    } finally { setDeleting(false) }
   }
 
   function openModal(tenant: Tenant, tab: ModalTab = 'prices') {
@@ -464,6 +475,7 @@ export default function SuperAdminPage() {
                             ? <RowBtn icon={<Ban className="w-3 h-3" />}     label="إيقاف" color="red"   loading={actionId === t.id} onClick={() => suspend(t.id)} />
                             : <RowBtn icon={<CheckCircle className="w-3 h-3" />} label="تفعيل" color="green" loading={actionId === t.id} onClick={() => reactivate(t.id)} />}
                           <RowBtn icon={<Edit3 className="w-3 h-3" />} label="إعداد" color="blue" loading={false} onClick={() => openModal(t, 'prices')} />
+                          <RowBtn icon={<Trash2 className="w-3 h-3" />} label="حذف" color="red" loading={false} onClick={() => setDeleteConfirm(t)} />
                         </div>
                       </td>
                     </tr>
@@ -645,6 +657,51 @@ export default function SuperAdminPage() {
               </>}
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* ── Delete confirmation dialog ── */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-[60] bg-black/90 flex items-center justify-center p-4">
+          <div className="bg-gray-900 border border-red-800 rounded-2xl w-full max-w-sm shadow-2xl p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-red-900/60 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5 text-red-400" />
+              </div>
+              <div>
+                <h3 className="text-white font-extrabold text-base">حذف نهائي</h3>
+                <p className="text-gray-400 text-xs mt-0.5">هذا الإجراء لا يمكن التراجع عنه</p>
+              </div>
+            </div>
+
+            <div className="bg-red-950/40 border border-red-800/50 rounded-xl px-4 py-3 space-y-1">
+              <p className="text-red-300 font-bold text-sm">{deleteConfirm.businessName || deleteConfirm.name}</p>
+              <p className="text-red-400 text-xs">{deleteConfirm.subdomain} · {deleteConfirm.country}</p>
+              <p className="text-red-500 text-xs mt-2">
+                سيتم حذف كل الطلبات، المنيو، الطاولات، الموظفين، والسجلات المالية بشكل نهائي.
+              </p>
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              <button
+                onClick={() => setDeleteConfirm(null)}
+                disabled={deleting}
+                className="flex-1 px-4 py-2.5 rounded-xl border border-gray-700 text-gray-400 hover:bg-gray-800 text-sm font-semibold transition-colors disabled:opacity-50"
+              >
+                إلغاء
+              </button>
+              <button
+                onClick={() => deleteTenant(deleteConfirm.id)}
+                disabled={deleting}
+                className="flex-1 px-4 py-2.5 rounded-xl bg-red-700 hover:bg-red-600 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {deleting
+                  ? <Loader2 className="w-4 h-4 animate-spin" />
+                  : <Trash2 className="w-4 h-4" />}
+                {deleting ? 'جارٍ الحذف…' : 'تأكيد الحذف'}
+              </button>
+            </div>
           </div>
         </div>
       )}
