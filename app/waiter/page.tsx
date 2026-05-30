@@ -337,7 +337,7 @@ export default function WaiterPage() {
   // ── render ───────────────────────────────────────────────────────────────────
   return (
     <>
-      <style>{`
+      <style suppressHydrationWarning>{`
         @keyframes flash-yellow  { 0%,100%{background-color:rgb(254 240 138/.6);border-color:rgb(234 179 8)}  50%{background-color:white} }
         @keyframes flash-red     { 0%,100%{background-color:rgb(254 202 202/.6);border-color:rgb(239 68 68)}   50%{background-color:white} }
         @keyframes flash-purple  { 0%,100%{background-color:rgb(233 213 255/.6);border-color:rgb(139 92 246)}  50%{background-color:white} }
