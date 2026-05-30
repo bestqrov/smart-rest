@@ -170,29 +170,40 @@ router.post('/api/finance/regenerate-package', authorizeAdmin, async (req: Reque
 })
 
 // ─── GET /api/finance/subscription-invoice ───────────────────────────────────
-// Returns the computed monthly fee in local currency for the payment gate.
+// Commission-based billing: returns accumulated wallet debt + maintenance fee.
+// Subscription is FREE — amount = |walletBalance| + maintenanceFee (if applicable)
 
 router.get('/api/finance/subscription-invoice', authorizeAdmin, async (req: Request, res: Response) => {
   try {
     const cafeId = req.admin!.cafeId
     const cafe = await prisma.cafe.findUnique({
       where:  { id: cafeId },
-      select: { monthlyFee: true, subscriptionTier: true, currency: true, businessName: true, country: true, coffeeRefPrice: true, sandwichRefPrice: true }
+      select: {
+        walletBalance: true, currency: true, businessName: true, country: true,
+        billingCycle: true, maintenancePack: true, maintenanceFee: true,
+        nextBillingDate: true, subscriptionTier: true
+      }
     })
     if (!cafe) return res.status(404).json({ error: 'Cafe not found' })
 
-    let amount = cafe.monthlyFee ?? 0
-    let tier   = cafe.subscriptionTier ?? null
+    // Accumulated commission debt (wallet goes negative as commissions are charged)
+    const commissionDebt   = Math.max(0, -(cafe.walletBalance ?? 0))
+    const maintenanceAmt   = cafe.maintenancePack ? (cafe.maintenanceFee ?? 25) : 0
+    const totalDue         = parseFloat((commissionDebt + maintenanceAmt).toFixed(2))
 
-    // If fee not yet computed, derive it on-the-fly without persisting
-    if (amount <= 0 && (cafe.coffeeRefPrice ?? 0) > 0 && (cafe.sandwichRefPrice ?? 0) > 0) {
-      const { computeSmartSubscription } = await import('../services/smartBilling')
-      const result = await computeSmartSubscription(cafeId)
-      amount = result.monthlyFee
-      tier   = result.tier
-    }
-
-    return res.json({ amount, currency: cafe.currency, tier, businessName: cafe.businessName, country: cafe.country })
+    return res.json({
+      amount:          totalDue,
+      commissionDebt:  parseFloat(commissionDebt.toFixed(2)),
+      maintenanceFee:  maintenanceAmt,
+      maintenancePack: cafe.maintenancePack,
+      currency:        cafe.currency,
+      billingCycle:    cafe.billingCycle ?? 15,
+      nextBillingDate: cafe.nextBillingDate ?? null,
+      businessName:    cafe.businessName,
+      country:         cafe.country,
+      tier:            cafe.subscriptionTier ?? null,
+      isFreeSubscription: true,
+    })
   } catch (err) {
     logger.error({ msg: 'GET /api/finance/subscription-invoice error', err })
     return res.status(500).json({ error: 'Failed' })

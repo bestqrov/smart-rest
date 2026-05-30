@@ -41,21 +41,35 @@ interface Tenant {
   coffeeRefPrice:   number | null
   sandwichRefPrice: number | null
   weeklyOrderCount: number | null
+  billingCycle:     number | null
+  maintenancePack:  boolean
+  maintenanceFee:   number | null
+  nextBillingDate:  string | null
   _count:           { orders: number }
 }
 
-type ModalTab = 'prices' | 'trial' | 'activate'
+// Countries that get the $25 maintenance pack by default
+const MAINTENANCE_COUNTRIES = ['SA','AE','KW','QA','BH','OM','FR','ES','BE','DE','IT','NL','PT','GB','US']
+
+function defaultMaintenance(country: string) {
+  return MAINTENANCE_COUNTRIES.includes(country.toUpperCase())
+}
+
+type ModalTab = 'billing' | 'trial' | 'activate'
 
 interface ModalState {
-  tenant:   Tenant
-  tab:      ModalTab
-  loading:  boolean
-  error:    string
-  coffee:   string
-  sandwich: string
-  days:     string
-  fee:      string
-  tier:     string
+  tenant:          Tenant
+  tab:             ModalTab
+  loading:         boolean
+  error:           string
+  coffee:          string
+  sandwich:        string
+  days:            string
+  fee:             string
+  tier:            string
+  billingCycle:    number
+  maintenance:     boolean
+  maintenanceFee:  string
   preview:  { tier: string; monthlyFee: number; weeklyOrderCount: number } | null
 }
 
@@ -190,12 +204,17 @@ export default function SuperAdminPage() {
     } finally { setDeleting(false) }
   }
 
-  function openModal(tenant: Tenant, tab: ModalTab = 'prices') {
+  function openModal(tenant: Tenant, tab: ModalTab = 'billing') {
     setModal({ tenant, tab, loading: false, error: '',
-      coffee:   String(tenant.coffeeRefPrice   ?? ''),
-      sandwich: String(tenant.sandwichRefPrice ?? ''),
-      days: '7', fee: String(tenant.monthlyFee ?? ''),
-      tier: tenant.subscriptionTier ?? 'ECONOMY', preview: null
+      coffee:         String(tenant.coffeeRefPrice   ?? ''),
+      sandwich:       String(tenant.sandwichRefPrice ?? ''),
+      days:           '7',
+      fee:            String(tenant.monthlyFee ?? ''),
+      tier:           tenant.subscriptionTier ?? 'ECONOMY',
+      billingCycle:   tenant.billingCycle ?? 15,
+      maintenance:    tenant.maintenancePack ?? defaultMaintenance(tenant.country),
+      maintenanceFee: String(tenant.maintenanceFee ?? 25),
+      preview:        null
     })
   }
 
@@ -250,9 +269,28 @@ export default function SuperAdminPage() {
     try {
       const res = await fetch(`/api/superadmin/tenants/${modal.tenant.id}/activate`, {
         method: 'POST', headers: superHeader(),
-        body: JSON.stringify({ monthlyFee: Number(modal.fee), tier: modal.tier })
+        body: JSON.stringify({ monthlyFee: 0, tier: modal.tier })
       })
       if (!res.ok) { setMF('error', 'فشل التفعيل'); return }
+      setModal(null); loadAll(1)
+    } finally { setMF('loading', false) }
+  }
+
+  async function saveBillingConfig() {
+    if (!modal) return
+    setMF('loading', true); setMF('error', '')
+    try {
+      const res = await fetch(`/api/superadmin/tenants/${modal.tenant.id}/billing-config`, {
+        method: 'PATCH', headers: superHeader(),
+        body: JSON.stringify({
+          billingCycle:   modal.billingCycle,
+          maintenancePack: modal.maintenance,
+          maintenanceFee:  modal.maintenance ? Number(modal.maintenanceFee) : null,
+          coffeeRefPrice:  modal.coffee ? Number(modal.coffee) : null,
+          sandwichRefPrice: modal.sandwich ? Number(modal.sandwich) : null,
+        })
+      })
+      if (!res.ok) { setMF('error', 'فشل الحفظ'); return }
       setModal(null); loadAll(1)
     } finally { setMF('loading', false) }
   }
@@ -474,7 +512,7 @@ export default function SuperAdminPage() {
                           {t.billingStatus !== 'SUSPENDED'
                             ? <RowBtn icon={<Ban className="w-3 h-3" />}     label="إيقاف" color="red"   loading={actionId === t.id} onClick={() => suspend(t.id)} />
                             : <RowBtn icon={<CheckCircle className="w-3 h-3" />} label="تفعيل" color="green" loading={actionId === t.id} onClick={() => reactivate(t.id)} />}
-                          <RowBtn icon={<Edit3 className="w-3 h-3" />} label="إعداد" color="blue" loading={false} onClick={() => openModal(t, 'prices')} />
+                          <RowBtn icon={<Edit3 className="w-3 h-3" />} label="إعداد" color="blue" loading={false} onClick={() => openModal(t, 'billing')} />
                           <RowBtn icon={<Trash2 className="w-3 h-3" />} label="حذف" color="red" loading={false} onClick={() => setDeleteConfirm(t)} />
                         </div>
                       </td>
@@ -531,7 +569,7 @@ export default function SuperAdminPage() {
             {/* Tab bar */}
             <div className="flex border-b border-gray-800 flex-shrink-0">
               {([
-                { key: 'prices'   as ModalTab, icon: <Coffee className="w-3.5 h-3.5" />,      label: 'أسعار المرجع' },
+                { key: 'billing'  as ModalTab, icon: <BarChart3 className="w-3.5 h-3.5" />,    label: 'إعداد الفوترة' },
                 { key: 'trial'    as ModalTab, icon: <CalendarPlus className="w-3.5 h-3.5" />, label: 'تمديد التجربة' },
                 { key: 'activate' as ModalTab, icon: <Zap className="w-3.5 h-3.5" />,          label: 'تفعيل يدوي'   }
               ]).map(tab => (
@@ -553,59 +591,113 @@ export default function SuperAdminPage() {
                 <div className="bg-red-950/50 border border-red-700 rounded-xl px-4 py-2 text-red-300 text-sm">{modal.error}</div>
               )}
 
-              {/* Prices tab */}
-              {modal.tab === 'prices' && <>
-                <p className="text-gray-400 text-xs leading-relaxed">
-                  حدد سعر القهوة والسندوتش المرجعيين يدوياً، أو اتركهما ليقوم النظام بالكشف التلقائي عبر أسماء المنتجات في المنيو.
-                  بعد الحفظ يُعاد حساب الاشتراك الشهري فوراً.
-                </p>
-                <div className="grid grid-cols-2 gap-3">
-                  <FInput label={<><Coffee className="w-3 h-3 inline ml-1" />سعر القهوة</>}
-                    value={modal.coffee} onChange={v => setMF('coffee', v)} placeholder="0.00" type="number" />
-                  <FInput label={<><Sandwich className="w-3 h-3 inline ml-1" />سعر السندوتش</>}
-                    value={modal.sandwich} onChange={v => setMF('sandwich', v)} placeholder="0.00" type="number" />
+              {/* ── Billing config tab ── */}
+              {modal.tab === 'billing' && <>
+
+                {/* Free subscription banner */}
+                <div className="flex items-center gap-3 bg-emerald-950/40 border border-emerald-800 rounded-2xl px-4 py-3">
+                  <span className="text-2xl">🆓</span>
+                  <div>
+                    <p className="text-emerald-300 font-bold text-sm">Abonnement GRATUIT</p>
+                    <p className="text-emerald-600 text-xs">Revenue = commission par commande uniquement</p>
+                  </div>
                 </div>
 
-                <button onClick={previewBilling} disabled={modal.loading}
-                  className="flex items-center gap-2 text-sky-400 hover:text-sky-300 text-sm transition-colors disabled:opacity-50"
-                >
-                  <BarChart3 className="w-4 h-4" />
-                  {modal.loading ? 'جارٍ الحساب…' : 'معاينة الاشتراك المتوقع'}
-                </button>
+                {/* Commission tiers summary */}
+                <div className="bg-gray-800/50 rounded-2xl p-3 space-y-1.5">
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Commission / commande ({modal.tenant.country})</p>
+                  {modal.tenant.country === 'MA' && [
+                    ['< 20 MAD','0.50 MAD'], ['20–50','3 MAD'], ['50–80','5 MAD'],
+                    ['80–100','7 MAD'], ['100–150','10 MAD'], ['> 150','15 MAD']
+                  ].map(([r,f]) => (
+                    <div key={r} className="flex justify-between text-xs"><span className="text-gray-500">{r}</span><span className="text-white font-bold">{f}</span></div>
+                  ))}
+                  {['SA','AE'].includes(modal.tenant.country) && [
+                    ['< 15','1'], ['15–40','3'], ['40–70','6'], ['70–120','10'], ['120–200','15'], ['> 200','22']
+                  ].map(([r,f]) => (
+                    <div key={r} className="flex justify-between text-xs"><span className="text-gray-500">{r} {modal.tenant.currency}</span><span className="text-white font-bold">{f} {modal.tenant.currency}</span></div>
+                  ))}
+                  {['FR','ES','BE','DE','IT','NL','PT','GB','US'].includes(modal.tenant.country) && [
+                    ['< 5€','€0.10'], ['5–12€','€0.25'], ['12–25€','€0.50'], ['25–50€','€0.80'], ['50–100€','€1.20'], ['> 100€','€2.00']
+                  ].map(([r,f]) => (
+                    <div key={r} className="flex justify-between text-xs"><span className="text-gray-500">{r}</span><span className="text-white font-bold">{f}</span></div>
+                  ))}
+                  {!['MA','SA','AE','FR','ES','BE','DE','IT','NL','PT','GB','US'].includes(modal.tenant.country) && (
+                    <p className="text-gray-500 text-xs">Voir billing.ts pour ce pays</p>
+                  )}
+                </div>
 
-                {modal.preview && (
-                  <div className={`rounded-2xl p-4 border ${modal.preview.tier === 'ADVANCED' ? 'bg-violet-950/50 border-violet-700' : 'bg-sky-950/50 border-sky-700'}`}>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs text-gray-400">الشريحة المتوقعة</p>
-                        <p className={`font-extrabold text-xl ${modal.preview.tier === 'ADVANCED' ? 'text-violet-300' : 'text-sky-300'}`}>
-                          {TIER_AR[modal.preview.tier] ?? modal.preview.tier}
-                        </p>
-                        <p className="text-xs text-gray-500">{modal.preview.weeklyOrderCount} طلبية / 7 أيام</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-xs text-gray-400">الاشتراك الشهري</p>
-                        <p className="font-extrabold text-3xl text-white">{modal.preview.monthlyFee.toFixed(2)}</p>
-                        <p className="text-xs text-gray-500">{modal.tenant.currency} / شهر</p>
-                      </div>
+                {/* Maintenance pack */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between bg-gray-800/50 rounded-xl px-4 py-3">
+                    <div>
+                      <p className="text-sm font-bold text-white">Pack Maintenance ($25)</p>
+                      <p className="text-xs text-gray-500">Service & Maintenance — Golfe / Europe</p>
                     </div>
-                    <div className="mt-3 pt-3 border-t border-gray-700 grid grid-cols-2 gap-2 text-xs text-gray-400">
-                      <div>
-                        قهوة × {modal.preview.tier === 'ADVANCED' ? '30' : '10'} يوم ={' '}
-                        <span className="text-white">{(Number(modal.coffee || 0) * (modal.preview.tier === 'ADVANCED' ? 30 : 10)).toFixed(2)}</span>
-                      </div>
-                      <div>
-                        سندوتش × {modal.preview.tier === 'ADVANCED' ? '12' : '4'} أسابيع ={' '}
-                        <span className="text-white">{(Number(modal.sandwich || 0) * (modal.preview.tier === 'ADVANCED' ? 12 : 4)).toFixed(2)}</span>
-                      </div>
-                    </div>
+                    <button onClick={() => setMF('maintenance', !modal.maintenance)}
+                      className={`w-12 h-6 rounded-full transition-colors relative ${modal.maintenance ? 'bg-emerald-600' : 'bg-gray-600'}`}>
+                      <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${modal.maintenance ? 'translate-x-6' : 'translate-x-0.5'}`} />
+                    </button>
                   </div>
-                )}
+                  {modal.maintenance && (
+                    <FInput label="Montant maintenance (USD)" value={modal.maintenanceFee}
+                      onChange={v => setMF('maintenanceFee', v)} placeholder="25" type="number" />
+                  )}
+                </div>
 
-                <button onClick={savePrices} disabled={modal.loading || !modal.coffee || !modal.sandwich}
+                {/* Billing cycle */}
+                <div>
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Cycle de paiement</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[8, 15, 26].map(d => (
+                      <button key={d} onClick={() => setMF('billingCycle', d)}
+                        className={`py-3 rounded-xl text-sm font-bold transition-all border-2 ${
+                          modal.billingCycle === d
+                            ? 'bg-emerald-600 border-emerald-500 text-white'
+                            : 'bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-500'
+                        }`}>
+                        {d} jours
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Estimation */}
+                <div className="bg-sky-950/30 border border-sky-800 rounded-2xl p-4">
+                  <p className="text-xs font-bold text-sky-400 uppercase tracking-widest mb-2">Estimation / cycle</p>
+                  <div className="space-y-1 text-xs">
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Commandes ({modal.tenant.weeklyOrderCount ?? modal.tenant._count.orders} /semaine)</span>
+                      <span className="text-white">~{Math.round((modal.tenant.weeklyOrderCount ?? 3) / 7 * modal.billingCycle)} cmd/{modal.billingCycle}j</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Commission moy. estimée</span>
+                      <span className="text-white">≈ {modal.tenant.country === 'MA' ? '2–5 MAD' : modal.tenant.country === 'SA' ? '3–6 SAR' : '€0.30–0.80'} /cmd</span>
+                    </div>
+                    {modal.maintenance && (
+                      <div className="flex justify-between border-t border-sky-800 pt-1 mt-1">
+                        <span className="text-gray-500">Maintenance</span>
+                        <span className="text-amber-400">+ ${modal.maintenanceFee}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Ref prices (for estimation only) */}
+                <details className="group">
+                  <summary className="text-xs text-gray-500 cursor-pointer hover:text-gray-300 list-none flex items-center gap-1">
+                    <Coffee className="w-3 h-3" /> Prix de référence (estimation) ▸
+                  </summary>
+                  <div className="grid grid-cols-2 gap-3 mt-2">
+                    <FInput label="☕ Prix café" value={modal.coffee} onChange={v => setMF('coffee', v)} placeholder="0.00" type="number" />
+                    <FInput label="🥪 Prix sandwich" value={modal.sandwich} onChange={v => setMF('sandwich', v)} placeholder="0.00" type="number" />
+                  </div>
+                </details>
+
+                <button onClick={saveBillingConfig} disabled={modal.loading}
                   className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold py-3.5 rounded-2xl transition-colors active:scale-95"
                 >
-                  {modal.loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : '💾 حفظ وتطبيق الاشتراك'}
+                  {modal.loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : '💾 Enregistrer la configuration'}
                 </button>
               </>}
 

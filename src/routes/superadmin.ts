@@ -198,6 +198,45 @@ router.post('/api/superadmin/tenants/:id/billing/apply', requireSuperAdmin, asyn
 // ─── PATCH /api/superadmin/tenants/:id/ref-prices ────────────────────────────
 // Manually set the reference coffee/sandwich prices for a café.
 
+// ─── PATCH /api/superadmin/tenants/:id/billing-config ────────────────────────
+// Save commission billing config: cycle (8/15/26), maintenance pack, ref prices
+
+router.patch('/api/superadmin/tenants/:id/billing-config', requireSuperAdmin, async (req: Request, res: Response) => {
+  try {
+    const id = req.params['id'] as string
+    const { billingCycle, maintenancePack, maintenanceFee, coffeeRefPrice, sandwichRefPrice } = req.body as {
+      billingCycle?:    number
+      maintenancePack?: boolean
+      maintenanceFee?:  number | null
+      coffeeRefPrice?:  number | null
+      sandwichRefPrice?: number | null
+    }
+
+    const nextBillingDate = billingCycle
+      ? new Date(Date.now() + billingCycle * 24 * 60 * 60 * 1000)
+      : undefined
+
+    await prisma.cafe.update({
+      where: { id },
+      data: {
+        ...(billingCycle   != null && { billingCycle:   Number(billingCycle)  }),
+        ...(maintenancePack != null && { maintenancePack }),
+        ...(maintenanceFee  !== undefined && { maintenanceFee: maintenanceFee != null ? Number(maintenanceFee) : null }),
+        ...(coffeeRefPrice  !== undefined && { coffeeRefPrice:  coffeeRefPrice  != null ? Number(coffeeRefPrice)  : null }),
+        ...(sandwichRefPrice !== undefined && { sandwichRefPrice: sandwichRefPrice != null ? Number(sandwichRefPrice) : null }),
+        ...(nextBillingDate && { nextBillingDate }),
+        // Subscription is free — reset monthlyFee to 0
+        monthlyFee: 0,
+      }
+    })
+    logger.info({ msg: 'SuperAdmin updated billing config', cafeId: id, billingCycle, maintenancePack })
+    return res.json({ ok: true })
+  } catch (err) {
+    logger.error({ msg: 'billing-config error', err })
+    return res.status(500).json({ error: 'Failed' })
+  }
+})
+
 router.patch('/api/superadmin/tenants/:id/ref-prices', requireSuperAdmin, async (req: Request, res: Response) => {
   try {
     const id = req.params['id'] as string
@@ -346,6 +385,8 @@ router.get('/api/superadmin/tenants/rich', requireSuperAdmin, async (req: Reques
           subscriptionTier: true, monthlyFee: true,
           coffeeRefPrice: true, sandwichRefPrice: true,
           weeklyOrderCount: true,
+          billingCycle: true, maintenancePack: true,
+          maintenanceFee: true, nextBillingDate: true,
           _count: { select: { orders: true } }
         }
       })

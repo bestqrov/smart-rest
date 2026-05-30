@@ -564,7 +564,12 @@ function PaymentGate({
   const [submitted, setSubmitted] = useState(false)
   const [submitErr, setSubmitErr] = useState('')
   const [copied,    setCopied]    = useState<string | null>(null)
-  const [invoice,   setInvoice]   = useState<{ amount: number; currency: string; tier: string | null } | null>(null)
+  const [invoice,   setInvoice]   = useState<{
+    amount: number; commissionDebt: number; maintenanceFee: number
+    maintenancePack: boolean; currency: string; tier: string | null
+    billingCycle: number; nextBillingDate: string | null
+    isFreeSubscription: boolean
+  } | null>(null)
 
   const t     = TG[lang]
   const isRTL = lang === 'ar'
@@ -579,9 +584,14 @@ function PaymentGate({
       .then(d => d && setInvoice(d))
   }, [])
 
-  const amount   = invoice?.amount   ?? cafe.monthlyFee ?? 0
-  const currency = invoice?.currency ?? cafe.currency ?? 'MAD'
-  const tier     = invoice?.tier     ?? cafe.subscriptionTier ?? null
+  const amount           = invoice?.amount          ?? 0
+  const commissionDebt   = invoice?.commissionDebt  ?? 0
+  const maintenanceFee   = invoice?.maintenanceFee  ?? 0
+  const currency         = invoice?.currency        ?? cafe.currency ?? 'MAD'
+  const tier             = invoice?.tier            ?? cafe.subscriptionTier ?? null
+  const billingCycle     = invoice?.billingCycle    ?? 15
+  const nextBillingDate  = invoice?.nextBillingDate ?? null
+  const hasMaintenance   = invoice?.maintenancePack ?? false
 
   function copyText(text: string, key: string) {
     navigator.clipboard.writeText(text).then(() => {
@@ -666,21 +676,41 @@ function PaymentGate({
             </div>
           </div>
 
-          {/* Invoice chip */}
-          <div className="bg-white/10 rounded-2xl px-4 py-3 flex items-center justify-between">
-            <div>
-              <p className="text-slate-400 text-xs">{t.invoice}</p>
-              {tier && (
-                <p className="text-slate-300 text-xs mt-0.5">
-                  {t.tier}: {tier === 'ECONOMY' ? t.tierEcon : t.tierAdv}
-                </p>
-              )}
+          {/* Invoice chip — commission-based model */}
+          <div className="bg-white/10 rounded-2xl px-4 py-3 space-y-2">
+            {/* Free subscription badge */}
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                🆓 {lang === 'ar' ? 'اشتراك مجاني' : lang === 'fr' ? 'Abonnement gratuit' : 'Free Subscription'}
+              </span>
+              <span className="text-[10px] text-slate-500">
+                {lang === 'ar' ? `دورة ${billingCycle} يوم` : lang === 'fr' ? `Cycle ${billingCycle}j` : `${billingCycle}-day cycle`}
+              </span>
             </div>
-            <div className="text-end">
-              <span className="text-3xl font-extrabold text-amber-400">{amount > 0 ? amount.toLocaleString() : '—'}</span>
-              {' '}
-              <span className="text-amber-300 font-semibold text-sm">{currency}</span>
-              <p className="text-slate-400 text-xs">{t.perMonth}</p>
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 text-xs text-slate-400">
+                  <span>{lang === 'ar' ? 'عمولة متراكمة' : lang === 'fr' ? 'Commission cumulée' : 'Accumulated commission'}</span>
+                  <span className="text-white font-bold">{commissionDebt.toFixed(2)} {currency}</span>
+                </div>
+                {hasMaintenance && (
+                  <div className="flex items-center gap-2 text-xs text-slate-400">
+                    <span>{lang === 'ar' ? 'صيانة وخدمة' : lang === 'fr' ? 'Maintenance' : 'Maintenance'}</span>
+                    <span className="text-amber-300 font-bold">+ ${maintenanceFee}</span>
+                  </div>
+                )}
+              </div>
+              <div className="text-end">
+                <p className="text-slate-400 text-xs">{lang === 'ar' ? 'المجموع المستحق' : lang === 'fr' ? 'Total dû' : 'Total due'}</p>
+                <span className="text-3xl font-extrabold text-amber-400">{amount > 0 ? amount.toFixed(2) : '0.00'}</span>
+                {' '}<span className="text-amber-300 font-semibold text-sm">{currency}</span>
+                {nextBillingDate && (
+                  <p className="text-slate-500 text-[10px] mt-0.5">
+                    {lang === 'ar' ? 'موعد الدفع:' : lang === 'fr' ? 'Échéance:' : 'Due:'}{' '}
+                    {new Date(nextBillingDate).toLocaleDateString()}
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         </div>

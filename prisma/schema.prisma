@@ -169,11 +169,19 @@ model Cafe {
   lastCreditReset      DateTime?
 
   // ── Smart subscription (set after trial analysis) ─────────────────────────
-  subscriptionTier  String?   // 'ECONOMY' | 'ADVANCED'
-  monthlyFee        Float?    // calculated monthly subscription amount
-  coffeeRefPrice    Float?    // reference coffee price (auto-detected or manual)
-  sandwichRefPrice  Float?    // reference sandwich price (auto-detected or manual)
+  subscriptionTier  String?   // 'ECONOMY' | 'ADVANCED' — kept for legacy/estimation
+  monthlyFee        Float?    // DEPRECATED — subscription is now free; kept for migration
+  coffeeRefPrice    Float?    // reference coffee price (used for estimation only)
+  sandwichRefPrice  Float?    // reference sandwich price (used for estimation only)
   weeklyOrderCount  Int?      // order count captured at last trial-end analysis
+
+  // ── Commission-based billing (new model) ─────────────────────────────────
+  // Subscription is FREE. Revenue = per-order commission (billing.ts tiers)
+  // Optional $25 maintenance pack for Gulf / Europe regions
+  billingCycle      Int?      // payment cycle in days: 8 | 15 | 26
+  maintenancePack   Boolean   @default(false)  // $25 service & maintenance fee
+  maintenanceFee    Float?    // maintenance amount (default 25 USD for Gulf/Europe)
+  nextBillingDate   DateTime? // next expected payment due date
 
   categories      Category[]
   tables          Table[]
