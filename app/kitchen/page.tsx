@@ -315,10 +315,18 @@ export default function KitchenPage() {
   useEffect(() => {
     if (!authed || !cafeId) return
     const token  = localStorage.getItem('token')
-    const socket = socketIO(SOCKET_URL || window.location.origin, { auth: { token }, transports: ['polling', 'websocket'] })
+    const socket = socketIO(SOCKET_URL || window.location.origin, {
+      auth:        { token },
+      transports:  ['polling', 'websocket'],
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay:    2000,
+      reconnectionDelayMax: 10000,
+    })
     socketRef.current = socket
 
     socket.on('connect', () => socket.emit('join', `kds_room_${cafeId}`))
+    socket.on('reconnect', () => socket.emit('join', `kds_room_${cafeId}`))
 
     socket.on('kds_new_order', (ticket: KdsTicket) => {
       if (deliveredIds.current.has(ticket.orderId)) return

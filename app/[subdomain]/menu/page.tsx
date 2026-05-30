@@ -67,12 +67,35 @@ export default function MenuPage({ params }: { params: { subdomain: string } }) 
   )
 }
 
+// ── Multilingual error/UI strings ────────────────────────────────────────────
+
+const UI_STRINGS = {
+  noToken:       { ar: 'رمز الطاولة غير موجود. يرجى مسح رمز QR مجدداً.', fr: 'Code de table introuvable. Veuillez scanner à nouveau le QR code.', en: 'Table token not found. Please scan the QR code again.', es: 'Token de mesa no encontrado. Por favor escanee el QR de nuevo.' },
+  noGeo:         { ar: 'متصفحك لا يدعم تحديد الموقع. يرجى استخدام متصفح حديث.', fr: 'Votre navigateur ne supporte pas la géolocalisation.', en: 'Your browser does not support geolocation. Please use a modern browser.', es: 'Su navegador no soporta geolocalización.' },
+  gpsDenied:     { ar: 'يجب السماح بالوصول إلى موقعك للتأكد من وجودك داخل المقهى.', fr: "Veuillez autoriser l'accès à votre localisation pour confirmer votre présence.", en: 'Please allow location access to confirm you are inside the venue.', es: 'Por favor permita acceso a su ubicación para confirmar que está en el local.' },
+  loadFailed:    { ar: 'فشل تحميل القائمة. يرجى المحاولة مجدداً.', fr: 'Échec du chargement du menu. Veuillez réessayer.', en: 'Failed to load the menu. Please try again.', es: 'Error al cargar el menú. Por favor inténtelo de nuevo.' },
+  networkErr:    { ar: 'خطأ في الشبكة. يرجى التحقق من اتصالك بالإنترنت.', fr: "Erreur réseau. Vérifiez votre connexion internet.", en: 'Network error. Please check your internet connection.', es: 'Error de red. Por favor verifique su conexión.' },
+  orderFailed:   { ar: 'فشل إرسال الطلب. يرجى المحاولة مجدداً.', fr: "Échec de l'envoi de la commande. Veuillez réessayer.", en: 'Failed to send order. Please try again.', es: 'Error al enviar el pedido. Por favor inténtelo de nuevo.' },
+  resFailed:     { ar: 'فشل إرسال الحجز', fr: 'Échec de la réservation', en: 'Reservation failed', es: 'Reserva fallida' },
+  billSent:      { ar: 'تم إرسال طلب الحساب. سيأتي النادل قريباً.', fr: "Demande d'addition envoyée. Le serveur arrive bientôt.", en: 'Bill requested. A waiter will come shortly.', es: 'Cuenta solicitada. Un mesero vendrá pronto.' },
+  billFailed:    { ar: 'فشل إرسال طلب الحساب.', fr: "Échec de la demande d'addition.", en: 'Failed to request the bill.', es: 'Error al solicitar la cuenta.' },
+  loading:       { ar: 'جارٍ تحميل القائمة…', fr: 'Chargement du menu…', en: 'Loading menu…', es: 'Cargando menú…' },
+  unexpectedErr: { ar: 'حدث خطأ غير متوقع.', fr: 'Une erreur inattendue s\'est produite.', en: 'An unexpected error occurred.', es: 'Ocurrió un error inesperado.' },
+  gpsHint:       { ar: 'يرجى تفعيل خدمة الموقع في إعدادات المتصفح وإعادة تحميل الصفحة.', fr: 'Veuillez activer la géolocalisation dans les paramètres du navigateur et recharger la page.', en: 'Please enable location services in your browser settings and reload the page.', es: 'Active los servicios de ubicación en su navegador y recargue la página.' },
+}
+
 function MenuContent({ params }: { params: { subdomain: string } }) {
   const searchParams = useSearchParams()
   const tableToken = searchParams.get('token') ?? ''
 
   const { lang, tCategory, tProduct } = useTranslation()
   const isRtl = lang === 'ar'
+
+  // Helper: pick string for current lang
+  function s(key: keyof typeof UI_STRINGS): string {
+    const map = UI_STRINGS[key]
+    return (map as Record<string, string>)[lang] ?? map.en
+  }
 
   // ── PWA: register service worker once ───────────────────────────────────────
   useEffect(() => {
@@ -123,14 +146,14 @@ function MenuContent({ params }: { params: { subdomain: string } }) {
   // Step 1: request GPS then fetch menu with location headers
   useEffect(() => {
     if (!tableToken) {
-      setMenuError('رمز الطاولة غير موجود. يرجى مسح رمز QR مجدداً.')
+      setMenuError(s('noToken'))
       setLoadingMenu(false)
       return
     }
 
     if (!navigator.geolocation) {
       setGpsState('unavailable')
-      setMenuError('متصفحك لا يدعم تحديد الموقع. يرجى استخدام متصفح حديث.')
+      setMenuError(s('noGeo'))
       setLoadingMenu(false)
       return
     }
@@ -142,7 +165,7 @@ function MenuContent({ params }: { params: { subdomain: string } }) {
           const res = await fetch(`/api/menu/public?tableToken=${tableToken}`)
           if (!res.ok) {
             const body = await res.json().catch(() => ({}))
-            setMenuError(body.error ?? 'فشل تحميل القائمة. يرجى المحاولة مجدداً.')
+            setMenuError(body.error ?? s('loadFailed'))
             setLoadingMenu(false)
             return
           }
@@ -158,14 +181,14 @@ function MenuContent({ params }: { params: { subdomain: string } }) {
           }
           setMenuData(data)
         } catch {
-          setMenuError('خطأ في الشبكة. يرجى التحقق من اتصالك بالإنترنت.')
+          setMenuError(s('networkErr'))
         } finally {
           setLoadingMenu(false)
         }
       },
       () => {
         setGpsState('denied')
-        setMenuError('يجب السماح بالوصول إلى موقعك للتأكد من وجودك داخل المقهى.')
+        setMenuError(s('gpsDenied'))
         setLoadingMenu(false)
       },
       { timeout: 10000, maximumAge: 30000 }
@@ -286,7 +309,7 @@ function MenuContent({ params }: { params: { subdomain: string } }) {
       })
 
       if (!result.ok && !result.queued) {
-        alert('فشل إرسال الطلب. يرجى المحاولة مجدداً.')
+        alert(s('orderFailed'))
         return
       }
 
@@ -314,7 +337,7 @@ function MenuContent({ params }: { params: { subdomain: string } }) {
         }
       }
     } catch {
-      alert('خطأ في الشبكة. يرجى المحاولة مجدداً.')
+      alert(s('networkErr'))
     } finally {
       setSubmitting(false)
     }
@@ -335,10 +358,10 @@ function MenuContent({ params }: { params: { subdomain: string } }) {
         setTimeout(() => { setResOpen(false); setResSent(false) }, 2500)
       } else {
         const d = await res.json()
-        alert(d.error || 'فشل إرسال الحجز')
+        alert(d.error || s('resFailed'))
       }
     } catch {
-      alert('خطأ في الشبكة')
+      alert(s('networkErr'))
     } finally {
       setResSending(false)
     }
@@ -352,9 +375,9 @@ function MenuContent({ params }: { params: { subdomain: string } }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tableToken })
       })
-      alert('تم إرسال طلب الحساب. سيأتي النادل قريباً.')
+      alert(s('billSent'))
     } catch {
-      alert('فشل إرسال طلب الحساب.')
+      alert(s('billFailed'))
     }
   }
 
@@ -363,7 +386,7 @@ function MenuContent({ params }: { params: { subdomain: string } }) {
     return (
       <div dir={isRtl ? 'rtl' : 'ltr'} className="min-h-screen flex flex-col items-center justify-center gap-4 bg-gray-50">
         <div className="w-10 h-10 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin" />
-        <p className="text-gray-500 text-sm">جارٍ تحميل القائمة…</p>
+        <p className="text-gray-500 text-sm">{s('loading')}</p>
       </div>
     )
   }
@@ -372,9 +395,9 @@ function MenuContent({ params }: { params: { subdomain: string } }) {
     return (
       <div dir={isRtl ? 'rtl' : 'ltr'} className="min-h-screen flex flex-col items-center justify-center gap-4 p-6 bg-gray-50 text-center">
         <Bell className="w-12 h-12 text-red-400" />
-        <p className="text-red-600 font-medium">{menuError ?? 'حدث خطأ غير متوقع.'}</p>
+        <p className="text-red-600 font-medium">{menuError ?? s('unexpectedErr')}</p>
         {gpsState === 'denied' && (
-          <p className="text-sm text-gray-500">يرجى تفعيل خدمة الموقع في إعدادات المتصفح وإعادة تحميل الصفحة.</p>
+          <p className="text-sm text-gray-500">{s('gpsHint')}</p>
         )}
       </div>
     )
@@ -694,7 +717,10 @@ function MenuContent({ params }: { params: { subdomain: string } }) {
                       disabled={resSending || !resForm.name || !resForm.phone || !resForm.date}
                       className="w-full bg-violet-600 hover:bg-violet-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 rounded-xl transition-all active:scale-95"
                     >
-                      {resSending ? 'جاري الإرسال…' : 'تأكيد الحجز'}
+                      {resSending
+                        ? { ar: 'جاري الإرسال…', fr: 'Envoi en cours…', en: 'Sending…', es: 'Enviando…' }[lang] ?? 'Sending…'
+                        : { ar: 'تأكيد الحجز', fr: 'Confirmer la réservation', en: 'Confirm Reservation', es: 'Confirmar Reserva' }[lang] ?? 'Confirm'
+                      }
                     </button>
                   </>
                 )}

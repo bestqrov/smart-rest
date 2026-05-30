@@ -131,6 +131,15 @@ async function confirmAndCreateOrder(opts: {
   const commMap  = new Map(products.map(p => [p.id, p.commissionRate]))
   let   totalComm = 0
 
+  // Recompute total from DB prices — reject if client-sent total doesn't match
+  const computedTotal = parseFloat(
+    items.reduce((sum, it) => sum + (priceMap.get(it.productId) ?? 0) * it.quantity, 0).toFixed(2)
+  )
+  const clientTotal = parseFloat(Number(totalPrice).toFixed(2))
+  if (Math.abs(computedTotal - clientTotal) > 0.02) {
+    throw new Error(`Price mismatch: client sent ${clientTotal}, server computed ${computedTotal}`)
+  }
+
   const order = await prisma.order.create({
     data: {
       cafe:          { connect: { id: cafeId } },
@@ -140,7 +149,7 @@ async function confirmAndCreateOrder(opts: {
       status:        'PENDING',
       paymentMethod: 'ONLINE',
       isPaid:        true,
-      totalPrice,
+      totalPrice:    computedTotal,
       customerPhone: customerPhone ?? null,
       orderSource:   'QR_CODE',
       billStatus:    'OPENED',

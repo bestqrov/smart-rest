@@ -142,10 +142,12 @@ router.put('/api/admin/products/:id', authorizeAdmin, async (req: Request, res: 
     // Broadcast live price change to POS and all QR menu customers of this cafe
     if (price !== undefined) {
       const io = req.app.get('io')
-      const pricePayload = { productId: id, price: product.price, cafeId }
-      io.to(`room_${cafeId}`).emit('price_updated', pricePayload)
-      io.to(`menu_room_${cafeId}`).emit('price_updated', pricePayload)
-      logger.info({ msg: 'price_updated broadcast', productId: id, price: product.price, cafeId })
+      if (io) {
+        const pricePayload = { productId: id, price: product.price, cafeId }
+        io.to(`room_${cafeId}`).emit('price_updated', pricePayload)
+        io.to(`menu_room_${cafeId}`).emit('price_updated', pricePayload)
+        logger.info({ msg: 'price_updated broadcast', productId: id, price: product.price, cafeId })
+      }
     }
 
     return res.json(product)

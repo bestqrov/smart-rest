@@ -204,7 +204,7 @@ router.post('/api/auth/quick-register', async (req: Request, res: Response) => {
     const { user, cafe } = await prisma.$transaction(async (tx) => {
       const cafe = await tx.cafe.create({
         data: {
-          name: `مطعم ${digits}`,
+          name: `Resto ${digits}`,
           businessName: '',
           subdomain,
           country: resolvedCountry,
@@ -416,7 +416,7 @@ router.get('/api/auth/test-email', async (req: Request, res: Response) => {
   if (req.query['secret'] !== process.env.SUPERADMIN_SECRET) {
     return res.status(403).json({ error: 'Forbidden' })
   }
-  const to = (req.query['to'] as string) || 'advicermano@gmail.com'
+  const to = (req.query['to'] as string) || (process.env.SUPERADMIN_EMAIL ?? '')
   try {
     await sendMagicLink({ to, magicLink: 'https://smartrestau.com', lang: 'en', cafeName: 'Test Cafe' })
     return res.json({ ok: true, to })
