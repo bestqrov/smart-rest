@@ -280,6 +280,8 @@ model Product {
   isAvailable    Boolean  @default(true)
   // commission as a fraction of sale price (e.g. 0.05 = 5%)
   commissionRate Float    @default(0.0)
+  // Level-1 cost management: manual cost price entered by owner
+  costPrice      Float?
   calories       Int?
   likesCount     Int      @default(0)
   // 'published' | 'draft' — drafts are invisible to customers

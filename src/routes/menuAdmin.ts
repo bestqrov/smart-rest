@@ -99,7 +99,7 @@ router.get('/api/admin/products', authorizeAdmin, async (req: Request, res: Resp
 router.post('/api/admin/products', authorizeAdmin, async (req: Request, res: Response) => {
   try {
     const cafeId = req.admin!.cafeId
-    const { categoryId, nameAr, nameEn, nameFr = '', nameEs = '', nameDe = '', description, price, imageUrl } = req.body
+    const { categoryId, nameAr, nameEn, nameFr = '', nameEs = '', nameDe = '', description, price, imageUrl, costPrice } = req.body
     if (!categoryId || !nameAr || !nameEn || price === undefined) {
       return res.status(400).json({ error: 'categoryId, nameAr, nameEn, price required' })
     }
@@ -107,7 +107,8 @@ router.post('/api/admin/products', authorizeAdmin, async (req: Request, res: Res
     if (!cat || cat.cafeId !== cafeId) return res.status(403).json({ error: 'Category not yours' })
 
     const product = await prisma.product.create({
-      data: { categoryId: String(categoryId), nameAr, nameEn, nameFr, nameEs, nameDe, description: description || null, price, imageUrl: imageUrl || null }
+      data: { categoryId: String(categoryId), nameAr, nameEn, nameFr, nameEs, nameDe, description: description || null, price, imageUrl: imageUrl || null,
+        costPrice: costPrice !== undefined && costPrice !== '' ? Number(costPrice) : null }
     })
     return res.status(201).json(product)
   } catch (err) {
@@ -123,7 +124,7 @@ router.put('/api/admin/products/:id', authorizeAdmin, async (req: Request, res: 
     const existing = await prisma.product.findUnique({ where: { id }, include: { category: { select: { cafeId: true } } } })
     if (!existing || existing.category.cafeId !== cafeId) return res.status(404).json({ error: 'Not found' })
 
-    const { nameAr, nameEn, nameFr, nameEs, nameDe, description, price, imageUrl, isAvailable } = req.body
+    const { nameAr, nameEn, nameFr, nameEs, nameDe, description, price, imageUrl, isAvailable, costPrice } = req.body
     const product = await prisma.product.update({
       where: { id },
       data: {
@@ -135,7 +136,8 @@ router.put('/api/admin/products/:id', authorizeAdmin, async (req: Request, res: 
         ...(description !== undefined && { description }),
         ...(price !== undefined && { price }),
         ...(imageUrl !== undefined && { imageUrl }),
-        ...(isAvailable !== undefined && { isAvailable })
+        ...(isAvailable !== undefined && { isAvailable }),
+        ...(costPrice !== undefined && { costPrice: costPrice === '' || costPrice === null ? null : Number(costPrice) }),
       }
     })
 

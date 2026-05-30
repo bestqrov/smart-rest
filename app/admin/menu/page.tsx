@@ -9,10 +9,17 @@ import { useLang } from '../lang-context'
 import { A } from '../../../lib/adminI18n'
 
 type Category = { id: number; nameAr: string; nameEn: string; nameFr: string; nameEs: string; nameDe: string; order: number; _count?: { products: number } }
-type Product  = { id: number; categoryId: number; nameAr: string; nameEn: string; nameFr: string; price: string | number; description?: string; imageUrl?: string; isAvailable: boolean; category?: { nameEn: string } }
+type Product  = { id: number; categoryId: number; nameAr: string; nameEn: string; nameFr: string; price: string | number; costPrice?: string | number | null; description?: string; imageUrl?: string; isAvailable: boolean; category?: { nameEn: string } }
 
 const EMPTY_CAT: Omit<Category, 'id' | 'order' | '_count'> = { nameAr: '', nameEn: '', nameFr: '', nameEs: '', nameDe: '' }
-const EMPTY_PRD = { categoryId: 0, nameAr: '', nameEn: '', nameFr: '', price: '', description: '', imageUrl: '' }
+const EMPTY_PRD = { categoryId: 0, nameAr: '', nameEn: '', nameFr: '', price: '', costPrice: '', description: '', imageUrl: '' }
+
+function margin(price: number, cost: number) {
+  if (!cost || cost <= 0) return null
+  const profit = price - cost
+  const pct    = (profit / price) * 100
+  return { profit: profit.toFixed(2), pct: pct.toFixed(0), color: pct >= 60 ? 'text-emerald-600' : pct >= 40 ? 'text-amber-500' : 'text-red-500' }
+}
 
 function getName(item: { nameAr: string; nameEn: string; nameFr?: string; nameEs?: string }, lang: string): string {
   if (lang === 'ar') return item.nameAr || item.nameEn || item.nameFr || ''
@@ -78,7 +85,7 @@ export default function MenuPage() {
   }
 
   function openEditProduct(p: Product) {
-    setPrdModal({ open: true, data: { categoryId: p.categoryId, nameAr: p.nameAr, nameEn: p.nameEn, nameFr: p.nameFr || '', price: String(p.price), description: p.description || '', imageUrl: p.imageUrl || '' }, id: p.id })
+    setPrdModal({ open: true, data: { categoryId: p.categoryId, nameAr: p.nameAr, nameEn: p.nameEn, nameFr: p.nameFr || '', price: String(p.price), costPrice: p.costPrice != null ? String(p.costPrice) : '', description: p.description || '', imageUrl: p.imageUrl || '' }, id: p.id })
     setImgPreview(p.imageUrl || '')
   }
 
@@ -86,7 +93,10 @@ export default function MenuPage() {
     setSaving(true)
     const url    = prdModal.id ? `/api/admin/products/${prdModal.id}` : '/api/admin/products'
     const method = prdModal.id ? 'PUT' : 'POST'
-    const body   = { ...prdModal.data, price: Number(prdModal.data.price), imageUrl: imgPreview || prdModal.data.imageUrl || undefined }
+    const costPriceVal = (prdModal.data as any).costPrice
+    const body   = { ...prdModal.data, price: Number(prdModal.data.price),
+      costPrice: costPriceVal !== '' && costPriceVal != null ? Number(costPriceVal) : null,
+      imageUrl: imgPreview || prdModal.data.imageUrl || undefined }
     await fetch(url, { method, headers: auth(), body: JSON.stringify(body) })
     await load()
     setPrdModal({ open: false, data: { ...EMPTY_PRD } })
@@ -215,7 +225,17 @@ export default function MenuPage() {
                         <div className="flex-1 min-w-0">
                           <p className="font-semibold text-gray-900 text-sm truncate">{getName(p, lang)}</p>
                           <p className="text-xs text-gray-400 truncate">{lang !== 'en' ? p.nameEn : p.nameAr}</p>
-                          <p className="text-sm font-bold text-emerald-600 mt-0.5">{Number(p.price).toFixed(2)}</p>
+                          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                            <p className="text-sm font-bold text-emerald-600">{Number(p.price).toFixed(2)}</p>
+                            {p.costPrice != null && Number(p.costPrice) > 0 && (() => {
+                              const m = margin(Number(p.price), Number(p.costPrice))
+                              return m ? (
+                                <span className={`text-xs font-bold px-1.5 py-0.5 rounded-full bg-gray-100 ${m.color}`}>
+                                  {m.pct}% ↑
+                                </span>
+                              ) : null
+                            })()}
+                          </div>
                         </div>
                         {/* Actions */}
                         <div className="flex items-center gap-1 shrink-0">
@@ -332,15 +352,46 @@ export default function MenuPage() {
               </div>
             ))}
 
-            <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1">{t.price} *</label>
-              <div className="relative">
-                <DollarSign className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input type="number" step="0.01" min="0" value={prdModal.data.price}
-                  onChange={e => setPrdModal(m => ({ ...m, data: { ...m.data, price: e.target.value } }))}
-                  className="w-full pr-9 pl-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400" dir="ltr" />
+            {/* Price + Cost Price */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">{t.price} * <span className="text-gray-400">(بيع)</span></label>
+                <div className="relative">
+                  <DollarSign className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input type="number" step="0.01" min="0" value={prdModal.data.price}
+                    onChange={e => setPrdModal(m => ({ ...m, data: { ...m.data, price: e.target.value } }))}
+                    className="w-full pr-9 pl-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400" dir="ltr" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">
+                  {lang === 'fr' ? 'Coût de revient' : lang === 'ar' ? 'سعر التكلفة' : 'Cost Price'} <span className="text-gray-400">(تكلفة)</span>
+                </label>
+                <div className="relative">
+                  <DollarSign className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-amber-400" />
+                  <input type="number" step="0.01" min="0" value={(prdModal.data as any).costPrice ?? ''}
+                    placeholder="0.00"
+                    onChange={e => setPrdModal(m => ({ ...m, data: { ...m.data, costPrice: e.target.value } }))}
+                    className="w-full pr-9 pl-3 py-2.5 border border-amber-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 bg-amber-50" dir="ltr" />
+                </div>
               </div>
             </div>
+
+            {/* Live margin preview */}
+            {(() => {
+              const sellP = Number((prdModal.data as any).price)
+              const costP = Number((prdModal.data as any).costPrice)
+              const m = sellP > 0 && costP > 0 ? margin(sellP, costP) : null
+              return m ? (
+                <div className={`flex items-center justify-between px-4 py-2.5 rounded-xl text-sm font-bold ${Number(m.pct) >= 60 ? 'bg-emerald-50 border border-emerald-200' : Number(m.pct) >= 40 ? 'bg-amber-50 border border-amber-200' : 'bg-red-50 border border-red-200'}`}>
+                  <span className="text-gray-500">{lang === 'fr' ? 'Marge brute' : lang === 'ar' ? 'الربح الصافي' : 'Gross Margin'}</span>
+                  <div className="flex items-center gap-3">
+                    <span className={m.color}>{m.profit}</span>
+                    <span className={`px-2 py-0.5 rounded-full text-xs ${m.color} bg-white`}>{m.pct}%</span>
+                  </div>
+                </div>
+              ) : null
+            })()}
 
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1">{t.description}</label>

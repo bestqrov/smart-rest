@@ -126,4 +126,37 @@ router.get('/api/admin/stats', authorizeAdmin, async (req: Request, res: Respons
   }
 })
 
+// ── GET /api/admin/stats/margins — product profitability overview ─────────────
+
+router.get('/api/admin/stats/margins', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const cafeId = req.admin!.cafeId
+
+    const products = await prisma.product.findMany({
+      where:   { category: { cafeId }, isAvailable: true, costPrice: { not: null } },
+      select:  { id: true, nameEn: true, nameAr: true, nameFr: true, price: true, costPrice: true, imageUrl: true,
+                 category: { select: { nameEn: true, nameAr: true } } },
+      orderBy: { price: 'desc' },
+    })
+
+    const items = products.map(p => {
+      const sell   = p.price
+      const cost   = p.costPrice ?? 0
+      const profit = parseFloat((sell - cost).toFixed(2))
+      const pct    = sell > 0 ? parseFloat(((profit / sell) * 100).toFixed(1)) : 0
+      return { id: p.id, nameEn: p.nameEn, nameAr: p.nameAr, nameFr: p.nameFr, imageUrl: p.imageUrl,
+               categoryName: p.category.nameEn, sell, cost, profit, marginPct: pct }
+    })
+
+    const avg = items.length ? parseFloat((items.reduce((s, i) => s + i.marginPct, 0) / items.length).toFixed(1)) : 0
+    const best  = [...items].sort((a, b) => b.marginPct - a.marginPct).slice(0, 5)
+    const worst = [...items].sort((a, b) => a.marginPct - b.marginPct).slice(0, 5)
+
+    return res.json({ items, avgMarginPct: avg, best, worst, totalWithCost: items.length })
+  } catch (err) {
+    logger.error({ msg: 'margins stats error', err })
+    return res.status(500).json({ error: 'Failed to fetch margin data' })
+  }
+})
+
 export default router
