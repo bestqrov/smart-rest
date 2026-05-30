@@ -73,6 +73,41 @@ interface ModalState {
   preview:  { tier: string; monthlyFee: number; weeklyOrderCount: number } | null
 }
 
+// ─── Commission tier lookup (mirrors billing.ts) ──────────────────────────────
+
+const TIERS: Record<string, { max: number; fee: number }[]> = {
+  MA: [{max:20,fee:.5},{max:50,fee:3},{max:80,fee:5},{max:100,fee:7},{max:150,fee:10},{max:Infinity,fee:15}],
+  SA: [{max:15,fee:1},{max:40,fee:3},{max:70,fee:6},{max:120,fee:10},{max:200,fee:15},{max:Infinity,fee:22}],
+  AE: [{max:15,fee:1},{max:40,fee:3},{max:80,fee:6},{max:130,fee:10},{max:200,fee:15},{max:Infinity,fee:22}],
+  KW: [{max:1.5,fee:.1},{max:4,fee:.3},{max:8,fee:.6},{max:15,fee:1},{max:25,fee:1.5},{max:Infinity,fee:2.5}],
+  QA: [{max:15,fee:1},{max:40,fee:3},{max:70,fee:6},{max:120,fee:10},{max:200,fee:15},{max:Infinity,fee:22}],
+  DZ: [{max:500,fee:15},{max:1200,fee:80},{max:2000,fee:150},{max:3000,fee:200},{max:5000,fee:300},{max:Infinity,fee:450}],
+  TN: [{max:5,fee:.15},{max:15,fee:.8},{max:25,fee:1.5},{max:40,fee:2},{max:70,fee:3},{max:Infinity,fee:5}],
+  EG: [{max:50,fee:2},{max:150,fee:10},{max:250,fee:18},{max:400,fee:28},{max:600,fee:40},{max:Infinity,fee:60}],
+  SN: [{max:800,fee:25},{max:2000,fee:100},{max:4000,fee:200},{max:7000,fee:350},{max:Infinity,fee:600}],
+  EU: [{max:5,fee:.1},{max:12,fee:.25},{max:25,fee:.5},{max:50,fee:.8},{max:100,fee:1.2},{max:Infinity,fee:2}],
+}
+const EU = ['FR','ES','BE','DE','IT','NL','PT']
+
+function getCommission(price: number, country: string): number {
+  const tiers = TIERS[country] ?? (EU.includes(country) ? TIERS.EU : TIERS.MA)
+  for (const t of tiers) if (price < t.max) return t.fee
+  return tiers[tiers.length - 1].fee
+}
+
+function estimateCycle(
+  coffeePrice: number, sandwichPrice: number,
+  country: string, cycle: number,
+  maintenance: boolean, maintenanceFee: number,
+  perDayCoffee = 10, perDaySandwich = 10
+): { commission: number; maintenanceAmt: number; total: number } {
+  const coffeeComm   = getCommission(coffeePrice,   country)
+  const sandwichComm = getCommission(sandwichPrice, country)
+  const commission   = parseFloat(((perDayCoffee * coffeeComm + perDaySandwich * sandwichComm) * cycle).toFixed(2))
+  const maintenanceAmt = maintenance ? maintenanceFee : 0
+  return { commission, maintenanceAmt, total: parseFloat((commission + maintenanceAmt).toFixed(2)) }
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const BILLING_LABELS: Record<string, string> = {
@@ -662,26 +697,70 @@ export default function SuperAdminPage() {
                   </div>
                 </div>
 
-                {/* Estimation */}
-                <div className="bg-sky-950/30 border border-sky-800 rounded-2xl p-4">
-                  <p className="text-xs font-bold text-sky-400 uppercase tracking-widest mb-2">Estimation / cycle</p>
-                  <div className="space-y-1 text-xs">
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Commandes ({modal.tenant.weeklyOrderCount ?? modal.tenant._count.orders} /semaine)</span>
-                      <span className="text-white">~{Math.round((modal.tenant.weeklyOrderCount ?? 3) / 7 * modal.billingCycle)} cmd/{modal.billingCycle}j</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Commission moy. estimée</span>
-                      <span className="text-white">≈ {modal.tenant.country === 'MA' ? '2–5 MAD' : modal.tenant.country === 'SA' ? '3–6 SAR' : '€0.30–0.80'} /cmd</span>
-                    </div>
-                    {modal.maintenance && (
-                      <div className="flex justify-between border-t border-sky-800 pt-1 mt-1">
-                        <span className="text-gray-500">Maintenance</span>
-                        <span className="text-amber-400">+ ${modal.maintenanceFee}</span>
+                {/* Estimation — 10 cafés/j + 10 sandwichs/j × cycle */}
+                {(() => {
+                  const coffeeP   = Number(modal.coffee   || modal.tenant.coffeeRefPrice   || 15)
+                  const sandwichP = Number(modal.sandwich || modal.tenant.sandwichRefPrice || 35)
+                  const est = estimateCycle(
+                    coffeeP, sandwichP,
+                    modal.tenant.country,
+                    modal.billingCycle,
+                    modal.maintenance,
+                    Number(modal.maintenanceFee || 25)
+                  )
+                  const coffeeComm   = getCommission(coffeeP,   modal.tenant.country)
+                  const sandwichComm = getCommission(sandwichP, modal.tenant.country)
+                  return (
+                    <div className="bg-sky-950/30 border border-sky-800 rounded-2xl p-4 space-y-3">
+                      <p className="text-xs font-bold text-sky-400 uppercase tracking-widest">
+                        Estimation / {modal.billingCycle} jours
+                      </p>
+
+                      {/* Base: 10 coffees + 10 sandwiches per day */}
+                      <div className="space-y-1.5 text-xs">
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-500">
+                            ☕ 10 cafés/j × {modal.billingCycle}j × {coffeeComm} {modal.tenant.currency}
+                          </span>
+                          <span className="text-white font-bold">
+                            {(10 * modal.billingCycle * coffeeComm).toFixed(2)} {modal.tenant.currency}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-500">
+                            🥪 10 sandwichs/j × {modal.billingCycle}j × {sandwichComm} {modal.tenant.currency}
+                          </span>
+                          <span className="text-white font-bold">
+                            {(10 * modal.billingCycle * sandwichComm).toFixed(2)} {modal.tenant.currency}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center border-t border-sky-800/60 pt-1.5">
+                          <span className="text-gray-400 font-semibold">Commission totale</span>
+                          <span className="text-sky-300 font-bold">{est.commission.toFixed(2)} {modal.tenant.currency}</span>
+                        </div>
+                        {modal.maintenance && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-400 font-semibold">Pack Maintenance</span>
+                            <span className="text-amber-400 font-bold">+ ${est.maintenanceAmt}</span>
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                </div>
+
+                      {/* Total */}
+                      <div className="flex items-center justify-between bg-white/5 rounded-xl px-3 py-2.5">
+                        <span className="text-sm font-bold text-white">TOTAL / {modal.billingCycle}j</span>
+                        <div className="text-end">
+                          <span className="text-2xl font-extrabold text-amber-400">{est.total.toFixed(2)}</span>
+                          {' '}<span className="text-amber-300 text-sm">{modal.tenant.currency}</span>
+                        </div>
+                      </div>
+
+                      <p className="text-[10px] text-gray-600">
+                        Basé sur 10 cafés + 10 sandwichs par jour · prix ref: {coffeeP} / {sandwichP} {modal.tenant.currency}
+                      </p>
+                    </div>
+                  )
+                })()}
 
                 {/* Ref prices (for estimation only) */}
                 <details className="group">
