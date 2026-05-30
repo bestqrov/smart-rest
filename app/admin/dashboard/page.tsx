@@ -28,28 +28,50 @@ export default function DashboardPage() {
     return { Authorization: `Bearer ${localStorage.getItem('token')}` }
   }
 
-  useEffect(() => {
-    Promise.all([
-      fetch('/api/admin/stats',    { headers: authHeader() }).then(r => r.ok ? r.json() : null),
-      fetch('/api/finance/status', { headers: authHeader() }).then(r => r.ok ? r.json() : null),
-      fetch('/api/admin/staff',    { headers: authHeader() }).then(r => r.ok ? r.json() : null),
-    ]).then(([s, b, st]) => {
-      setStats(s); setBilling(b)
-      setStaffCount(st?.waiters?.length ?? 0)
-      setLoading(false)
-    })
+  function loadStats() {
+    fetch('/api/admin/stats', { headers: authHeader() })
+      .then(r => r.ok ? r.json() : null)
+      .then(s => { if (s) { setStats(s); setLoading(false) } })
+  }
 
-    const token   = localStorage.getItem('token')
-    const SOCKET  = process.env.NEXT_PUBLIC_SOCKET_URL || '/'
-    let cafeId: number | null = null
+  useEffect(() => {
+    // Load stats immediately — don't block on billing/staff
+    loadStats()
+    fetch('/api/finance/status', { headers: authHeader() }).then(r => r.ok ? r.json() : null).then(b => b && setBilling(b))
+    fetch('/api/admin/staff',    { headers: authHeader() }).then(r => r.ok ? r.json() : null).then(st => st && setStaffCount(st?.waiters?.length ?? 0))
+
+    // Auto-refresh every 60s
+    const refreshId = setInterval(loadStats, 60_000)
+
+    const token  = localStorage.getItem('token')
+    const SOCKET = process.env.NEXT_PUBLIC_SOCKET_URL || '/'
+    let cafeId: string | null = null
     try { cafeId = token ? JSON.parse(atob(token.split('.')[1])).cafeId : null } catch {}
 
     const socket = io(SOCKET, { transports: ['websocket'], auth: { token } })
     socketRef.current = socket
     if (cafeId) socket.emit('join', `room_${cafeId}`)
-    socket.on('waiter_called',      (p: WaiterCall) => setCalls(c => [p, ...c]))
+
+    socket.on('waiter_called',       (p: WaiterCall) => setCalls(c => [p, ...c]))
     socket.on('waiter_acknowledged', (p: any)        => setCalls(c => c.filter(x => x.id !== p.id)))
-    return () => { socket.disconnect() }
+
+    // Real-time stats updates
+    socket.on('new_order', () => {
+      setStats((s: any) => s ? { ...s, activeOrders: (s.activeOrders ?? 0) + 1 } : s)
+    })
+    socket.on('order_status_update', ({ status }: { status: string }) => {
+      if (status === 'COMPLETED') {
+        setStats((s: any) => s ? {
+          ...s,
+          activeOrders:     Math.max(0, (s.activeOrders ?? 0) - 1),
+          ordersCountToday: (s.ordersCountToday ?? 0) + 1,
+        } : s)
+      } else if (status === 'CANCELLED') {
+        setStats((s: any) => s ? { ...s, activeOrders: Math.max(0, (s.activeOrders ?? 0) - 1) } : s)
+      }
+    })
+
+    return () => { socket.disconnect(); clearInterval(refreshId) }
   }, [])
 
   function ackCall(c: WaiterCall) {
@@ -60,8 +82,25 @@ export default function DashboardPage() {
   }
 
   if (loading) return (
-    <div className="flex items-center justify-center h-64">
-      <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
+    <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 animate-pulse">
+            <div className="h-3 bg-gray-100 rounded w-2/3 mb-3" />
+            <div className="h-7 bg-gray-100 rounded w-1/2 mb-2" />
+            <div className="h-2 bg-gray-100 rounded w-1/3" />
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 animate-pulse">
+            <div className="h-3 bg-gray-100 rounded w-2/3 mb-3" />
+            <div className="h-7 bg-gray-100 rounded w-1/2" />
+          </div>
+        ))}
+      </div>
+      <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 animate-pulse" style={{ height: 280 }} />
     </div>
   )
   if (!stats) return <div className="p-6 text-red-500">{t.loadError}</div>
@@ -71,6 +110,16 @@ export default function DashboardPage() {
 
   return (
     <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6" dir={isRTL ? 'rtl' : 'ltr'}>
+
+      {/* Refresh button */}
+      <div className="flex items-center justify-between">
+        <h1 className="font-extrabold text-gray-900 text-lg">{t.dashboard}</h1>
+        <button onClick={loadStats}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-500 hover:text-gray-700 rounded-xl text-xs font-semibold transition-colors">
+          <Activity className="w-3.5 h-3.5" />
+          {t.refresh ?? 'Refresh'}
+        </button>
+      </div>
 
       {/* ── System Health: zero-staff alert ──────────────────────── */}
       {staffCount === 0 && (
@@ -168,7 +217,9 @@ export default function DashboardPage() {
           <div className="flex flex-wrap gap-2">
             {(stats.mostLiked ?? []).slice(0,5).map((p: any) => (
               <div key={p.id} className="flex items-center gap-1.5 bg-rose-50 border border-rose-100 rounded-xl px-3 py-1.5">
-                <span className="text-xs font-semibold text-rose-700 truncate max-w-[100px]">{p.nameAr || p.nameEn}</span>
+                <span className="text-xs font-semibold text-rose-700 truncate max-w-[100px]">
+                  {lang === 'ar' ? (p.nameAr || p.nameEn) : lang === 'fr' ? (p.nameFr || p.nameEn) : p.nameEn || p.nameAr}
+                </span>
                 <span className="text-xs text-rose-400">❤ {p.likesCount}</span>
               </div>
             ))}
@@ -250,7 +301,7 @@ export default function DashboardPage() {
             <tbody>
               {stats.recentCompleted.map((o: any) => (
                 <tr key={o.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
-                  <td className="py-3 font-mono text-gray-600">#{o.id}</td>
+                  <td className="py-3 font-mono text-gray-500 text-xs">#{String(o.id).slice(-6)}</td>
                   <td className="py-3 text-gray-700">{o.tableId ? `T${o.tableId}` : '—'}</td>
                   <td className="py-3 font-semibold text-emerald-600">{Number(o.totalPrice).toFixed(2)} {currency}</td>
                   <td className="py-3 text-gray-400 text-xs">{new Date(o.createdAt).toLocaleString(t.dateLocale)}</td>
