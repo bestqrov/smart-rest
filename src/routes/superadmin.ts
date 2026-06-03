@@ -353,6 +353,92 @@ router.get('/api/superadmin/billing/overview', requireSuperAdmin, async (_req: R
   }
 })
 
+// ─── GET /api/superadmin/mrr-breakdown ───────────────────────────────────────
+// Estimated MRR in USD based on commission tiers × order volume + maintenance packs.
+// Grouped by country with date of last computation.
+
+const USD_RATES: Record<string, number> = {
+  MAD: 0.097, SAR: 0.267, AED: 0.272, KWD: 3.26, QAR: 0.274, BHD: 2.65,
+  OMR: 2.60,  DZD: 0.0074, TND: 0.32, EGP: 0.021, LYD: 0.21, MRU: 0.025,
+  XOF: 0.0016, XAF: 0.0016, KES: 0.0075,
+  EUR: 1.09, GBP: 1.26, USD: 1.0
+}
+
+const COMMISSION_AVG: Record<string, number> = {
+  MA: 4, SA: 6, AE: 6, KW: 0.6, QA: 6, BH: 0.6, OM: 0.4,
+  DZ: 120, TN: 1.5, EG: 18, LY: 2, MR: 20,
+  SN: 150, CI: 150, GA: 150, KE: 40,
+  FR: 0.5, ES: 0.5, BE: 0.5, DE: 0.5, IT: 0.5, NL: 0.5, PT: 0.5,
+  GB: 0.4, US: 0.5
+}
+
+const CURRENCY_BY_COUNTRY: Record<string, string> = {
+  MA:'MAD', SA:'SAR', AE:'AED', KW:'KWD', QA:'QAR', BH:'BHD', OM:'OMR',
+  DZ:'DZD', TN:'TND', EG:'EGP', LY:'LYD', MR:'MRU',
+  SN:'XOF', CI:'XOF', GA:'XAF', KE:'KES',
+  FR:'EUR', ES:'EUR', BE:'EUR', DE:'EUR', IT:'EUR', NL:'EUR', PT:'EUR',
+  GB:'GBP', US:'USD'
+}
+
+router.get('/api/superadmin/mrr-breakdown', requireSuperAdmin, async (_req: Request, res: Response) => {
+  try {
+    const cafes = await prisma.cafe.findMany({
+      where:  { billingStatus: { in: ['COLLECTING_DEBT', 'GRACE_PERIOD'] } },
+      select: {
+        country: true, currency: true,
+        weeklyOrderCount: true, billingCycle: true,
+        maintenancePack: true, maintenanceFee: true,
+        _count: { select: { orders: true } }
+      }
+    })
+
+    type CountryRow = {
+      country: string; currency: string; cafes: number
+      monthlyCommissionLocal: number; monthlyMaintenanceUSD: number
+      monthlyUSD: number
+    }
+
+    const byCountry: Record<string, CountryRow> = {}
+
+    for (const c of cafes) {
+      const country   = c.country.toUpperCase()
+      const currency  = c.currency || CURRENCY_BY_COUNTRY[country] || 'MAD'
+      const rate      = USD_RATES[currency] ?? USD_RATES['MAD']
+      const avgComm   = COMMISSION_AVG[country] ?? 4
+      const weekOrds  = c.weeklyOrderCount ?? 3
+      // Monthly estimate: weekly orders × 4 weeks × avg commission
+      const monthlyCommLocal = weekOrds * 4 * avgComm
+      const monthlyCommUSD   = monthlyCommLocal * rate
+      const monthlyMaintUSD  = c.maintenancePack ? (c.maintenanceFee ?? 25) * (30 / (c.billingCycle ?? 30)) : 0
+
+      if (!byCountry[country]) {
+        byCountry[country] = { country, currency, cafes: 0, monthlyCommissionLocal: 0, monthlyMaintenanceUSD: 0, monthlyUSD: 0 }
+      }
+      byCountry[country].cafes++
+      byCountry[country].monthlyCommissionLocal += monthlyCommLocal
+      byCountry[country].monthlyMaintenanceUSD  += monthlyMaintUSD
+      byCountry[country].monthlyUSD             += monthlyCommUSD + monthlyMaintUSD
+    }
+
+    const rows = Object.values(byCountry).sort((a, b) => b.monthlyUSD - a.monthlyUSD)
+    const totalMRR_USD = rows.reduce((s, r) => s + r.monthlyUSD, 0)
+
+    return res.json({
+      totalMRR_USD:   parseFloat(totalMRR_USD.toFixed(2)),
+      computedAt:     new Date().toISOString(),
+      byCountry:      rows.map(r => ({
+        ...r,
+        monthlyCommissionLocal: parseFloat(r.monthlyCommissionLocal.toFixed(2)),
+        monthlyMaintenanceUSD:  parseFloat(r.monthlyMaintenanceUSD.toFixed(2)),
+        monthlyUSD:             parseFloat(r.monthlyUSD.toFixed(2)),
+      }))
+    })
+  } catch (err) {
+    logger.error({ msg: 'mrr-breakdown error', err })
+    return res.status(500).json({ error: 'Failed' })
+  }
+})
+
 // ─── GET /api/superadmin/tenants (enhanced) ───────────────────────────────────
 // Re-register with subscription fields included (replaces the old endpoint above).
 

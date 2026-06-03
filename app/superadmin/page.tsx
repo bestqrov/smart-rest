@@ -154,6 +154,8 @@ export default function SuperAdminPage() {
   const [actionId, setActionId] = useState<string | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<Tenant | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [mrrData,  setMrrData]  = useState<{ totalMRR_USD: number; computedAt: string; byCountry: any[] } | null>(null)
+  const [mrrOpen,  setMrrOpen]  = useState(false)
 
   const secretRef = useRef(secret)
   useEffect(() => { secretRef.current = secret }, [secret])
@@ -179,7 +181,12 @@ export default function SuperAdminPage() {
         fetch('/api/superadmin/billing/overview', { headers: superHeader() }),
         fetch(`/api/superadmin/tenants/rich?${params}`, { headers: superHeader() })
       ])
-      if (ovRes.ok)  setOverview(await ovRes.json())
+      if (ovRes.ok)  {
+        setOverview(await ovRes.json())
+        // Fetch MRR breakdown in background
+        fetch('/api/superadmin/mrr-breakdown', { headers: superHeader() })
+          .then(r => r.ok ? r.json() : null).then(d => d && setMrrData(d))
+      }
       if (tenRes.ok) {
         const d = await tenRes.json()
         setTotal(d.total ?? 0)
@@ -415,11 +422,10 @@ export default function SuperAdminPage() {
           <>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
               {[
-                { icon: Users,         label: 'إجمالي المقاهي',    val: overview.totalCafes,                  color: 'text-blue-400',    bg: 'border-blue-800/50'    },
-                { icon: CheckCircle,   label: 'نشطة',               val: overview.activeCafes,                 color: 'text-emerald-400', bg: 'border-emerald-800/50' },
-                { icon: AlertTriangle, label: 'موقوفة',              val: overview.suspendedCafes,              color: 'text-red-400',     bg: 'border-red-800/50'     },
-                { icon: Globe,         label: 'تجريبية',             val: overview.trialCafes,                  color: 'text-amber-400',   bg: 'border-amber-800/50'   },
-                { icon: TrendingUp,    label: 'MRR المتوقع',         val: `${overview.mrr.toFixed(0)} MAD`,     color: 'text-violet-400',  bg: 'border-violet-800/50'  },
+                { icon: Users,         label: 'إجمالي المقاهي', val: overview.totalCafes,     color: 'text-blue-400',    bg: 'border-blue-800/50'    },
+                { icon: CheckCircle,   label: 'نشطة',            val: overview.activeCafes,    color: 'text-emerald-400', bg: 'border-emerald-800/50' },
+                { icon: AlertTriangle, label: 'موقوفة',           val: overview.suspendedCafes, color: 'text-red-400',     bg: 'border-red-800/50'     },
+                { icon: Globe,         label: 'تجريبية',          val: overview.trialCafes,     color: 'text-amber-400',   bg: 'border-amber-800/50'   },
               ].map((k, i) => (
                 <div key={i} className={`bg-gray-900 rounded-2xl p-4 border ${k.bg}`}>
                   <k.icon className={`w-4 h-4 mb-2 ${k.color}`} />
@@ -427,6 +433,32 @@ export default function SuperAdminPage() {
                   <div className={`text-2xl font-extrabold ${k.color}`}>{k.val}</div>
                 </div>
               ))}
+
+              {/* MRR Card — USD + breakdown button */}
+              <div className="bg-violet-950/40 border border-violet-800/50 rounded-2xl p-4 relative">
+                <div className="flex items-center justify-between mb-2">
+                  <TrendingUp className="w-4 h-4 text-violet-400" />
+                  <button onClick={() => setMrrOpen(true)}
+                    title="Breakdown par pays"
+                    className="w-5 h-5 rounded-full bg-violet-900/60 hover:bg-violet-700 flex items-center justify-center text-violet-400 hover:text-white transition-colors text-[10px] font-extrabold">
+                    i
+                  </button>
+                </div>
+                <div className="text-xs text-gray-500 mb-0.5">MRR المتوقع</div>
+                {mrrData ? (
+                  <div className="text-2xl font-extrabold text-violet-400">
+                    ${mrrData.totalMRR_USD.toFixed(0)}
+                    <span className="text-xs text-gray-500 font-normal ml-1">USD/mois</span>
+                  </div>
+                ) : (
+                  <div className="text-2xl font-extrabold text-violet-400 animate-pulse">…</div>
+                )}
+                {mrrData && (
+                  <p className="text-[10px] text-gray-600 mt-1">
+                    {new Date(mrrData.computedAt).toLocaleDateString()}
+                  </p>
+                )}
+              </div>
             </div>
 
             {/* Subscription tier split */}
@@ -828,6 +860,54 @@ export default function SuperAdminPage() {
               </>}
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* ── MRR Breakdown Modal ── */}
+      {mrrOpen && mrrData && (
+        <div className="fixed inset-0 z-[60] bg-black/85 flex items-center justify-center p-4"
+          onClick={() => setMrrOpen(false)}>
+          <div className="bg-gray-900 border border-violet-800 rounded-3xl w-full max-w-md shadow-2xl overflow-hidden"
+            onClick={e => e.stopPropagation()}>
+            <div className="bg-gradient-to-r from-violet-950 to-slate-900 px-6 py-4 flex items-center justify-between">
+              <div>
+                <h3 className="text-white font-extrabold text-base flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-violet-400" /> MRR المتوقع — Breakdown
+                </h3>
+                <p className="text-violet-400 text-xs mt-0.5">
+                  Calculé le {new Date(mrrData.computedAt).toLocaleString('fr')}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-gray-500">Total USD/mois</p>
+                <p className="text-2xl font-extrabold text-violet-400">${mrrData.totalMRR_USD.toFixed(2)}</p>
+              </div>
+            </div>
+
+            <div className="p-4 space-y-1 max-h-96 overflow-y-auto">
+              <div className="grid grid-cols-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest px-2 pb-2 border-b border-gray-800">
+                <span>Pays</span><span className="text-right">Cafés</span>
+                <span className="text-right">Commission locale</span>
+                <span className="text-right">USD/mois</span>
+              </div>
+              {mrrData.byCountry.map((r: any) => (
+                <div key={r.country} className="grid grid-cols-4 items-center px-2 py-2 rounded-xl hover:bg-gray-800/50 text-sm">
+                  <span className="font-bold text-white">{r.country}</span>
+                  <span className="text-right text-gray-400">{r.cafes}</span>
+                  <span className="text-right text-gray-300 text-xs">
+                    {r.monthlyCommissionLocal.toFixed(0)} {r.currency}
+                    {r.monthlyMaintenanceUSD > 0 && <span className="text-amber-400"> +${r.monthlyMaintenanceUSD.toFixed(0)}</span>}
+                  </span>
+                  <span className="text-right font-extrabold text-violet-300">${r.monthlyUSD.toFixed(2)}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="px-4 py-3 border-t border-gray-800 text-[10px] text-gray-600 flex justify-between">
+              <span>Basé sur 10 cafés + 10 sandwichs/jour × orders_weekly × taux de commission</span>
+              <button onClick={() => setMrrOpen(false)} className="text-gray-400 hover:text-white px-2">✕</button>
+            </div>
           </div>
         </div>
       )}
