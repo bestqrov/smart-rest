@@ -84,16 +84,23 @@ async function runNightlyJobs(): Promise<void> {
 
   // 3. Cleanup: remove QrScan records older than 24h
   const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000)
-  const { count } = await prisma.qrScan.deleteMany({
+  const { count: qrScansCleared } = await prisma.qrScan.deleteMany({
     where: { scanTime: { lt: yesterday } }
   })
 
+  // 4. Expire stale ClientSessions (dynamic QR — seats freed for next guests)
+  const { count: sessionsExpired } = await prisma.clientSession.updateMany({
+    where: { status: 'active', expiresAt: { lt: new Date() } },
+    data:  { status: 'expired' }
+  })
+
   logger.info({
-    msg:          '[CRON] Nightly jobs completed',
-    cafes:        cafes.length,
+    msg:             '[CRON] Nightly jobs completed',
+    cafes:           cafes.length,
     totalAlerts,
     reportsSent,
-    qrScansCleared: count,
+    qrScansCleared,
+    sessionsExpired,
   })
 }
 

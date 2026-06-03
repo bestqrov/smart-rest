@@ -207,6 +207,7 @@ model Cafe {
   fraudAlerts        FraudAlert[]
   feedbacks          Feedback[]
   marketingCampaigns MarketingCampaign[]
+  clientSessions     ClientSession[]
 
 }
 
@@ -225,15 +226,22 @@ model Table {
   assignedWaiterId String? @db.ObjectId
   assignedWaiter   Staff?  @relation("TableWaiterAssignment", fields: [assignedWaiterId], references: [id])
 
+  // ── Dynamic QR — one QR per table, seats assigned at scan time ───────────
+  // How many guests can sit at this table (used for dynamic seat allocation)
+  capacity    Int @default(4)
+  // Physical QR holder decor style shown in admin: 1=card, 2=tent, 3=stand, 4=acrylic
+  displayType Int @default(1)
+
   mergedIntoTableId String? @db.ObjectId
   mergedIntoTable   Table?  @relation("TableMerge", fields: [mergedIntoTableId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   mergedTables      Table[] @relation("TableMerge")
 
-  seats          Seat[]
-  orders         Order[]
-  originalOrders Order[]       @relation("OriginalTable")
-  billRequests   BillRequest[]
-  waiterCalls    WaiterCall[]
+  seats           Seat[]
+  orders          Order[]
+  originalOrders  Order[]         @relation("OriginalTable")
+  billRequests    BillRequest[]
+  waiterCalls     WaiterCall[]
+  clientSessions  ClientSession[]
 
   @@unique([cafeId, tableNumber])
   @@index([cafeId])
@@ -330,6 +338,10 @@ model Order {
   // staff member who entered the order manually (null for QR orders)
   createdById  String? @db.ObjectId
   createdBy    Staff?  @relation("OrderCreatedBy", fields: [createdById], references: [id])
+
+  // Dynamic QR session — set when order comes from the new single-QR-per-table flow
+  sessionId        String?       @db.ObjectId
+  session          ClientSession? @relation(fields: [sessionId], references: [id])
 
   // Waiter who claimed/served this order (set when they acknowledge the notification)
   assignedWaiterId String? @db.ObjectId
@@ -789,6 +801,43 @@ model PaymentRequest {
   @@index([cafeId])
   @@index([status])
   @@index([createdAt])
+}
+
+// ─── Dynamic QR — Client Sessions (one QR per table, seats assigned at scan) ──
+//
+// Flow: customer scans Table.qrToken → POST /api/qr/scan with deviceId
+//       → server assigns next free seatNumber (1..Table.capacity)
+//       → returns ClientSession.id stored in browser localStorage
+//       → all orders from that device carry sessionId (no seatToken needed)
+
+model ClientSession {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId       String   @db.ObjectId
+  cafe         Cafe     @relation(fields: [cafeId], references: [id])
+  tableId      String   @db.ObjectId
+  table        Table    @relation(fields: [tableId], references: [id])
+
+  // Dynamically assigned seat number (1 .. Table.capacity)
+  seatNumber   Int
+
+  // Opaque device identifier (UUID generated once in browser, stored in localStorage)
+  deviceId     String
+
+  // active | completed | expired
+  status       String   @default("active")
+
+  createdAt    DateTime @default(now())
+  lastActiveAt DateTime @default(now())
+  // Auto-expires 2h after last heartbeat; nightly cron marks stale ones expired
+  expiresAt    DateTime
+
+  orders       Order[]
+
+  @@index([cafeId])
+  @@index([tableId, status])
+  @@index([deviceId])
+  @@index([expiresAt])
+  @@index([status])
 }
 
 // ─── Marketing Campaigns (Automated Video Engine) ─────────────────────────────

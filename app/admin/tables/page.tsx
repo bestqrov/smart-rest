@@ -9,9 +9,18 @@ import {
 
 type Seat = { id: string; seatNumber: number; qrToken: string }
 type TableRow = {
-  id: string; tableNumber: number; isActive: boolean; seats: Seat[]
+  id: string; tableNumber: number; isActive: boolean; qrToken: string
+  capacity: number; displayType: number
+  seats: Seat[]
   mergedIntoTableId: string | null
   mergedIntoTable?: { id: string; tableNumber: number } | null
+  // live sessions (fetched separately)
+  activeCount?: number
+  vacantCount?: number
+}
+
+const DISPLAY_TYPE_LABELS: Record<number, string> = {
+  1: '🃏 Carte', 2: '⛺ Tente', 3: '🎋 Support', 4: '🔮 Acrylique',
 }
 
 export default function TablesPage() {
@@ -24,8 +33,9 @@ export default function TablesPage() {
   const [subdomain, setSubdomain] = useState('')
   const [mergeSource, setMergeSource] = useState<string[]>([])
   const [mergeTarget, setMergeTarget] = useState<string | null>(null)
-  const [syncError, setSyncError] = useState<string | null>(null)
-  const [merging, setMerging]     = useState(false)
+  const [syncError, setSyncError]   = useState<string | null>(null)
+  const [merging, setMerging]       = useState(false)
+  const [defaultCapacity, setDefaultCapacity] = useState(4)
   const printRef = useRef<HTMLDivElement>(null)
 
   function authHeader() {
@@ -39,6 +49,7 @@ export default function TablesPage() {
       const data: TableRow[] = await r.json()
       setTables(data)
       await renderQrCodes(data, subdomain)
+      loadSessions(data)
     }
     setLoading(false)
   }
@@ -47,14 +58,27 @@ export default function TablesPage() {
     const origin = typeof window !== 'undefined' ? window.location.origin : ''
     const imgs: Record<string, string> = {}
     for (const t of data) {
-      for (const s of t.seats) {
-        const url = `${origin}/${sub}/t/${t.tableNumber}/s/${s.seatNumber}?token=${s.qrToken}`
-        try {
-          imgs[s.qrToken] = await QRCode.toDataURL(url, { width: 200, margin: 1, color: { dark: '#064e3b', light: '#ffffff' } })
-        } catch {}
-      }
+      // Single QR per table — uses Table.qrToken (not per-seat)
+      const url = `${origin}/${sub}/t/${t.tableNumber}?token=${t.qrToken}`
+      try {
+        imgs[t.qrToken] = await QRCode.toDataURL(url, { width: 240, margin: 2, color: { dark: '#064e3b', light: '#ffffff' } })
+      } catch {}
     }
     setQrImages(imgs)
+  }
+
+  async function loadSessions(data: TableRow[]) {
+    const updated = await Promise.all(data.map(async t => {
+      try {
+        const r = await fetch(`/api/admin/tables/${t.id}/sessions`, { headers: authHeader() })
+        if (r.ok) {
+          const s = await r.json()
+          return { ...t, activeCount: s.activeCount, vacantCount: s.vacantCount }
+        }
+      } catch {}
+      return t
+    }))
+    setTables(updated)
   }
 
   useEffect(() => {
@@ -135,20 +159,21 @@ export default function TablesPage() {
 
   function printQr() {
     const w = window.open('', '_blank')!
-    w.document.write(`<html><head><title>QR Stickers</title>
+    w.document.write(`<html><head><title>QR Tables — Smart Resto</title>
     <style>
-      body { margin: 0; font-family: sans-serif; }
-      .grid { display: flex; flex-wrap: wrap; gap: 12px; padding: 16px; }
-      .card { border: 2px solid #064e3b; border-radius: 12px; padding: 12px; text-align: center; width: 160px; break-inside: avoid; }
-      .card img { width: 120px; height: 120px; }
-      .table { font-weight: bold; font-size: 14px; color: #064e3b; }
-      .seat { font-size: 11px; color: #555; margin-top: 2px; }
+      body { margin: 0; font-family: sans-serif; background: #fff; }
+      .grid { display: flex; flex-wrap: wrap; gap: 16px; padding: 20px; }
+      .card { border: 2px solid #064e3b; border-radius: 16px; padding: 16px; text-align: center; width: 180px; break-inside: avoid; }
+      .card img { width: 148px; height: 148px; }
+      .table { font-weight: 900; font-size: 18px; color: #064e3b; margin-top: 8px; }
+      .cap { font-size: 11px; color: #6b7280; margin-top: 4px; }
       @media print { @page { margin: 8mm; } }
     </style></head><body><div class="grid">`)
-    tables.forEach(t => t.seats.forEach(s => {
-      const img = qrImages[s.qrToken] || ''
-      w.document.write(`<div class="card"><img src="${img}" /><div class="table">طاولة ${t.tableNumber}</div><div class="seat">مقعد ${s.seatNumber}</div></div>`)
-    }))
+    // ONE QR per table (dynamic seat assignment on scan)
+    tables.forEach(t => {
+      const img = qrImages[t.qrToken] || ''
+      w.document.write(`<div class="card"><img src="${img}" /><div class="table">طاولة ${t.tableNumber}</div><div class="cap">${t.capacity} مقاعد</div></div>`)
+    })
     w.document.write('</div></body></html>')
     w.document.close()
     w.print()
@@ -216,7 +241,8 @@ export default function TablesPage() {
         )}
         {tables.length > 0 && !syncError && (
           <p className="text-xs text-gray-400 mt-3">
-            {tables.length} طاولة · {tables.reduce((s, t) => s + t.seats.length, 0)} مقعد · الرابط: <span className="text-emerald-600">{typeof window !== 'undefined' ? window.location.origin : ''}/{subdomain}/t/:n/s/:n?token=...</span>
+            {tables.length} طاولة · QR واحد لكل طاولة (مقاعد ديناميكية) ·{' '}
+            <span className="text-emerald-600 font-mono">{typeof window !== 'undefined' ? window.location.origin : ''}/{subdomain}/t/:n?token=…</span>
           </p>
         )}
       </div>
@@ -321,7 +347,13 @@ export default function TablesPage() {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-400">{table.seats.length} مقاعد</span>
+                  {/* Live session count */}
+                  {table.activeCount !== undefined && (
+                    <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
+                      🪑 {table.activeCount}/{table.capacity ?? table.seats.length}
+                    </span>
+                  )}
+                  <span className="text-xs text-gray-400">{table.capacity ?? table.seats.length} مقاعد</span>
 
                   {/* ── Manager activation toggle ── */}
                   {table.isActive ? (
@@ -344,40 +376,62 @@ export default function TablesPage() {
                 </div>
               </div>
 
-              {/* QR codes — dimmed for inactive tables */}
-              <div className={`flex flex-wrap gap-4 ${!table.isActive ? 'pointer-events-none' : ''}`}>
-                {table.seats.map(seat => (
-                  <div key={seat.seatNumber} className="flex flex-col items-center gap-1">
-                    {qrImages[seat.qrToken] ? (
-                      <div className="relative">
-                        <img
-                          src={qrImages[seat.qrToken]}
-                          alt={`T${table.tableNumber}-S${seat.seatNumber}`}
-                          className={`w-24 h-24 rounded-lg border ${!table.isActive ? 'border-gray-200 grayscale' : 'border-gray-100'}`}
-                        />
-                        {!table.isActive && (
-                          <div className="absolute inset-0 rounded-lg bg-gray-100/70 flex items-center justify-center">
-                            <span className="text-2xl">🔒</span>
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="w-24 h-24 bg-gray-100 rounded-lg flex items-center justify-center">
-                        <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
-                      </div>
+              {/* Single QR per table — dynamic seat allocation on scan */}
+              <div className={`flex items-start gap-6 ${!table.isActive ? 'pointer-events-none' : ''}`}>
+                {/* QR code */}
+                <div className="flex flex-col items-center gap-1.5 shrink-0">
+                  {qrImages[table.qrToken] ? (
+                    <div className="relative">
+                      <img
+                        src={qrImages[table.qrToken]}
+                        alt={`T${table.tableNumber}`}
+                        className={`w-32 h-32 rounded-xl border-2 ${!table.isActive ? 'border-gray-200 grayscale' : 'border-emerald-100'}`}
+                      />
+                      {!table.isActive && (
+                        <div className="absolute inset-0 rounded-xl bg-gray-100/70 flex items-center justify-center">
+                          <span className="text-2xl">🔒</span>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="w-32 h-32 bg-gray-100 rounded-xl flex items-center justify-center">
+                      <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+                    </div>
+                  )}
+                  {table.isActive && qrImages[table.qrToken] && (
+                    <a href={qrImages[table.qrToken]} download={`Table-${table.tableNumber}.png`}
+                      className="text-xs text-emerald-600 hover:text-emerald-800 flex items-center gap-0.5">
+                      <Download className="w-3 h-3" /> تحميل QR
+                    </a>
+                  )}
+                </div>
+
+                {/* Live seat map */}
+                <div className="flex-1">
+                  <p className="text-xs text-gray-400 mb-2">
+                    الطاقة الاستيعابية — {table.capacity} مقاعد ديناميكية
+                    {table.activeCount !== undefined && (
+                      <span className="ml-2 text-emerald-600 font-semibold">
+                        ({table.activeCount} مشغول · {table.vacantCount} شاغر)
+                      </span>
                     )}
-                    <span className="text-xs text-gray-500">م{seat.seatNumber}</span>
-                    {table.isActive && (
-                      <a
-                        href={qrImages[seat.qrToken] || '#'}
-                        download={`T${table.tableNumber}-S${seat.seatNumber}.png`}
-                        className="text-xs text-emerald-600 hover:text-emerald-800 flex items-center gap-0.5"
-                      >
-                        <Download className="w-3 h-3" /> حفظ
-                      </a>
-                    )}
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {Array.from({ length: table.capacity }, (_, i) => {
+                      const seatN = i + 1
+                      const occupied = table.activeCount !== undefined && seatN <= table.activeCount
+                      return (
+                        <div key={seatN} className={`w-9 h-9 rounded-lg flex items-center justify-center text-xs font-bold border
+                          ${occupied ? 'bg-emerald-100 border-emerald-300 text-emerald-700' : 'bg-gray-100 border-gray-200 text-gray-400'}`}>
+                          {seatN}
+                        </div>
+                      )
+                    })}
                   </div>
-                ))}
+                  <p className="text-xs text-gray-300 mt-3 font-mono truncate">
+                    {typeof window !== 'undefined' ? window.location.origin : ''}/{subdomain}/t/{table.tableNumber}?token={table.qrToken.slice(0,8)}…
+                  </p>
+                </div>
               </div>
             </div>
           ))}

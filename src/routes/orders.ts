@@ -14,9 +14,10 @@ type OrderItemInput = { productId: string; quantity: number; notes?: string }
 
 router.post('/api/orders', async (req: Request, res: Response) => {
   try {
-    const { tableToken, seatToken, customerPhone, items } = req.body as {
+    const { tableToken, seatToken, sessionId, customerPhone, items } = req.body as {
       tableToken?:    string
       seatToken?:     string
+      sessionId?:     string   // Dynamic QR flow — new single-QR-per-table approach
       customerPhone?: string
       items:          OrderItemInput[]
     }
@@ -24,17 +25,42 @@ router.post('/api/orders', async (req: Request, res: Response) => {
     if (!Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ error: 'items[] is required and must not be empty' })
     }
-    if (!tableToken && !seatToken) {
-      return res.status(400).json({ error: 'Provide either tableToken or seatToken' })
+    if (!tableToken && !seatToken && !sessionId) {
+      return res.status(400).json({ error: 'Provide tableToken, seatToken, or sessionId' })
     }
 
     let cafeId: string
     let physicalTableId: string
     let billingTableId: string
-    let seatId: string | null = null
-    let seatNumber: number | null = null
+    let seatId: string | null         = null
+    let seatNumber: number | null     = null
+    let resolvedSessionId: string | null = null
 
-    if (seatToken) {
+    if (sessionId) {
+      // ── New dynamic-QR flow ──────────────────────────────────────────────
+      const now     = new Date()
+      const session = await prisma.clientSession.findUnique({
+        where: { id: sessionId },
+        include: {
+          table: {
+            select: { id: true, cafeId: true, isActive: true, mergedIntoTableId: true }
+          }
+        }
+      })
+      if (!session || session.status !== 'active' || session.expiresAt <= now) {
+        return res.status(401).json({ error: 'Session expired — please scan the QR code again', code: 'SESSION_EXPIRED' })
+      }
+      if (!session.table.isActive) {
+        return res.status(403).json({ error: 'Table is inactive' })
+      }
+      cafeId              = session.cafeId
+      physicalTableId     = session.tableId
+      billingTableId      = session.table.mergedIntoTableId ?? session.tableId
+      seatNumber          = session.seatNumber
+      resolvedSessionId   = session.id
+
+    } else if (seatToken) {
+      // ── Legacy per-seat QR flow (backward compat) ────────────────────────
       const seat = await prisma.seat.findUnique({
         where: { qrToken: seatToken },
         include: { table: { select: { id: true, cafeId: true, isActive: true, mergedIntoTableId: true } } }
@@ -47,7 +73,9 @@ router.post('/api/orders', async (req: Request, res: Response) => {
       billingTableId  = seat.table.mergedIntoTableId ?? seat.table.id
       seatId          = seat.id
       seatNumber      = seat.seatNumber
+
     } else {
+      // ── Table-level token (no seat) ──────────────────────────────────────
       const table = await prisma.table.findUnique({ where: { qrToken: tableToken! } })
       if (!table || !table.isActive) return res.status(404).json({ error: 'Invalid or inactive table token' })
       cafeId          = table.cafeId
@@ -95,6 +123,7 @@ router.post('/api/orders', async (req: Request, res: Response) => {
           originalTableId: physicalTableId !== billingTableId ? physicalTableId : null,
           seatId:          seatId ?? undefined,
           seatNumber:      seatNumber ?? undefined,
+          sessionId:       resolvedSessionId ?? undefined,
           customerPhone:   customerPhone || null,
           totalPrice:      total,
           paymentMethod:   'CASH',

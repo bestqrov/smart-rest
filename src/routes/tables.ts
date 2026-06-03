@@ -466,4 +466,309 @@ router.post('/api/tables/sync', authorizeAdmin, async (req: Request, res: Respon
   }
 })
 
+// ═══════════════════════════════════════════════════════════════════════════
+// ─── DYNAMIC QR — Single QR per Table, seats assigned at scan time ──────────
+// ═══════════════════════════════════════════════════════════════════════════
+
+const SESSION_TTL_MS = 2 * 60 * 60 * 1000 // 2 hours
+
+// ─── Core: assign or resume a client session ─────────────────────────────────
+// Race-condition safe: wraps in a retry loop with small jitter.
+// Probability of two concurrent scans is near-zero in restaurant context,
+// but the retry ensures correctness even then.
+
+async function assignOrResumeSession(
+  tableId:  string,
+  cafeId:   string,
+  capacity: number,
+  deviceId: string
+): Promise<{ session: any; isNew: boolean }> {
+  const MAX_RETRIES = 3
+
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    try {
+      const now       = new Date()
+      const expiresAt = new Date(now.getTime() + SESSION_TTL_MS)
+
+      // 1. Check if this device already has an active session on this table
+      const existing = await prisma.clientSession.findFirst({
+        where: { tableId, deviceId, status: 'active', expiresAt: { gt: now } }
+      })
+
+      if (existing) {
+        const resumed = await prisma.clientSession.update({
+          where: { id: existing.id },
+          data:  { lastActiveAt: now, expiresAt }
+        })
+        return { session: resumed, isNew: false }
+      }
+
+      // 2. Get all active seat numbers for this table
+      const activeSessions = await prisma.clientSession.findMany({
+        where: { tableId, status: 'active', expiresAt: { gt: now } },
+        select: { seatNumber: true }
+      })
+      const occupied = new Set(activeSessions.map(s => s.seatNumber))
+
+      // 3. Find next free seat (sequential 1..capacity)
+      let assignedSeat: number | null = null
+      for (let i = 1; i <= capacity; i++) {
+        if (!occupied.has(i)) { assignedSeat = i; break }
+      }
+
+      if (assignedSeat === null) {
+        throw Object.assign(new Error('TABLE_FULL'), { code: 'TABLE_FULL' })
+      }
+
+      // 4. Create new session
+      const created = await prisma.clientSession.create({
+        data: { cafeId, tableId, seatNumber: assignedSeat, deviceId, status: 'active', expiresAt, lastActiveAt: now }
+      })
+
+      return { session: created, isNew: true }
+    } catch (err: any) {
+      if (err.code === 'TABLE_FULL') throw err
+      if (attempt < MAX_RETRIES - 1) {
+        await new Promise(r => setTimeout(r, 40 + Math.random() * 80))
+        continue
+      }
+      throw err
+    }
+  }
+  throw new Error('SCAN_FAILED_RETRIES_EXHAUSTED')
+}
+
+// ─── POST /api/qr/scan ────────────────────────────────────────────────────────
+// Called by the new table QR page on every load.
+// Body: { tableToken: string, deviceId: string }
+// Returns: { sessionId, seatNumber, tableId, tableNumber, cafeId, capacity, occupiedCount, isNew }
+
+router.post('/api/qr/scan', async (req: Request, res: Response) => {
+  try {
+    const { tableToken, deviceId } = req.body as { tableToken?: string; deviceId?: string }
+
+    if (!tableToken || !deviceId || typeof deviceId !== 'string' || deviceId.length < 8) {
+      return res.status(400).json({ error: 'tableToken and deviceId (min 8 chars) are required' })
+    }
+
+    // Find table by its single QR token
+    const table = await prisma.table.findUnique({
+      where: { qrToken: tableToken },
+      select: {
+        id: true, cafeId: true, tableNumber: true, capacity: true, isActive: true,
+        mergedIntoTableId: true,
+        mergedIntoTable: { select: { id: true, tableNumber: true } }
+      }
+    })
+
+    if (!table)           return res.status(404).json({ error: 'QR code not found' })
+    if (!table.isActive)  return res.status(403).json({ error: 'This table is currently inactive' })
+
+    // Check cafe is live
+    const cafe = await prisma.cafe.findUnique({
+      where: { id: table.cafeId },
+      select: { isActive: true, subdomain: true }
+    })
+    if (!cafe?.isActive)  return res.status(403).json({ error: 'Venue is currently unavailable' })
+
+    let result: { session: any; isNew: boolean }
+    try {
+      result = await assignOrResumeSession(table.id, table.cafeId, table.capacity, deviceId)
+    } catch (err: any) {
+      if (err.code === 'TABLE_FULL') {
+        return res.status(409).json({
+          error: 'Table is fully occupied',
+          capacity: table.capacity,
+          code: 'TABLE_FULL'
+        })
+      }
+      throw err
+    }
+
+    // Count active sessions for this table (for UI display)
+    const occupiedCount = await prisma.clientSession.count({
+      where: { tableId: table.id, status: 'active', expiresAt: { gt: new Date() } }
+    })
+
+    const billingTable = table.mergedIntoTable ?? table
+
+    logger.info({
+      msg:        result.isNew ? 'seat assigned' : 'session resumed',
+      cafeId:     table.cafeId,
+      tableId:    table.id,
+      tableNumber: table.tableNumber,
+      seatNumber: result.session.seatNumber,
+      deviceId:   deviceId.slice(0, 8) + '…',
+    })
+
+    return res.json({
+      sessionId:    result.session.id,
+      seatNumber:   result.session.seatNumber,
+      tableId:      table.id,
+      tableNumber:  table.tableNumber,
+      cafeId:       table.cafeId,
+      subdomain:    cafe.subdomain,
+      capacity:     table.capacity,
+      occupiedCount,
+      isNew:        result.isNew,
+      isMerged:     !!table.mergedIntoTableId,
+      billingTableId:      billingTable.id,
+      billingTableNumber:  billingTable.tableNumber,
+    })
+  } catch (err) {
+    logger.error({ msg: 'POST /api/qr/scan error', err })
+    return res.status(500).json({ error: 'Seat assignment failed' })
+  }
+})
+
+// ─── GET /api/qr/table-session/:sessionId ────────────────────────────────────
+// Validates a stored sessionId on page reload. Returns fresh session data.
+
+router.get('/api/qr/table-session/:sessionId', async (req: Request, res: Response) => {
+  try {
+    const { sessionId } = req.params
+    const now = new Date()
+
+    const session = await prisma.clientSession.findUnique({
+      where: { id: sessionId },
+      include: {
+        table: {
+          select: {
+            id: true, tableNumber: true, isActive: true, capacity: true,
+            mergedIntoTableId: true,
+            mergedIntoTable: { select: { id: true, tableNumber: true } }
+          }
+        },
+        cafe: { select: { isActive: true, subdomain: true } }
+      }
+    })
+
+    if (!session || session.status !== 'active' || session.expiresAt <= now) {
+      return res.status(401).json({ error: 'Session expired or not found', code: 'SESSION_EXPIRED' })
+    }
+    if (!session.table.isActive) {
+      return res.status(403).json({ error: 'Table is inactive' })
+    }
+
+    // Refresh TTL silently
+    await prisma.clientSession.update({
+      where: { id: sessionId },
+      data:  { lastActiveAt: now, expiresAt: new Date(now.getTime() + SESSION_TTL_MS) }
+    })
+
+    const billingTable = session.table.mergedIntoTable ?? session.table
+
+    return res.json({
+      sessionId:          session.id,
+      seatNumber:         session.seatNumber,
+      tableId:            session.tableId,
+      tableNumber:        session.table.tableNumber,
+      cafeId:             session.cafeId,
+      subdomain:          session.cafe.subdomain,
+      capacity:           session.table.capacity,
+      isMerged:           !!session.table.mergedIntoTableId,
+      billingTableId:     billingTable.id,
+      billingTableNumber: billingTable.tableNumber,
+    })
+  } catch (err) {
+    logger.error({ msg: 'GET /api/qr/table-session error', err })
+    return res.status(500).json({ error: 'Session validation failed' })
+  }
+})
+
+// ─── PATCH /api/qr/session/:sessionId/heartbeat ──────────────────────────────
+// Client sends this every 5 min to keep session alive.
+
+router.patch('/api/qr/session/:sessionId/heartbeat', async (req: Request, res: Response) => {
+  try {
+    const { sessionId } = req.params
+    const now = new Date()
+
+    const session = await prisma.clientSession.findUnique({
+      where: { id: sessionId },
+      select: { id: true, status: true, expiresAt: true }
+    })
+
+    if (!session || session.status !== 'active' || session.expiresAt <= now) {
+      return res.status(401).json({ error: 'Session expired', code: 'SESSION_EXPIRED' })
+    }
+
+    await prisma.clientSession.update({
+      where: { id: sessionId },
+      data:  { lastActiveAt: now, expiresAt: new Date(now.getTime() + SESSION_TTL_MS) }
+    })
+
+    return res.json({ ok: true })
+  } catch (err) {
+    logger.error({ msg: 'heartbeat error', err })
+    return res.status(500).json({ error: 'Heartbeat failed' })
+  }
+})
+
+// ─── PATCH /api/qr/session/:sessionId/complete ───────────────────────────────
+// Mark session done when bill is paid (frees the seat for the next guest).
+
+router.patch('/api/qr/session/:sessionId/complete', async (req: Request, res: Response) => {
+  try {
+    const { sessionId } = req.params
+
+    const session = await prisma.clientSession.findUnique({
+      where: { id: sessionId },
+      select: { id: true, cafeId: true, tableId: true, status: true }
+    })
+
+    if (!session) return res.status(404).json({ error: 'Session not found' })
+
+    await prisma.clientSession.update({
+      where: { id: sessionId },
+      data:  { status: 'completed', lastActiveAt: new Date() }
+    })
+
+    logger.info({ msg: 'session completed', sessionId, tableId: session.tableId })
+    return res.json({ ok: true })
+  } catch (err) {
+    logger.error({ msg: 'complete session error', err })
+    return res.status(500).json({ error: 'Failed to complete session' })
+  }
+})
+
+// ─── GET /api/admin/tables/:tableId/sessions ─────────────────────────────────
+// Admin: see who's currently sitting at a table (active sessions).
+
+router.get('/api/admin/tables/:tableId/sessions', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const { cafeId } = req.admin!
+    const { tableId } = req.params
+
+    const table = await prisma.table.findUnique({ where: { id: tableId }, select: { cafeId: true, capacity: true } })
+    if (!table || table.cafeId !== cafeId) return res.status(404).json({ error: 'Table not found' })
+
+    const sessions = await prisma.clientSession.findMany({
+      where: { tableId, status: 'active', expiresAt: { gt: new Date() } },
+      select: { id: true, seatNumber: true, createdAt: true, lastActiveAt: true, expiresAt: true },
+      orderBy: { seatNumber: 'asc' }
+    })
+
+    return res.json({
+      tableId,
+      capacity:     table.capacity,
+      activeCount:  sessions.length,
+      vacantCount:  table.capacity - sessions.length,
+      seats: Array.from({ length: table.capacity }, (_, i) => {
+        const s = sessions.find(x => x.seatNumber === i + 1)
+        return {
+          seatNumber: i + 1,
+          status:     s ? 'occupied' : 'vacant',
+          sessionId:  s?.id ?? null,
+          since:      s?.createdAt ?? null,
+          lastActive: s?.lastActiveAt ?? null,
+        }
+      })
+    })
+  } catch (err) {
+    logger.error({ msg: 'GET sessions error', err })
+    return res.status(500).json({ error: 'Failed to fetch sessions' })
+  }
+})
+
 export default router
