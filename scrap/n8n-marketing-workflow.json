@@ -1,0 +1,548 @@
+{
+  "name": "Smart Resto — Automated Video Marketing Engine",
+  "nodes": [
+
+    {
+      "id": "webhook-trigger",
+      "name": "Webhook — Smart Resto Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "smart-resto-marketing",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "notes": "Copy the production URL (https://your-n8n.domain/webhook/smart-resto-marketing) and set it as N8N_MARKETING_WEBHOOK_URL in your .env"
+    },
+
+    {
+      "id": "respond-immediately",
+      "name": "Respond 202 Immediately",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [460, 180],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ received: true, campaignId: $json.campaignId }) }}",
+        "options": { "responseCode": 202 }
+      },
+      "notes": "Respond to Smart Resto immediately (non-blocking). The workflow continues async below."
+    },
+
+    {
+      "id": "set-vars",
+      "name": "Set Variables",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [460, 380],
+      "parameters": {
+        "mode": "manual",
+        "fields": {
+          "values": [
+            { "name": "campaignId",    "type": "string", "value": "={{ $json.campaignId }}" },
+            { "name": "cafeName",      "type": "string", "value": "={{ $json.cafeName }}" },
+            { "name": "country",       "type": "string", "value": "={{ $json.country }}" },
+            { "name": "productName",   "type": "string", "value": "={{ $json.productName }}" },
+            { "name": "productPrice",  "type": "string", "value": "={{ $json.productPrice }}" },
+            { "name": "imageUrl",      "type": "string", "value": "={{ $json.imageUrl }}" },
+            { "name": "hasWatermark",  "type": "boolean","value": "={{ $json.hasWatermark }}" },
+            { "name": "platforms",     "type": "string", "value": "={{ JSON.stringify($json.platforms) }}" },
+            { "name": "callbackUrl",   "type": "string", "value": "={{ $json.callbackUrl }}" }
+          ]
+        }
+      }
+    },
+
+    {
+      "id": "country-switch",
+      "name": "Switch — Country Router",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [680, 380],
+      "parameters": {
+        "mode": "rules",
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": { "caseSensitive": false },
+                "conditions": [
+                  { "leftValue": "={{ $json.country }}", "rightValue": "SA", "operator": { "type": "string", "operation": "equals" } }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "Gulf"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": false },
+                "conditions": [
+                  { "leftValue": "={{ $json.country }}", "rightValue": "AE", "operator": { "type": "string", "operation": "equals" } }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "Gulf"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": false },
+                "conditions": [
+                  { "leftValue": "={{ $json.country }}", "rightValue": "MA", "operator": { "type": "string", "operation": "equals" } }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "Morocco"
+            }
+          ]
+        },
+        "fallbackOutput": "extra"
+      },
+      "notes": "SA/AE → Gulf Arabic caption. MA → Moroccan Darija caption."
+    },
+
+    {
+      "id": "gpt-gulf",
+      "name": "GPT-4 — Gulf Arabic Caption",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [920, 260],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.OPENAI_API_KEY }}" },
+            { "name": "Content-Type",  "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "={\n  \"model\": \"gpt-4o\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"أنت خبير تسويق رقمي متخصص في مطاعم الخليج العربي (السعودية والإمارات). اكتب كابشن تسويقي جذاب بالعربية الخليجية لمنصات سناب شات وتيك توك. الكابشن يجب أن يكون: قصير (3-4 أسطر)، يحتوي على إيموجي مناسبة، يذكر اسم الطبق والسعر، ويشجع على الطلب الآن. لا تكتب إلا الكابشن فقط.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"اكتب كابشن لطبق: {{ $json.productName }} - السعر: {{ $json.productPrice }} ريال - المطعم: {{ $json.cafeName }}\"\n    }\n  ],\n  \"max_tokens\": 200,\n  \"temperature\": 0.8\n}",
+        "options": { "timeout": 30000 }
+      },
+      "notes": "Env var required: OPENAI_API_KEY"
+    },
+
+    {
+      "id": "gpt-morocco",
+      "name": "GPT-4 — Moroccan Darija Caption",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [920, 500],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.OPENAI_API_KEY }}" },
+            { "name": "Content-Type",  "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "={\n  \"model\": \"gpt-4o\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"أنت خبير تسويق رقمي متخصص في مطاعم المغرب. اكتب كابشن تسويقي جذاب بالدارجة المغربية (مزيج من العربية المغربية والفرنسية) لمنصات إنستغرام وفيسبوك. الكابشن: 3-4 أسطر، إيموجي مناسبة، يذكر اسم الطبق والثمن، كلام بسيط وقريب من الناس العاديين. اكتب الكابشن فقط.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"كتب كابشن لطبق: {{ $json.productName }} - الثمن: {{ $json.productPrice }} درهم - المطعم: {{ $json.cafeName }}\"\n    }\n  ],\n  \"max_tokens\": 200,\n  \"temperature\": 0.9\n}",
+        "options": { "timeout": 30000 }
+      }
+    },
+
+    {
+      "id": "merge-caption",
+      "name": "Merge — Unify Caption Output",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [1160, 380],
+      "parameters": {
+        "mode": "chooseBranch",
+        "chooseBranch": {
+          "mode": "waitForAll"
+        }
+      },
+      "notes": "Waits for whichever GPT branch ran, then passes its output forward."
+    },
+
+    {
+      "id": "extract-caption",
+      "name": "Extract Caption Text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1380, 380],
+      "parameters": {
+        "jsCode": "// Pull caption from OpenAI response\nconst caption = items[0].json?.choices?.[0]?.message?.content?.trim() ?? '';\n\n// Carry forward all vars from Set Variables node via $('Set Variables').first().json\nconst vars = $('Set Variables').first().json;\n\nreturn [{\n  json: {\n    ...vars,\n    caption\n  }\n}];"
+      }
+    },
+
+    {
+      "id": "build-creatomate-layers",
+      "name": "Build Creatomate Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1600, 380],
+      "parameters": {
+        "jsCode": "const d = items[0].json;\n\n// Base modifications (dynamic layers on your Creatomate template)\nconst modifications = {\n  'text-title':  d.productName,\n  'text-price':  d.productPrice + (d.country === 'MA' ? ' DH' : ' SAR'),\n  'text-caption': d.caption,\n  'image-dish':  d.imageUrl,\n};\n\n// Trial = add watermark overlay layer\nif (d.hasWatermark) {\n  modifications['image-watermark'] = 'https://your-cdn.com/smart-resto-watermark.png';\n  // or set visibility if template has a hidden layer:\n  // modifications['watermark-opacity'] = '1';\n}\n\nconst payload = {\n  template_id: process.env.CREATOMATE_TEMPLATE_ID, // set in n8n env vars\n  modifications\n};\n\nreturn [{ json: { ...d, creatomatePayload: payload } }];"
+      },
+      "notes": "Set CREATOMATE_TEMPLATE_ID in n8n environment variables."
+    },
+
+    {
+      "id": "creatomate-create",
+      "name": "Creatomate — Create Render",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1820, 380],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.creatomate.com/v1/renders",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.CREATOMATE_API_KEY }}" },
+            { "name": "Content-Type",  "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "={{ JSON.stringify($json.creatomatePayload) }}",
+        "options": { "timeout": 30000 }
+      },
+      "notes": "Env var required: CREATOMATE_API_KEY. Response contains render[0].id and render[0].status."
+    },
+
+    {
+      "id": "store-render-id",
+      "name": "Store Render ID",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [2040, 380],
+      "parameters": {
+        "mode": "manual",
+        "fields": {
+          "values": [
+            { "name": "renderId",    "type": "string",  "value": "={{ $json[0].id }}" },
+            { "name": "renderStatus","type": "string",  "value": "={{ $json[0].status }}" },
+            { "name": "pollAttempt", "type": "number",  "value": 0 }
+          ]
+        },
+        "include": "all"
+      }
+    },
+
+    {
+      "id": "wait-20s",
+      "name": "Wait 20 Seconds",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [2260, 380],
+      "parameters": {
+        "unit": "seconds",
+        "amount": 20
+      },
+      "notes": "Polls every 20s. Max 15 attempts = 5 minutes before timeout."
+    },
+
+    {
+      "id": "creatomate-poll",
+      "name": "Creatomate — Poll Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [2480, 380],
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.creatomate.com/v1/renders/{{ $json.renderId }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.CREATOMATE_API_KEY }}" }
+          ]
+        },
+        "options": { "timeout": 15000 }
+      }
+    },
+
+    {
+      "id": "check-render-done",
+      "name": "IF — Render Completed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [2700, 380],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false },
+          "conditions": [
+            {
+              "leftValue":  "={{ $json.status }}",
+              "rightValue": "succeeded",
+              "operator":   { "type": "string", "operation": "equals" }
+            }
+          ]
+        }
+      },
+      "notes": "True → proceed to publish. False → increment counter, check timeout, loop back to Wait."
+    },
+
+    {
+      "id": "check-timeout",
+      "name": "IF — Timeout Reached? (15 attempts)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [2920, 500],
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "leftValue":  "={{ $('Store Render ID').item.json.pollAttempt }}",
+              "rightValue": 15,
+              "operator":   { "type": "number", "operation": "gte" }
+            }
+          ]
+        }
+      },
+      "notes": "If > 15 polls (5 min), mark campaign failed and stop."
+    },
+
+    {
+      "id": "increment-poll",
+      "name": "Increment Poll Counter",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2920, 620],
+      "parameters": {
+        "jsCode": "const prev = $('Store Render ID').item.json;\nreturn [{ json: { ...prev, pollAttempt: (prev.pollAttempt ?? 0) + 1 } }];"
+      }
+    },
+
+    {
+      "id": "callback-failed",
+      "name": "Callback — Mark Failed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [3140, 500],
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $('Set Variables').first().json.callbackUrl }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type",        "value": "application/json" },
+            { "name": "x-callback-secret",   "value": "={{ $env.MARKETING_CALLBACK_SECRET }}" }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "={ \"status\": \"failed\", \"n8nExecutionId\": \"{{ $execution.id }}\" }",
+        "options": { "timeout": 10000 }
+      }
+    },
+
+    {
+      "id": "extract-video-url",
+      "name": "Extract Video URL",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [2920, 260],
+      "parameters": {
+        "mode": "manual",
+        "fields": {
+          "values": [
+            { "name": "videoUrl", "type": "string", "value": "={{ $json.url }}" }
+          ]
+        },
+        "include": "all"
+      },
+      "notes": "Creatomate returns `url` for the .mp4 when status = succeeded."
+    },
+
+    {
+      "id": "platform-switch",
+      "name": "Switch — Platform Router",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [3140, 260],
+      "parameters": {
+        "mode": "rules",
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "conditions": [
+                  { "leftValue": "={{ $('Set Variables').first().json.country }}", "rightValue": "MA", "operator": { "type": "string", "operation": "equals" } }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "Morocco"
+            },
+            {
+              "conditions": {
+                "conditions": [
+                  { "leftValue": "={{ $('Set Variables').first().json.country }}", "rightValue": "MA", "operator": { "type": "string", "operation": "notEquals" } }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "Gulf"
+            }
+          ]
+        }
+      }
+    },
+
+    {
+      "id": "upload-post-morocco",
+      "name": "Upload-Post — Instagram + Facebook (Morocco)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [3360, 180],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.upload-post.com/v1/upload",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.UPLOAD_POST_API_KEY }}" },
+            { "name": "Content-Type",  "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "={\n  \"platforms\": [\"instagram\", \"facebook\"],\n  \"video_url\": \"{{ $json.videoUrl }}\",\n  \"caption\": \"{{ $('Extract Caption Text').first().json.caption }}\",\n  \"schedule\": \"now\"\n}",
+        "options": { "timeout": 30000 }
+      },
+      "notes": "Env var required: UPLOAD_POST_API_KEY. Connect your IG/FB accounts in Upload-Post dashboard first."
+    },
+
+    {
+      "id": "upload-post-gulf",
+      "name": "Upload-Post — TikTok + Snapchat (Gulf)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [3360, 340],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.upload-post.com/v1/upload",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.UPLOAD_POST_API_KEY }}" },
+            { "name": "Content-Type",  "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "={\n  \"platforms\": [\"tiktok\", \"snapchat\"],\n  \"video_url\": \"{{ $json.videoUrl }}\",\n  \"caption\": \"{{ $('Extract Caption Text').first().json.caption }}\",\n  \"schedule\": \"now\"\n}",
+        "options": { "timeout": 30000 }
+      }
+    },
+
+    {
+      "id": "callback-success",
+      "name": "Callback — Mark Published",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [3580, 260],
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $('Set Variables').first().json.callbackUrl }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type",       "value": "application/json" },
+            { "name": "x-callback-secret",  "value": "={{ $env.MARKETING_CALLBACK_SECRET }}" }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "={\n  \"status\":          \"published\",\n  \"videoUrl\":        \"{{ $('Extract Video URL').first().json.videoUrl }}\",\n  \"caption\":         \"{{ $('Extract Caption Text').first().json.caption }}\",\n  \"creatomateId\":    \"{{ $('Store Render ID').first().json.renderId }}\",\n  \"uploadPostJobId\": \"{{ $json.job_id }}\",\n  \"socialLinks\":     {{ JSON.stringify($json.links ?? {}) }},\n  \"n8nExecutionId\":  \"{{ $execution.id }}\"\n}",
+        "options": { "timeout": 10000 }
+      }
+    }
+  ],
+
+  "connections": {
+    "Webhook — Smart Resto Trigger": {
+      "main": [[
+        { "node": "Respond 202 Immediately", "type": "main", "index": 0 },
+        { "node": "Set Variables",           "type": "main", "index": 0 }
+      ]]
+    },
+    "Set Variables": {
+      "main": [[{ "node": "Switch — Country Router", "type": "main", "index": 0 }]]
+    },
+    "Switch — Country Router": {
+      "main": [
+        [{ "node": "GPT-4 — Gulf Arabic Caption",    "type": "main", "index": 0 }],
+        [{ "node": "GPT-4 — Moroccan Darija Caption", "type": "main", "index": 0 }]
+      ]
+    },
+    "GPT-4 — Gulf Arabic Caption": {
+      "main": [[{ "node": "Merge — Unify Caption Output", "type": "main", "index": 0 }]]
+    },
+    "GPT-4 — Moroccan Darija Caption": {
+      "main": [[{ "node": "Merge — Unify Caption Output", "type": "main", "index": 1 }]]
+    },
+    "Merge — Unify Caption Output": {
+      "main": [[{ "node": "Extract Caption Text", "type": "main", "index": 0 }]]
+    },
+    "Extract Caption Text": {
+      "main": [[{ "node": "Build Creatomate Payload", "type": "main", "index": 0 }]]
+    },
+    "Build Creatomate Payload": {
+      "main": [[{ "node": "Creatomate — Create Render", "type": "main", "index": 0 }]]
+    },
+    "Creatomate — Create Render": {
+      "main": [[{ "node": "Store Render ID", "type": "main", "index": 0 }]]
+    },
+    "Store Render ID": {
+      "main": [[{ "node": "Wait 20 Seconds", "type": "main", "index": 0 }]]
+    },
+    "Wait 20 Seconds": {
+      "main": [[{ "node": "Creatomate — Poll Status", "type": "main", "index": 0 }]]
+    },
+    "Creatomate — Poll Status": {
+      "main": [[{ "node": "IF — Render Completed?", "type": "main", "index": 0 }]]
+    },
+    "IF — Render Completed?": {
+      "main": [
+        [{ "node": "Extract Video URL",                 "type": "main", "index": 0 }],
+        [{ "node": "IF — Timeout Reached? (15 attempts)", "type": "main", "index": 0 }]
+      ]
+    },
+    "IF — Timeout Reached? (15 attempts)": {
+      "main": [
+        [{ "node": "Callback — Mark Failed",  "type": "main", "index": 0 }],
+        [{ "node": "Increment Poll Counter",  "type": "main", "index": 0 }]
+      ]
+    },
+    "Increment Poll Counter": {
+      "main": [[{ "node": "Wait 20 Seconds", "type": "main", "index": 0 }]]
+    },
+    "Extract Video URL": {
+      "main": [[{ "node": "Switch — Platform Router", "type": "main", "index": 0 }]]
+    },
+    "Switch — Platform Router": {
+      "main": [
+        [{ "node": "Upload-Post — Instagram + Facebook (Morocco)", "type": "main", "index": 0 }],
+        [{ "node": "Upload-Post — TikTok + Snapchat (Gulf)",       "type": "main", "index": 0 }]
+      ]
+    },
+    "Upload-Post — Instagram + Facebook (Morocco)": {
+      "main": [[{ "node": "Callback — Mark Published", "type": "main", "index": 0 }]]
+    },
+    "Upload-Post — TikTok + Snapchat (Gulf)": {
+      "main": [[{ "node": "Callback — Mark Published", "type": "main", "index": 0 }]]
+    }
+  },
+
+  "settings": {
+    "executionOrder": "v1",
+    "saveExecutionProgress": true,
+    "saveDataSuccessExecution": "all",
+    "saveDataErrorExecution": "all",
+    "errorWorkflow": ""
+  },
+
+  "_meta": {
+    "instanceId": "smart-resto-marketing-v1"
+  }
+}

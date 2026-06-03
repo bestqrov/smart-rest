@@ -18,8 +18,8 @@ const T = {
     noNew: 'No pending orders',
     noCooking: 'Nothing cooking yet',
     noReservations: 'No pending reservations',
-    accept: 'Start',
-    ready: 'Done',
+    accept: 'START COOKING',
+    ready: 'DONE',
     resAccept: 'Accept',
     resCancel: 'Cancel',
     urgent: 'URGENT',
@@ -30,8 +30,10 @@ const T = {
     mute: 'Mute',
     unmute: 'Unmute',
     loading: 'Loading kitchen…',
-    completedToday: 'Completed',
+    completedToday: 'Done',
     cancelledToday: 'Cancelled',
+    selectOrder: 'Select an order',
+    selectOrderSub: 'Tap a ticket on the left to see details',
   },
   ar: {
     title: 'شاشة المطبخ',
@@ -42,7 +44,7 @@ const T = {
     noNew: 'لا يوجد طلبات معلقة',
     noCooking: 'لا يوجد طلبات قيد التحضير',
     noReservations: 'لا يوجد حجوزات معلقة',
-    accept: 'بدء',
+    accept: 'بدء التحضير',
     ready: 'جاهز',
     resAccept: 'قبول',
     resCancel: 'رفض',
@@ -56,6 +58,8 @@ const T = {
     loading: 'جارٍ التحميل…',
     completedToday: 'مكتملة',
     cancelledToday: 'ملغاة',
+    selectOrder: 'اختر طلباً',
+    selectOrderSub: 'اضغط على تذكرة لعرض التفاصيل',
   },
   fr: {
     title: 'Écran Cuisine',
@@ -66,8 +70,8 @@ const T = {
     noNew: 'Aucune commande en attente',
     noCooking: 'Rien en préparation',
     noReservations: 'Aucune réservation en attente',
-    accept: 'Démarrer',
-    ready: 'Prêt',
+    accept: 'DÉMARRER',
+    ready: 'TERMINÉ',
     resAccept: 'Accepter',
     resCancel: 'Annuler',
     urgent: 'URGENT',
@@ -80,6 +84,8 @@ const T = {
     loading: 'Chargement…',
     completedToday: 'Terminées',
     cancelledToday: 'Annulées',
+    selectOrder: 'Sélectionner',
+    selectOrderSub: 'Appuyez sur un ticket pour voir les détails',
   },
   es: {
     title: 'Cocina',
@@ -90,8 +96,8 @@ const T = {
     noNew: 'Sin pedidos pendientes',
     noCooking: 'Nada en preparación',
     noReservations: 'Sin reservas pendientes',
-    accept: 'Iniciar',
-    ready: 'Listo',
+    accept: 'INICIAR',
+    ready: 'LISTO',
     resAccept: 'Aceptar',
     resCancel: 'Cancelar',
     urgent: 'URGENTE',
@@ -104,6 +110,8 @@ const T = {
     loading: 'Cargando…',
     completedToday: 'Completadas',
     cancelledToday: 'Canceladas',
+    selectOrder: 'Seleccionar',
+    selectOrderSub: 'Toca un ticket para ver detalles',
   },
 } as const
 
@@ -142,40 +150,49 @@ function getAudioCtx(): AudioContext | null {
   const C = window.AudioContext || (window as any).webkitAudioContext
   return C ? new C() : null
 }
-
 function playTone(ctx: AudioContext, freq: number, start: number, duration = 0.2, vol = 0.45) {
-  const osc  = ctx.createOscillator()
-  const gain = ctx.createGain()
+  const osc = ctx.createOscillator(); const gain = ctx.createGain()
   osc.connect(gain); gain.connect(ctx.destination)
   osc.type = 'sine'; osc.frequency.value = freq
   gain.gain.setValueAtTime(vol, ctx.currentTime + start)
   gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + start + duration)
-  osc.start(ctx.currentTime + start)
-  osc.stop(ctx.currentTime + start + duration + 0.05)
+  osc.start(ctx.currentTime + start); osc.stop(ctx.currentTime + start + duration + 0.05)
 }
-
 function playKitchenAlert() {
   try {
-    const ctx = getAudioCtx()
-    if (!ctx) return
-    playTone(ctx, 1047, 0, 0.18, 0.5)
-    playTone(ctx, 784,  0.22, 0.18, 0.4)
-    playTone(ctx, 1047, 0.44, 0.25, 0.5)
+    const ctx = getAudioCtx(); if (!ctx) return
+    playTone(ctx, 1047, 0, 0.18, 0.5); playTone(ctx, 784, 0.22, 0.18, 0.4); playTone(ctx, 1047, 0.44, 0.25, 0.5)
   } catch {}
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function elapsedMin(iso: string) {
-  return Math.floor((Date.now() - new Date(iso).getTime()) / 60000)
-}
-
-function authHeader() {
-  return { Authorization: `Bearer ${localStorage.getItem('token')}` }
-}
+function elapsedMin(iso: string) { return Math.floor((Date.now() - new Date(iso).getTime()) / 60000) }
+function elapsedSec(iso: string) { return Math.floor((Date.now() - new Date(iso).getTime()) / 1000) }
+function authHeader() { return { Authorization: `Bearer ${localStorage.getItem('token')}` } }
 
 const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || ''
 const STALE_THRESHOLD_MIN = 90
+
+// ─── Digital Timer ────────────────────────────────────────────────────────────
+
+function DigitalTimer({ iso, tier }: { iso: string; tier: string }) {
+  const [sec, setSec] = useState(elapsedSec(iso))
+  useEffect(() => {
+    const t = setInterval(() => setSec(elapsedSec(iso)), 1000)
+    return () => clearInterval(t)
+  }, [iso])
+  const mm = Math.floor(sec / 60)
+  const ss = sec % 60
+  const color = tier === 'critical' ? '#f87171' : tier === 'warning' ? '#fb923c' : tier === 'caution' ? '#facc15' : '#94a3b8'
+  return (
+    <div style={{ fontFamily: 'monospace', fontSize: 72, fontWeight: 900, color, letterSpacing: 4, lineHeight: 1, textShadow: `0 0 24px ${color}55` }}>
+      {String(mm).padStart(2,'0')}
+      <span style={{ opacity: sec % 2 === 0 ? 1 : 0.3, transition: 'opacity 0.1s' }}>:</span>
+      {String(ss).padStart(2,'0')}
+    </div>
+  )
+}
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -184,10 +201,11 @@ export default function KitchenPage() {
   const [reservations, setReservations] = useState<Reservation[]>([])
   const [activeTab, setActiveTab]       = useState<ActiveTab>('orders')
   const [loading, setLoading]           = useState(true)
-  const [cafeId,  setCafeId]            = useState('')
-  const [authed,  setAuthed]            = useState(false)
-  const [muted,   setMuted]             = useState(false)
-  const [lang,    setLang]              = useState<Lang>('en')
+  const [cafeId, setCafeId]             = useState('')
+  const [authed, setAuthed]             = useState(false)
+  const [muted, setMuted]               = useState(false)
+  const [lang, setLang]                 = useState<Lang>('en')
+  const [selectedId, setSelectedId]     = useState<string | null>(null)
   const [, setTick]                     = useState(0)
   const [completedToday, setCompletedToday] = useState(0)
   const [cancelledToday, setCancelledToday] = useState(0)
@@ -204,7 +222,7 @@ export default function KitchenPage() {
 
   useEffect(() => { mutedRef.current = muted }, [muted])
 
-  // ── boot ──────────────────────────────────────────────────────────────────
+  // boot
   useEffect(() => {
     const token = localStorage.getItem('token')
     if (!token) { window.location.href = '/login'; return }
@@ -216,13 +234,12 @@ export default function KitchenPage() {
     if (saved === 'ar' || saved === 'en' || saved === 'fr' || saved === 'es') setLang(saved as Lang)
   }, [])
 
-  // ── 30s clock tick ────────────────────────────────────────────────────────
+  // 30s clock tick
   useEffect(() => {
     const t = setInterval(() => setTick(n => n + 1), 30000)
     return () => clearInterval(t)
   }, [])
 
-  // ── load active orders ────────────────────────────────────────────────────
   async function loadOrders() {
     const [pend, prep] = await Promise.all([
       fetch('/api/orders?status=PENDING',   { headers: authHeader() }).then(r => r.ok ? r.json() : []),
@@ -255,7 +272,6 @@ export default function KitchenPage() {
     setLoading(false)
   }
 
-  // ── load reservations ─────────────────────────────────────────────────────
   async function loadReservations() {
     try {
       const res = await fetch('/api/kitchen/reservations', { headers: authHeader() })
@@ -263,33 +279,19 @@ export default function KitchenPage() {
     } catch {}
   }
 
-  // ── fetch daily counters ──────────────────────────────────────────────────
   async function loadDailyStats() {
     try {
       const res = await fetch('/api/kitchen/daily-stats', { headers: authHeader() })
-      if (res.ok) {
-        const d = await res.json()
-        setCompletedToday(d.completed ?? 0)
-        setCancelledToday(d.cancelled ?? 0)
-      }
+      if (res.ok) { const d = await res.json(); setCompletedToday(d.completed ?? 0); setCancelledToday(d.cancelled ?? 0) }
     } catch {}
   }
 
-  useEffect(() => {
-    if (!authed) return
-    loadOrders()
-    loadDailyStats()
-    loadReservations()
-  }, [authed])
+  useEffect(() => { if (!authed) return; loadOrders(); loadDailyStats(); loadReservations() }, [authed])
 
-  // ── hourly auto-clean: remove stale orders ────────────────────────────────
   useEffect(() => {
     const t = setInterval(() => {
       setTickets(prev => prev.filter(ticket => {
-        if (elapsedMin(ticket.createdAt) > STALE_THRESHOLD_MIN) {
-          alertOrderIds.current.delete(ticket.orderId)
-          return false
-        }
+        if (elapsedMin(ticket.createdAt) > STALE_THRESHOLD_MIN) { alertOrderIds.current.delete(ticket.orderId); return false }
         return true
       }))
       loadDailyStats()
@@ -297,194 +299,134 @@ export default function KitchenPage() {
     return () => clearInterval(t)
   }, [])
 
-  // ── audio alert loop ──────────────────────────────────────────────────────
   function startBeepLoop() {
     if (beepTimerRef.current) return
     const fire = () => { if (!mutedRef.current && alertOrderIds.current.size > 0) playKitchenAlert() }
-    fire()
-    beepTimerRef.current = setInterval(fire, 3000)
+    fire(); beepTimerRef.current = setInterval(fire, 3000)
   }
-
   function stopBeepLoopIfEmpty() {
-    if (alertOrderIds.current.size === 0 && beepTimerRef.current) {
-      clearInterval(beepTimerRef.current); beepTimerRef.current = null
-    }
+    if (alertOrderIds.current.size === 0 && beepTimerRef.current) { clearInterval(beepTimerRef.current); beepTimerRef.current = null }
   }
 
-  // ── socket ────────────────────────────────────────────────────────────────
+  // socket
   useEffect(() => {
     if (!authed || !cafeId) return
     const token  = localStorage.getItem('token')
     const socket = socketIO(SOCKET_URL || window.location.origin, {
-      auth:        { token },
-      transports:  ['polling', 'websocket'],
-      reconnection: true,
-      reconnectionAttempts: Infinity,
-      reconnectionDelay:    2000,
-      reconnectionDelayMax: 10000,
+      auth: { token }, transports: ['polling', 'websocket'],
+      reconnection: true, reconnectionAttempts: Infinity, reconnectionDelay: 2000, reconnectionDelayMax: 10000,
     })
     socketRef.current = socket
-
     socket.on('connect', () => socket.emit('join', `kds_room_${cafeId}`))
     socket.on('reconnect', () => socket.emit('join', `kds_room_${cafeId}`))
-
     socket.on('kds_new_order', (ticket: KdsTicket) => {
       if (deliveredIds.current.has(ticket.orderId)) return
-      alertOrderIds.current.add(ticket.orderId)
-      startBeepLoop()
+      alertOrderIds.current.add(ticket.orderId); startBeepLoop()
       setTickets(prev => {
         if (prev.find(t => t.orderId === ticket.orderId)) return prev
         return [...prev, { ...ticket, status: 'PENDING' as const }]
           .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
       })
     })
-
     socket.on('reservation_new', (res: Reservation) => {
-      setReservations(prev => [res, ...prev])
-      setNewReservationAlert(true)
+      setReservations(prev => [res, ...prev]); setNewReservationAlert(true)
       if (!mutedRef.current) playKitchenAlert()
     })
-
     socket.on('reservation_updated', ({ id, status }: { id: string; status: string }) => {
       setReservations(prev => prev.filter(r => r.id !== id || status === 'ACCEPTED')
-        .map(r => r.id === id ? { ...r, status: status as Reservation['status'] } : r)
-      )
+        .map(r => r.id === id ? { ...r, status: status as Reservation['status'] } : r))
     })
-
     socket.on('kds_order_updated', ({ orderId, status }: { orderId: string; status: string }) => {
       if (['DELIVERED', 'COMPLETED', 'CANCELLED'].includes(status)) {
-        deliveredIds.current.add(orderId)
-        alertOrderIds.current.delete(orderId)
-        stopBeepLoopIfEmpty()
+        deliveredIds.current.add(orderId); alertOrderIds.current.delete(orderId); stopBeepLoopIfEmpty()
         setTickets(prev => prev.filter(t => t.orderId !== orderId))
+        setSelectedId(prev => prev === orderId ? null : prev)
         if (status === 'COMPLETED') setCompletedToday(n => n + 1)
         if (status === 'CANCELLED') setCancelledToday(n => n + 1)
       } else if (status === 'PREPARING') {
-        alertOrderIds.current.delete(orderId)
-        stopBeepLoopIfEmpty()
+        alertOrderIds.current.delete(orderId); stopBeepLoopIfEmpty()
         setTickets(prev => prev.map(t => t.orderId === orderId ? { ...t, status: 'PREPARING' as const } : t))
       } else if (status === 'PENDING') {
         setTickets(prev => prev.map(t => t.orderId === orderId ? { ...t, status: 'PENDING' as const } : t))
       }
     })
-
-    return () => {
-      socket.disconnect()
-      if (beepTimerRef.current) { clearInterval(beepTimerRef.current); beepTimerRef.current = null }
-    }
+    return () => { socket.disconnect(); if (beepTimerRef.current) { clearInterval(beepTimerRef.current); beepTimerRef.current = null } }
   }, [authed, cafeId])
 
-  // ── actions ───────────────────────────────────────────────────────────────
+  // actions
   async function accept(orderId: string) {
-    alertOrderIds.current.delete(orderId)
-    stopBeepLoopIfEmpty()
+    alertOrderIds.current.delete(orderId); stopBeepLoopIfEmpty()
     setTickets(prev => prev.map(t => t.orderId === orderId ? { ...t, status: 'PREPARING' as const } : t))
-    try {
-      await fetch(`/api/kitchen/orders/${orderId}`, {
-        method: 'PATCH',
-        headers: { ...authHeader(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'preparing' }),
-      })
-    } catch {}
+    try { await fetch(`/api/kitchen/orders/${orderId}`, { method: 'PATCH', headers: { ...authHeader(), 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'preparing' }) }) } catch {}
   }
-
+  async function markReady(orderId: string) {
+    deliveredIds.current.add(orderId); alertOrderIds.current.delete(orderId); stopBeepLoopIfEmpty()
+    setTickets(prev => prev.filter(t => t.orderId !== orderId))
+    setSelectedId(null); setCompletedToday(n => n + 1)
+    try { await fetch(`/api/kitchen/orders/${orderId}`, { method: 'PATCH', headers: { ...authHeader(), 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'ready' }) }) } catch {}
+  }
   async function handleReservation(id: string, action: 'accept' | 'cancel') {
     setReservations(prev => prev.filter(r => r.id !== id))
-    try {
-      await fetch(`/api/kitchen/reservations/${id}`, {
-        method: 'PATCH',
-        headers: { ...authHeader(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action }),
-      })
-    } catch {}
+    try { await fetch(`/api/kitchen/reservations/${id}`, { method: 'PATCH', headers: { ...authHeader(), 'Content-Type': 'application/json' }, body: JSON.stringify({ action }) }) } catch {}
   }
 
-  async function markReady(orderId: string) {
-    deliveredIds.current.add(orderId)
-    alertOrderIds.current.delete(orderId)
-    stopBeepLoopIfEmpty()
-    setTickets(prev => prev.filter(t => t.orderId !== orderId))
-    setCompletedToday(n => n + 1)
-    try {
-      await fetch(`/api/kitchen/orders/${orderId}`, {
-        method: 'PATCH',
-        headers: { ...authHeader(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'ready' }),
-      })
-    } catch {}
-  }
-
-  const pending    = tickets.filter(t => t.status === 'PENDING')
-  const preparing  = tickets.filter(t => t.status === 'PREPARING')
-  const pendingRes = reservations.filter(r => r.status === 'PENDING')
+  const allTickets = [...tickets].sort((a, b) => {
+    if (a.status === b.status) return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    return a.status === 'PENDING' ? -1 : 1
+  })
+  const selectedTicket = allTickets.find(t => t.orderId === selectedId) ?? null
+  const pendingRes     = reservations.filter(r => r.status === 'PENDING')
 
   if (loading) return (
-    <div className="min-h-screen bg-gray-950 flex items-center justify-center" dir={isRTL ? 'rtl' : 'ltr'}>
-      <div className="text-center">
-        <div className="text-5xl mb-3 animate-bounce">🍳</div>
-        <p className="text-gray-400">{tr.loading}</p>
-      </div>
+    <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+      <div className="text-center"><div className="text-5xl mb-3 animate-bounce">🍳</div><p className="text-gray-400">{tr.loading}</p></div>
     </div>
   )
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white" dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className="min-h-screen bg-[#1e2229] text-white flex flex-col" dir={isRTL ? 'rtl' : 'ltr'} style={{ fontFamily: 'system-ui, sans-serif' }}>
 
-      {/* ── Header ── */}
-      <header className="bg-gray-900 border-b border-gray-800 px-4 py-2 flex items-center justify-between sticky top-0 z-10">
-        <div className="flex items-center gap-2">
-          <ChefHat className="w-6 h-6 text-amber-400" />
-          <h1 className="font-extrabold text-base leading-none">{tr.title}</h1>
+      {/* ── Top bar ── */}
+      <header className="h-12 bg-[#161a1f] border-b border-[#2a2f38] flex items-center justify-between px-4 shrink-0 z-20">
+        <div className="flex items-center gap-2.5">
+          <ChefHat className="w-5 h-5 text-amber-400" />
+          <span className="font-extrabold text-sm tracking-wide">{tr.title}</span>
         </div>
 
-        <div className="flex items-center gap-1.5 flex-wrap">
-          {/* Live productivity counters */}
-          <span className="flex items-center gap-1 bg-emerald-500/15 text-emerald-300 border border-emerald-500/25 px-2.5 py-1 rounded-full text-xs font-bold">
+        <div className="flex items-center gap-2">
+          {/* Counters */}
+          <span className="flex items-center gap-1 bg-emerald-500/15 text-emerald-400 px-2.5 py-1 rounded-full text-xs font-bold">
             <CheckCheck className="w-3.5 h-3.5" /> {completedToday} {tr.completedToday}
           </span>
-          <span className="flex items-center gap-1 bg-red-500/15 text-red-300 border border-red-500/25 px-2.5 py-1 rounded-full text-xs font-bold">
+          <span className="flex items-center gap-1 bg-red-500/15 text-red-400 px-2.5 py-1 rounded-full text-xs font-bold">
             <XCircle className="w-3.5 h-3.5" /> {cancelledToday} {tr.cancelledToday}
           </span>
 
           {/* Tab switcher */}
-          <div className="flex items-center gap-0.5 bg-gray-800 rounded-lg p-0.5">
-            <button
-              onClick={() => setActiveTab('orders')}
-              className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all ${activeTab === 'orders' ? 'bg-amber-500 text-gray-950' : 'text-gray-400 hover:text-white'}`}
-            >
-              🍳 {tr.newOrders} {pending.length > 0 && <span className="ml-1 bg-red-500 text-white rounded-full px-1">{pending.length}</span>}
+          <div className="flex items-center gap-0.5 bg-[#2a2f38] rounded-lg p-0.5">
+            <button onClick={() => setActiveTab('orders')}
+              className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all ${activeTab === 'orders' ? 'bg-amber-500 text-gray-950' : 'text-gray-400 hover:text-white'}`}>
+              🍳 Orders {allTickets.length > 0 && <span className="ml-1 bg-red-500 text-white rounded-full px-1 text-xs">{allTickets.length}</span>}
             </button>
-            <button
-              onClick={() => { setActiveTab('reservations'); setNewReservationAlert(false) }}
-              className={`relative px-2.5 py-1 rounded-md text-xs font-bold transition-all ${activeTab === 'reservations' ? 'bg-violet-500 text-white' : 'text-gray-400 hover:text-white'}`}
-            >
-              <CalendarClock className="w-3.5 h-3.5 inline mr-1" />
+            <button onClick={() => { setActiveTab('reservations'); setNewReservationAlert(false) }}
+              className={`relative px-2.5 py-1 rounded-md text-xs font-bold transition-all ${activeTab === 'reservations' ? 'bg-violet-500 text-white' : 'text-gray-400 hover:text-white'}`}>
+              <CalendarClock className="w-3 h-3 inline mr-1" />
               {tr.reservations}
-              {pendingRes.length > 0 && (
-                <span className={`ml-1 rounded-full px-1 text-white text-xs ${newReservationAlert ? 'bg-red-500 animate-pulse' : 'bg-violet-600'}`}>
-                  {pendingRes.length}
-                </span>
-              )}
+              {pendingRes.length > 0 && <span className={`ml-1 rounded-full px-1 text-white text-xs ${newReservationAlert ? 'bg-red-500 animate-pulse' : 'bg-violet-600'}`}>{pendingRes.length}</span>}
             </button>
           </div>
 
-          {/* Mute toggle */}
-          <button
-            onClick={() => setMuted(m => !m)}
-            className={`p-1.5 rounded-lg transition-all ${muted ? 'bg-gray-700 text-gray-400' : 'bg-gray-800 text-amber-400'}`}
-            title={muted ? tr.unmute : tr.mute}
-          >
+          {/* Mute */}
+          <button onClick={() => setMuted(m => !m)}
+            className={`p-1.5 rounded-lg transition-all ${muted ? 'bg-[#2a2f38] text-gray-500' : 'bg-[#2a2f38] text-amber-400'}`}>
             {muted ? <BellOff className="w-4 h-4" /> : <Bell className="w-4 h-4" />}
           </button>
 
-          {/* Language selector */}
-          <div className="flex items-center gap-0.5 bg-gray-800 rounded-lg px-1.5 py-1">
-            {(['ar', 'en', 'fr', 'es'] as Lang[]).map(l => (
-              <button
-                key={l}
-                onClick={() => { setLang(l); localStorage.setItem('sm_lang', l) }}
-                className={`text-xs font-bold px-1.5 py-0.5 rounded-md transition-all ${lang === l ? 'bg-amber-500 text-gray-950' : 'text-gray-400 hover:text-white'}`}
-              >
+          {/* Lang */}
+          <div className="flex items-center gap-0.5 bg-[#2a2f38] rounded-lg px-1.5 py-1">
+            {(['ar','en','fr','es'] as Lang[]).map(l => (
+              <button key={l} onClick={() => { setLang(l); localStorage.setItem('sm_lang', l) }}
+                className={`text-xs font-bold px-1.5 py-0.5 rounded-md transition-all ${lang === l ? 'bg-amber-500 text-gray-950' : 'text-gray-500 hover:text-white'}`}>
                 {l.toUpperCase()}
               </button>
             ))}
@@ -492,248 +434,202 @@ export default function KitchenPage() {
         </div>
       </header>
 
-      {/* ── Columns ── */}
+      {/* ── Main body ── */}
       {activeTab === 'orders' ? (
-        <div className="grid grid-cols-1 lg:grid-cols-2 h-[calc(100vh-49px)]">
+        <div className="flex flex-1 overflow-hidden">
 
-          {/* PENDING */}
-          <div className={`${isRTL ? 'border-l' : 'border-r'} border-gray-800 overflow-y-auto`}>
-            <div className="sticky top-0 bg-red-950/80 backdrop-blur px-3 py-2 border-b border-red-900/40">
-              <h2 className="font-bold text-red-300 text-sm flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-red-400 animate-pulse inline-block" />
-                {tr.newOrders} — {pending.length}
-                {pending.length > 0 && alertOrderIds.current.size > 0 && !muted && (
-                  <span className="ml-auto text-xs bg-red-500/30 text-red-300 px-2 py-0.5 rounded-full animate-pulse flex items-center gap-1">
-                    <Bell className="w-3 h-3" />
-                  </span>
-                )}
-              </h2>
-            </div>
-            <div className="p-2 grid grid-cols-1 xl:grid-cols-2 gap-2">
-              {pending.length === 0 && <KdsEmpty icon="✅" text={tr.noNew} />}
-              {pending.map(t => (
-                <TicketCard
-                  key={t.orderId} ticket={t} action="accept"
-                  label={tr.accept} seat={tr.seat}
-                  justNow={tr.justNow} minAgo={tr.minAgo}
-                  urgent={tr.urgent} isRTL={isRTL}
-                  onAction={() => accept(t.orderId)}
-                />
-              ))}
+          {/* ── LEFT: ticket list ── */}
+          <div className="w-56 lg:w-64 bg-[#252930] border-r border-[#2a2f38] flex flex-col overflow-hidden shrink-0">
+            <div className="overflow-y-auto flex-1">
+              {allTickets.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full text-gray-600 gap-2 py-16">
+                  <span className="text-3xl">✅</span>
+                  <p className="text-xs text-center px-4">{tr.noNew}</p>
+                </div>
+              ) : allTickets.map(t => {
+                const min     = elapsedMin(t.createdAt)
+                const tier    = min >= 12 ? 'critical' : min >= 7 ? 'warning' : min >= 4 ? 'caution' : 'fresh'
+                const isSel   = selectedId === t.orderId
+                const isPend  = t.status === 'PENDING'
+                const hasAlert = alertOrderIds.current.has(t.orderId)
+
+                return (
+                  <button
+                    key={t.orderId}
+                    onClick={() => setSelectedId(isSel ? null : t.orderId)}
+                    className={`w-full text-left px-4 py-4 border-b border-[#2a2f38] transition-all flex items-center justify-between gap-2
+                      ${isSel ? 'bg-[#1e2229]' : 'hover:bg-[#2d333d]'}
+                    `}
+                  >
+                    <div className="flex flex-col gap-1.5 min-w-0">
+                      {/* Status label */}
+                      <span className={`text-[11px] font-black tracking-widest uppercase
+                        ${isPend ? 'text-red-400' : 'text-amber-400'}
+                        ${hasAlert && isPend ? 'animate-pulse' : ''}
+                      `}>
+                        {isPend ? tr.newOrders : tr.cooking}
+                      </span>
+                      {/* Table */}
+                      <span className="text-2xl font-black text-white leading-none">{t.mergeLabel}</span>
+                      {/* Item count */}
+                      <span className="text-xs text-gray-500">
+                        {t.seatGroups.flatMap(sg => sg.items).reduce((s, i) => s + i.quantity, 0)} items · {min === 0 ? tr.justNow : tr.minAgo(min)}
+                      </span>
+                    </div>
+
+                    {/* Urgency dot */}
+                    <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+                      tier === 'critical' ? 'bg-red-500 animate-pulse' :
+                      tier === 'warning'  ? 'bg-orange-400' :
+                      tier === 'caution'  ? 'bg-yellow-400' : 'bg-gray-600'
+                    }`} />
+                  </button>
+                )
+              })}
             </div>
           </div>
 
-          {/* PREPARING */}
-          <div className="overflow-y-auto">
-            <div className="sticky top-0 bg-amber-950/80 backdrop-blur px-3 py-2 border-b border-amber-900/40">
-              <h2 className="font-bold text-amber-300 text-sm flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse inline-block" />
-                {tr.cooking} — {preparing.length}
-              </h2>
-            </div>
-            <div className="p-2 grid grid-cols-1 xl:grid-cols-2 gap-2">
-              {preparing.length === 0 && <KdsEmpty icon="🍳" text={tr.noCooking} />}
-              {preparing.map(t => (
-                <TicketCard
-                  key={t.orderId} ticket={t} action="ready"
-                  label={tr.ready} seat={tr.seat}
-                  justNow={tr.justNow} minAgo={tr.minAgo}
-                  urgent={tr.urgent} isRTL={isRTL}
-                  onAction={() => markReady(t.orderId)}
-                />
-              ))}
-            </div>
+          {/* ── RIGHT: detail panel ── */}
+          <div className="flex-1 flex flex-col overflow-hidden bg-[#1e2229]">
+            {!selectedTicket ? (
+              <div className="flex-1 flex flex-col items-center justify-center text-gray-600 gap-3">
+                <ChefHat className="w-16 h-16 opacity-20" />
+                <p className="text-lg font-bold opacity-40">{tr.selectOrder}</p>
+                <p className="text-sm opacity-25">{tr.selectOrderSub}</p>
+              </div>
+            ) : (() => {
+              const min   = elapsedMin(selectedTicket.createdAt)
+              const tier  = min >= 12 ? 'critical' : min >= 7 ? 'warning' : min >= 4 ? 'caution' : 'fresh'
+              const items = selectedTicket.seatGroups.flatMap(sg => sg.items)
+              const isPend = selectedTicket.status === 'PENDING'
+
+              return (
+                <div className="flex-1 flex flex-col overflow-hidden">
+
+                  {/* Detail header */}
+                  <div className={`px-8 py-5 border-b border-[#2a2f38] flex items-center justify-between
+                    ${tier === 'critical' ? 'bg-red-950/30' : tier === 'warning' ? 'bg-orange-950/20' : 'bg-[#252930]'}
+                  `}>
+                    <div>
+                      <div className={`text-xs font-black tracking-widest uppercase mb-1
+                        ${isPend ? 'text-red-400' : 'text-amber-400'}
+                      `}>
+                        {isPend ? tr.newOrders : tr.cooking}
+                      </div>
+                      <div className="text-5xl font-black text-white">{selectedTicket.mergeLabel}</div>
+                    </div>
+
+                    {/* Digital timer */}
+                    <div className="text-right">
+                      <DigitalTimer iso={selectedTicket.createdAt} tier={tier} />
+                      {tier === 'critical' && (
+                        <div className="flex items-center justify-end gap-1 mt-1 text-red-400 text-xs font-bold animate-pulse">
+                          <AlertTriangle className="w-3.5 h-3.5" /> {tr.urgent}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Items list */}
+                  <div className="flex-1 overflow-y-auto px-6 py-4 space-y-2">
+                    {items.map((item, i) => (
+                      <div key={i} className="flex items-start gap-4 bg-[#252930] rounded-xl px-5 py-4">
+                        {/* Qty badge */}
+                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl font-black shrink-0
+                          ${tier === 'critical' ? 'bg-red-800 text-red-100' : tier === 'warning' ? 'bg-orange-800 text-orange-100' : 'bg-[#2a2f38] text-white'}
+                        `}>
+                          {item.quantity}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-lg font-bold text-white leading-tight">{item.productName}</p>
+                          {item.notes && (
+                            <p className="text-sm text-amber-400 mt-1 font-medium flex items-center gap-1">
+                              <AlertTriangle className="w-3.5 h-3.5 shrink-0" /> {item.notes}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Action button — full width at bottom */}
+                  <div className="px-6 pb-6 pt-3 shrink-0">
+                    {isPend ? (
+                      <button
+                        onClick={() => accept(selectedTicket.orderId)}
+                        className="w-full py-5 rounded-2xl font-black text-xl tracking-wider bg-amber-500 hover:bg-amber-400 active:scale-[0.98] text-gray-950 transition-all flex items-center justify-center gap-3 shadow-lg shadow-amber-500/20"
+                      >
+                        <CheckCircle2 className="w-7 h-7" />
+                        {tr.accept}
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => markReady(selectedTicket.orderId)}
+                        className="w-full py-5 rounded-2xl font-black text-2xl tracking-widest bg-[#22c55e] hover:bg-[#16a34a] active:scale-[0.98] text-white transition-all flex items-center justify-center gap-3 shadow-lg shadow-green-500/25"
+                        style={{ boxShadow: '0 4px 32px rgba(34,197,94,0.25)' }}
+                      >
+                        <Check className="w-8 h-8 stroke-[3]" />
+                        {tr.ready}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )
+            })()}
           </div>
         </div>
+
       ) : (
-        /* ── Reservations panel ── */
-        <div className="h-[calc(100vh-49px)] overflow-y-auto">
-          <div className="sticky top-0 bg-violet-950/80 backdrop-blur px-3 py-2 border-b border-violet-900/40">
+        /* ── Reservations ── */
+        <div className="flex-1 overflow-y-auto">
+          <div className="sticky top-0 bg-violet-950/80 backdrop-blur px-4 py-2 border-b border-violet-900/40">
             <h2 className="font-bold text-violet-300 text-sm flex items-center gap-2">
-              <CalendarClock className="w-4 h-4" />
-              {tr.reservations} — {pendingRes.length}
+              <CalendarClock className="w-4 h-4" /> {tr.reservations} — {pendingRes.length}
             </h2>
           </div>
-          <div className="p-3 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-            {pendingRes.length === 0 && <KdsEmpty icon="📅" text={tr.noReservations} />}
-            {pendingRes.map(r => (
-              <ReservationCard
-                key={r.id}
-                reservation={r}
-                labelAccept={tr.resAccept}
-                labelCancel={tr.resCancel}
-                guestsLabel={tr.guests}
-                isRTL={isRTL}
-                onAccept={() => handleReservation(r.id, 'accept')}
-                onCancel={() => handleReservation(r.id, 'cancel')}
-              />
-            ))}
+          <div className="p-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+            {pendingRes.length === 0 && (
+              <div className="col-span-3 text-center py-16 text-gray-600">
+                <p className="text-3xl mb-2">📅</p><p className="text-xs">{tr.noReservations}</p>
+              </div>
+            )}
+            {pendingRes.map(r => {
+              const date    = new Date(r.date)
+              const dateStr = date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
+              const timeStr = date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+              return (
+                <div key={r.id} className="rounded-2xl border border-violet-700/40 bg-[#252930] p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-violet-300">
+                      <CalendarClock className="w-4 h-4 shrink-0" />
+                      <span className="font-bold text-sm">{dateStr}</span>
+                      <span className="text-xs text-violet-400">{timeStr}</span>
+                    </div>
+                    <div className="flex items-center gap-1 text-violet-400 text-xs font-bold">
+                      <Users className="w-3.5 h-3.5" /> {r.guests} {tr.guests}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="font-bold text-white text-sm">{r.name}</p>
+                    <p className="flex items-center gap-1 text-gray-400 text-xs mt-0.5"><Phone className="w-3 h-3" />{r.phone}</p>
+                  </div>
+                  {r.notes && <p className="text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">⚠ {r.notes}</p>}
+                  <div className="flex gap-2">
+                    <button onClick={() => handleReservation(r.id, 'accept')}
+                      className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-white font-bold text-sm py-2.5 rounded-xl transition-all">
+                      <Check className="w-4 h-4" /> {tr.resAccept}
+                    </button>
+                    <button onClick={() => handleReservation(r.id, 'cancel')}
+                      className="flex-1 flex items-center justify-center gap-1.5 bg-red-600 hover:bg-red-500 active:scale-95 text-white font-bold text-sm py-2.5 rounded-xl transition-all">
+                      <X className="w-4 h-4" /> {tr.resCancel}
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
           </div>
         </div>
       )}
-    </div>
-  )
-}
-
-// ─── TicketCard (compact) ─────────────────────────────────────────────────────
-
-function TicketCard({ ticket, action, label, seat, justNow, minAgo, urgent, isRTL, onAction }: {
-  ticket:  KdsTicket
-  action:  'accept' | 'ready'
-  label:   string
-  seat:    string
-  justNow: string
-  minAgo:  (m: number) => string
-  urgent:  string
-  isRTL:   boolean
-  onAction: () => void
-}) {
-  const min  = elapsedMin(ticket.createdAt)
-  const tier = min >= 12 ? 'critical' : min >= 7 ? 'warning' : min >= 4 ? 'caution' : 'fresh'
-  const tierStyles = {
-    fresh:    'bg-gray-900 border-gray-700',
-    caution:  'bg-yellow-950/60 border-yellow-700/60',
-    warning:  'bg-orange-950/70 border-orange-600 ring-1 ring-orange-500/40',
-    critical: 'bg-red-950/80 border-red-500 ring-2 ring-red-500/60 animate-[pulse_2s_ease-in-out_infinite]',
-  }
-  const timerStyles = {
-    fresh:    'text-gray-500',
-    caution:  'text-yellow-400',
-    warning:  'text-orange-400 font-bold',
-    critical: 'text-red-400 font-bold animate-pulse',
-  }
-  const items   = ticket.seatGroups.flatMap(sg => sg.items)
-  const seatNum = ticket.seatGroups[0]?.seatNumber
-
-  return (
-    <div className={`rounded-xl border p-2.5 space-y-2 transition-all ${tierStyles[tier]}`}>
-
-      {/* Header row */}
-      <div className={`flex items-center justify-between ${isRTL ? 'flex-row-reverse' : ''}`}>
-        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-          action === 'accept' ? 'bg-red-500/20 text-red-300' : 'bg-amber-500/20 text-amber-300'
-        }`}>
-          {ticket.mergeLabel}{seatNum != null ? ` · ${seat} ${seatNum}` : ''}
-        </span>
-        <div className={`flex items-center gap-1.5 ${isRTL ? 'flex-row-reverse' : ''}`}>
-          {tier === 'critical' && (
-            <span className="text-xs text-red-400 font-bold animate-pulse flex items-center gap-1">
-              <AlertTriangle className="w-3 h-3" /> {urgent}
-            </span>
-          )}
-          <span className={`text-xs flex items-center gap-1 ${timerStyles[tier]}`}>
-            <Clock className="w-3 h-3" />
-            {min === 0 ? justNow : minAgo(min)}
-          </span>
-        </div>
-      </div>
-
-      {/* Items list */}
-      <ul className="space-y-1">
-        {items.map((item, i) => (
-          <li key={i} className={`flex items-start gap-2 ${isRTL ? 'flex-row-reverse text-right' : ''}`}>
-            <span className={`text-xs font-black w-7 h-6 rounded-md flex items-center justify-center shrink-0 ${
-              tier === 'critical' ? 'bg-red-800 text-red-200'
-              : tier === 'warning' ? 'bg-orange-800 text-orange-200'
-              : 'bg-gray-700 text-white'
-            }`}>
-              {item.quantity}×
-            </span>
-            <div>
-              <p className="text-sm font-bold leading-tight">{item.productName}</p>
-              {item.notes && <p className="text-xs text-amber-400 font-medium">⚠ {item.notes}</p>}
-            </div>
-          </li>
-        ))}
-      </ul>
-
-      {/* Action button */}
-      <button
-        onClick={onAction}
-        className={`w-full py-2 rounded-lg font-bold text-sm active:scale-95 transition-all flex items-center justify-center gap-1.5 ${
-          action === 'accept'
-            ? 'bg-red-500 hover:bg-red-400 text-white'
-            : 'bg-emerald-500 hover:bg-emerald-400 text-white'
-        }`}
-      >
-        {action === 'accept' ? <CheckCircle2 className="w-4 h-4" /> : <Bell className="w-4 h-4" />}
-        {label}
-      </button>
-    </div>
-  )
-}
-
-function KdsEmpty({ icon, text }: { icon: string; text: string }) {
-  return (
-    <div className="text-center py-12 text-gray-600 xl:col-span-2">
-      <p className="text-3xl mb-2">{icon}</p>
-      <p className="text-xs">{text}</p>
-    </div>
-  )
-}
-
-// ─── ReservationCard ──────────────────────────────────────────────────────────
-
-function ReservationCard({ reservation, labelAccept, labelCancel, guestsLabel, isRTL, onAccept, onCancel }: {
-  reservation:  Reservation
-  labelAccept:  string
-  labelCancel:  string
-  guestsLabel:  string
-  isRTL:        boolean
-  onAccept:     () => void
-  onCancel:     () => void
-}) {
-  const date    = new Date(reservation.date)
-  const dateStr = date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
-  const timeStr = date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
-
-  return (
-    <div className="rounded-xl border border-violet-700/50 bg-violet-950/40 p-3 space-y-3 transition-all hover:border-violet-500/70">
-
-      {/* Date + time */}
-      <div className={`flex items-center justify-between ${isRTL ? 'flex-row-reverse' : ''}`}>
-        <div className="flex items-center gap-1.5 text-violet-300">
-          <CalendarClock className="w-4 h-4 shrink-0" />
-          <span className="font-bold text-sm">{dateStr}</span>
-          <span className="text-xs text-violet-400">{timeStr}</span>
-        </div>
-        <div className="flex items-center gap-1 text-violet-400 text-xs font-bold">
-          <Users className="w-3.5 h-3.5" />
-          {reservation.guests} {guestsLabel}
-        </div>
-      </div>
-
-      {/* Name + phone */}
-      <div className={`space-y-0.5 ${isRTL ? 'text-right' : ''}`}>
-        <p className="font-bold text-white text-sm">{reservation.name}</p>
-        <p className="flex items-center gap-1 text-gray-400 text-xs">
-          <Phone className="w-3 h-3" />
-          {reservation.phone}
-        </p>
-      </div>
-
-      {/* Notes */}
-      {reservation.notes && (
-        <p className="text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-lg px-2 py-1.5">
-          ⚠ {reservation.notes}
-        </p>
-      )}
-
-      {/* Actions */}
-      <div className={`flex gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
-        <button
-          onClick={onAccept}
-          className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-white font-bold text-sm py-2 rounded-lg transition-all"
-        >
-          <Check className="w-4 h-4" /> {labelAccept}
-        </button>
-        <button
-          onClick={onCancel}
-          className="flex-1 flex items-center justify-center gap-1.5 bg-red-600 hover:bg-red-500 active:scale-95 text-white font-bold text-sm py-2 rounded-lg transition-all"
-        >
-          <X className="w-4 h-4" /> {labelCancel}
-        </button>
-      </div>
     </div>
   )
 }

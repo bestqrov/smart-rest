@@ -204,8 +204,9 @@ model Cafe {
   stockItems      StockItem[]
   printerLogs     PrinterLog[]
   qrScans         QrScan[]
-  fraudAlerts     FraudAlert[]
-  feedbacks       Feedback[]
+  fraudAlerts        FraudAlert[]
+  feedbacks          Feedback[]
+  marketingCampaigns MarketingCampaign[]
 
 }
 
@@ -784,6 +785,46 @@ model PaymentRequest {
   reviewNote String?
   createdAt  DateTime @default(now())
   reviewedAt DateTime?
+
+  @@index([cafeId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// ─── Marketing Campaigns (Automated Video Engine) ─────────────────────────────
+
+model MarketingCampaign {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId       String   @db.ObjectId
+  cafe         Cafe     @relation(fields: [cafeId], references: [id])
+
+  // Dish snapshot at time of generation (immutable — product may change later)
+  productId    String?  @db.ObjectId
+  productName  String
+  productPrice Float
+  imageUrl     String?  // dish image URL passed to Creatomate
+
+  // Localisation
+  country      String   // MA | SA | AE
+  caption      String?  // AI-generated marketing caption (Darija / Gulf Arabic)
+
+  // Render output
+  videoUrl        String?  // final Creatomate .mp4 URL
+  hasWatermark    Boolean  @default(false)
+  creatomateId    String?  // render ID for polling / audit
+
+  // Publishing
+  // pending | rendering | published | failed
+  status          String   @default("pending")
+  platforms       String[] @default([])  // ["tiktok","snapchat"] | ["instagram","facebook"]
+  uploadPostJobId String?  // job reference from Upload-Post.com
+  socialLinks     Json?    // analytics URLs returned by Upload-Post after publish
+
+  // n8n tracing
+  n8nExecutionId  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([cafeId])
   @@index([status])
