@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, type ElementType } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   QrCode, Zap, BarChart3, Star, CheckCircle, Menu, X,
@@ -11,6 +11,8 @@ import {
   Shield, Phone, Mail, MapPin, ChevronDown, ChevronUp,
   Utensils, Coffee, Building2, ShoppingBag, Package,
   ThumbsUp, AlertTriangle, Wallet, Globe2, UserCircle, Share2,
+  Clock, Calendar, Film,
+  Upload, Brain, FileText, Send, ChevronRight,
 } from 'lucide-react'
 
 // ─── Types & i18n ──────────────────────────────────────────────────────────────
@@ -19,29 +21,30 @@ type Lang = 'en' | 'fr' | 'ar'
 
 const T: Record<Lang, Record<string, string | string[]>> = {
   en: {
-    tagline: '#1 Management Platform for Restaurants & Cafés',
-    h1a: 'Run Your Restaurant', h1b: 'From One Platform',
-    h1c: 'QR Menu · Live Orders · Smart Kitchen · Staff & Finance',
-    desc: 'More than a QR menu — a complete system to manage your restaurant or café. Handle orders, kitchen, staff, tables, billing and analytics all in one place. Your guest scans, orders instantly, the kitchen gets it in seconds, you control everything from your phone.',
-    cta1: 'Start Free 7-Day Trial', cta2: 'See How It Works',
+    tagline: 'The AI Operating System for Restaurants',
+    h1a: 'The AI Operating System', h1b: 'for Restaurants',
+    h1c: '',
+    desc: 'Run your entire restaurant from one intelligent platform.\n\nManage menus, orders, POS, reservations, employees, attendance, marketing, social media and AI automation from a single dashboard.',
+    cta1: 'Start Free Trial', cta2: 'Book a Demo',
+    trustBar: 'Trusted by restaurants across Africa, GCC and Europe.',
     badges: ['No contract', '5-min setup', 'Support 24/7', 'No credit card'],
     whoLabel: 'Who Is It For', whoTitle: 'Built For Every F&B Business',
-    whoSub: 'From solo cafés to hotel chains — SmartMenu adapts to your scale',
-    howLabel: 'How It Works', howTitle: 'Live in 5 Steps',
-    howSub: 'From signup to first order in under 30 minutes',
-    featLabel: 'Features', featTitle: 'Everything in One Platform',
-    featSub: '15 professional features built for MENA & Africa markets',
+    whoSub: 'From solo cafés to hotel chains — SmartRestau scales with your ambition',
+    howLabel: 'How It Works', howTitle: 'Operational in 5 Steps',
+    howSub: 'From signup to a fully running restaurant OS in under 30 minutes',
+    featLabel: 'Modules', featTitle: 'One OS. Every Module You Need.',
+    featSub: '15+ AI-powered modules built for MENA & Africa markets',
     pricingLabel: 'Pricing', pricingTitle: 'Pay Only Per Completed Order',
     pricingSub: 'No monthly fee · No fixed costs · Tiny auto-calculated commission per order',
-    trialBig: '7-Day Free Trial', trialSub: 'Start today — no credit card, no commitment',
-    trialBadges: ['✓ All features included', '✓ Unlimited orders', '✓ Live support', '✓ QR ready in minutes'],
-    testimonialLabel: 'Reviews', testimonialTitle: 'Restaurants Trust SmartMenu',
+    trialBig: '7-Day Free Trial', trialSub: 'Launch your restaurant OS today — no credit card, no commitment',
+    trialBadges: ['✓ All modules included', '✓ Unlimited orders', '✓ Live support', '✓ AI insights from day 1'],
+    testimonialLabel: 'Success Stories', testimonialTitle: 'Restaurants Growing With SmartRestau',
     faqLabel: 'FAQ', faqTitle: 'Have a Question?',
     contactLabel: 'Contact', contactTitle: "We're Here to Help",
     contactSub: 'Support team available 7 days/week in Arabic, French & English',
-    finalTitle: 'Ready to Transform Your Restaurant?',
-    finalSub: 'Join 500+ restaurants & cafés using SmartMenu every day',
-    finalCta1: 'Start Free Trial →', finalCta2: 'Talk to Our Team',
+    finalTitle: 'Your Restaurant OS Is Ready.',
+    finalSub: 'Join 500+ restaurants & cafés already running on SmartRestau',
+    finalCta1: 'Launch My Restaurant OS →', finalCta2: 'Talk to Our Team',
     finalNote: 'No credit card · No contract · Cancel anytime',
     cookie: 'We use cookies to improve your experience and analytics. See our',
     cookieLink: 'Privacy Policy', cookieAccept: 'Accept', cookieDecline: 'Decline',
@@ -49,36 +52,46 @@ const T: Record<Lang, Record<string, string | string[]>> = {
     systemOk: '🟢 All systems operational',
     privacy: 'Privacy Policy', terms: 'Terms of Service', legal: 'Legal Notice',
     allRights: 'All rights reserved',
-    madeWith: 'Made with ❤️ for MENA & Africa restaurants',
+    madeWith: 'Built for MENA & Africa restaurants — AI-powered, locally tuned',
     enterpriseTitle: 'Enterprise & Chain Plans',
     enterpriseDesc: 'Multiple branches, custom branding, SLA guarantee, VIP support, POS integration',
     enterpriseCta: 'Contact Us for Custom Pricing',
+    architectureLabel: 'Platform Architecture',
+    architectureTitle: 'One Platform. Every Restaurant Operation.',
+    architectureSub: 'Ten AI-powered modules. One unified OS. Your entire restaurant runs from a single dashboard.',
+    marketingEngineLabel: 'AI Food Marketing Engine',
+    marketingEngineTitle: 'Turn Every Dish Into a Marketing Campaign',
+    marketingEngineSub: 'One photo. Infinite marketing content. Fully automated.',
+    marketingEngineResultTitle: '0 Designers. 0 Videographers. 0 Social Media Managers.',
+    marketingEngineResult: 'Restaurants generate daily marketing content — video ads, reels, captions and posts — fully automated by AI. No agency. No freelancers. No manual work.',
+    marketingEngineCta: 'See It in Action →',
     statsLabel: 'Trusted globally',
   },
   fr: {
-    tagline: 'La plateforme de gestion #1 pour les restaurants',
-    h1a: 'Gérez Votre Restaurant', h1b: 'En Un Seul Endroit',
-    h1c: 'Menu QR · Commandes Live · Cuisine Smart · Staff & Finance',
-    desc: "Plus qu'un menu QR — un système complet pour gérer votre restaurant ou café. Commandes, cuisine, personnel, tables, facturation et analytics dans une seule plateforme. Le client scanne, commande instantanément, la cuisine reçoit en quelques secondes.",
-    cta1: 'Essai Gratuit 7 Jours', cta2: 'Voir Comment Ça Marche',
+    tagline: "Le Système d'Exploitation IA pour les Restaurants",
+    h1a: "Le Système d'Exploitation IA", h1b: 'pour les Restaurants',
+    h1c: '',
+    desc: "Pilotez l'intégralité de votre restaurant depuis une plateforme intelligente unique.\n\nGérez menus, commandes, POS, réservations, employés, présence, marketing, réseaux sociaux et automatisation IA depuis un seul tableau de bord.",
+    cta1: 'Essai Gratuit', cta2: 'Réserver une Démo',
+    trustBar: 'Utilisé par des restaurants en Afrique, GCC et Europe.',
     badges: ['Sans engagement', 'Config 5 min', 'Support 24/7', 'Sans carte bancaire'],
     whoLabel: 'Pour Qui', whoTitle: 'Conçu pour Chaque Business F&B',
-    whoSub: "Du café solo aux chaînes hôtelières — SmartMenu s'adapte à votre échelle",
+    whoSub: "Du café solo aux chaînes hôtelières — SmartRestau évolue avec votre ambition",
     howLabel: 'Comment Ça Marche', howTitle: 'Opérationnel en 5 Étapes',
-    howSub: "De l'inscription à la première commande en moins de 30 minutes",
-    featLabel: 'Fonctionnalités', featTitle: 'Tout en Une Plateforme',
-    featSub: '15 fonctionnalités pro pour les marchés MENA & Afrique',
+    howSub: "De l'inscription à un OS restaurant complet en moins de 30 minutes",
+    featLabel: 'Modules', featTitle: 'Un OS. Tous les Modules Nécessaires.',
+    featSub: '15+ modules IA pour les marchés MENA & Afrique',
     pricingLabel: 'Tarifs', pricingTitle: 'Payez Uniquement par Commande Complétée',
     pricingSub: "Pas d'abonnement · Pas de frais fixes · Petite commission auto-calculée",
-    trialBig: '7 Jours Gratuits', trialSub: "Commencez aujourd'hui — sans carte bancaire",
-    trialBadges: ['✓ Toutes les fonctionnalités', '✓ Commandes illimitées', '✓ Support en direct', '✓ QR prêt en minutes'],
-    testimonialLabel: 'Avis Clients', testimonialTitle: 'Des Restaurants Font Confiance à SmartMenu',
+    trialBig: '7 Jours Gratuits', trialSub: "Lancez votre OS restaurant aujourd'hui — sans carte bancaire",
+    trialBadges: ['✓ Tous les modules inclus', '✓ Commandes illimitées', '✓ Support en direct', '✓ Insights IA dès le 1er jour'],
+    testimonialLabel: 'Success Stories', testimonialTitle: 'Des Restaurants qui Grandissent avec SmartRestau',
     faqLabel: 'FAQ', faqTitle: 'Une Question ?',
     contactLabel: 'Contact', contactTitle: 'Nous Sommes Là pour Vous',
     contactSub: "Équipe disponible 7j/7 en arabe, français et anglais",
-    finalTitle: 'Prêt à Transformer votre Restaurant ?',
-    finalSub: "Rejoignez 500+ restaurants qui utilisent SmartMenu chaque jour",
-    finalCta1: 'Commencer Gratuitement →', finalCta2: 'Parler à Notre Équipe',
+    finalTitle: 'Votre OS Restaurant est Prêt.',
+    finalSub: "Rejoignez 500+ restaurants qui tournent déjà sur SmartRestau",
+    finalCta1: 'Lancer Mon OS Restaurant →', finalCta2: 'Parler à Notre Équipe',
     finalNote: 'Sans carte · Sans contrat · Annulation à tout moment',
     cookie: 'Nous utilisons des cookies pour améliorer votre expérience. Voir notre',
     cookieLink: 'Politique de Confidentialité', cookieAccept: 'Accepter', cookieDecline: 'Refuser',
@@ -86,36 +99,46 @@ const T: Record<Lang, Record<string, string | string[]>> = {
     systemOk: '🟢 Tous les systèmes opérationnels',
     privacy: 'Politique de Confidentialité', terms: "Conditions d'Utilisation", legal: 'Mentions Légales',
     allRights: 'Tous droits réservés',
-    madeWith: 'Fait avec ❤️ pour les restaurants MENA & Afrique',
+    madeWith: 'Conçu pour les restaurants MENA & Afrique — IA embarquée, ancrage local',
     enterpriseTitle: 'Plans Entreprise & Chaînes',
     enterpriseDesc: 'Plusieurs branches, marque personnalisée, SLA garanti, support VIP, intégration POS',
     enterpriseCta: 'Nous Contacter pour un Devis Personnalisé',
+    architectureLabel: 'Architecture Plateforme',
+    architectureTitle: 'Une Plateforme. Toutes les Opérations Restaurant.',
+    architectureSub: 'Dix modules IA. Un OS unifié. Tout votre restaurant depuis un seul tableau de bord.',
+    marketingEngineLabel: 'Moteur Marketing IA Alimentaire',
+    marketingEngineTitle: 'Transformez Chaque Plat en Campagne Marketing',
+    marketingEngineSub: 'Une photo. Un contenu marketing infini. Entièrement automatisé.',
+    marketingEngineResultTitle: '0 Designer. 0 Vidéaste. 0 Community Manager.',
+    marketingEngineResult: "Les restaurants génèrent du contenu marketing quotidien — vidéos, reels, légendes et posts — entièrement automatisé par IA. Zéro agence. Zéro freelance. Zéro travail manuel.",
+    marketingEngineCta: 'Voir en Action →',
     statsLabel: 'Reconnu mondialement',
   },
   ar: {
-    tagline: 'منصة إدارة المطاعم والمقاهي #1',
-    h1a: 'أدِر مطعمك بالكامل', h1b: 'من مكان واحد',
-    h1c: 'منيو QR · طلبات مباشرة · مطبخ ذكي · موظفين وحسابات',
-    desc: 'أكثر من مجرد منيو رقمي — نظام متكامل لإدارة مطعمك أو مقهاك. طلبات، مطبخ، موظفين، طاولات، فواتير وإحصاءات، كل شيء في منصة واحدة. الزبون يمسح QR ويطلب فوراً، المطبخ يستقبل في الثانية، وأنت تتحكم في كل شيء من هاتفك.',
-    cta1: 'ابدأ مجاناً 7 أيام', cta2: 'شاهد كيف يعمل',
+    tagline: 'نظام التشغيل الذكي للمطاعم',
+    h1a: 'نظام التشغيل الذكي', h1b: 'للمطاعم',
+    h1c: '',
+    desc: 'أدِر مطعمك بالكامل من منصة ذكية واحدة.\n\nأدر قوائمك، طلباتك، POS، الحجوزات، الموظفين، الحضور، التسويق، السوشيال ميديا والأتمتة الذكية من لوحة تحكم واحدة.',
+    cta1: 'ابدأ مجاناً', cta2: 'احجز عرضاً',
+    trustBar: 'موثوق به من مطاعم في أفريقيا والخليج وأوروبا.',
     badges: ['بدون عقد', 'إعداد 5 دقائق', 'دعم 24/7', 'لا بطاقة بنكية'],
     whoLabel: 'الاستهداف', whoTitle: 'مصمم لكل قطاع F&B',
-    whoSub: 'من المقاهي الصغيرة إلى سلاسل الفنادق — SmartMenu يتكيف مع احتياجاتك',
+    whoSub: 'من المقاهي الصغيرة إلى سلاسل الفنادق — SmartRestau يتوسع مع طموحاتك',
     howLabel: 'كيف يعمل', howTitle: 'جاهز في 5 خطوات',
-    howSub: 'من التسجيل إلى أول طلب في أقل من 30 دقيقة',
-    featLabel: 'المميزات', featTitle: 'كل ما تحتاجه في منصة واحدة',
-    featSub: '15 ميزة احترافية للسوق العربي والأفريقي',
+    howSub: 'من التسجيل إلى نظام تشغيل مطعم كامل في أقل من 30 دقيقة',
+    featLabel: 'الوحدات', featTitle: 'نظام تشغيل واحد. كل الوحدات التي تحتاجها.',
+    featSub: '15+ وحدة مدعومة بالذكاء الاصطناعي للسوق العربي والأفريقي',
     pricingLabel: 'الأسعار', pricingTitle: 'تدفع فقط على الطلبات المكتملة',
     pricingSub: 'لا اشتراك شهري · لا رسوم ثابتة · عمولة رمزية تُحسب تلقائياً',
-    trialBig: '7 أيام مجاناً', trialSub: 'ابدأ اليوم — لا بطاقة بنكية، لا التزام',
-    trialBadges: ['✓ جميع المميزات مفعّلة', '✓ طلبات غير محدودة', '✓ دعم فوري', '✓ QR جاهز في دقائق'],
-    testimonialLabel: 'آراء العملاء', testimonialTitle: 'مطاعم تثق في SmartMenu',
+    trialBig: '7 أيام مجاناً', trialSub: 'شغّل نظام مطعمك اليوم — لا بطاقة بنكية، لا التزام',
+    trialBadges: ['✓ جميع الوحدات مفعّلة', '✓ طلبات غير محدودة', '✓ دعم فوري', '✓ تحليلات ذكية من اليوم الأول'],
+    testimonialLabel: 'قصص نجاح', testimonialTitle: 'مطاعم تنمو مع SmartRestau',
     faqLabel: 'الأسئلة الشائعة', faqTitle: 'لديك سؤال؟',
     contactLabel: 'تواصل معنا', contactTitle: 'نحن هنا لمساعدتك',
     contactSub: 'فريق الدعم متاح 7 أيام بالعربية والفرنسية والإنجليزية',
-    finalTitle: 'جاهز تحوّل مطعمك؟',
-    finalSub: 'انضم لأكثر من 500 مطعم ومقهى يستخدم SmartMenu يومياً',
-    finalCta1: 'ابدأ 7 أيام مجاناً ←', finalCta2: 'تحدث مع فريقنا',
+    finalTitle: 'نظام تشغيل مطعمك جاهز.',
+    finalSub: 'انضم لأكثر من 500 مطعم ومقهى يشتغل على SmartRestau يومياً',
+    finalCta1: 'شغّل نظام مطعمي الآن ←', finalCta2: 'تحدث مع فريقنا',
     finalNote: 'لا بطاقة بنكية · لا عقد · إلغاء في أي وقت',
     cookie: 'نستخدم ملفات تعريف الارتباط لتحسين تجربتك. راجع',
     cookieLink: 'سياسة الخصوصية', cookieAccept: 'قبول', cookieDecline: 'رفض',
@@ -123,10 +146,19 @@ const T: Record<Lang, Record<string, string | string[]>> = {
     systemOk: '🟢 جميع الأنظمة تعمل',
     privacy: 'سياسة الخصوصية', terms: 'شروط الاستخدام', legal: 'الإشعار القانوني',
     allRights: 'جميع الحقوق محفوظة',
-    madeWith: 'مصنوع بـ ❤️ للمطاعم العربية والأفريقية',
+    madeWith: 'مبني للمطاعم العربية والأفريقية — ذكاء اصطناعي، جذور محلية',
     enterpriseTitle: 'باقة المؤسسات والسلاسل',
     enterpriseDesc: 'عدة فروع، علامة تجارية خاصة، SLA مضمون، دعم VIP، تكامل مع POS',
     enterpriseCta: 'تواصل معنا للتسعير المخصص',
+    architectureLabel: 'معمارية المنصة',
+    architectureTitle: 'منصة واحدة. كل عمليات مطعمك.',
+    architectureSub: 'عشر وحدات مدعومة بالذكاء الاصطناعي. نظام تشغيل موحد. مطعمك بالكامل من لوحة تحكم واحدة.',
+    marketingEngineLabel: 'محرك التسويق الغذائي بالذكاء الاصطناعي',
+    marketingEngineTitle: 'حوّل كل طبق إلى حملة تسويقية',
+    marketingEngineSub: 'صورة واحدة. محتوى تسويقي لا نهائي. أتمتة كاملة.',
+    marketingEngineResultTitle: '0 مصمم. 0 مصوّر. 0 مدير سوشيال ميديا.',
+    marketingEngineResult: 'المطاعم تولّد محتوى تسويقياً يومياً — فيديوهات، ريلز، تعليقات ومنشورات — بشكل تلقائي بالذكاء الاصطناعي. لا وكالات. لا مستقلين. لا عمل يدوي.',
+    marketingEngineCta: 'شاهده مباشرة ←',
     statsLabel: 'موثوق عالمياً',
   },
 }
@@ -147,30 +179,30 @@ const STATS = [
 const PERSONAS = [
   {
     icon: Utensils,
-    en:  { title: 'Independent Restaurant', pain: 'Paper orders & costly errors',       gain: 'QR menu live in 5 min, zero mistakes' },
-    fr:  { title: 'Restaurant Indépendant', pain: 'Commandes papier et erreurs coûteuses', gain: 'Menu QR en 5 min, zéro erreur' },
-    ar:  { title: 'مطعم مستقل',            pain: 'طلبات ورقية وأخطاء مكلفة',           gain: 'منيو QR في 5 دقائق، صفر أخطاء' },
+    en:  { title: 'Independent Restaurant', pain: 'Lost revenue from errors & slow ops', gain: 'AI-powered OS live in 5 min — more revenue, zero errors' },
+    fr:  { title: 'Restaurant Indépendant', pain: 'Revenus perdus à cause des erreurs et lenteurs', gain: 'OS IA en 5 min — plus de revenus, zéro erreur' },
+    ar:  { title: 'مطعم مستقل',            pain: 'إيرادات ضائعة بسبب الأخطاء والبطء',  gain: 'نظام ذكي في 5 دقائق — إيرادات أكثر، أخطاء أقل' },
     border: 'border-emerald-200 hover:border-emerald-500', iconBg: 'bg-emerald-50', iconColor: 'text-emerald-600', gainColor: 'text-emerald-700',
   },
   {
     icon: Coffee,
-    en:  { title: 'Café & Snack Bar',      pain: 'Slow service at peak hours',          gain: 'Table QR + waiter call, 2× faster' },
-    fr:  { title: 'Café & Snack',          pain: 'Service lent aux heures de pointe',   gain: 'QR table + bouton serveur, 2× plus vite' },
-    ar:  { title: 'مقهى وسناك',            pain: 'خدمة بطيئة في أوقات الذروة',         gain: 'QR + زر نادل، سرعة مضاعفة' },
+    en:  { title: 'Café & Snack Bar',      pain: 'Slow service kills retention & tips', gain: 'AI-assisted orders, 2× faster service & higher average ticket' },
+    fr:  { title: 'Café & Snack',          pain: 'La lenteur tue la fidélisation et le ticket', gain: 'Commandes IA, service 2× plus rapide, ticket moyen plus élevé' },
+    ar:  { title: 'مقهى وسناك',            pain: 'الخدمة البطيئة تضر بالولاء والإيراد',  gain: 'طلبات ذكية، خدمة مضاعفة السرعة، متوسط فاتورة أعلى' },
     border: 'border-amber-200 hover:border-amber-500', iconBg: 'bg-amber-50', iconColor: 'text-amber-600', gainColor: 'text-amber-700',
   },
   {
     icon: Building2,
-    en:  { title: 'Hotel & Resort',        pain: 'Room service coordination chaos',     gain: 'Mobile menu per room, auto billing' },
-    fr:  { title: 'Hôtel & Resort',        pain: 'Chaos du service en chambre',         gain: 'Menu mobile par chambre, facturation auto' },
-    ar:  { title: 'فندق ومنتجع',           pain: 'فوضى في خدمة الغرف',                 gain: 'منيو موبايل لكل غرفة، فوترة تلقائية' },
+    en:  { title: 'Hotel & Resort',        pain: 'Room service chaos & billing errors', gain: 'Automated operations, real-time analytics, zero revenue leakage' },
+    fr:  { title: 'Hôtel & Resort',        pain: 'Chaos du service en chambre et erreurs de facturation', gain: 'Opérations automatisées, analytics temps réel, zéro perte' },
+    ar:  { title: 'فندق ومنتجع',           pain: 'فوضى الغرف وأخطاء الفواتير',          gain: 'عمليات مؤتمتة، تحليلات فورية، صفر تسرب إيرادات' },
     border: 'border-sky-200 hover:border-sky-500', iconBg: 'bg-sky-50', iconColor: 'text-sky-600', gainColor: 'text-sky-700',
   },
   {
     icon: ShoppingBag,
-    en:  { title: 'Chain & Food Court',    pain: 'Managing multiple outlets is hard',   gain: 'Central dashboard, per-branch analytics' },
-    fr:  { title: 'Chaîne & Food Court',   pain: 'Gérer plusieurs points de vente',     gain: 'Dashboard central, analytics par branche' },
-    ar:  { title: 'سلسلة وفود كورت',       pain: 'إدارة فروع متعددة صعبة',             gain: 'لوحة تحكم مركزية، إحصاءات لكل فرع' },
+    en:  { title: 'Chain & Food Court',    pain: 'Managing multiple outlets is hard',   gain: 'AI command center — all branches, one dashboard, full control' },
+    fr:  { title: 'Chaîne & Food Court',   pain: 'Gérer plusieurs points de vente',     gain: 'Poste de commande IA — toutes les branches, un seul tableau de bord' },
+    ar:  { title: 'سلسلة وفود كورت',       pain: 'إدارة فروع متعددة صعبة ومرهقة',      gain: 'مركز قيادة ذكي — كل الفروع من لوحة تحكم واحدة' },
     border: 'border-rose-200 hover:border-rose-500', iconBg: 'bg-rose-50', iconColor: 'text-rose-600', gainColor: 'text-rose-700',
   },
 ]
@@ -187,99 +219,293 @@ const HOW_IT_WORKS = [
     ar: { title: 'خصّص ملفك الشخصي',       desc: 'أضف اسم مطعمك، شعارك، ألوانك ومعلومات التواصل — هويتك، علامتك.' },
   },
   { step: '03', icon: QrCode,
-    en: { title: 'Build Your Menu',        desc: 'Add items in Arabic, French, English — or use our ready demo menu in seconds.' },
-    fr: { title: 'Créez votre Menu',       desc: 'Ajoutez vos plats en arabe, français, anglais — ou utilisez notre menu demo.' },
-    ar: { title: 'أضف منيوك',              desc: 'أضف أصنافك بالعربية والفرنسية — أو استخدم منيونا التجريبي الجاهز.' },
+    en: { title: 'Configure Your OS',      desc: 'Add your menu, set staff roles, link kitchen stations — your full operation in one setup.' },
+    fr: { title: 'Configurez votre OS',    desc: 'Ajoutez votre menu, définissez les rôles staff et liez les stations cuisine — tout en une config.' },
+    ar: { title: 'هيّئ نظام تشغيلك',       desc: 'أضف منيوك، عيّن أدوار الموظفين، اربط محطات المطبخ — كل عملياتك في إعداد واحد.' },
   },
   { step: '04', icon: Utensils,
-    en: { title: 'Print Table QR Codes',   desc: 'Print a QR sticker per table — each seat gets its own unique code.' },
-    fr: { title: 'Imprimez les QR',        desc: 'Imprimez une étiquette QR par table — chaque place a son propre code.' },
-    ar: { title: 'اطبع QR الطاولات',       desc: 'اطبع ملصق QR لكل طاولة — كل مقعد عنده رمز خاص.' },
+    en: { title: 'Activate Your Tables',   desc: 'Print a QR sticker per table — customers scan to order and your OS manages everything.' },
+    fr: { title: 'Activez vos Tables',     desc: 'Imprimez un QR par table — les clients scannent et votre OS gère tout le reste.' },
+    ar: { title: 'فعّل طاولاتك',            desc: 'اطبع QR لكل طاولة — الزبون يمسح ويطلب، ونظامك يدير كل شيء.' },
   },
   { step: '05', icon: Zap,
-    en: { title: 'Receive Orders Instantly', desc: 'Guests scan and order — you receive in real time on dashboard & kitchen screen.' },
-    fr: { title: 'Recevez les Commandes',  desc: 'Les clients scannent et commandent — vous recevez en temps réel.' },
-    ar: { title: 'استقبل الطلبات',          desc: 'الزبون يمسح ويطلب — أنت تستقبل فوراً على لوحة التحكم والمطبخ.' },
+    en: { title: 'Watch Your Business Run', desc: 'Orders, kitchen, staff and analytics — all live on your dashboard. Your OS handles the rest.' },
+    fr: { title: 'Regardez votre Business Tourner', desc: 'Commandes, cuisine, staff et analytics — tout en direct. Votre OS gère le reste.' },
+    ar: { title: 'شاهد مطعمك يعمل',         desc: 'طلبات، مطبخ، موظفين وإحصاءات — كل شيء مباشر على لوحتك. نظامك يتولى الباقي.' },
   },
 ]
 
 const FEATURES = [
-  { icon: QrCode,
-    en: { title: 'QR Menu — No App',        desc: 'Guests scan and order directly — no download, no account. Works on any phone.' },
-    fr: { title: 'Menu QR — Sans App',       desc: 'Les clients scannent et commandent directement — aucun téléchargement.' },
-    ar: { title: 'QR Menu بدون تطبيق',      desc: 'يمسح الزبون الكود ويطلب مباشرة — لا تحميل، لا إنشاء حساب.' },
-  },
-  { icon: Zap,
-    en: { title: 'Instant Kitchen Orders',   desc: 'Orders hit the kitchen in milliseconds with audio alert & KDS screen.' },
-    fr: { title: 'Commandes Instantanées',   desc: "Les commandes atteignent la cuisine en millisecondes avec alerte audio." },
-    ar: { title: 'طلبات فورية للمطبخ',       desc: 'الطلب يصل للمطبخ في الثانية مع صوت تنبيه وشاشة KDS.' },
-  },
-  { icon: Languages,
-    en: { title: 'Multilingual Menu',        desc: 'Arabic, French, English — tourists and locals order with ease.' },
-    fr: { title: 'Menu Multi-langues',        desc: 'Arabe, français, anglais — touristes et locaux commandent facilement.' },
-    ar: { title: 'متعدد اللغات',             desc: 'المنيو بالعربية، الفرنسية، الإنجليزية — الزبائن يطلبون بسهولة.' },
-  },
-  { icon: Layers,
-    en: { title: 'Table Merging',            desc: 'Large groups? Merge two tables in one tap — single bill for everyone.' },
-    fr: { title: 'Fusion de Tables',          desc: 'Grands groupes ? Fusionnez deux tables en un tap — une facture unifiée.' },
-    ar: { title: 'دمج الطاولات',             desc: 'مجموعات كبيرة؟ ادمج طاولتين بضغطة — فاتورة موحدة.' },
-  },
   { icon: BarChart3,
-    en: { title: 'Smart Analytics',          desc: 'Know top dishes, peak hours, and average spend per table in real time.' },
-    fr: { title: 'Analytics Avancés',         desc: 'Connaissez vos plats phares, heures de pointe et dépense moyenne.' },
-    ar: { title: 'إحصاءات ذكية',             desc: 'اعرف الأطباق الأكثر مبيعاً، أوقات الذروة، ومتوسط إنفاق الطاولة.' },
-  },
-  { icon: Star,
-    en: { title: 'Auto Google Reviews',      desc: 'Prompt guests to leave a Google review after every order — boost your ranking.' },
-    fr: { title: 'Avis Google Auto',          desc: 'Incitez vos clients à laisser un avis Google après chaque commande.' },
-    ar: { title: 'تقييمات Google تلقائية',   desc: 'نشجع زبائنك على كتابة تقييم بعد كل طلب — مطعمك يصعد في البحث.' },
-  },
-  { icon: Bell,
-    en: { title: 'Waiter Call Button',       desc: 'One tap calls the waiter — guests never have to stand or shout.' },
-    fr: { title: "Bouton d'Appel Serveur",   desc: "Un tap appelle le serveur — les clients n'ont pas besoin de se lever." },
-    ar: { title: 'استدعاء النادل',            desc: 'زر واحد يستدعي النادل — الزبون لا يحتاج يقوم أو ينادي.' },
-  },
-  { icon: CreditCard,
-    en: { title: 'Bill Request',             desc: 'Guests request the bill from their phone — cash, card or Apple Pay.' },
-    fr: { title: "Demande d'Addition",        desc: 'Les clients demandent l\'addition depuis leur téléphone.' },
-    ar: { title: 'طلب الحساب',               desc: 'الزبون يطلب الحساب مباشرة من هاتفه بالكاش أو البطاقة.' },
-  },
-  { icon: ChefHat,
-    en: { title: 'Kitchen Display (KDS)',     desc: 'Dedicated kitchen screen shows orders in sequence with prep timers.' },
-    fr: { title: 'Écran Cuisine (KDS)',        desc: "Écran dédié à la cuisine affichant les commandes avec minuteries." },
-    ar: { title: 'شاشة المطبخ KDS',          desc: 'شاشة مخصصة للمطبخ تعرض الطلبات بالترتيب مع توقيت الإعداد.' },
+    en: { title: 'AI Revenue Analytics',     desc: 'Know top dishes, peak hours, and real margin per table — live data that drives decisions.' },
+    fr: { title: 'Analytics IA des Revenus', desc: 'Identifiez vos plats phares, heures de pointe et marge réelle par table — données live.' },
+    ar: { title: 'تحليلات الإيرادات الذكية', desc: 'اعرف الأطباق الأكثر مبيعاً، أوقات الذروة، والهامش الحقيقي لكل طاولة — بيانات فورية.' },
   },
   { icon: TrendingUp,
-    en: { title: 'Smart Costing Engine',     desc: 'Auto-calculate dish costs vs price — know your real margins instantly.' },
-    fr: { title: 'Moteur de Costing Intelligent', desc: 'Calculez automatiquement le coût vs prix — connaissez vos marges réelles.' },
-    ar: { title: 'محرك التكلفة الذكي',       desc: 'احسب تكلفة كل طبق مقابل سعره — اعرف هامش ربحك الحقيقي.' },
+    en: { title: 'Smart Costing Engine',     desc: 'Auto-calculate dish costs vs price — know your real margins and stop bleeding money.' },
+    fr: { title: 'Moteur de Costing Intelligent', desc: 'Calculez automatiquement le coût vs prix — connaissez vos vraies marges.' },
+    ar: { title: 'محرك التكلفة الذكي',       desc: 'احسب تكلفة كل طبق مقابل سعره تلقائياً — اعرف هامش ربحك الحقيقي.' },
   },
   { icon: Package,
-    en: { title: 'Auto Stock Deduction',     desc: 'Every order auto-deducts ingredient stock — real-time inventory tracking.' },
-    fr: { title: 'Déduction Stock Auto',      desc: 'Chaque commande déduit automatiquement le stock — suivi en temps réel.' },
-    ar: { title: 'خصم المخزون التلقائي',     desc: 'كل طلب يخصم مكوناته من المخزون تلقائياً — متابعة فورية.' },
+    en: { title: 'Auto Stock Deduction',     desc: 'Every order auto-deducts ingredient stock — real-time inventory, zero manual counting.' },
+    fr: { title: 'Déduction Stock Auto',      desc: 'Chaque commande déduit le stock automatiquement — inventaire en temps réel.' },
+    ar: { title: 'خصم المخزون التلقائي',     desc: 'كل طلب يخصم مكوناته من المخزون تلقائياً — متابعة فورية، لا جرد يدوي.' },
   },
-  { icon: ThumbsUp,
-    en: { title: 'Customer Feedback System', desc: 'Collect post-order ratings & comments — identify issues before they go public.' },
-    fr: { title: 'Système de Feedback Client', desc: "Collectez notes et commentaires après commande — identifiez les problèmes." },
-    ar: { title: 'نظام تقييم الزبائن',       desc: 'اجمع التقييمات والتعليقات بعد كل طلب — اكتشف المشاكل قبل أن تنتشر.' },
+  { icon: Zap,
+    en: { title: 'Instant Kitchen Orders',   desc: 'Orders hit the kitchen in milliseconds with audio alert & KDS screen — zero delays.' },
+    fr: { title: 'Commandes Cuisine Instantanées', desc: "Les commandes atteignent la cuisine en millisecondes — alerte audio et écran KDS." },
+    ar: { title: 'طلبات فورية للمطبخ',       desc: 'الطلب يصل للمطبخ في الثانية مع صوت تنبيه وشاشة KDS — صفر تأخير.' },
   },
-  { icon: AlertTriangle,
-    en: { title: 'Anti-Fraud Engine',        desc: 'Detects duplicate orders, suspicious patterns & fake reviews automatically.' },
-    fr: { title: 'Moteur Anti-Fraude',        desc: 'Détecte les doublons, les comportements suspects et faux avis automatiquement.' },
-    ar: { title: 'محرك مكافحة الاحتيال',    desc: 'يكشف الطلبات المكررة والأنماط المشبوهة والتقييمات المزيفة تلقائياً.' },
+  { icon: ChefHat,
+    en: { title: 'Kitchen Display (KDS)',     desc: 'Dedicated kitchen screen shows orders in sequence with prep timers — full operational control.' },
+    fr: { title: 'Écran Cuisine (KDS)',        desc: "Écran dédié à la cuisine affichant les commandes en séquence avec minuteries." },
+    ar: { title: 'شاشة المطبخ KDS',          desc: 'شاشة مخصصة للمطبخ تعرض الطلبات بالترتيب مع توقيت الإعداد — تحكم كامل.' },
   },
-  { icon: Wallet,
-    en: { title: 'International Payments',   desc: 'Gulf: Stripe · Africa: Mobile Money (Wave, M-Pesa) · WhatsApp zero-rating.' },
-    fr: { title: 'Paiements Internationaux', desc: 'Golfe: Stripe · Afrique: Mobile Money (Wave, M-Pesa) · WhatsApp zero-rating.' },
-    ar: { title: 'مدفوعات دولية',            desc: 'الخليج: Stripe · أفريقيا: Mobile Money (Wave, M-Pesa) · واتساب بدون بيانات.' },
+  { icon: Star,
+    en: { title: 'Auto Google Reviews',      desc: 'Prompt guests to leave a Google review after every order — higher ranking, more customers.' },
+    fr: { title: 'Avis Google Auto',          desc: 'Incitez les clients à laisser un avis Google après chaque commande — meilleur classement.' },
+    ar: { title: 'تقييمات Google تلقائية',   desc: 'نشجع زبائنك على كتابة تقييم بعد كل طلب — ترتيب أعلى، زبائن أكثر.' },
   },
   { icon: Share2,
-    en: { title: 'Visitor-Powered Marketing', desc: 'Every guest who scans your QR becomes a marketing channel — prompt them to share dishes on Instagram, tag your café, and invite friends. Turn every table into a free ad.' },
-    fr: { title: 'Marketing par vos Visiteurs', desc: 'Chaque client qui scanne votre QR devient un canal marketing — incitez-les à partager des plats sur Instagram, taguer votre café et inviter des amis. Chaque table devient une pub gratuite.' },
-    ar: { title: 'تسويق عبر زبائنك',         desc: 'كل زبون يمسح QR مطعمك يصبح قناة تسويقية — شجّعه على مشاركة صور الأطباق على إنستغرام وتاغ مقهاك ودعوة أصدقائه. كل طاولة إعلان مجاني.' },
+    en: { title: 'Automated Marketing Engine', desc: 'Turn every guest into a marketing channel — auto-prompt shares on Instagram, friend invites, and viral reach. Free ads at every table.' },
+    fr: { title: 'Moteur Marketing Automatisé', desc: 'Transformez chaque client en canal marketing — partages Instagram automatiques, invitations, portée virale. Pub gratuite à chaque table.' },
+    ar: { title: 'محرك تسويق آلي',           desc: 'كل زبون يصبح قناة تسويقية تلقائية — مشاركة إنستغرام، دعوة أصدقاء، وصول فيروسي. إعلان مجاني على كل طاولة.' },
+  },
+  { icon: ThumbsUp,
+    en: { title: 'Customer Retention System', desc: 'Collect post-order ratings & comments — catch problems before they go public, keep customers coming back.' },
+    fr: { title: 'Système de Fidélisation Client', desc: "Collectez notes et commentaires après commande — détectez les problèmes avant qu'ils deviennent publics." },
+    ar: { title: 'نظام الاحتفاظ بالزبائن',   desc: 'اجمع التقييمات والتعليقات بعد كل طلب — اكتشف المشاكل مبكراً واحتفظ بزبائنك.' },
+  },
+  { icon: AlertTriangle,
+    en: { title: 'Anti-Fraud Engine',        desc: 'Detects duplicate orders, suspicious patterns & fake reviews automatically — protect your revenue.' },
+    fr: { title: 'Moteur Anti-Fraude',        desc: 'Détecte doublons, comportements suspects et faux avis automatiquement — protégez vos revenus.' },
+    ar: { title: 'محرك مكافحة الاحتيال',    desc: 'يكشف الطلبات المكررة والأنماط المشبوهة والتقييمات المزيفة تلقائياً — حماية كاملة.' },
+  },
+  { icon: Wallet,
+    en: { title: 'International Payments',   desc: 'Gulf: Stripe · Africa: Mobile Money (Wave, M-Pesa) · WhatsApp zero-rating. Every market covered.' },
+    fr: { title: 'Paiements Internationaux', desc: 'Golfe: Stripe · Afrique: Mobile Money (Wave, M-Pesa). Tous les marchés couverts.' },
+    ar: { title: 'مدفوعات دولية',            desc: 'الخليج: Stripe · أفريقيا: Mobile Money (Wave, M-Pesa) · واتساب بدون بيانات. كل الأسواق.' },
+  },
+  { icon: Languages,
+    en: { title: 'Multilingual Operations',  desc: 'Arabic, French, English across the full OS — menu, staff screens, and analytics all localized.' },
+    fr: { title: 'Opérations Multilingues',   desc: 'Arabe, français, anglais sur tout l\'OS — menu, écrans staff et analytics localisés.' },
+    ar: { title: 'عمليات متعددة اللغات',     desc: 'العربية والفرنسية والإنجليزية في كل النظام — منيو، شاشات الموظفين وإحصاءات محلية.' },
+  },
+  { icon: Bell,
+    en: { title: 'Waiter Call Button',       desc: 'One tap calls the waiter — better service experience, higher tips, stronger retention.' },
+    fr: { title: "Bouton d'Appel Serveur",   desc: "Un tap appelle le serveur — meilleure expérience, plus de pourboires, fidélisation." },
+    ar: { title: 'استدعاء النادل',            desc: 'زر واحد يستدعي النادل — تجربة أفضل، إكراميات أكثر، ولاء أقوى.' },
+  },
+  { icon: CreditCard,
+    en: { title: 'Bill Request',             desc: 'Guests request the bill from their phone — faster table turnover, more covers per night.' },
+    fr: { title: "Demande d'Addition",        desc: "Les clients demandent l'addition depuis leur téléphone — rotation plus rapide des tables." },
+    ar: { title: 'طلب الحساب',               desc: 'الزبون يطلب الحساب من هاتفه — دوران طاولات أسرع، وتغطية أكثر في الليلة الواحدة.' },
+  },
+  { icon: Layers,
+    en: { title: 'Table Merging',            desc: 'Large groups? Merge tables in one tap — single unified bill, zero collection confusion.' },
+    fr: { title: 'Fusion de Tables',          desc: 'Grands groupes ? Fusionnez les tables en un tap — une facture unifiée, zéro confusion.' },
+    ar: { title: 'دمج الطاولات',             desc: 'مجموعات كبيرة؟ ادمج الطاولات بضغطة — فاتورة موحدة، لا ارتباك في التحصيل.' },
+  },
+  { icon: QrCode,
+    en: { title: 'Smart Menu (QR · No App)', desc: 'Part of the Smart Menu module — guests scan to browse and order instantly, no download needed. Works on any phone.' },
+    fr: { title: 'Smart Menu (QR · Sans App)', desc: 'Inclus dans le module Smart Menu — les clients scannent et commandent, aucun téléchargement.' },
+    ar: { title: 'Smart Menu (QR · بدون تطبيق)', desc: 'ضمن وحدة Smart Menu — الزبون يمسح ويطلب فوراً، بدون تحميل أو تسجيل.' },
   },
 ]
+
+// ─── Platform Architecture ────────────────────────────────────────────────────
+
+type ModuleLang = { en: string; fr: string; ar: string }
+type ModuleFeatLang = { en: string[]; fr: string[]; ar: string[] }
+
+const PLATFORM_MODULES: {
+  Icon: ElementType
+  prefix: string
+  isAi: boolean
+  name: ModuleLang
+  features: ModuleFeatLang
+  iconBg: string; iconColor: string; labelColor: string; border: string; dotColor: string
+}[] = [
+  {
+    Icon: QrCode, prefix: 'SMART', isAi: false,
+    name: { en: 'MENU', fr: 'MENU', ar: 'المنيو' },
+    features: {
+      en: ['QR Menu', 'Digital Menu', 'Multi-language Menu'],
+      fr: ['Menu QR', 'Menu Digital', 'Menu Multilingue'],
+      ar: ['منيو QR', 'منيو رقمي', 'منيو متعدد اللغات'],
+    },
+    iconBg: 'bg-emerald-900/60', iconColor: 'text-emerald-400',
+    labelColor: 'text-emerald-500', border: 'border-emerald-700/40', dotColor: 'bg-emerald-400',
+  },
+  {
+    Icon: CreditCard, prefix: 'SMART', isAi: false,
+    name: { en: 'POS', fr: 'POS', ar: 'نقطة البيع' },
+    features: {
+      en: ['Orders', 'Payments', 'Receipts', 'Sales Tracking'],
+      fr: ['Commandes', 'Paiements', 'Reçus', 'Suivi Ventes'],
+      ar: ['الطلبات', 'المدفوعات', 'الإيصالات', 'تتبع المبيعات'],
+    },
+    iconBg: 'bg-blue-900/60', iconColor: 'text-blue-400',
+    labelColor: 'text-blue-500', border: 'border-blue-700/40', dotColor: 'bg-blue-400',
+  },
+  {
+    Icon: UserCircle, prefix: 'SMART', isAi: false,
+    name: { en: 'STAFF', fr: 'STAFF', ar: 'الموظفون' },
+    features: {
+      en: ['Employees', 'Attendance', 'Scheduling', 'Roles & Permissions'],
+      fr: ['Employés', 'Présence', 'Planning', 'Rôles & Permissions'],
+      ar: ['الموظفون', 'الحضور', 'الجدولة', 'الأدوار والصلاحيات'],
+    },
+    iconBg: 'bg-violet-900/60', iconColor: 'text-violet-400',
+    labelColor: 'text-violet-500', border: 'border-violet-700/40', dotColor: 'bg-violet-400',
+  },
+  {
+    Icon: Calendar, prefix: 'SMART', isAi: false,
+    name: { en: 'RESERVATIONS', fr: 'RÉSERVATIONS', ar: 'الحجوزات' },
+    features: {
+      en: ['Table Booking', 'Customer Management'],
+      fr: ['Réservation Table', 'Gestion Clients'],
+      ar: ['حجز الطاولات', 'إدارة العملاء'],
+    },
+    iconBg: 'bg-sky-900/60', iconColor: 'text-sky-400',
+    labelColor: 'text-sky-500', border: 'border-sky-700/40', dotColor: 'bg-sky-400',
+  },
+  {
+    Icon: BarChart3, prefix: 'SMART', isAi: false,
+    name: { en: 'ANALYTICS', fr: 'ANALYTICS', ar: 'الإحصاءات' },
+    features: {
+      en: ['Revenue Tracking', 'Performance Reports', 'Customer Insights'],
+      fr: ['Suivi Revenus', 'Rapports Performance', 'Insights Clients'],
+      ar: ['تتبع الإيرادات', 'تقارير الأداء', 'رؤى العملاء'],
+    },
+    iconBg: 'bg-amber-900/60', iconColor: 'text-amber-400',
+    labelColor: 'text-amber-500', border: 'border-amber-700/40', dotColor: 'bg-amber-400',
+  },
+  {
+    Icon: Zap, prefix: 'SMART', isAi: true,
+    name: { en: 'MARKETING AI', fr: 'MARKETING IA', ar: 'التسويق الذكي' },
+    features: {
+      en: ['Campaign Generation', 'Social Media Content', 'Promotions'],
+      fr: ['Génération Campagnes', 'Contenu Social', 'Promotions'],
+      ar: ['توليد الحملات', 'محتوى السوشيال', 'العروض الترويجية'],
+    },
+    iconBg: 'bg-pink-900/60', iconColor: 'text-pink-400',
+    labelColor: 'text-pink-500', border: 'border-pink-700/40', dotColor: 'bg-pink-400',
+  },
+  {
+    Icon: Film, prefix: 'SMART', isAi: true,
+    name: { en: 'VIDEO AI', fr: 'VIDÉO IA', ar: 'الفيديو الذكي' },
+    features: {
+      en: ['Dish Video Creation', 'Promotional Videos', 'Reels Generation'],
+      fr: ['Vidéos de Plats', 'Vidéos Promotionnelles', 'Génération Reels'],
+      ar: ['فيديوهات الأطباق', 'فيديوهات ترويجية', 'توليد ريلز'],
+    },
+    iconBg: 'bg-rose-900/60', iconColor: 'text-rose-400',
+    labelColor: 'text-rose-500', border: 'border-rose-700/40', dotColor: 'bg-rose-400',
+  },
+  {
+    Icon: Globe2, prefix: 'SMART', isAi: false,
+    name: { en: 'SOCIAL', fr: 'SOCIAL', ar: 'السوشيال' },
+    features: {
+      en: ['Facebook Publishing', 'Instagram Publishing', 'TikTok Publishing', 'YouTube Shorts Publishing'],
+      fr: ['Publication Facebook', 'Publication Instagram', 'Publication TikTok', 'YouTube Shorts'],
+      ar: ['نشر فيسبوك', 'نشر إنستغرام', 'نشر تيك توك', 'يوتيوب شورتس'],
+    },
+    iconBg: 'bg-indigo-900/60', iconColor: 'text-indigo-400',
+    labelColor: 'text-indigo-500', border: 'border-indigo-700/40', dotColor: 'bg-indigo-400',
+  },
+  {
+    Icon: Building2, prefix: 'SMART', isAi: false,
+    name: { en: 'MULTI-BRANCH', fr: 'MULTI-BRANCH', ar: 'متعدد الفروع' },
+    features: {
+      en: ['Restaurant Chains', 'Franchise Management'],
+      fr: ['Chaînes de Restaurants', 'Gestion Franchise'],
+      ar: ['سلاسل المطاعم', 'إدارة الفرنشايز'],
+    },
+    iconBg: 'bg-teal-900/60', iconColor: 'text-teal-400',
+    labelColor: 'text-teal-500', border: 'border-teal-700/40', dotColor: 'bg-teal-400',
+  },
+  {
+    Icon: Layers, prefix: 'SMART', isAi: false,
+    name: { en: 'WHITE LABEL', fr: 'WHITE LABEL', ar: 'وايت ليبل' },
+    features: {
+      en: ['Agencies', 'Resellers', 'Restaurant Consultants'],
+      fr: ['Agences', 'Revendeurs', 'Consultants Restaurant'],
+      ar: ['الوكالات', 'الموزعون', 'مستشارو المطاعم'],
+    },
+    iconBg: 'bg-gray-700/60', iconColor: 'text-gray-300',
+    labelColor: 'text-gray-400', border: 'border-gray-600/40', dotColor: 'bg-gray-400',
+  },
+]
+
+// ─── AI Marketing Engine Steps ───────────────────────────────────────────────
+
+const AI_MARKETING_STEPS: {
+  step: string
+  Icon: ElementType
+  title: { en: string; fr: string; ar: string }
+  items: { en: string[]; fr: string[]; ar: string[] }
+  clr: { text: string; bg: string; border: string; ring: string; dot: string; num: string }
+}[] = [
+  {
+    step: '01', Icon: Upload,
+    title: { en: 'Upload a Dish Photo', fr: 'Uploadez une Photo de Plat', ar: 'ارفع صورة الطبق' },
+    items: {
+      en: ['From your phone or camera', 'Any cuisine, any style', 'One click upload'],
+      fr: ['Depuis votre téléphone', 'Toutes cuisines', 'Upload en un clic'],
+      ar: ['من هاتفك أو كاميرتك', 'أي مطبخ، أي أسلوب', 'رفع بنقرة واحدة'],
+    },
+    clr: { text: 'text-emerald-400', bg: 'bg-emerald-900/40', border: 'border-emerald-700/50', ring: 'ring-emerald-700/30', dot: 'bg-emerald-400', num: 'text-emerald-500' },
+  },
+  {
+    step: '02', Icon: Brain,
+    title: { en: 'AI Analyzes Instantly', fr: "L'IA Analyse Instantanément", ar: 'الذكاء يحلّل فوراً' },
+    items: {
+      en: ['Ingredients & presentation', 'Colors & visual mood', 'Restaurant style & brand'],
+      fr: ['Ingrédients & présentation', 'Couleurs & ambiance', 'Style & marque'],
+      ar: ['المكونات والتقديم', 'الألوان والمزاج البصري', 'أسلوب المطعم وعلامته'],
+    },
+    clr: { text: 'text-blue-400', bg: 'bg-blue-900/40', border: 'border-blue-700/50', ring: 'ring-blue-700/30', dot: 'bg-blue-400', num: 'text-blue-500' },
+  },
+  {
+    step: '03', Icon: FileText,
+    title: { en: 'AI Generates Content', fr: "L'IA Génère le Contenu", ar: 'الذكاء يولّد المحتوى' },
+    items: {
+      en: ['Marketing text & captions', 'Social media posts', 'Ad concepts & promos'],
+      fr: ['Textes marketing', 'Publications sociales', 'Concepts pub & promos'],
+      ar: ['نصوص تسويقية', 'منشورات السوشيال', 'مفاهيم إعلانية وعروض'],
+    },
+    clr: { text: 'text-violet-400', bg: 'bg-violet-900/40', border: 'border-violet-700/50', ring: 'ring-violet-700/30', dot: 'bg-violet-400', num: 'text-violet-500' },
+  },
+  {
+    step: '04', Icon: Film,
+    title: { en: 'AI Creates Visuals', fr: "L'IA Crée les Visuels", ar: 'الذكاء يصنع المرئيات' },
+    items: {
+      en: ['Video Ads', 'Instagram Reels', 'TikTok Videos', 'Facebook Posts', 'Story Content'],
+      fr: ['Vidéos Publicitaires', 'Instagram Reels', 'Vidéos TikTok', 'Posts Facebook', 'Stories'],
+      ar: ['إعلانات فيديو', 'ريلز إنستغرام', 'فيديوهات تيك توك', 'منشورات فيسبوك', 'ستوري'],
+    },
+    clr: { text: 'text-rose-400', bg: 'bg-rose-900/40', border: 'border-rose-700/50', ring: 'ring-rose-700/30', dot: 'bg-rose-400', num: 'text-rose-500' },
+  },
+  {
+    step: '05', Icon: Send,
+    title: { en: 'AI Publishes on Schedule', fr: "L'IA Publie Automatiquement", ar: 'الذكاء ينشر بجدول تلقائي' },
+    items: {
+      en: ['Optimal posting times', 'All platforms at once', 'Zero manual work'],
+      fr: ['Heures optimales', 'Toutes plateformes', 'Zéro travail manuel'],
+      ar: ['أوقات نشر مثلى', 'كل المنصات دفعة واحدة', 'صفر عمل يدوي'],
+    },
+    clr: { text: 'text-amber-400', bg: 'bg-amber-900/40', border: 'border-amber-700/50', ring: 'ring-amber-700/30', dot: 'bg-amber-400', num: 'text-amber-500' },
+  },
+]
+
+const OUTPUT_FORMATS = [
+  { label: 'Video Ad',        ratio: '16:9', color: 'from-rose-900/60 to-rose-800/30',    border: 'border-rose-700/40',    icon: Film,         iconColor: 'text-rose-400'    },
+  { label: 'Instagram Reel',  ratio: '9:16', color: 'from-pink-900/60 to-fuchsia-900/30', border: 'border-pink-700/40',    icon: Film,         iconColor: 'text-pink-400'    },
+  { label: 'TikTok Video',    ratio: '9:16', color: 'from-gray-800/80 to-gray-900/60',    border: 'border-gray-600/40',    icon: Film,         iconColor: 'text-white'       },
+  { label: 'Facebook Post',   ratio: '1:1',  color: 'from-blue-900/60 to-blue-800/30',    border: 'border-blue-700/40',    icon: Share2,       iconColor: 'text-blue-400'    },
+  { label: 'Story Content',   ratio: '9:16', color: 'from-amber-900/60 to-orange-900/30', border: 'border-amber-700/40',   icon: Globe2,       iconColor: 'text-amber-400'   },
+] as const
 
 const MARKETS = [
   {
@@ -381,19 +607,19 @@ const TESTIMONIALS: LandingConfig['testimonials'] = [
     name: 'Mohammed Idrissi', avatarUrl: undefined,
     role: { en: 'Owner, Brahim Restaurant — Marrakech', fr: 'Propriétaire, Restaurant Brahim — Marrakech', ar: 'صاحب مطعم ببراهيم، مراكش' },
     rating: 5,
-    text: { en: 'Before SmartMenu we lost so much time on wrong orders. Now the kitchen reads everything clearly — and guests love the digital experience.', fr: 'Avant SmartMenu, nous perdions beaucoup de temps sur les erreurs. Maintenant la cuisine reçoit tout clairement.', ar: 'قبل SmartMenu كنت نخسر وقت كبير في الطلبات الغلوطة. دابا المطبخ كيقرا كل شيء واضح.' },
+    text: { en: 'SmartRestau changed how I run my entire restaurant. Errors dropped to near zero, the kitchen operates like clockwork, and I finally have real visibility into my margins.', fr: "SmartRestau a transformé la façon dont je gère mon restaurant. Les erreurs ont presque disparu, la cuisine fonctionne parfaitement et j'ai enfin une vraie visibilité sur mes marges.", ar: 'SmartRestau غيّر طريقة إدارتي للمطعم بالكامل. الأخطاء وصلت لشبه صفر، المطبخ يشتغل بدقة، وأخيراً عندي رؤية حقيقية على هامش ربحي.' },
   },
   {
     name: 'Fatima Bouzidi', avatarUrl: undefined,
     role: { en: 'Manager, Café Latte — Agadir', fr: 'Directrice, Café Latte — Agadir', ar: 'مديرة كافي لاتيه، أكادير' },
     rating: 5,
-    text: { en: 'Setup was incredibly easy — in under an hour the menu was live and QR stickers printed on tables. Foreign guests love the English menu.', fr: "Configuration incroyablement facile — en moins d'une heure le menu était en ligne. Les clients étrangers adorent le menu en anglais.", ar: 'إعداد سهل جداً — في أقل من ساعة كان المنيو جاهز. الزبائن الأجانب مسرورين بالمنيو بالإنجليزية.' },
+    text: { en: 'In under an hour the entire operation was live — orders, kitchen, staff management and analytics. Revenue went up 25% the first month because we stopped losing orders.', fr: "En moins d'une heure, toute l'opération était en ligne — commandes, cuisine, gestion du staff et analytics. Les revenus ont augmenté de 25% le premier mois.", ar: 'في أقل من ساعة كان كل شيء شغّال — طلبات، مطبخ، إدارة موظفين وإحصاءات. الإيرادات ارتفعت 25% الشهر الأول لأننا توقفنا عن خسارة الطلبات.' },
   },
   {
     name: 'Khalid Al-Omari', avatarUrl: undefined,
     role: { en: 'Owner, Food Court — Riyadh', fr: 'Propriétaire, Food Court — Riyad', ar: 'صاحب فود كورت، الرياض' },
     rating: 5,
-    text: { en: 'The table merge feature solved a huge problem for large families. One unified bill, no collection issues at all.', fr: 'La fusion de tables a résolu un énorme problème pour les grandes familles. Une facture unifiée, zéro problème de caisse.', ar: 'نظام دمج الطاولات للعائلات الكبيرة حل لنا مشكلة كبيرة. الفاتورة تجي موحدة وما كاين مشاكل.' },
+    text: { en: 'Managing 3 branches used to be chaos. Now I see everything from one dashboard — revenue, kitchen load, staff performance. It is a real operating system for my business.', fr: 'Gérer 3 branches était un chaos. Maintenant je vois tout depuis un tableau de bord — revenus, charge cuisine, performance staff. C\'est un vrai système d\'exploitation pour mon business.', ar: 'إدارة 3 فروع كانت فوضى. الآن أشوف كل شيء من لوحة تحكم واحدة — إيرادات، حمل المطبخ، أداء الموظفين. هذا فعلاً نظام تشغيل حقيقي لمطعمي.' },
   },
 ]
 
@@ -440,9 +666,9 @@ type LandingConfig = {
   platformImageUrl?: string
   logoImageUrl?: string
   text?: {
-    ar?: { tagline?: string; h1a?: string; h1b?: string; h1c?: string; desc?: string; cta1?: string; cta2?: string; featTitle?: string; featSub?: string }
-    en?: { tagline?: string; h1a?: string; h1b?: string; h1c?: string; desc?: string; cta1?: string; cta2?: string; featTitle?: string; featSub?: string }
-    fr?: { tagline?: string; h1a?: string; h1b?: string; h1c?: string; desc?: string; cta1?: string; cta2?: string; featTitle?: string; featSub?: string }
+    ar?: { tagline?: string; h1a?: string; h1b?: string; h1c?: string; desc?: string; cta1?: string; cta2?: string; trustBar?: string; featTitle?: string; featSub?: string }
+    en?: { tagline?: string; h1a?: string; h1b?: string; h1c?: string; desc?: string; cta1?: string; cta2?: string; trustBar?: string; featTitle?: string; featSub?: string }
+    fr?: { tagline?: string; h1a?: string; h1b?: string; h1c?: string; desc?: string; cta1?: string; cta2?: string; trustBar?: string; featTitle?: string; featSub?: string }
   }
   faqs?: { en: { q: string; a: string }; fr: { q: string; a: string }; ar: { q: string; a: string } }[]
   footer?: {
@@ -574,13 +800,14 @@ export default function LandingPage() {
             <Image src={logoImageUrl} alt="SmartMenu" width={38} height={38} className="rounded-xl shadow-sm object-contain" unoptimized={!logoImageUrl.startsWith('/') || logoImageUrl.startsWith('/uploads/')} />
             <div className="leading-tight">
               <span className="font-extrabold text-lg text-gray-900 tracking-tight">SmartMenu</span>
-              <span className="hidden sm:block text-[10px] text-emerald-600 font-semibold leading-none">SCAN · ORDER · MANAGE</span>
+              <span className="hidden sm:block text-[10px] text-emerald-600 font-semibold leading-none">AI OS · OPERATE · GROW</span>
             </div>
           </div>
 
           {/* Desktop nav links */}
           <div className="hidden lg:flex items-center gap-6 text-sm text-gray-600 font-medium">
             <a href="#who"      className="hover:text-emerald-700 transition-colors">{t('whoLabel')}</a>
+            <a href="#platform" className="hover:text-emerald-700 transition-colors">{t('architectureLabel')}</a>
             <a href="#features" className="hover:text-emerald-700 transition-colors">{t('featLabel')}</a>
             <a href="#how"      className="hover:text-emerald-700 transition-colors">{t('howLabel')}</a>
             <a href="#pricing"  className="hover:text-emerald-700 transition-colors">{t('pricingLabel')}</a>
@@ -610,7 +837,7 @@ export default function LandingPage() {
 
         {mobileMenuOpen && (
           <div className="lg:hidden border-t border-gray-100 bg-white px-4 py-4 space-y-3">
-            {[['#who', t('whoLabel')], ['#features', t('featLabel')], ['#how', t('howLabel')], ['#pricing', t('pricingLabel')], ['#contact', t('contactLabel')]].map(([href, label]) => (
+            {[['#who', t('whoLabel')], ['#platform', t('architectureLabel')], ['#features', t('featLabel')], ['#how', t('howLabel')], ['#pricing', t('pricingLabel')], ['#contact', t('contactLabel')]].map(([href, label]) => (
               <a key={href} href={href} onClick={() => setMobileMenuOpen(false)} className="block text-gray-700 font-medium py-1.5">{label}</a>
             ))}
             <Link href="/signup" onClick={() => setMobileMenuOpen(false)} className="block bg-emerald-600 text-white text-center py-3 rounded-xl font-bold mt-2">{t('navSignup')}</Link>
@@ -634,24 +861,31 @@ export default function LandingPage() {
               {t('tagline')}
             </div>
 
-            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold leading-[1.1] text-white">
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-[1.1] text-white">
               {t('h1a')}
               <span className="block bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">{t('h1b')}</span>
-              <span className="block text-2xl sm:text-3xl font-semibold text-gray-400 mt-3">{t('h1c')}</span>
             </h1>
 
-            <p className="mt-5 text-base sm:text-lg text-gray-400 leading-relaxed max-w-lg">{t('desc')}</p>
+            <p className="mt-6 text-base sm:text-lg text-gray-400 leading-relaxed max-w-lg whitespace-pre-line">{t('desc')}</p>
 
             <div className={`mt-8 flex flex-col sm:flex-row gap-3 justify-center ${isRtl ? 'lg:justify-end' : 'lg:justify-start'}`}>
               <Link href="/signup" className="flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-white font-bold px-7 py-3.5 rounded-xl shadow-xl shadow-emerald-900/40 transition-all text-base">
                 {t('cta1')} <ArrowRight className="w-4 h-4" />
               </Link>
-              <a href="#how" className="flex items-center justify-center gap-2 bg-white/10 hover:bg-white/15 border border-white/20 text-white font-semibold px-7 py-3.5 rounded-xl transition-all text-base">
+              <a href="#contact" className="flex items-center justify-center gap-2 bg-white/10 hover:bg-white/15 border border-white/20 text-white font-semibold px-7 py-3.5 rounded-xl transition-all text-base">
                 {t('cta2')}
               </a>
             </div>
 
-            <div className={`mt-7 flex flex-wrap gap-2 justify-center ${isRtl ? 'lg:justify-end' : 'lg:justify-start'}`}>
+            {/* Trust bar */}
+            <p className={`mt-6 text-gray-500 text-sm flex items-center gap-2 justify-center ${isRtl ? 'lg:justify-end' : 'lg:justify-start'}`}>
+              <span className="flex gap-0.5">
+                {[...Array(5)].map((_, i) => <Star key={i} className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />)}
+              </span>
+              {t('trustBar')}
+            </p>
+
+            <div className={`mt-5 flex flex-wrap gap-2 justify-center ${isRtl ? 'lg:justify-end' : 'lg:justify-start'}`}>
               {ta('badges').map(b => (
                 <span key={b} className="flex items-center gap-1.5 bg-white/8 text-gray-300 border border-white/10 px-3 py-1.5 rounded-full text-xs font-medium">
                   <CheckCircle className="w-3 h-3 text-emerald-400 shrink-0" /> {b}
@@ -660,21 +894,63 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* Hero image — mobile.png */}
-          <div className="flex-1 flex items-center justify-center mt-6 lg:mt-0">
-            <div className="relative w-full max-w-xs sm:max-w-sm lg:max-w-lg xl:max-w-xl">
-              {/* Glow rings */}
-              <div className="absolute -inset-6 rounded-full bg-emerald-500/20 blur-3xl" />
-              <div className="absolute -inset-12 rounded-full bg-teal-500/10 blur-[60px]" />
-              <Image
-                src={heroImageUrl}
-                alt="SmartMenu — Digital Menu on Mobile"
-                width={1213}
-                height={1297}
-                className="relative w-full h-auto object-contain drop-shadow-[0_30px_60px_rgba(0,0,0,0.5)]"
-                priority
-                unoptimized={!heroImageUrl.startsWith('/') || heroImageUrl.startsWith('/uploads/')}
-              />
+          {/* Dashboard preview visual */}
+          <div className="flex-1 flex items-center justify-center mt-8 lg:mt-0">
+            <div className="relative w-full max-w-sm lg:max-w-xl xl:max-w-2xl">
+              <div className="absolute -inset-8 rounded-3xl bg-emerald-500/15 blur-3xl" />
+              <div className="absolute -inset-16 rounded-3xl bg-teal-500/8 blur-[80px]" />
+
+              {/* Dashboard frame */}
+              <div className="relative bg-gray-900/90 border border-gray-700/60 rounded-2xl shadow-2xl overflow-hidden backdrop-blur-sm">
+
+                {/* Window chrome */}
+                <div className="bg-gray-800/80 px-4 py-2.5 flex items-center gap-3 border-b border-gray-700/50">
+                  <div className="flex gap-1.5 shrink-0">
+                    <span className="w-3 h-3 rounded-full bg-red-500/80" />
+                    <span className="w-3 h-3 rounded-full bg-yellow-500/80" />
+                    <span className="w-3 h-3 rounded-full bg-green-500/70" />
+                  </div>
+                  <div className="flex-1 flex justify-center">
+                    <span className="text-[11px] text-gray-400 font-medium bg-gray-700/50 px-3 py-0.5 rounded-full">SmartRestau OS — Dashboard</span>
+                  </div>
+                </div>
+
+                {/* KPI row */}
+                <div className="p-3 grid grid-cols-3 gap-2">
+                  <div className="bg-emerald-900/40 border border-emerald-700/30 rounded-xl p-3 text-center">
+                    <p className="text-emerald-400 text-[9px] font-bold uppercase tracking-wider mb-1">Revenue</p>
+                    <p className="text-white text-lg font-extrabold">+32%</p>
+                  </div>
+                  <div className="bg-blue-900/40 border border-blue-700/30 rounded-xl p-3 text-center">
+                    <p className="text-blue-400 text-[9px] font-bold uppercase tracking-wider mb-1">Orders</p>
+                    <p className="text-white text-lg font-extrabold">1,248</p>
+                  </div>
+                  <div className="bg-amber-900/40 border border-amber-700/30 rounded-xl p-3 text-center">
+                    <p className="text-amber-400 text-[9px] font-bold uppercase tracking-wider mb-1">Tables</p>
+                    <p className="text-white text-lg font-extrabold">24 / 24</p>
+                  </div>
+                </div>
+
+                {/* Module grid */}
+                <div className="px-3 pb-3 grid grid-cols-4 gap-2">
+                  {([
+                    { icon: CreditCard, label: 'POS',            color: 'text-emerald-400', bg: 'bg-emerald-900/30 border-emerald-800/40', badge: 'LIVE',       badgeColor: 'bg-emerald-500/20 text-emerald-300' },
+                    { icon: UserCircle, label: 'Staff Mgmt',     color: 'text-blue-400',    bg: 'bg-blue-900/30 border-blue-800/40',       badge: '12 active',  badgeColor: 'bg-blue-500/20 text-blue-300'    },
+                    { icon: Clock,      label: 'Attendance',     color: 'text-violet-400',  bg: 'bg-violet-900/30 border-violet-800/40',   badge: 'AI',         badgeColor: 'bg-violet-500/20 text-violet-300'},
+                    { icon: Calendar,   label: 'Reservations',   color: 'text-sky-400',     bg: 'bg-sky-900/30 border-sky-800/40',         badge: '8 today',    badgeColor: 'bg-sky-500/20 text-sky-300'     },
+                    { icon: BarChart3,  label: 'Analytics',      color: 'text-amber-400',   bg: 'bg-amber-900/30 border-amber-800/40',     badge: 'Live',       badgeColor: 'bg-amber-500/20 text-amber-300' },
+                    { icon: Zap,        label: 'AI Marketing',   color: 'text-pink-400',    bg: 'bg-pink-900/30 border-pink-800/40',       badge: 'Auto',       badgeColor: 'bg-pink-500/20 text-pink-300'   },
+                    { icon: Film,       label: 'Video Studio',   color: 'text-rose-400',    bg: 'bg-rose-900/30 border-rose-800/40',       badge: 'AI',         badgeColor: 'bg-rose-500/20 text-rose-300'   },
+                    { icon: Building2,  label: 'Multi-Branch',   color: 'text-teal-400',    bg: 'bg-teal-900/30 border-teal-800/40',       badge: '3 branches', badgeColor: 'bg-teal-500/20 text-teal-300'   },
+                  ] as const).map(({ icon: Icon, label, color, bg, badge, badgeColor }) => (
+                    <div key={label} className={`${bg} border rounded-xl p-3 flex flex-col gap-2`}>
+                      <Icon className={`w-5 h-5 ${color}`} />
+                      <p className="text-white text-[11px] font-bold leading-tight">{label}</p>
+                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${badgeColor} w-fit`}>{badge}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -731,6 +1007,93 @@ export default function LandingPage() {
               )
             })}
           </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      {/* PLATFORM ARCHITECTURE */}
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      <section id="platform" className="py-24 bg-gray-950 relative overflow-hidden">
+        {/* bg dot grid */}
+        <div className="absolute inset-0 opacity-[0.035]"
+          style={{ backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)', backgroundSize: '32px 32px' }} />
+        {/* ambient glows */}
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-emerald-600/10 rounded-full blur-[120px]" />
+        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-indigo-600/10 rounded-full blur-[120px]" />
+
+        <div className="relative max-w-7xl mx-auto px-4">
+
+          {/* Header */}
+          <div className="text-center mb-16">
+            <span className="inline-block bg-emerald-900/60 text-emerald-400 border border-emerald-700/40 px-4 py-1 rounded-full text-sm font-semibold mb-5">
+              {t('architectureLabel')}
+            </span>
+            <h2 className="text-4xl sm:text-5xl font-extrabold text-white mb-4">
+              {lang === 'ar'
+                ? <>منصة واحدة. <span className="bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">كل عمليات مطعمك.</span></>
+                : lang === 'fr'
+                ? <>Une Plateforme. <span className="bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">Toutes les Opérations.</span></>
+                : <>One Platform. <span className="bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">Every Restaurant Operation.</span></>
+              }
+            </h2>
+            <p className="text-gray-400 text-lg max-w-2xl mx-auto">{t('architectureSub')}</p>
+          </div>
+
+          {/* Module grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+            {PLATFORM_MODULES.map((mod) => (
+              <div
+                key={mod.name.en}
+                className={`group relative bg-gray-900/70 border ${mod.border} rounded-2xl p-5 hover:bg-gray-900 hover:scale-[1.02] transition-all duration-200 cursor-default overflow-hidden`}
+              >
+                {/* subtle inner glow on hover */}
+                <div className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl`}
+                  style={{ background: `radial-gradient(circle at 30% 20%, ${mod.iconColor.replace('text-', '').replace('-400', '')} 0%, transparent 70%)`, opacity: 0 }} />
+
+                {/* Icon */}
+                <div className={`w-11 h-11 ${mod.iconBg} rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-200`}>
+                  <mod.Icon className={`w-5 h-5 ${mod.iconColor}`} />
+                </div>
+
+                {/* Module name */}
+                <div className="mb-3">
+                  <p className={`text-[9px] font-extrabold uppercase tracking-[0.15em] ${mod.labelColor} mb-0.5`}>
+                    {mod.prefix}
+                  </p>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <h3 className="text-white font-extrabold text-sm leading-tight">{mod.name[lang]}</h3>
+                    {mod.isAi && (
+                      <span className="inline-flex items-center text-[9px] font-extrabold bg-emerald-900/60 text-emerald-400 border border-emerald-700/40 px-1.5 py-0.5 rounded-full leading-none">
+                        AI
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Feature list */}
+                <ul className="space-y-1.5">
+                  {mod.features[lang].map((feat) => (
+                    <li key={feat} className={`flex items-center gap-2 text-[11px] text-gray-400 leading-tight ${isRtl ? 'flex-row-reverse' : ''}`}>
+                      <span className={`w-1 h-1 rounded-full ${mod.dotColor} shrink-0`} />
+                      {feat}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+
+          {/* Bottom connector line */}
+          <div className="mt-12 flex items-center gap-4">
+            <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-700 to-transparent" />
+            <span className="text-gray-500 text-xs font-semibold uppercase tracking-widest whitespace-nowrap">
+              {lang === 'ar' ? 'كل الوحدات متصلة • بيانات موحدة • لوحة تحكم واحدة'
+                : lang === 'fr' ? 'Tous les modules connectés • Données unifiées • Un seul dashboard'
+                : 'All modules connected • Unified data • Single dashboard'}
+            </span>
+            <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-700 to-transparent" />
+          </div>
+
         </div>
       </section>
 
@@ -805,6 +1168,151 @@ export default function LandingPage() {
               )
             })}
           </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      {/* AI FOOD MARKETING ENGINE */}
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      <section id="marketing-engine" className="py-24 bg-gray-950 relative overflow-hidden">
+        {/* bg grid */}
+        <div className="absolute inset-0 opacity-[0.03]"
+          style={{ backgroundImage: 'linear-gradient(#fff 1px,transparent 1px),linear-gradient(90deg,#fff 1px,transparent 1px)', backgroundSize: '48px 48px' }} />
+        {/* ambient glows */}
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[700px] h-[400px] bg-rose-600/10 rounded-full blur-[140px]" />
+        <div className="absolute bottom-0 right-0 w-96 h-96 bg-amber-600/8 rounded-full blur-[100px]" />
+
+        <div className="relative max-w-7xl mx-auto px-4">
+
+          {/* ── Header ── */}
+          <div className="text-center mb-16">
+            <span className="inline-flex items-center gap-2 bg-rose-900/50 text-rose-400 border border-rose-700/40 px-4 py-1.5 rounded-full text-sm font-semibold mb-5">
+              <Zap className="w-3.5 h-3.5" />
+              {t('marketingEngineLabel')}
+            </span>
+            <h2 className="text-4xl sm:text-5xl font-extrabold text-white mb-4">
+              {lang === 'ar'
+                ? <>حوّل كل طبق إلى <span className="bg-gradient-to-r from-rose-400 to-amber-300 bg-clip-text text-transparent">حملة تسويقية</span></>
+                : lang === 'fr'
+                ? <>Transformez Chaque Plat en <span className="bg-gradient-to-r from-rose-400 to-amber-300 bg-clip-text text-transparent">Campagne Marketing</span></>
+                : <>Turn Every Dish Into a <span className="bg-gradient-to-r from-rose-400 to-amber-300 bg-clip-text text-transparent">Marketing Campaign</span></>
+              }
+            </h2>
+            <p className="text-gray-400 text-lg max-w-xl mx-auto">{t('marketingEngineSub')}</p>
+          </div>
+
+          {/* ── Workflow pipeline ── */}
+          <div className="relative">
+            {/* connector line — desktop only */}
+            <div className="hidden lg:block absolute top-[52px] left-[10%] right-[10%] h-px bg-gradient-to-r from-emerald-700/30 via-rose-600/40 to-amber-600/30" />
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+              {AI_MARKETING_STEPS.map((s, i) => {
+                const Icon = s.Icon
+                return (
+                  <div key={i} className={`relative group bg-gray-900/80 border ${s.clr.border} rounded-2xl p-5 hover:bg-gray-900 hover:scale-[1.02] transition-all duration-200`}>
+                    {/* step badge + icon */}
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className={`w-10 h-10 ${s.clr.bg} ring-1 ${s.clr.ring} rounded-xl flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform`}>
+                        <Icon className={`w-5 h-5 ${s.clr.text}`} />
+                      </div>
+                      <span className={`text-xs font-extrabold uppercase tracking-widest ${s.clr.num}`}>{s.step}</span>
+                    </div>
+
+                    {/* title */}
+                    <h3 className={`font-extrabold text-white text-sm mb-3 leading-snug ${isRtl ? 'text-right' : ''}`}>
+                      {s.title[lang]}
+                    </h3>
+
+                    {/* items */}
+                    <ul className={`space-y-1.5 ${isRtl ? 'text-right' : ''}`}>
+                      {s.items[lang].map(item => (
+                        <li key={item} className={`flex items-center gap-2 text-[11px] text-gray-400 leading-tight ${isRtl ? 'flex-row-reverse' : ''}`}>
+                          <span className={`w-1 h-1 rounded-full ${s.clr.dot} shrink-0`} />
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+
+                    {/* connector arrow — between cards on large screens */}
+                    {i < AI_MARKETING_STEPS.length - 1 && (
+                      <div className="hidden lg:flex absolute -right-3 top-1/2 -translate-y-1/2 z-10">
+                        <ChevronRight className="w-5 h-5 text-gray-600" />
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* ── Output format showcase ── */}
+          <div className="mt-10">
+            <p className={`text-center text-xs font-bold uppercase tracking-widest text-gray-500 mb-5`}>
+              {lang === 'ar' ? 'تنسيقات المحتوى المُولَّدة تلقائياً'
+                : lang === 'fr' ? 'Formats de contenu générés automatiquement'
+                : 'Content formats generated automatically'}
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+              {OUTPUT_FORMATS.map(fmt => {
+                const FmtIcon = fmt.icon
+                const is916 = fmt.ratio === '9:16'
+                return (
+                  <div key={fmt.label}
+                    className={`group bg-gradient-to-br ${fmt.color} border ${fmt.border} rounded-2xl p-4 flex flex-col items-center gap-3 hover:scale-[1.03] transition-all cursor-default`}>
+                    {/* format preview box */}
+                    <div className={`${is916 ? 'w-10 h-16' : fmt.ratio === '1:1' ? 'w-12 h-12' : 'w-16 h-10'} bg-black/30 rounded-lg border border-white/10 flex items-center justify-center`}>
+                      <FmtIcon className={`${is916 ? 'w-4 h-4' : 'w-5 h-5'} ${fmt.iconColor}`} />
+                    </div>
+                    <div className="text-center">
+                      <p className="text-white text-xs font-bold leading-tight">{fmt.label}</p>
+                      <span className="text-gray-500 text-[9px] font-mono">{fmt.ratio}</span>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* ── Result callout ── */}
+          <div className="mt-14 relative overflow-hidden rounded-3xl">
+            {/* layered bg */}
+            <div className="absolute inset-0 bg-gradient-to-br from-rose-950/80 via-gray-900/90 to-amber-950/60" />
+            <div className="absolute inset-0 opacity-[0.06]"
+              style={{ backgroundImage: 'radial-gradient(circle,#fff 1px,transparent 1px)', backgroundSize: '20px 20px' }} />
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-24 bg-rose-500/20 blur-[60px]" />
+
+            <div className={`relative px-8 py-10 text-center ${isRtl ? 'text-right' : ''}`}>
+              {/* zero-cost stat */}
+              <div className="flex items-center justify-center gap-6 mb-5 flex-wrap">
+                {(['0', '0', '0'] as const).map((n, i) => (
+                  <div key={i} className="flex flex-col items-center">
+                    <span className="text-5xl font-black text-white leading-none">{n}</span>
+                    <span className="text-gray-400 text-xs font-semibold mt-1">
+                      {i === 0
+                        ? (lang === 'ar' ? 'مصمم' : lang === 'fr' ? 'Designer' : 'Designers')
+                        : i === 1
+                        ? (lang === 'ar' ? 'مصوّر' : lang === 'fr' ? 'Vidéaste' : 'Videographers')
+                        : (lang === 'ar' ? 'مدير سوشيال' : lang === 'fr' ? 'Community Mgr' : 'Social Mgr')}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              <p className="text-white text-xl sm:text-2xl font-extrabold mb-3 max-w-2xl mx-auto leading-snug">
+                {t('marketingEngineResultTitle')}
+              </p>
+              <p className="text-gray-400 text-base max-w-2xl mx-auto leading-relaxed mb-7">
+                {t('marketingEngineResult')}
+              </p>
+
+              <Link href="/signup"
+                className="inline-flex items-center gap-2 bg-rose-500 hover:bg-rose-400 text-white font-bold px-8 py-3.5 rounded-xl shadow-xl shadow-rose-900/40 transition-all text-sm">
+                {t('marketingEngineCta')} <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
+          </div>
+
         </div>
       </section>
 
@@ -918,22 +1426,22 @@ export default function LandingPage() {
 
           <div className="inline-flex items-center gap-2 bg-emerald-900/50 border border-emerald-700/50 text-emerald-300 px-5 py-2 rounded-full text-sm mb-8">
             <Mail className="w-4 h-4" />
-            {lang === 'ar' ? 'تسجيل سريع بالإيميل — بدون بطاقة بنكية'
-              : lang === 'fr' ? 'Inscription rapide par email — sans carte bancaire'
-              : 'Quick email signup — no credit card required'}
+            {lang === 'ar' ? 'شغّل نظام مطعمك — بدون بطاقة بنكية'
+              : lang === 'fr' ? 'Lancez votre OS restaurant — sans carte bancaire'
+              : 'Launch your restaurant OS — no credit card required'}
           </div>
 
           <h2 className="text-4xl sm:text-5xl font-extrabold text-white mb-4">
             {t('finalTitle')}<br />
             <span className="text-emerald-400">
-              {lang === 'ar' ? 'بإيميلك فقط' : lang === 'fr' ? 'Avec votre Email' : 'With Your Email'}
+              {lang === 'ar' ? 'ابدأ بإيميلك فقط' : lang === 'fr' ? 'Démarrez avec votre Email' : 'Start With Your Email'}
             </span>
           </h2>
 
           <p className="text-gray-400 mb-10 text-lg">
-            {lang === 'ar' ? 'أدخل إيميلك وابدأ تجربتك المجانية فوراً — خصّص ملفك وأضف منيوك في دقائق.'
-              : lang === 'fr' ? "Entrez votre email et démarrez votre essai gratuit — personnalisez votre profil et créez votre menu en minutes."
-              : 'Enter your email and start your free trial instantly — customise your profile and build your menu in minutes.'}
+            {lang === 'ar' ? 'أدخل إيميلك وشغّل نظام مطعمك فوراً — طلبات، مطبخ، موظفين، تسويق وحسابات في مكان واحد.'
+              : lang === 'fr' ? "Entrez votre email et lancez votre OS restaurant instantanément — commandes, cuisine, staff, marketing et finances au même endroit."
+              : 'Enter your email and launch your full restaurant OS instantly — orders, kitchen, staff, marketing and finances in one place.'}
           </p>
 
           <form onSubmit={handleEmailCta} className="max-w-md mx-auto">
@@ -1075,10 +1583,10 @@ export default function LandingPage() {
               <h4 className="text-white font-bold mb-4 text-sm">{t('featLabel')}</h4>
               <ul className="space-y-2 text-sm">
                 {(lang === 'ar'
-                  ? ['المميزات', 'الأسعار', 'لوحة التحكم', 'شاشة المطبخ KDS', 'المنيو QR']
+                  ? ['الوحدات', 'الأسعار', 'لوحة التحكم', 'شاشة المطبخ KDS', 'تحليلات الإيرادات']
                   : lang === 'fr'
-                  ? ['Fonctionnalités', 'Tarifs', 'Dashboard', 'Écran Cuisine', 'Menu QR']
-                  : ['Features', 'Pricing', 'Dashboard', 'Kitchen Screen', 'QR Menu']
+                  ? ['Modules', 'Tarifs', 'Dashboard', 'Écran Cuisine', 'Analytics IA']
+                  : ['Modules', 'Pricing', 'Dashboard', 'Kitchen Screen', 'AI Analytics']
                 ).map(l => <li key={l}><a href="#" className="hover:text-white transition-colors">{l}</a></li>)}
               </ul>
             </div>

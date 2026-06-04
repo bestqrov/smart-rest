@@ -199,11 +199,12 @@ router.patch('/api/orders/:orderId/status', authorizeAdmin, async (req: Request,
 
 router.patch('/api/orders/:orderId/notify-waiter', async (req: Request, res: Response) => {
   try {
-    const orderId                        = req.params.orderId as string
-    const { type, seatToken, tableToken } = req.body as {
-      type:        string
-      seatToken?:  string
-      tableToken?: string
+    const orderId = req.params.orderId as string
+    const { type, seatToken, tableToken, sessionId } = req.body as {
+      type:         string
+      seatToken?:   string
+      tableToken?:  string
+      sessionId?:   string   // Dynamic QR flow
     }
 
     const VALID_TYPES = ['call_waiter', 'pay_cash', 'pay_tpe'] as const
@@ -212,8 +213,8 @@ router.patch('/api/orders/:orderId/notify-waiter', async (req: Request, res: Res
     if (!VALID_TYPES.includes(type as NotifType)) {
       return res.status(400).json({ error: 'type must be call_waiter, pay_cash, or pay_tpe' })
     }
-    if (!seatToken && !tableToken) {
-      return res.status(400).json({ error: 'Provide seatToken or tableToken for ownership validation' })
+    if (!seatToken && !tableToken && !sessionId) {
+      return res.status(400).json({ error: 'Provide sessionId, seatToken, or tableToken for ownership validation' })
     }
 
     const order = await prisma.order.findUnique({
@@ -227,7 +228,25 @@ router.patch('/api/orders/:orderId/notify-waiter', async (req: Request, res: Res
     }
 
     // ── Ownership check ──────────────────────────────────────────────────────
-    if (seatToken) {
+    if (sessionId) {
+      // Dynamic QR flow: session must be active and belong to the same table
+      const session = await prisma.clientSession.findUnique({
+        where:  { id: sessionId },
+        select: { tableId: true, status: true, expiresAt: true }
+      })
+      if (!session || session.status !== 'active' || session.expiresAt <= new Date()) {
+        return res.status(403).json({ error: 'Session expired or invalid' })
+      }
+      // Accept both the physical table and the billing (master) table
+      const billingTable = await prisma.table.findUnique({
+        where:  { id: session.tableId },
+        select: { mergedIntoTableId: true }
+      })
+      const billingTableId = billingTable?.mergedIntoTableId ?? session.tableId
+      if (session.tableId !== order.tableId && billingTableId !== order.tableId) {
+        return res.status(403).json({ error: 'Forbidden: session does not belong to this order table' })
+      }
+    } else if (seatToken) {
       const seat = await prisma.seat.findUnique({
         where:  { qrToken: seatToken },
         select: { tableId: true }

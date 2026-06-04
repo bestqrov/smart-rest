@@ -1,10 +1,10 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import QRCode from 'qrcode'
 import {
   QrCode, Download, Printer, Loader2, Plus, Minus,
-  RefreshCw, CheckCircle, Layers, Unlink, PowerOff, Power
+  RefreshCw, CheckCircle, Layers, Unlink, PowerOff, Power, Pencil, X
 } from 'lucide-react'
 
 type Seat = { id: string; seatNumber: number; qrToken: string }
@@ -28,15 +28,18 @@ export default function TablesPage() {
   const [loading, setLoading]     = useState(true)
   const [generating, setGenerating] = useState(false)
   const [tableCount, setTableCount] = useState(5)
-  const [seatsPerTable, setSeatsPerTable] = useState(4)
+  const [defaultCapacity, setDefaultCapacity] = useState(4)
   const [qrImages, setQrImages]   = useState<Record<string, string>>({})
   const [subdomain, setSubdomain] = useState('')
   const [mergeSource, setMergeSource] = useState<string[]>([])
   const [mergeTarget, setMergeTarget] = useState<string | null>(null)
   const [syncError, setSyncError]   = useState<string | null>(null)
   const [merging, setMerging]       = useState(false)
-  const [defaultCapacity, setDefaultCapacity] = useState(4)
-  const printRef = useRef<HTMLDivElement>(null)
+  // Per-table inline editor state
+  const [editingId, setEditingId]       = useState<string | null>(null)
+  const [editCapacity, setEditCapacity] = useState(4)
+  const [editDisplay,  setEditDisplay]  = useState(1)
+  const [savingId, setSavingId]         = useState<string | null>(null)
 
   function authHeader() {
     return { Authorization: `Bearer ${localStorage.getItem('token')}` }
@@ -104,17 +107,37 @@ export default function TablesPage() {
     const r = await fetch('/api/tables/sync', {
       method: 'POST',
       headers: { ...authHeader(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tableCount, seatsPerTable })
+      body: JSON.stringify({ tableCount, capacity: defaultCapacity })
     })
     if (r.ok) {
       const data = await r.json()
       setTables(data.tables)
       await renderQrCodes(data.tables, subdomain)
+      loadSessions(data.tables)
     } else {
       const body = await r.json().catch(() => ({}))
       setSyncError(body.error || 'فشل المزامنة')
     }
     setGenerating(false)
+  }
+
+  async function saveTableEdit(tableId: string) {
+    setSavingId(tableId)
+    const r = await fetch(`/api/admin/tables/${tableId}`, {
+      method: 'PATCH',
+      headers: { ...authHeader(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ capacity: editCapacity, displayType: editDisplay })
+    })
+    if (r.ok) {
+      const updated = await r.json()
+      setTables(prev => prev.map(t =>
+        t.id === tableId
+          ? { ...t, capacity: updated.capacity, displayType: updated.displayType }
+          : t
+      ))
+      setEditingId(null)
+    }
+    setSavingId(null)
   }
 
   async function handleMerge() {
@@ -212,11 +235,11 @@ export default function TablesPage() {
             </div>
           </div>
           <div>
-            <label className="text-xs text-gray-500 mb-1 block">مقاعد / طاولة</label>
+            <label className="text-xs text-gray-500 mb-1 block">طاقة كل طاولة (مقاعد)</label>
             <div className="flex items-center gap-2 border border-gray-200 rounded-xl overflow-hidden">
-              <button onClick={() => setSeatsPerTable(c => Math.max(1, c - 1))} className="px-3 py-2 bg-gray-50 hover:bg-gray-100 text-gray-600"><Minus className="w-4 h-4" /></button>
-              <span className="w-8 text-center font-bold text-gray-800">{seatsPerTable}</span>
-              <button onClick={() => setSeatsPerTable(c => c + 1)} className="px-3 py-2 bg-gray-50 hover:bg-gray-100 text-gray-600"><Plus className="w-4 h-4" /></button>
+              <button onClick={() => setDefaultCapacity(c => Math.max(1, c - 1))} className="px-3 py-2 bg-gray-50 hover:bg-gray-100 text-gray-600"><Minus className="w-4 h-4" /></button>
+              <span className="w-8 text-center font-bold text-gray-800">{defaultCapacity}</span>
+              <button onClick={() => setDefaultCapacity(c => Math.min(20, c + 1))} className="px-3 py-2 bg-gray-50 hover:bg-gray-100 text-gray-600"><Plus className="w-4 h-4" /></button>
             </div>
           </div>
           <button
@@ -346,14 +369,54 @@ export default function TablesPage() {
                   )}
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   {/* Live session count */}
                   {table.activeCount !== undefined && (
                     <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
-                      🪑 {table.activeCount}/{table.capacity ?? table.seats.length}
+                      🪑 {table.activeCount}/{table.capacity}
                     </span>
                   )}
-                  <span className="text-xs text-gray-400">{table.capacity ?? table.seats.length} مقاعد</span>
+
+                  {/* ── Per-table capacity / displayType editor ── */}
+                  {editingId === table.id ? (
+                    <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-xl px-2 py-1">
+                      {/* Capacity spinner */}
+                      <button onClick={() => setEditCapacity(v => Math.max(1, v - 1))} className="text-gray-500 hover:text-gray-800"><Minus className="w-3 h-3" /></button>
+                      <span className="w-5 text-center text-xs font-bold text-gray-800">{editCapacity}</span>
+                      <button onClick={() => setEditCapacity(v => Math.min(20, v + 1))} className="text-gray-500 hover:text-gray-800"><Plus className="w-3 h-3" /></button>
+                      <span className="text-gray-300 mx-0.5">|</span>
+                      {/* Display type */}
+                      <select
+                        value={editDisplay}
+                        onChange={e => setEditDisplay(Number(e.target.value))}
+                        className="text-xs border-0 bg-transparent text-gray-700 focus:outline-none"
+                      >
+                        <option value={1}>🃏 كارت</option>
+                        <option value={2}>⛺ تنت</option>
+                        <option value={3}>🎋 ستاند</option>
+                        <option value={4}>🔮 أكريليك</option>
+                      </select>
+                      <span className="text-gray-300 mx-0.5">|</span>
+                      <button
+                        onClick={() => saveTableEdit(table.id)}
+                        disabled={savingId === table.id}
+                        className="text-emerald-600 hover:text-emerald-800 disabled:opacity-50"
+                      >
+                        {savingId === table.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle className="w-3 h-3" />}
+                      </button>
+                      <button onClick={() => setEditingId(null)} className="text-gray-400 hover:text-red-500">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => { setEditingId(table.id); setEditCapacity(table.capacity); setEditDisplay(table.displayType) }}
+                      className="flex items-center gap-1 text-xs text-gray-400 hover:text-emerald-700 border border-gray-100 hover:border-emerald-300 px-2 py-1 rounded-lg transition-colors"
+                      title="تعديل الطاقة ونوع الحامل"
+                    >
+                      <Pencil className="w-3 h-3" /> {table.capacity} مقاعد
+                    </button>
+                  )}
 
                   {/* ── Manager activation toggle ── */}
                   {table.isActive ? (

@@ -91,13 +91,14 @@ router.post('/api/auth/login', async (req: Request, res: Response) => {
 
 router.post('/api/auth/register', async (req: Request, res: Response) => {
   try {
-    const { email, password, cafeName, subdomain, businessName, country } = req.body as {
+    const { email, password, cafeName, subdomain, businessName, country, accountMode } = req.body as {
       email: string
       password: string
       cafeName: string
       subdomain: string
       businessName?: string
-      country?: string   // ISO-2: MA | SA | AE | FR | US …
+      country?: string       // ISO-2: MA | SA | AE | FR | US …
+      accountMode?: string   // 'RESTAURANT' (default) | 'TRAITEUR'
     }
 
     if (!email || !password || !cafeName || !subdomain) {
@@ -130,6 +131,7 @@ router.post('/api/auth/register', async (req: Request, res: Response) => {
     const trialEndsAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000) // +7 days
 
     const { user, cafe } = await prisma.$transaction(async (tx) => {
+      const resolvedMode = (accountMode === 'TRAITEUR') ? 'TRAITEUR' : 'RESTAURANT'
       const cafe = await tx.cafe.create({
         data: {
           name: cafeName,
@@ -139,7 +141,10 @@ router.post('/api/auth/register', async (req: Request, res: Response) => {
           currency,
           trialEndsAt,
           billingStatus: 'GRACE_PERIOD',
-          isActive: true
+          isActive: true,
+          accountMode: resolvedMode,
+          // Traiteur accounts start with ordering disabled (events drive orders, not daily QR)
+          orderingEnabled: resolvedMode === 'RESTAURANT',
         }
       })
       const user = await tx.user.create({

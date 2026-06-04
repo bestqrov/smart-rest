@@ -38,6 +38,8 @@ router.get('/api/tables', authorizeAdmin, async (req: Request, res: Response) =>
         tableNumber: true,
         isActive: true,
         qrToken: true,
+        capacity: true,
+        displayType: true,
         mergedIntoTableId: true,
         mergedIntoTable: { select: { id: true, tableNumber: true } },
         mergedTables: { select: { id: true, tableNumber: true } },
@@ -335,110 +337,79 @@ router.get('/api/qr/session', validateSeatQR, (req: Request, res: Response) => {
 router.post('/api/tables/sync', authorizeAdmin, async (req: Request, res: Response) => {
   try {
     const cafeId = req.admin!.cafeId
-    const { tableCount, seatsPerTable } = req.body as { tableCount: number; seatsPerTable: number }
+    // Accept 'capacity' (new) or 'seatsPerTable' (legacy alias) — both set Table.capacity
+    const body = req.body as { tableCount: number; capacity?: number; seatsPerTable?: number }
+    const { tableCount } = body
+    const capacity = body.capacity ?? body.seatsPerTable ?? 4
 
-    if (!tableCount || !seatsPerTable || tableCount < 1 || seatsPerTable < 1) {
-      return res.status(400).json({ error: 'tableCount and seatsPerTable must be positive integers' })
+    if (!tableCount || tableCount < 1 || capacity < 1) {
+      return res.status(400).json({ error: 'tableCount and capacity must be positive integers' })
     }
-    if (tableCount > 100 || seatsPerTable > 20) {
-      return res.status(400).json({ error: 'Max 100 tables, 20 seats per table' })
+    if (tableCount > 100 || capacity > 20) {
+      return res.status(400).json({ error: 'Max 100 tables, 20 seats capacity per table' })
     }
 
-    // ── Pre-flight: identify what would be deleted ─────────────────────────
+    // ── Pre-flight: identify tables to be removed ──────────────────────────
     const allTables = await prisma.table.findMany({
       where: { cafeId },
-      select: {
-        id: true,
-        tableNumber: true,
-        seats: { select: { id: true, seatNumber: true } }
-      }
+      select: { id: true, tableNumber: true }
     })
 
-    const excessTables = allTables.filter(t => t.tableNumber > tableCount)
-    const remainingTables = allTables.filter(t => t.tableNumber <= tableCount)
+    const excessTableIds = allTables
+      .filter(t => t.tableNumber > tableCount)
+      .map(t => t.id)
 
-    const excessTableIds = excessTables.map(t => t.id)
-    const excessSeatIds: string[] = remainingTables.flatMap(t =>
-      t.seats.filter(s => s.seatNumber > seatsPerTable).map(s => s.id)
-    )
-
-    // ── Safety check: active unpaid orders on excess tables ────────────────
+    // ── Safety check: active unpaid orders on tables to be removed ─────────
     if (excessTableIds.length > 0) {
-      const blockedOrder = await prisma.order.findFirst({
+      const blocked = await prisma.order.findFirst({
         where: {
           cafeId,
           tableId: { in: excessTableIds },
           isPaid: false,
           status: { notIn: ['CANCELLED', 'COMPLETED'] }
         },
-        select: { id: true, tableId: true, seatId: true }
+        select: { tableId: true }
       })
-      if (blockedOrder) {
-        const tbl = excessTables.find(t => t.id === blockedOrder.tableId)
-        const seat = tbl?.seats.find(s => s.id === blockedOrder.seatId)
+      if (blocked) {
+        const tbl = allTables.find(t => t.id === blocked.tableId)
         return res.status(409).json({
-          error: `Cannot reduce tables because Table ${tbl?.tableNumber}${seat ? ` - Seat ${seat.seatNumber}` : ''} currently has an active unpaid order. Close it first.`
+          error: `Cannot reduce tables: Table ${tbl?.tableNumber} has an active unpaid order. Close it first.`
         })
       }
     }
 
-    // ── Safety check: active unpaid orders on excess seats ─────────────────
-    if (excessSeatIds.length > 0) {
-      const blockedSeatOrder = await prisma.order.findFirst({
-        where: {
-          cafeId,
-          seatId: { in: excessSeatIds },
-          isPaid: false,
-          status: { notIn: ['CANCELLED', 'COMPLETED'] }
-        },
-        select: { id: true, tableId: true, seatId: true }
-      })
-      if (blockedSeatOrder) {
-        const tbl = remainingTables.find(t => t.id === blockedSeatOrder.tableId)
-        const seat = tbl?.seats.find(s => s.id === blockedSeatOrder.seatId)
-        return res.status(409).json({
-          error: `Cannot reduce seats because Table ${tbl?.tableNumber} - Seat ${seat?.seatNumber} currently has an active unpaid order. Close it first.`
-        })
-      }
-    }
-
-    // ── Transaction: GC then upsert ────────────────────────────────────────
+    // ── Transaction: remove excess tables, upsert 1..tableCount ───────────
     const tables = await prisma.$transaction(async (tx) => {
-      // Step 1: delete excess tables + related records
       if (excessTableIds.length > 0) {
-        await tx.seat.deleteMany({ where: { tableId: { in: excessTableIds } } })
+        // Expire active sessions on removed tables
+        await tx.clientSession.updateMany({
+          where: { tableId: { in: excessTableIds }, status: 'active' },
+          data:  { status: 'expired' }
+        })
         await tx.billRequest.deleteMany({ where: { tableId: { in: excessTableIds } } })
         await tx.waiterCall.deleteMany({ where: { tableId: { in: excessTableIds } } })
         await tx.order.updateMany({
           where: { cafeId, tableId: { in: excessTableIds } },
-          data: { tableId: null }
+          data:  { tableId: null }
         })
         await tx.table.deleteMany({ where: { id: { in: excessTableIds }, cafeId } })
       }
 
-      // Step 2: delete excess seats on remaining tables
-      if (excessSeatIds.length > 0) {
-        await tx.order.updateMany({
-          where: { cafeId, seatId: { in: excessSeatIds } },
-          data: { seatId: null }
-        })
-        await tx.seat.deleteMany({ where: { id: { in: excessSeatIds } } })
-      }
-
-      // Step 3: upsert tables 1..tableCount and their seats 1..seatsPerTable
+      // Upsert tables 1..tableCount — set capacity, never touch Seat rows
       for (let tNum = 1; tNum <= tableCount; tNum++) {
-        let table = await tx.table.findFirst({ where: { cafeId, tableNumber: tNum }, select: { id: true } })
-        if (!table) {
-          table = await tx.table.create({
-            data: { cafeId, tableNumber: tNum, qrToken: randomUUID() },
-            select: { id: true }
+        const existing = await tx.table.findFirst({
+          where: { cafeId, tableNumber: tNum },
+          select: { id: true }
+        })
+        if (existing) {
+          await tx.table.update({
+            where: { id: existing.id },
+            data:  { capacity }
           })
-        }
-        for (let sNum = 1; sNum <= seatsPerTable; sNum++) {
-          const exists = await tx.seat.findFirst({ where: { tableId: table.id, seatNumber: sNum } })
-          if (!exists) {
-            await tx.seat.create({ data: { cafeId, tableId: table.id, seatNumber: sNum, qrToken: randomUUID() } })
-          }
+        } else {
+          await tx.table.create({
+            data: { cafeId, tableNumber: tNum, qrToken: randomUUID(), capacity }
+          })
         }
       }
 
@@ -446,20 +417,18 @@ router.post('/api/tables/sync', authorizeAdmin, async (req: Request, res: Respon
         where: { cafeId },
         orderBy: { tableNumber: 'asc' },
         select: {
-          id: true,
-          tableNumber: true,
-          isActive: true,
-          qrToken: true,
+          id: true, tableNumber: true, isActive: true,
+          qrToken: true, capacity: true, displayType: true,
           mergedIntoTableId: true,
           mergedIntoTable: { select: { id: true, tableNumber: true } },
-          mergedTables: { select: { id: true, tableNumber: true } },
+          mergedTables:     { select: { id: true, tableNumber: true } },
           seats: { orderBy: { seatNumber: 'asc' }, select: { id: true, seatNumber: true, qrToken: true } }
         }
       })
     })
 
-    logger.info({ msg: 'Tables synced', cafeId, tableCount, seatsPerTable })
-    return res.json({ message: `Synced to ${tableCount} tables × ${seatsPerTable} seats`, tables })
+    logger.info({ msg: 'Tables synced (dynamic QR)', cafeId, tableCount, capacity })
+    return res.json({ message: `Synced to ${tableCount} tables, capacity ${capacity}`, tables })
   } catch (err) {
     logger.error({ msg: 'POST /api/tables/sync error', err })
     return res.status(500).json({ error: 'Table sync failed' })
@@ -626,29 +595,36 @@ router.post('/api/qr/scan', async (req: Request, res: Response) => {
 
 router.get('/api/qr/table-session/:sessionId', async (req: Request, res: Response) => {
   try {
-    const { sessionId } = req.params
+    const sessionId = req.params.sessionId as string
     const now = new Date()
 
+    // MongoDB Prisma: use separate selects — include does not propagate relation types
     const session = await prisma.clientSession.findUnique({
-      where: { id: sessionId },
-      include: {
-        table: {
-          select: {
-            id: true, tableNumber: true, isActive: true, capacity: true,
-            mergedIntoTableId: true,
-            mergedIntoTable: { select: { id: true, tableNumber: true } }
-          }
-        },
-        cafe: { select: { isActive: true, subdomain: true } }
-      }
+      where:  { id: sessionId },
+      select: { id: true, seatNumber: true, tableId: true, cafeId: true, status: true, expiresAt: true }
     })
 
     if (!session || session.status !== 'active' || session.expiresAt <= now) {
       return res.status(401).json({ error: 'Session expired or not found', code: 'SESSION_EXPIRED' })
     }
-    if (!session.table.isActive) {
-      return res.status(403).json({ error: 'Table is inactive' })
-    }
+
+    const [table, cafe] = await Promise.all([
+      prisma.table.findUnique({
+        where:  { id: session.tableId },
+        select: {
+          id: true, tableNumber: true, isActive: true, capacity: true,
+          mergedIntoTableId: true,
+          mergedIntoTable: { select: { id: true, tableNumber: true } }
+        }
+      }),
+      prisma.cafe.findUnique({
+        where:  { id: session.cafeId },
+        select: { isActive: true, subdomain: true }
+      })
+    ])
+
+    if (!table?.isActive) return res.status(403).json({ error: 'Table is inactive' })
+    if (!cafe?.isActive)  return res.status(403).json({ error: 'Venue is unavailable' })
 
     // Refresh TTL silently
     await prisma.clientSession.update({
@@ -656,17 +632,17 @@ router.get('/api/qr/table-session/:sessionId', async (req: Request, res: Respons
       data:  { lastActiveAt: now, expiresAt: new Date(now.getTime() + SESSION_TTL_MS) }
     })
 
-    const billingTable = session.table.mergedIntoTable ?? session.table
+    const billingTable = table.mergedIntoTable ?? table
 
     return res.json({
       sessionId:          session.id,
       seatNumber:         session.seatNumber,
       tableId:            session.tableId,
-      tableNumber:        session.table.tableNumber,
+      tableNumber:        table.tableNumber,
       cafeId:             session.cafeId,
-      subdomain:          session.cafe.subdomain,
-      capacity:           session.table.capacity,
-      isMerged:           !!session.table.mergedIntoTableId,
+      subdomain:          cafe.subdomain,
+      capacity:           table.capacity,
+      isMerged:           !!table.mergedIntoTableId,
       billingTableId:     billingTable.id,
       billingTableNumber: billingTable.tableNumber,
     })
@@ -681,7 +657,7 @@ router.get('/api/qr/table-session/:sessionId', async (req: Request, res: Respons
 
 router.patch('/api/qr/session/:sessionId/heartbeat', async (req: Request, res: Response) => {
   try {
-    const { sessionId } = req.params
+    const sessionId = req.params.sessionId as string
     const now = new Date()
 
     const session = await prisma.clientSession.findUnique({
@@ -710,7 +686,7 @@ router.patch('/api/qr/session/:sessionId/heartbeat', async (req: Request, res: R
 
 router.patch('/api/qr/session/:sessionId/complete', async (req: Request, res: Response) => {
   try {
-    const { sessionId } = req.params
+    const sessionId = req.params.sessionId as string
 
     const session = await prisma.clientSession.findUnique({
       where: { id: sessionId },
@@ -738,7 +714,7 @@ router.patch('/api/qr/session/:sessionId/complete', async (req: Request, res: Re
 router.get('/api/admin/tables/:tableId/sessions', authorizeAdmin, async (req: Request, res: Response) => {
   try {
     const { cafeId } = req.admin!
-    const { tableId } = req.params
+    const tableId = req.params.tableId as string
 
     const table = await prisma.table.findUnique({ where: { id: tableId }, select: { cafeId: true, capacity: true } })
     if (!table || table.cafeId !== cafeId) return res.status(404).json({ error: 'Table not found' })
@@ -768,6 +744,67 @@ router.get('/api/admin/tables/:tableId/sessions', authorizeAdmin, async (req: Re
   } catch (err) {
     logger.error({ msg: 'GET sessions error', err })
     return res.status(500).json({ error: 'Failed to fetch sessions' })
+  }
+})
+
+// ─── PATCH /api/admin/tables/:id — update capacity and/or displayType ────────
+// Allows the admin to change a table's seat capacity or QR holder style
+// without regenerating the entire table layout.
+
+router.patch('/api/admin/tables/:id', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const cafeId  = req.admin!.cafeId
+    const tableId = String(req.params.id)
+    const { capacity, displayType } = req.body as { capacity?: number; displayType?: number }
+
+    if (capacity === undefined && displayType === undefined) {
+      return res.status(400).json({ error: 'Provide at least one of: capacity, displayType' })
+    }
+    if (capacity !== undefined && (!Number.isInteger(capacity) || capacity < 1 || capacity > 20)) {
+      return res.status(400).json({ error: 'capacity must be an integer between 1 and 20' })
+    }
+    if (displayType !== undefined && ![1, 2, 3, 4].includes(displayType)) {
+      return res.status(400).json({ error: 'displayType must be 1 (card), 2 (tent), 3 (stand), or 4 (acrylic)' })
+    }
+
+    const table = await prisma.table.findUnique({ where: { id: tableId }, select: { cafeId: true } })
+    if (!table || table.cafeId !== cafeId) {
+      return res.status(404).json({ error: 'Table not found' })
+    }
+
+    const updated = await prisma.table.update({
+      where: { id: tableId },
+      data:  {
+        ...(capacity    !== undefined && { capacity }),
+        ...(displayType !== undefined && { displayType }),
+      },
+      select: { id: true, tableNumber: true, capacity: true, displayType: true }
+    })
+
+    logger.info({ msg: 'table updated', cafeId, tableId, capacity, displayType })
+    return res.json(updated)
+  } catch (err) {
+    logger.error({ msg: 'PATCH /api/admin/tables/:id error', err })
+    return res.status(500).json({ error: 'Failed to update table' })
+  }
+})
+
+// ─── POST /api/admin/sessions/cleanup — expire stale sessions ────────────────
+// Safe to call from a nightly cron (also exposed as an admin endpoint for
+// manual triggering from the dashboard).
+
+router.post('/api/admin/sessions/cleanup', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const cafeId = req.admin!.cafeId
+    const { count } = await prisma.clientSession.updateMany({
+      where: { cafeId, status: 'active', expiresAt: { lt: new Date() } },
+      data:  { status: 'expired' }
+    })
+    logger.info({ msg: 'sessions cleaned up', cafeId, expired: count })
+    return res.json({ expired: count })
+  } catch (err) {
+    logger.error({ msg: 'POST /api/admin/sessions/cleanup error', err })
+    return res.status(500).json({ error: 'Cleanup failed' })
   }
 })
 

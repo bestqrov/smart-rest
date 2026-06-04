@@ -147,6 +147,8 @@ model Cafe {
   hasSocialShareAddon Boolean       @default(false)
   // 'CAFE' = simple cafe (drinks + light snacks), 'RESTAURANT' = full meals + kitchen
   tier                String        @default("CAFE")
+  // 'RESTAURANT' = daily restaurant/cafe mode | 'TRAITEUR' = events & catering mode
+  accountMode         String        @default("RESTAURANT")
   // Smart WiFi — optional embedded config (null = feature not configured)
   smartWifi           SmartWifi?
 
@@ -208,6 +210,8 @@ model Cafe {
   feedbacks          Feedback[]
   marketingCampaigns MarketingCampaign[]
   clientSessions     ClientSession[]
+  events             Event[]
+  guests             Guest[]
 
 }
 
@@ -878,4 +882,69 @@ model MarketingCampaign {
   @@index([cafeId])
   @@index([status])
   @@index([createdAt])
+}
+
+// ─── SmartTraiteur — Events & Catering ───────────────────────────────────────
+
+model Event {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId      String   @db.ObjectId
+  cafe        Cafe     @relation(fields: [cafeId], references: [id])
+
+  name        String
+  type        String   @default("WEDDING")   // WEDDING | CORPORATE | BIRTHDAY | REUNION | GALA | OTHER
+  date        DateTime
+  venue       String   @default("")
+  guestCount  Int      @default(0)
+  status      String   @default("DRAFT")     // DRAFT | CONFIRMED | ACTIVE | COMPLETED | CANCELLED
+  notes       String   @default("")
+
+  clientName  String   @default("")
+  clientPhone String   @default("")
+  clientEmail String   @default("")
+
+  quotedPrice  Float?
+  depositPaid  Float?
+  depositDate  DateTime?
+
+  actualAttendees  Int?
+  commissionAmount Float?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  guests      Guest[]
+
+  @@index([cafeId])
+  @@index([status])
+  @@index([date])
+}
+
+model Guest {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId    String   @db.ObjectId
+  cafe      Cafe     @relation(fields: [cafeId], references: [id])
+  eventId   String   @db.ObjectId
+  event     Event    @relation(fields: [eventId], references: [id])
+
+  name        String
+  phone       String   @default("")
+  email       String   @default("")
+
+  tableNumber Int?
+  seatNumber  Int?
+
+  qrToken     String   @unique @default(uuid())
+
+  dietaryReq  String   @default("")
+
+  checkedIn   Boolean  @default(false)
+  checkedInAt DateTime?
+
+  sessionId   String?  @db.ObjectId
+
+  createdAt   DateTime @default(now())
+
+  @@index([cafeId])
+  @@index([eventId])
 }

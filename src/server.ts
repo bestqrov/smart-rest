@@ -49,6 +49,7 @@ import antiFraudRouter from './routes/antiFraud'
 import feedbackRouter from './routes/feedback'
 import landingConfigRouter from './routes/landingConfig'
 import marketingRouter from './routes/marketing'
+import traiteurRouter from './routes/traiteur'
 import { registerSocketHandlers } from './socket/handlers'
 import { startWeeklyBillingCron } from './cron/weeklyBilling'
 import { startNightlyCron } from './cron/nightly'
@@ -144,6 +145,7 @@ async function main() {
   app.use(feedbackRouter)
   app.use(landingConfigRouter)
   app.use('/api/marketing', marketingRouter)
+  app.use(traiteurRouter)
 
   // health (both paths — /api/health used by SW offline detection)
   app.get(['/health', '/api/health'], (req, res) => res.json({ ok: true }))

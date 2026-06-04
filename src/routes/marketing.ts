@@ -210,12 +210,12 @@ router.get('/subscription-status', authorizeAdmin, async (req: Request, res: Res
 // Secured by a shared secret in the X-Callback-Secret header.
 
 router.patch('/campaigns/:id/status', async (req: Request, res: Response) => {
+  const id     = req.params.id as string
   const secret = req.headers['x-callback-secret']
   if (!secret || secret !== process.env.MARKETING_CALLBACK_SECRET) {
     return res.status(401).json({ error: 'Unauthorized callback' })
   }
 
-  const { id } = req.params
   const {
     status,
     videoUrl,
