@@ -536,7 +536,7 @@ router.post('/api/qr/scan', async (req: Request, res: Response) => {
     // Check cafe is live
     const cafe = await prisma.cafe.findUnique({
       where: { id: table.cafeId },
-      select: { isActive: true, subdomain: true }
+      select: { isActive: true, subdomain: true, name: true, businessName: true, logoUrl: true }
     })
     if (!cafe?.isActive)  return res.status(403).json({ error: 'Venue is currently unavailable' })
 
@@ -583,6 +583,8 @@ router.post('/api/qr/scan', async (req: Request, res: Response) => {
       isMerged:     !!table.mergedIntoTableId,
       billingTableId:      billingTable.id,
       billingTableNumber:  billingTable.tableNumber,
+      cafeName:     cafe.businessName || cafe.name || '',
+      cafeLogoUrl:  cafe.logoUrl ?? null,
     })
   } catch (err) {
     logger.error({ msg: 'POST /api/qr/scan error', err })
@@ -786,6 +788,43 @@ router.patch('/api/admin/tables/:id', authorizeAdmin, async (req: Request, res: 
   } catch (err) {
     logger.error({ msg: 'PATCH /api/admin/tables/:id error', err })
     return res.status(500).json({ error: 'Failed to update table' })
+  }
+})
+
+// ─── GET /api/tables/:tableId/active-seats ───────────────────────────────────
+// Returns seat numbers that currently have an active ClientSession at the table.
+// Used by split-bill UI so the waiter/POS can show which seats are occupied.
+
+router.get('/api/tables/:tableId/active-seats', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const cafeId  = req.admin!.cafeId
+    const tableId = req.params['tableId'] as string
+
+    const OBJECT_ID_RE = /^[a-f\d]{24}$/i
+    if (!OBJECT_ID_RE.test(tableId)) return res.status(400).json({ error: 'Invalid tableId' })
+
+    const table = await prisma.table.findFirst({
+      where:  { id: tableId, cafeId },
+      select: { id: true, tableNumber: true, capacity: true }
+    })
+    if (!table) return res.status(404).json({ error: 'Table not found' })
+
+    const now      = new Date()
+    const sessions = await prisma.clientSession.findMany({
+      where:   { tableId, cafeId, status: 'active', expiresAt: { gt: now } },
+      select:  { seatNumber: true },
+      orderBy: { seatNumber: 'asc' }
+    })
+
+    return res.json({
+      tableId:     table.id,
+      tableNumber: table.tableNumber,
+      capacity:    table.capacity,
+      activeSeats: sessions.map(s => s.seatNumber),
+    })
+  } catch (err) {
+    logger.error({ msg: 'GET /api/tables/:tableId/active-seats error', err })
+    return res.status(500).json({ error: 'Failed to fetch active seats' })
   }
 })
 

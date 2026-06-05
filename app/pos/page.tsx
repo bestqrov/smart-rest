@@ -16,7 +16,7 @@ type TableColor = 'EMPTY' | 'OPEN_QR' | 'OPEN_MANUAL' | 'BILL_REQUESTED' | 'INAC
 type MobileTab  = 'tables' | 'menu' | 'cart'
 type PayMethod  = 'CASH' | 'CARD' | 'ONLINE'
 
-interface PosTable  { id: string; tableNumber: number; qrToken: string; isActive: boolean; status: TableColor }
+interface PosTable  { id: string; tableNumber: number; qrToken: string; isActive: boolean; capacity: number; status: TableColor }
 interface Staff     { id: string; name: string; role: string }
 interface OrderItem { id: string; quantity: number; notes: string | null; unitPrice: number; commissionRate: number; product: { nameAr: string; nameEn: string; nameFr: string } }
 interface TableOrder { id: string; totalPrice: number; totalCommission: number; payMethod: string; orderSource: string; billStatus: string; createdAt: string; items: OrderItem[] }
@@ -115,6 +115,9 @@ export default function POSPage() {
   const [checkingOut, setCheckingOut] = useState(false)
   const [checkoutErr, setCheckoutErr] = useState('')
   const [doneTable,   setDoneTable]   = useState<number | null>(null)
+  // split bill
+  const [splitOpen,   setSplitOpen]   = useState(false)
+  const [splitSeats,  setSplitSeats]  = useState<number[]>([])
   // ui
   const [mobileTab,   setMobileTab]   = useState<MobileTab>('tables')
   const [clock,       setClock]       = useState('')
@@ -320,6 +323,33 @@ export default function POSPage() {
       setAlertIds(prev => { const n = new Set(prev); n.delete(selTable.id); return n })
       setCart([]); setTableOrder(null)
       setTimeout(() => { setSelTable(null); setDoneTable(null); setMobileTab('tables') }, 2000)
+    } finally { setCheckingOut(false) }
+  }
+
+  // Split checkout — close only the selected seats
+  async function handleSplitCheckout() {
+    if (!selTable || !posToken || splitSeats.length === 0) return
+    setCheckingOut(true); setCheckoutErr('')
+    try {
+      const res = await fetch('/api/pos/checkout/by-seats', {
+        method:  'POST',
+        headers: { Authorization: `Bearer ${posToken}`, 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ tableId: selTable.id, seatNumbers: splitSeats, paymentMethod: payMethod }),
+      })
+      if (!res.ok) {
+        const d = await res.json()
+        setCheckoutErr(d.error ?? 'Split checkout failed')
+        return
+      }
+      const d = await res.json()
+      setSplitOpen(false); setSplitSeats([])
+      if (d.closed > 0) {
+        setDoneTable(selTable.tableNumber)
+        setTables(prev => prev.map(t => t.id === selTable!.id ? { ...t, status: 'EMPTY' } : t))
+        setAlertIds(prev => { const n = new Set(prev); n.delete(selTable!.id); return n })
+        setCart([]); setTableOrder(null)
+        setTimeout(() => { setSelTable(null); setDoneTable(null); setMobileTab('tables') }, 2000)
+      }
     } finally { setCheckingOut(false) }
   }
 
@@ -731,6 +761,17 @@ export default function POSPage() {
                     </div>
                   )}
 
+                  {/* Split bill button — shown when table has active sessions (capacity > 1) */}
+                  {selTable && selTable.capacity > 1 && (
+                    <button
+                      onClick={() => { setSplitSeats([]); setSplitOpen(true) }}
+                      disabled={checkingOut}
+                      className="w-full py-3 bg-blue-900/40 hover:bg-blue-800/60 border border-blue-500/40 text-blue-300 rounded-xl font-bold text-sm active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                    >
+                      🪑 Split Bill by Seat
+                    </button>
+                  )}
+
                   {/* Checkout buttons */}
                   <div className="grid grid-cols-2 gap-2">
                     <button onClick={() => handleCheckout(true)} disabled={checkingOut}
@@ -790,6 +831,55 @@ export default function POSPage() {
           </button>
         ))}
       </div>
+
+      {/* ── Split Bill Modal ──────────────────────────────────────────────────── */}
+      {splitOpen && selTable && (
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4"
+          onClick={() => setSplitOpen(false)}>
+          <div className="bg-gray-900 rounded-3xl p-6 w-full max-w-sm shadow-2xl"
+            onClick={e => e.stopPropagation()}>
+            <h3 className="font-black text-lg text-white mb-1">
+              Split Bill — Table {selTable.tableNumber}
+            </h3>
+            <p className="text-gray-400 text-sm mb-5">Select seats to close</p>
+
+            <div className="grid grid-cols-4 gap-3 mb-6">
+              {Array.from({ length: selTable.capacity || 6 }, (_, i) => i + 1).map(seat => (
+                <button
+                  key={seat}
+                  onClick={() => setSplitSeats(prev =>
+                    prev.includes(seat) ? prev.filter(s => s !== seat) : [...prev, seat]
+                  )}
+                  className={`h-14 rounded-2xl flex items-center justify-center text-sm font-black transition-all active:scale-90
+                    ${splitSeats.includes(seat)
+                      ? 'bg-blue-500 text-white ring-2 ring-blue-300'
+                      : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                    }`}
+                >
+                  {seat}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex gap-3">
+              <button onClick={() => setSplitOpen(false)}
+                className="flex-1 py-3 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-xl font-bold text-sm active:scale-95 transition-all">
+                Cancel
+              </button>
+              <button
+                onClick={handleSplitCheckout}
+                disabled={checkingOut || splitSeats.length === 0}
+                className="flex-1 py-3 bg-blue-500 hover:bg-blue-400 disabled:opacity-50 text-white rounded-xl font-bold text-sm active:scale-95 transition-all flex items-center justify-center gap-2"
+              >
+                {checkingOut
+                  ? <Loader2 className="w-4 h-4 animate-spin" />
+                  : <Check className="w-4 h-4" />}
+                Close {splitSeats.length > 0 ? `${splitSeats.length} seat${splitSeats.length > 1 ? 's' : ''}` : '…'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   )

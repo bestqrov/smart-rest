@@ -210,6 +210,8 @@ export default function KitchenPage() {
   const [completedToday, setCompletedToday] = useState(0)
   const [cancelledToday, setCancelledToday] = useState(0)
   const [newReservationAlert, setNewReservationAlert] = useState(false)
+  const [cafeLogoUrl, setCafeLogoUrl]       = useState<string | null>(null)
+  const [cafeName, setCafeName]             = useState('')
 
   const socketRef     = useRef<Socket | null>(null)
   const deliveredIds  = useRef<Set<string>>(new Set())
@@ -229,9 +231,17 @@ export default function KitchenPage() {
     try {
       const p = JSON.parse(atob(token.split('.')[1]))
       setCafeId(p.cafeId); setAuthed(true)
-    } catch { window.location.href = '/login' }
+    } catch { window.location.href = '/login'; return }
     const saved = localStorage.getItem('sm_lang')
     if (saved === 'ar' || saved === 'en' || saved === 'fr' || saved === 'es') setLang(saved as Lang)
+    // Fetch cafe branding for logo display
+    const tok = token
+    ;(async () => {
+      try {
+        const r = await fetch('/api/admin/cafe/profile', { headers: { Authorization: `Bearer ${tok}` } })
+        if (r.ok) { const d = await r.json(); setCafeLogoUrl(d.logoUrl ?? null); setCafeName(d.businessName || d.name || '') }
+      } catch {}
+    })()
   }, [])
 
   // 30s clock tick
@@ -389,8 +399,14 @@ export default function KitchenPage() {
       {/* ── Top bar ── */}
       <header className="h-12 bg-[#161a1f] border-b border-[#2a2f38] flex items-center justify-between px-4 shrink-0 z-20">
         <div className="flex items-center gap-2.5">
-          <ChefHat className="w-5 h-5 text-amber-400" />
-          <span className="font-extrabold text-sm tracking-wide">{tr.title}</span>
+          {cafeLogoUrl
+            ? <img src={cafeLogoUrl} alt={cafeName} className="w-8 h-8 rounded-lg object-contain bg-white/10 border border-white/10" />
+            : <ChefHat className="w-5 h-5 text-amber-400" />
+          }
+          <div className="flex flex-col leading-tight">
+            <span className="font-extrabold text-sm tracking-wide">{cafeName || tr.title}</span>
+            <span className="text-[9px] text-gray-500 font-medium">Powered by SmartMenu</span>
+          </div>
         </div>
 
         <div className="flex items-center gap-2">

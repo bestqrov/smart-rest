@@ -27,7 +27,10 @@ function requireSuperAdmin(req: Request, res: Response, next: NextFunction) {
 
 router.get('/api/superadmin/overview', requireSuperAdmin, async (_req: Request, res: Response) => {
   try {
-    const [totalCafes, activeCafes, suspendedCafes, trialCafes, debtAgg, revenueAgg] = await Promise.all([
+    const monthStart = new Date()
+    monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0)
+
+    const [totalCafes, activeCafes, suspendedCafes, trialCafes, debtAgg, revenueAgg, mrrAgg] = await Promise.all([
       prisma.cafe.count(),
       prisma.cafe.count({ where: { isActive: true } }),
       prisma.cafe.count({ where: { billingStatus: 'SUSPENDED' } }),
@@ -39,11 +42,17 @@ router.get('/api/superadmin/overview', requireSuperAdmin, async (_req: Request, 
       prisma.order.aggregate({
         _sum: { totalPrice: true },
         where: { status: 'COMPLETED', isPaid: true }
+      }),
+      // MRR = total commission collected this calendar month
+      prisma.order.aggregate({
+        _sum: { totalCommission: true },
+        where: { isPaid: true, createdAt: { gte: monthStart } }
       })
     ])
 
     const totalDebt = Math.abs(debtAgg._sum.walletBalance || 0).toFixed(2)
     const totalRevenue = (revenueAgg._sum.totalPrice || 0).toFixed(2)
+    const mrr = parseFloat((mrrAgg._sum.totalCommission || 0).toFixed(2))
 
     return res.json({
       totalCafes,
@@ -52,7 +61,8 @@ router.get('/api/superadmin/overview', requireSuperAdmin, async (_req: Request, 
       trialCafes,
       collectingDebt: totalCafes - activeCafes - trialCafes - suspendedCafes,
       totalAccruedDebt: totalDebt,
-      totalRevenue
+      totalRevenue,
+      mrr
     })
   } catch (err) {
     logger.error({ msg: 'superadmin overview error', err })

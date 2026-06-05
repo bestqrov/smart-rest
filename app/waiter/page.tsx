@@ -38,7 +38,7 @@ type ReadyOrder = {
   items: { id: string; quantity: number; product: { nameEn: string } }[]
 }
 type LegacyCall  = { id: string; tableId: string; tableNumber?: number; type: string; message?: string | null; createdAt: string }
-type BillRequest = { id: string; tableId: string; tableNumber?: number; createdAt: string }
+type BillRequest = { id: string; tableId: string; tableNumber?: number; seatNumbers?: number[]; payScope?: string; message?: string | null; createdAt: string }
 type NewOrder    = { orderId: string; mergeLabel: string; totalPrice: string; createdAt: string }
 
 type WaiterStatus = {
@@ -348,7 +348,7 @@ export default function WaiterPage() {
         .tab-active::after { content:''; position:absolute; bottom:-1px; left:0; right:0; height:2px; background:white; border-radius:2px }
       `}</style>
 
-      <div className="min-h-screen bg-slate-100 flex flex-col">
+      <div className="h-screen bg-slate-100 flex flex-col overflow-hidden">
 
         {/* ── Header ─────────────────────────────────────────────────────────── */}
         <header className="bg-gradient-to-r from-sky-600 to-indigo-600 shadow-lg sticky top-0 z-20">
@@ -412,7 +412,8 @@ export default function WaiterPage() {
         </header>
 
         {/* ── Body ───────────────────────────────────────────────────────────── */}
-        <main className="flex-1 max-w-4xl mx-auto w-full px-3 py-4 space-y-6 pb-10">
+        <div className="flex-1 flex overflow-hidden">
+        <main className="flex-1 max-w-2xl w-full px-3 py-4 space-y-6 pb-10 overflow-y-auto">
 
           {/* ════════ TEAM TAB ════════ */}
           {tab === 'team' && (
@@ -591,6 +592,13 @@ export default function WaiterPage() {
                         <CreditCard className="w-8 h-8 text-violet-500 flex-shrink-0" />
                         <div className="flex-1">
                           <p className="font-bold text-gray-900 text-sm">Table {b.tableNumber ?? '?'}</p>
+                          {b.payScope === 'SEATS' && b.seatNumbers && b.seatNumbers.length > 0 ? (
+                            <p className="text-xs text-violet-600 font-semibold">
+                              Seats {b.seatNumbers.join(', ')} only
+                            </p>
+                          ) : (
+                            <p className="text-xs text-gray-400">Whole table</p>
+                          )}
                           <p className="text-xs text-gray-400">{elapsed(b.createdAt)}</p>
                         </div>
                         <button onClick={() => setBills(prev => prev.filter(x => x.id !== b.id))}
@@ -609,6 +617,90 @@ export default function WaiterPage() {
             </>
           )}
         </main>
+
+        {/* ── Right branding panel — tablet/desktop only ────────────────────── */}
+        <aside className="hidden lg:flex flex-col w-72 xl:w-80 shrink-0 bg-white border-l border-slate-200 overflow-y-auto">
+
+          {/* SmartMenu promo card */}
+          <div className="m-4 rounded-2xl overflow-hidden bg-gradient-to-br from-[#1a2744] to-[#2563eb] text-white p-6 flex flex-col items-center text-center gap-3">
+            <div className="w-20 h-20 bg-white/10 rounded-2xl flex items-center justify-center">
+              <img src="/assets/logo.png" alt="SmartMenu" className="w-14 h-14 object-contain" onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
+            </div>
+            <div>
+              <p className="text-xl font-black">Smart Menu</p>
+              <p className="text-xs text-blue-200 mt-1">sur nos aile rapide caisse</p>
+            </div>
+            <div className="w-full h-px bg-white/20" />
+            <p className="text-xs text-blue-100 leading-relaxed">
+              Système de gestion de restaurant intelligent — commandes, cuisine, caisse en temps réel
+            </p>
+          </div>
+
+          {/* Live stats */}
+          <div className="px-4 space-y-3">
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Live Status</p>
+
+            <div className="bg-slate-50 rounded-2xl p-4 flex items-center gap-4">
+              <div className="relative w-14 h-14">
+                <svg viewBox="0 0 36 36" className="w-14 h-14 -rotate-90">
+                  <circle cx="18" cy="18" r="15.9" fill="none" stroke="#e2e8f0" strokeWidth="3.2" />
+                  <circle cx="18" cy="18" r="15.9" fill="none" stroke="#22c55e" strokeWidth="3.2"
+                    strokeDasharray={`${Math.min(100, (ready.length / Math.max(1, ready.length + alertCount)) * 100)} 100`} strokeLinecap="round" />
+                </svg>
+                <span className="absolute inset-0 flex items-center justify-center text-xs font-black text-slate-700">
+                  {ready.length}
+                </span>
+              </div>
+              <div>
+                <p className="font-bold text-slate-800 text-sm">Ready</p>
+                <p className="text-xs text-slate-400">to serve</p>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 rounded-2xl p-4 flex items-center gap-4">
+              <div className="relative w-14 h-14">
+                <svg viewBox="0 0 36 36" className="w-14 h-14 -rotate-90">
+                  <circle cx="18" cy="18" r="15.9" fill="none" stroke="#e2e8f0" strokeWidth="3.2" />
+                  <circle cx="18" cy="18" r="15.9" fill="none" stroke="#3b82f6" strokeWidth="3.2"
+                    strokeDasharray={`${Math.min(100, (alertCount / Math.max(1, alertCount + ready.length)) * 100)} 100`} strokeLinecap="round" />
+                </svg>
+                <span className="absolute inset-0 flex items-center justify-center text-xs font-black text-slate-700">
+                  {alertCount}
+                </span>
+              </div>
+              <div>
+                <p className="font-bold text-slate-800 text-sm">Pending</p>
+                <p className="text-xs text-slate-400">alerts</p>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 rounded-2xl p-4">
+              <p className="text-xs font-bold text-slate-500 mb-2">Active waiters</p>
+              <div className="flex flex-wrap gap-1.5">
+                {activeWaiters.length === 0
+                  ? <span className="text-xs text-slate-400">None on duty</span>
+                  : activeWaiters.map((w, i) => (
+                    <span key={w.id} className={`text-xs font-bold px-2.5 py-1 rounded-full text-white ${PALETTES[i % PALETTES.length].avatar}`}>
+                      {initials(w.name)}
+                    </span>
+                  ))
+                }
+              </div>
+            </div>
+          </div>
+
+          {/* Connection indicator */}
+          <div className="mx-4 mt-auto mb-4">
+            <div className={`rounded-xl px-4 py-3 flex items-center gap-2 ${connected ? 'bg-emerald-50 border border-emerald-200' : 'bg-red-50 border border-red-200'}`}>
+              <div className={`w-2 h-2 rounded-full ${connected ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`} />
+              <span className={`text-xs font-bold ${connected ? 'text-emerald-700' : 'text-red-700'}`}>
+                {connected ? 'Connected · Live' : 'Disconnected'}
+              </span>
+            </div>
+          </div>
+        </aside>
+
+        </div>
       </div>
     </>
   )

@@ -63,6 +63,7 @@ router.get('/api/pos/tables-status', authorizePOS, async (req: Request, res: Res
       tableNumber: t.tableNumber,
       qrToken:     t.qrToken,
       isActive:    t.isActive,
+      capacity:    t.capacity,
       // Inactive tables always show as INACTIVE regardless of orders
       status:      !t.isActive ? 'INACTIVE' : ((tableStatusMap.get(t.id) ?? 'EMPTY') as TableColor)
     }))

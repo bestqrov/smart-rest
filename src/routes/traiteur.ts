@@ -187,13 +187,13 @@ router.patch('/api/traiteur/events/:id', authorizeAdmin, async (req: Request, re
         ...(type        !== undefined && { type }),
         ...(date        !== undefined && { date: new Date(date) }),
         ...(venue       !== undefined && { venue }),
-        ...(guestCount  !== undefined && { guestCount: Number(guestCount) }),
+        ...(guestCount  !== undefined && Number.isFinite(Number(guestCount)) && Number(guestCount) >= 0 && { guestCount: Math.floor(Number(guestCount)) }),
         ...(status      !== undefined && { status }),
         ...(clientName  !== undefined && { clientName }),
         ...(clientPhone !== undefined && { clientPhone }),
         ...(clientEmail !== undefined && { clientEmail }),
-        ...(quotedPrice !== undefined && { quotedPrice: Number(quotedPrice) }),
-        ...(depositPaid !== undefined && { depositPaid: Number(depositPaid) }),
+        ...(quotedPrice !== undefined && Number.isFinite(Number(quotedPrice)) && { quotedPrice: Number(quotedPrice) }),
+        ...(depositPaid !== undefined && Number.isFinite(Number(depositPaid)) && { depositPaid: Number(depositPaid) }),
         ...(depositDate !== undefined && { depositDate: new Date(depositDate) }),
         ...(notes       !== undefined && { notes }),
       }
@@ -342,10 +342,11 @@ router.post('/api/traiteur/events/:id/guests/bulk', authorizeAdmin, async (req: 
       )
     )
 
-    // Update guestCount on the event
+    // Update guestCount to reflect total guests in DB (not just this batch)
+    const totalGuests = await prisma.guest.count({ where: { eventId } })
     await prisma.event.update({
       where: { id: eventId },
-      data:  { guestCount: created.length }
+      data:  { guestCount: totalGuests }
     })
 
     logger.info({ msg: 'bulk guests imported', cafeId, eventId, count: created.length })

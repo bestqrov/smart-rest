@@ -37,11 +37,16 @@ router.get('/api/admin/stats', authorizeAdmin, async (req: Request, res: Respons
     const daysBack = 30
     const start30 = new Date(now.getTime() - (daysBack - 1) * 24 * 60 * 60 * 1000)
 
-    // Total Revenue (consider paid orders)
+    // Revenue = paid orders OR completed orders (some cafes mark COMPLETED without explicit isPaid)
+    const revenueWhere = (extra: Prisma.OrderWhereInput): Prisma.OrderWhereInput => ({
+      cafeId,
+      OR: [{ isPaid: true }, { status: 'COMPLETED' as const }],
+      ...extra,
+    })
     const [revTodayAgg, revWeekAgg, revMonthAgg] = await Promise.all([
-      prisma.order.aggregate({ _sum: { totalPrice: true }, where: { cafeId, isPaid: true, createdAt: { gte: todayStart } } }),
-      prisma.order.aggregate({ _sum: { totalPrice: true }, where: { cafeId, isPaid: true, createdAt: { gte: weekStart } } }),
-      prisma.order.aggregate({ _sum: { totalPrice: true }, where: { cafeId, isPaid: true, createdAt: { gte: monthStart } } })
+      prisma.order.aggregate({ _sum: { totalPrice: true }, where: revenueWhere({ createdAt: { gte: todayStart } }) }),
+      prisma.order.aggregate({ _sum: { totalPrice: true }, where: revenueWhere({ createdAt: { gte: weekStart } }) }),
+      prisma.order.aggregate({ _sum: { totalPrice: true }, where: revenueWhere({ createdAt: { gte: monthStart } }) }),
     ])
 
     const revenue = {
@@ -73,11 +78,11 @@ router.get('/api/admin/stats', authorizeAdmin, async (req: Request, res: Respons
     const peakHours = hourCounts.map((count, hour) => ({ hour, count })).sort((a, b) => b.count - a.count).slice(0, 3)
 
     // Average Order Value (AOV) - over last 30 days
-    const aovAgg = await prisma.order.aggregate({ _avg: { totalPrice: true }, where: { cafeId, isPaid: true, createdAt: { gte: start30 } } })
+    const aovAgg = await prisma.order.aggregate({ _avg: { totalPrice: true }, where: revenueWhere({ createdAt: { gte: start30 } }) })
     const aov = aovAgg._avg.totalPrice || 0
 
     // Daily sales for last 30 days (for line chart)
-    const salesOrders = await prisma.order.findMany({ where: { cafeId, isPaid: true, createdAt: { gte: start30 } }, select: { totalPrice: true, createdAt: true } })
+    const salesOrders = await prisma.order.findMany({ where: revenueWhere({ createdAt: { gte: start30 } }), select: { totalPrice: true, createdAt: true } })
     const dailyMap: Record<string, number> = {}
     for (let i = 0; i < daysBack; i++) {
       const d = new Date(start30.getTime() + i * 24 * 60 * 60 * 1000)

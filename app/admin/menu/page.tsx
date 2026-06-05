@@ -8,11 +8,11 @@ import {
 import { useLang } from '../lang-context'
 import { A } from '../../../lib/adminI18n'
 
-type Category = { id: number; nameAr: string; nameEn: string; nameFr: string; nameEs: string; nameDe: string; order: number; _count?: { products: number } }
-type Product  = { id: number; categoryId: number; nameAr: string; nameEn: string; nameFr: string; price: string | number; costPrice?: string | number | null; description?: string; imageUrl?: string; isAvailable: boolean; category?: { nameEn: string } }
+type Category = { id: string; nameAr: string; nameEn: string; nameFr: string; nameEs: string; nameDe: string; order: number; _count?: { products: number } }
+type Product  = { id: string; categoryId: string; nameAr: string; nameEn: string; nameFr: string; price: string | number; costPrice?: string | number | null; description?: string; imageUrl?: string; isAvailable: boolean; category?: { nameEn: string } }
 
 const EMPTY_CAT: Omit<Category, 'id' | 'order' | '_count'> = { nameAr: '', nameEn: '', nameFr: '', nameEs: '', nameDe: '' }
-const EMPTY_PRD = { categoryId: 0, nameAr: '', nameEn: '', nameFr: '', price: '', costPrice: '', description: '', imageUrl: '' }
+const EMPTY_PRD = { categoryId: '', nameAr: '', nameEn: '', nameFr: '', price: '', costPrice: '', description: '', imageUrl: '' }
 
 function margin(price: number, cost: number) {
   if (!cost || cost <= 0) return null
@@ -35,12 +35,12 @@ export default function MenuPage() {
   const [categories, setCategories] = useState<Category[]>([])
   const [products,   setProducts]   = useState<Product[]>([])
   const [activeTab,  setActiveTab]  = useState<'categories' | 'products'>('products')
-  const [expandedCat, setExpandedCat] = useState<number | null>(null)
+  const [expandedCat, setExpandedCat] = useState<string | null>(null)
   const [loading,    setLoading]    = useState(true)
 
   // Modal state
-  const [catModal, setCatModal] = useState<{ open: boolean; data: typeof EMPTY_CAT; id?: number }>({ open: false, data: { ...EMPTY_CAT } })
-  const [prdModal, setPrdModal] = useState<{ open: boolean; data: typeof EMPTY_PRD; id?: number }>({ open: false, data: { ...EMPTY_PRD } })
+  const [catModal, setCatModal] = useState<{ open: boolean; data: typeof EMPTY_CAT; id?: string }>({ open: false, data: { ...EMPTY_CAT } })
+  const [prdModal, setPrdModal] = useState<{ open: boolean; data: typeof EMPTY_PRD; id?: string }>({ open: false, data: { ...EMPTY_PRD } })
   const [saving, setSaving] = useState(false)
   const [seeding, setSeeding] = useState(false)
   const [imgPreview, setImgPreview] = useState<string>('')
@@ -72,14 +72,14 @@ export default function MenuPage() {
     setSaving(false)
   }
 
-  async function deleteCategory(id: number) {
+  async function deleteCategory(id: string) {
     if (!confirm(t.confirmDelete)) return
     await fetch(`/api/admin/categories/${id}`, { method: 'DELETE', headers: auth() })
     await load()
   }
 
   // ── Product CRUD ───────────────────────────────────────────────
-  function openNewProduct(categoryId: number) {
+  function openNewProduct(categoryId: string) {
     setPrdModal({ open: true, data: { ...EMPTY_PRD, categoryId }, id: undefined })
     setImgPreview('')
   }
@@ -108,7 +108,7 @@ export default function MenuPage() {
     setProducts(prds => prds.map(x => x.id === p.id ? { ...x, isAvailable: !x.isAvailable } : x))
   }
 
-  async function deleteProduct(id: number) {
+  async function deleteProduct(id: string) {
     if (!confirm(t.confirmDelete)) return
     await fetch(`/api/admin/products/${id}`, { method: 'DELETE', headers: auth() })
     await load()

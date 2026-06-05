@@ -348,8 +348,8 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-gray-50 flex" dir={isRTL ? 'rtl' : 'ltr'}>
 
       {/* ── Sidebar (desktop) ─────────────────────────────────────── */}
-      <aside className="hidden md:flex flex-col w-64 bg-gray-900 min-h-screen shrink-0">
-        <div className="px-5 py-5 border-b border-gray-800">
+      <aside className="hidden md:flex flex-col w-64 bg-[#1a2744] min-h-screen shrink-0">
+        <div className="px-5 py-5 border-b border-[#243460]">
           <Link href="/admin/dashboard" className="flex items-center gap-2">
             {cafe?.logoUrl ? (
               <img
@@ -372,7 +372,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
         </div>
 
         {cafe && (
-          <div className="px-5 py-3 border-b border-gray-800">
+          <div className="px-5 py-3 border-b border-[#243460]">
             <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${billingBadge[cafe.billingStatus] || 'bg-gray-700 text-gray-300'}`}>
               {billingLabel[cafe.billingStatus] || cafe.billingStatus}
             </span>
@@ -385,7 +385,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
             return (
               <Link key={item.href} href={item.href}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors group ${
-                  active ? 'bg-emerald-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                  active ? 'bg-emerald-600 text-white' : 'text-gray-400 hover:bg-[#243460] hover:text-white'
                 }`}>
                 <item.icon className="w-5 h-5 shrink-0" />
                 <span className="text-sm font-medium flex-1">{t[item.key as keyof AdminT]}</span>
@@ -395,11 +395,11 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
           })}
         </nav>
 
-        <div className="px-3 pb-3 border-t border-gray-800 pt-3">
+        <div className="px-3 pb-3 border-t border-[#243460] pt-3">
           <p className="text-xs text-gray-600 uppercase tracking-widest px-2 mb-2">{t.staffScreens}</p>
           {STAFF_LINKS.map(item => (
             <a key={item.href} href={item.href} target="_blank" rel="noopener noreferrer"
-              className="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-white transition-colors group mb-1">
+              className="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-400 hover:bg-[#243460] hover:text-white transition-colors group mb-1">
               <item.icon className="w-4 h-4 shrink-0" />
               <span className="text-xs font-medium flex-1">{t[item.key as keyof AdminT]}</span>
               <span className="text-gray-700 text-xs group-hover:text-gray-500">↗</span>
@@ -407,10 +407,10 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
           ))}
         </div>
 
-        <div className="px-3 py-3 border-t border-gray-800 space-y-1">
+        <div className="px-3 py-3 border-t border-[#243460] space-y-1">
           <LangSwitcherSidebar />
           <button onClick={logout}
-            className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-red-400 transition-colors">
+            className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-gray-400 hover:bg-[#243460] hover:text-red-400 transition-colors">
             <LogOut className="w-5 h-5" />
             <span className="text-sm">{t.logout}</span>
           </button>
@@ -418,7 +418,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* ── Mobile top bar ────────────────────────────────────────── */}
-      <div className="md:hidden fixed top-0 inset-x-0 z-40 bg-gray-900 px-4 py-3 flex items-center justify-between">
+      <div className="md:hidden fixed top-0 inset-x-0 z-40 bg-[#1a2744] px-4 py-3 flex items-center justify-between">
         <button onClick={() => setOpen(true)} className="text-gray-300 p-1">
           <Menu className="w-6 h-6" />
         </button>
@@ -439,8 +439,8 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
       {open && (
         <div className="md:hidden fixed inset-0 z-50 flex">
           <div className="absolute inset-0 bg-black/60" onClick={() => setOpen(false)} />
-          <div className="relative bg-gray-900 w-72 h-full flex flex-col" dir={isRTL ? 'rtl' : 'ltr'}>
-            <div className="px-4 py-4 flex items-center justify-between border-b border-gray-800">
+          <div className="relative bg-[#1a2744] w-72 h-full flex flex-col" dir={isRTL ? 'rtl' : 'ltr'}>
+            <div className="px-4 py-4 flex items-center justify-between border-b border-[#243460]">
               <div className="flex items-center gap-2">
                 {cafe?.logoUrl ? (
                   <img src={cafe.logoUrl} alt={cafe.name} className="w-8 h-8 rounded-lg object-contain aspect-square bg-white/10" />
@@ -454,7 +454,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
               </button>
             </div>
             {cafe && (
-              <div className="px-4 py-3 border-b border-gray-800">
+              <div className="px-4 py-3 border-b border-[#243460]">
                 <p className="text-gray-400 text-xs truncate">{cafe.subdomain}.smartmenu.ma</p>
                 <span className={`mt-1 inline-block text-xs font-semibold px-2 py-0.5 rounded-full ${billingBadge[cafe.billingStatus] || ''}`}>
                   {billingLabel[cafe.billingStatus] || cafe.billingStatus}
@@ -467,7 +467,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
                 return (
                   <Link key={item.href} href={item.href} onClick={() => setOpen(false)}
                     className={`flex items-center gap-3 px-3 py-3 rounded-xl ${
-                      active ? 'bg-emerald-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                      active ? 'bg-emerald-600 text-white' : 'text-gray-400 hover:bg-[#243460] hover:text-white'
                     }`}>
                     <item.icon className="w-5 h-5" />
                     <span className="font-medium">{t[item.key as keyof AdminT]}</span>
@@ -475,10 +475,10 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
                 )
               })}
             </nav>
-            <div className="px-3 py-4 border-t border-gray-800 space-y-1">
+            <div className="px-3 py-4 border-t border-[#243460] space-y-1">
               <LangSwitcherSidebar />
               <button onClick={logout}
-                className="flex items-center gap-3 w-full px-3 py-3 rounded-xl text-gray-400 hover:bg-gray-800 hover:text-red-400">
+                className="flex items-center gap-3 w-full px-3 py-3 rounded-xl text-gray-400 hover:bg-[#243460] hover:text-red-400">
                 <LogOut className="w-5 h-5" />
                 <span>{t.logout}</span>
               </button>
@@ -535,7 +535,7 @@ function LangSwitcherSidebar() {
             className={`flex-1 py-1 rounded-md text-xs font-bold transition-all ${
               lang === code
                 ? 'bg-emerald-600 text-white'
-                : 'text-gray-500 hover:bg-gray-800 hover:text-white'
+                : 'text-gray-500 hover:bg-[#243460] hover:text-white'
             }`}
           >
             {flag} {code.toUpperCase()}

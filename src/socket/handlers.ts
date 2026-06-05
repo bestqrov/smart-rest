@@ -128,6 +128,68 @@ export function registerSocketHandlers(io: SocketIOServer) {
       }
     })
 
+    // ── join_session_room — dynamic QR customer joins via sessionId ─────────
+    // Used by /[subdomain]/t/[tableNumber] (new single-QR-per-table flow).
+    // Validates sessionId against DB then joins the correct table_room.
+    // Also auto-joins the master table room if the table is merged.
+    socket.on('join_session_room', async (payload: { sessionId: string }) => {
+      try {
+        const { sessionId } = payload
+        if (!sessionId) return
+
+        const now     = new Date()
+        const session = await prisma.clientSession.findUnique({
+          where:  { id: sessionId },
+          select: {
+            id:         true,
+            cafeId:     true,
+            tableId:    true,
+            seatNumber: true,
+            status:     true,
+            expiresAt:  true,
+            table: {
+              select: {
+                tableNumber:       true,
+                mergedIntoTableId: true,
+                mergedIntoTable:   { select: { tableNumber: true } }
+              }
+            }
+          }
+        })
+
+        if (!session || session.status !== 'active' || session.expiresAt <= now) {
+          socket.emit('error', { message: 'Session expired' })
+          return
+        }
+
+        const physicalRoom = `table_room_${session.cafeId}_${session.tableId}`
+        socket.join(physicalRoom)
+
+        // If the table is merged, also join the master room so order updates arrive
+        if (session.table.mergedIntoTableId) {
+          const masterRoom = `table_room_${session.cafeId}_${session.table.mergedIntoTableId}`
+          socket.join(masterRoom)
+          socket.emit('TABLES_MERGED', {
+            targetTableId:     session.table.mergedIntoTableId,
+            targetTableNumber: session.table.mergedIntoTable?.tableNumber,
+            message: `You are now connected with the group at Table ${session.table.mergedIntoTable?.tableNumber}`
+          })
+        }
+
+        ;(socket as any).data = {
+          ...(socket as any).data,
+          cafeId:     session.cafeId,
+          tableId:    session.tableId,
+          sessionId:  session.id,
+          seatNumber: session.seatNumber
+        }
+
+        logger.debug({ msg: 'Dynamic QR customer joined session room', physicalRoom, sessionId })
+      } catch (err) {
+        logger.error({ msg: 'join_session_room error', err, payload })
+      }
+    })
+
     // ── request_bill ────────────────────────────────────────────────────────
     socket.on('request_bill', async (payload: { cafeId: string; tableId: string; message?: string }) => {
       try {
