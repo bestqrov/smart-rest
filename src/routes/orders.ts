@@ -8,7 +8,20 @@ import { emitKdsTicket, emitOrderStatusUpdate } from '../services/kds'
 
 const router = express.Router()
 
-type OrderItemInput = { productId: string; quantity: number; notes?: string }
+type ChosenModifierInput = {
+  groupId:        string
+  groupName:      string
+  optionId:       string
+  optionLabel:    string
+  priceAdjustment: number
+}
+
+type OrderItemInput = {
+  productId:       string
+  quantity:        number
+  notes?:          string
+  chosenModifiers?: ChosenModifierInput[]
+}
 
 // ─── POST /api/orders — customer places an order ──────────────────────────────
 
@@ -85,10 +98,13 @@ router.post('/api/orders', async (req: Request, res: Response) => {
 
     const cafe = await prisma.cafe.findUnique({
       where: { id: cafeId },
-      select: { isActive: true, country: true }
+      select: { isActive: true, orderingEnabled: true, country: true }
     })
     if (!cafe?.isActive) {
       return res.status(403).json({ error: 'This venue is currently unavailable. Please contact staff.' })
+    }
+    if (cafe.orderingEnabled === false) {
+      return res.status(403).json({ error: 'Online ordering is currently disabled. Please ask a staff member for assistance.' })
     }
 
     const productIds = items.map((i) => i.productId)
@@ -109,9 +125,16 @@ router.post('/api/orders', async (req: Request, res: Response) => {
       if (!Number.isInteger(qty) || qty <= 0) {
         return res.status(400).json({ error: `Invalid quantity for product ${it.productId}` })
       }
-      const price = priceMap.get(it.productId)
-      if (price === undefined) return res.status(400).json({ error: `Product ${it.productId} price not found` })
-      total += price * qty
+      const basePrice = priceMap.get(it.productId)
+      if (basePrice === undefined) return res.status(400).json({ error: `Product ${it.productId} price not found` })
+
+      // Sum price adjustments from chosen modifiers (validated to finite numbers)
+      const modifiersDelta = (it.chosenModifiers ?? []).reduce((sum, m) => {
+        const adj = Number(m.priceAdjustment)
+        return sum + (Number.isFinite(adj) ? adj : 0)
+      }, 0)
+
+      total += (basePrice + modifiersDelta) * qty
     }
     total = parseFloat(total.toFixed(2))
 
@@ -132,12 +155,28 @@ router.post('/api/orders', async (req: Request, res: Response) => {
       })
 
       await tx.orderItem.createMany({
-        data: items.map((it) => ({
-          orderId:   order.id,
-          productId: it.productId,
-          quantity:  it.quantity,
-          notes:     it.notes || null
-        }))
+        data: items.map((it) => {
+          const basePrice      = priceMap.get(it.productId) ?? 0
+          const modifiersDelta = (it.chosenModifiers ?? []).reduce((s, m) => {
+            const adj = Number(m.priceAdjustment)
+            return s + (Number.isFinite(adj) ? adj : 0)
+          }, 0)
+          return {
+            orderId:         order.id,
+            productId:       it.productId,
+            quantity:        it.quantity,
+            notes:           it.notes || null,
+            unitPrice:       basePrice,
+            modifiersDelta,
+            chosenModifiers: (it.chosenModifiers ?? []).map(m => ({
+              groupId:         m.groupId,
+              groupName:       m.groupName,
+              optionId:        m.optionId,
+              optionLabel:     m.optionLabel,
+              priceAdjustment: Number(m.priceAdjustment) || 0,
+            })),
+          }
+        })
       })
 
       return order
@@ -161,14 +200,18 @@ router.patch('/api/orders/:orderId/status', authorizeAdmin, async (req: Request,
     const { status } = req.body as { status: string }
     const cafeId = req.admin!.cafeId
 
-    const validStatuses = ['PENDING', 'PREPARING', 'DELIVERED', 'COMPLETED', 'CANCELLED']
+    const validStatuses = ['PENDING', 'PREPARING', 'READY', 'DELIVERED', 'COMPLETED', 'CANCELLED']
     if (!validStatuses.includes(status)) {
       return res.status(400).json({ error: `Invalid status. Must be one of: ${validStatuses.join(', ')}` })
     }
 
     const order = await prisma.order.findUnique({
       where:  { id: orderId },
-      select: { id: true, cafeId: true, status: true, totalPrice: true, tableId: true, _count: { select: { items: true } } }
+      select: {
+        id: true, cafeId: true, status: true, totalPrice: true,
+        tableId: true, customerPhone: true,
+        _count: { select: { items: true } }
+      }
     })
     if (!order) return res.status(404).json({ error: 'Order not found' })
     if (order.cafeId !== cafeId) return res.status(403).json({ error: 'Forbidden' })
@@ -177,9 +220,39 @@ router.patch('/api/orders/:orderId/status', authorizeAdmin, async (req: Request,
     const cafe = await prisma.cafe.findUnique({ where: { id: cafeId }, select: { country: true } })
 
     await prisma.$transaction(async (tx) => {
-      await tx.order.update({ where: { id: orderId }, data: { status: status as any } })
+      const updateData: any = { status }
+
+      // Record the moment the kitchen marks the order ready (drives avgPreparationTime metric)
+      if (status === 'READY' && order.status !== 'READY') {
+        updateData.preparedAt = new Date()
+      }
+
+      await tx.order.update({ where: { id: orderId }, data: updateData })
+
       if (status === 'COMPLETED' && order.status !== 'COMPLETED') {
         await applyOrderFee(tx, cafeId, orderId, order.totalPrice, cafe?.country ?? 'MA', false, order._count.items)
+
+        // Award loyalty points: 10 MAD = 1 point, rounded down
+        if (order.customerPhone) {
+          const earned = Math.floor(order.totalPrice / 10)
+          if (earned > 0) {
+            await tx.loyaltyAccount.upsert({
+              where:  { cafeId_phone: { cafeId, phone: order.customerPhone } },
+              create: {
+                cafeId,
+                phone:  order.customerPhone,
+                points: earned,
+                ledger: [{ type: 'EARN', points: earned, orderId, note: `Order completed`, createdAt: new Date() }],
+              },
+              update: {
+                points: { increment: earned },
+                ledger: {
+                  push: { type: 'EARN', points: earned, orderId, note: `Order completed`, createdAt: new Date() }
+                }
+              }
+            })
+          }
+        }
       }
     })
 

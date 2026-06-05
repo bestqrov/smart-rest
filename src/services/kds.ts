@@ -160,13 +160,13 @@ export function emitOrderStatusUpdate(
   io.to(`room_${cafeId}`).emit('order_status_updated', payload)
   io.to(`kds_room_${cafeId}`).emit('kds_order_updated', payload)
 
-  // Notify customer so they see "preparing…" / "ready!" feedback
-  if (tableId && (status === 'PREPARING' || status === 'DELIVERED')) {
+  // Notify customer for every meaningful lifecycle change
+  if (tableId && ['PREPARING', 'READY', 'DELIVERED'].includes(status)) {
     io.to(`table_room_${cafeId}_${tableId}`).emit('your_order_updated', payload)
   }
 
-  // Dedicated waiter alert when kitchen marks an order ready to serve
-  if (status === 'DELIVERED') {
+  // Alert waiter when kitchen marks order READY or DELIVERED
+  if (status === 'READY' || status === 'DELIVERED') {
     io.to(`room_${cafeId}`).emit('waiter_order_ready', { orderId, tableId })
   }
 }

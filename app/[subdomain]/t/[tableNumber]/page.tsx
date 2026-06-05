@@ -13,6 +13,7 @@ import { useState, useEffect, useRef, useCallback, Suspense } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useParams, useSearchParams } from 'next/navigation'
 import { io as socketIO, Socket } from 'socket.io-client'
+import LiveOrderTracker from './LiveOrderTracker'
 
 type Lang = 'ar' | 'en' | 'fr' | 'es'
 
@@ -55,6 +56,17 @@ const T = {
     invalidTitle: 'Invalid QR Code',
     invalidSub: 'This QR code is invalid or has expired. Please scan the code on your table again.',
     orderMore: 'Order more items',
+    requestBill: 'Request Bill 🧾',
+    billMyself: 'Just me',
+    billMyselfSub: 'Pay only for my seat',
+    billTable: 'Whole table',
+    billTableSub: 'Everyone pays together',
+    billGroup: 'Choose seats',
+    billGroupSub: 'Select who pays',
+    billSeatPicker: 'Select seats to include',
+    billConfirm: 'Send Bill Request',
+    billRequested: '✅ Bill request sent!',
+    billModalTitle: 'How would you like to pay?',
   },
   ar: {
     scanningTitle: 'جارٍ تجهيز طاولتك…',
@@ -92,6 +104,17 @@ const T = {
     invalidTitle: 'رمز QR غير صالح',
     invalidSub: 'رمز QR غير صالح أو منتهي الصلاحية. يرجى المسح مرة أخرى.',
     orderMore: 'طلب المزيد',
+    requestBill: 'طلب الفاتورة 🧾',
+    billMyself: 'على راسي فقط',
+    billMyselfSub: 'أدفع فقط لمقعدي',
+    billTable: 'الطاولة كلها',
+    billTableSub: 'الجميع يدفع معاً',
+    billGroup: 'اختيار مقاعد',
+    billGroupSub: 'حدد من يدفع',
+    billSeatPicker: 'اختر المقاعد المشمولة',
+    billConfirm: 'إرسال طلب الفاتورة',
+    billRequested: '✅ تم إرسال طلب الفاتورة!',
+    billModalTitle: 'كيف تريد الدفع؟',
   },
   fr: {
     scanningTitle: 'Préparation de votre table…',
@@ -129,6 +152,17 @@ const T = {
     invalidTitle: 'QR Code invalide',
     invalidSub: 'Ce QR code est invalide ou expiré. Veuillez rescanner.',
     orderMore: "Commander d'autres articles",
+    requestBill: "Demander l'addition 🧾",
+    billMyself: 'Rien que moi',
+    billMyselfSub: 'Payer uniquement ma place',
+    billTable: 'Toute la table',
+    billTableSub: 'Tout le monde paie ensemble',
+    billGroup: 'Choisir les places',
+    billGroupSub: 'Sélectionner qui paie',
+    billSeatPicker: 'Sélectionner les places',
+    billConfirm: 'Envoyer la demande',
+    billRequested: '✅ Demande envoyée !',
+    billModalTitle: 'Comment souhaitez-vous payer ?',
   },
   es: {
     scanningTitle: 'Preparando tu mesa…',
@@ -166,6 +200,17 @@ const T = {
     invalidTitle: 'QR Code inválido',
     invalidSub: 'El QR code es inválido o expirado. Vuelve a escanear.',
     orderMore: 'Pedir más',
+    requestBill: 'Pedir la cuenta 🧾',
+    billMyself: 'Solo yo',
+    billMyselfSub: 'Pagar solo mi asiento',
+    billTable: 'Toda la mesa',
+    billTableSub: 'Todos pagan juntos',
+    billGroup: 'Elegir asientos',
+    billGroupSub: 'Seleccionar quién paga',
+    billSeatPicker: 'Seleccionar asientos',
+    billConfirm: 'Enviar solicitud',
+    billRequested: '✅ ¡Solicitud enviada!',
+    billModalTitle: '¿Cómo quieres pagar?',
   },
 } as const
 
@@ -184,6 +229,8 @@ type ScanResult = {
   isMerged:           boolean
   billingTableId:     string
   billingTableNumber: number
+  cafeName?:          string
+  cafeLogoUrl?:       string | null
 }
 
 type CartItem = { productId: string; name: string; price: number; quantity: number; notes: string }
@@ -254,6 +301,11 @@ function TablePageInner() {
   const [placing, setPlacing]     = useState(false)
   const [orderMsg, setOrderMsg]   = useState('')
   const [waiterMsg, setWaiterMsg] = useState('')
+  const [billOpen, setBillOpen]   = useState(false)
+  const [billPhase, setBillPhase] = useState<'choice' | 'pick'>('choice')
+  const [billSeats, setBillSeats] = useState<number[]>([])
+  const [billMsg, setBillMsg]     = useState('')
+  const [billSending, setBillSending] = useState(false)
 
   const socketRef    = useRef<Socket | null>(null)
   const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -364,7 +416,8 @@ function TablePageInner() {
     socketRef.current = socket
 
     socket.on('connect', () => {
-      socket.emit('join', `table_room_${scan.cafeId}_${scan.tableId}`)
+      // Use session-based room join — the correct event for dynamic QR customers
+      socket.emit('join_session_room', { sessionId: scan.sessionId })
     })
 
     socket.on('TABLES_MERGED', (p: any) => {
@@ -375,6 +428,9 @@ function TablePageInner() {
     })
     socket.on('TABLES_UNMERGED', () => {
       setScan(prev => prev ? { ...prev, isMerged: false } : prev)
+    })
+    socket.on('your_order_updated', (p: { orderId: string; status: string }) => {
+      setActiveOrder(prev => prev && prev.orderId === p.orderId ? { ...prev, status: p.status } : prev)
     })
     socket.on('order_status_update', (p: { orderId: string; status: string }) => {
       setActiveOrder(prev => prev && prev.orderId === p.orderId ? { ...prev, status: p.status } : prev)
@@ -453,6 +509,46 @@ function TablePageInner() {
     } catch {}
   }
 
+  // ── Request bill (split or full table) ───────────────────────────────────
+  async function requestBill(scope: 'TABLE' | 'SEATS', seats: number[] = []) {
+    if (!scan || billSending) return
+    setBillSending(true)
+    try {
+      await fetch('/api/bill-requests', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId:   scan.sessionId,
+          seatNumbers: scope === 'SEATS' ? seats : [],
+          payScope:    scope,
+        }),
+      })
+      setBillMsg(tr.billRequested)
+      setBillOpen(false)
+      setBillPhase('choice')
+      setBillSeats([])
+      setTimeout(() => setBillMsg(''), 5000)
+    } catch {
+      setBillMsg('Failed to send request')
+      setTimeout(() => setBillMsg(''), 3000)
+    } finally {
+      setBillSending(false)
+    }
+  }
+
+  function openBillModal() {
+    if (!scan) return
+    setBillPhase('choice')
+    setBillSeats([scan.seatNumber])
+    setBillOpen(true)
+  }
+
+  function toggleBillSeat(seat: number) {
+    setBillSeats(prev =>
+      prev.includes(seat) ? prev.filter(s => s !== seat) : [...prev, seat]
+    )
+  }
+
   // ── Filtered menu ─────────────────────────────────────────────────────────
   const filteredCategories = search
     ? categories.map(c => ({
@@ -521,9 +617,14 @@ function TablePageInner() {
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
           transition={{ type: 'spring', delay: 0.1 }}
-          className="w-24 h-24 rounded-3xl bg-emerald-500/20 flex items-center justify-center text-5xl"
+          className="flex flex-col items-center gap-2"
         >
-          🪑
+          {scan.cafeLogoUrl
+            ? <img src={scan.cafeLogoUrl} alt={scan.cafeName} className="w-24 h-24 rounded-3xl object-contain bg-white/5 border border-white/10 shadow-xl" />
+            : <div className="w-24 h-24 rounded-3xl bg-emerald-500/20 flex items-center justify-center text-5xl">🪑</div>
+          }
+          {scan.cafeName && <span className="text-lg font-black text-white">{scan.cafeName}</span>}
+          <span className="text-[10px] text-gray-600 font-medium">Powered by SmartMenu</span>
         </motion.div>
 
         <div>
@@ -564,6 +665,9 @@ function TablePageInner() {
       {/* ── Top bar ── */}
       <header className="sticky top-0 z-30 bg-gray-900/95 backdrop-blur border-b border-gray-800 px-4 py-2.5 flex items-center justify-between">
         <div className="flex items-center gap-2">
+          {scan.cafeLogoUrl && (
+            <img src={scan.cafeLogoUrl} alt={scan.cafeName} className="w-7 h-7 rounded-lg object-contain bg-white/5 border border-white/10" />
+          )}
           <span className="text-xs font-bold bg-emerald-500/20 text-emerald-400 px-2.5 py-1 rounded-full">
             {tr.table} {scan.isMerged ? scan.billingTableNumber : scan.tableNumber}
             {scan.isMerged && <span className="ml-1 text-amber-400">({tr.mergedWith} {scan.billingTableNumber})</span>}
@@ -589,19 +693,26 @@ function TablePageInner() {
         {activeOrder && (
           <motion.div
             initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-            className="bg-gray-800 border-b border-gray-700 px-4 py-3"
+            className="border-b border-gray-700 px-4 py-3"
           >
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-bold text-emerald-400">{tr.trackerTitle}</p>
-              <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
-                activeOrder.status === 'DELIVERED' ? 'bg-emerald-500/20 text-emerald-300' :
-                activeOrder.status === 'PREPARING' ? 'bg-amber-500/20 text-amber-300' :
-                'bg-gray-700 text-gray-300'
-              }`}>
-                {activeOrder.status === 'PENDING' ? tr.pending : activeOrder.status === 'PREPARING' ? tr.preparing : tr.delivered}
-              </span>
-            </div>
-            <p className="text-xs text-gray-400 mt-1">{activeOrder.items.map(i => `${i.quantity}× ${i.name}`).join(' · ')}</p>
+            <p className="mb-2 text-xs text-gray-400">
+              {activeOrder.items.map(i => `${i.quantity}× ${i.name}`).join(' · ')}
+            </p>
+            <LiveOrderTracker
+              status={activeOrder.status}
+              orderId={activeOrder.orderId}
+              lang={lang as 'ar' | 'fr' | 'en'}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Bill toast ── */}
+      <AnimatePresence>
+        {billMsg && (
+          <motion.div initial={{ y: -40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -40, opacity: 0 }}
+            className="fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-blue-600 text-white text-sm font-bold px-4 py-2 rounded-xl shadow-lg whitespace-nowrap">
+            {billMsg}
           </motion.div>
         )}
       </AnimatePresence>
@@ -680,6 +791,12 @@ function TablePageInner() {
           🔔
         </button>
 
+        {/* Bill button */}
+        <button onClick={openBillModal}
+          className="flex-shrink-0 w-12 h-12 rounded-xl bg-blue-600/20 border border-blue-500/40 flex items-center justify-center text-xl">
+          🧾
+        </button>
+
         {/* Cart button */}
         <button onClick={() => cartCount > 0 && setCartOpen(true)}
           disabled={cartCount === 0}
@@ -728,6 +845,100 @@ function TablePageInner() {
                 className="w-full py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-white font-black text-base active:scale-95 transition-all">
                 {placing ? tr.placing : tr.placeOrder}
               </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Bill Modal ── */}
+      <AnimatePresence>
+        {billOpen && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-40 bg-black/60 flex items-end" onClick={() => { setBillOpen(false); setBillPhase('choice') }}>
+            <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', damping: 30 }}
+              className="w-full bg-gray-900 rounded-t-3xl p-5" onClick={e => e.stopPropagation()}>
+              <div className="w-12 h-1 bg-gray-700 rounded-full mx-auto mb-4" />
+
+              {billPhase === 'choice' && (
+                <>
+                  <h3 className="font-black text-lg mb-5">{tr.billModalTitle}</h3>
+                  <div className="space-y-3">
+                    {/* Just me */}
+                    <button
+                      onClick={() => requestBill('SEATS', [scan!.seatNumber])}
+                      disabled={billSending}
+                      className="w-full bg-gray-800 hover:bg-gray-700 active:scale-95 rounded-2xl p-4 text-left transition-all flex items-center gap-4 disabled:opacity-50"
+                    >
+                      <span className="text-3xl">🙋</span>
+                      <div>
+                        <p className="font-bold text-white">{tr.billMyself}</p>
+                        <p className="text-xs text-gray-400">{tr.billMyselfSub} — {tr.seat} {scan!.seatNumber}</p>
+                      </div>
+                    </button>
+
+                    {/* Whole table */}
+                    <button
+                      onClick={() => requestBill('TABLE')}
+                      disabled={billSending}
+                      className="w-full bg-gray-800 hover:bg-gray-700 active:scale-95 rounded-2xl p-4 text-left transition-all flex items-center gap-4 disabled:opacity-50"
+                    >
+                      <span className="text-3xl">👨‍👩‍👧‍👦</span>
+                      <div>
+                        <p className="font-bold text-white">{tr.billTable}</p>
+                        <p className="text-xs text-gray-400">{tr.billTableSub}</p>
+                      </div>
+                    </button>
+
+                    {/* Choose seats */}
+                    {scan!.capacity > 1 && (
+                      <button
+                        onClick={() => setBillPhase('pick')}
+                        className="w-full bg-gray-800 hover:bg-gray-700 active:scale-95 rounded-2xl p-4 text-left transition-all flex items-center gap-4"
+                      >
+                        <span className="text-3xl">🪑</span>
+                        <div>
+                          <p className="font-bold text-white">{tr.billGroup}</p>
+                          <p className="text-xs text-gray-400">{tr.billGroupSub}</p>
+                        </div>
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
+
+              {billPhase === 'pick' && (
+                <>
+                  <div className="flex items-center gap-3 mb-5">
+                    <button onClick={() => setBillPhase('choice')} className="text-gray-400 text-sm">← Back</button>
+                    <h3 className="font-black text-lg">{tr.billSeatPicker}</h3>
+                  </div>
+                  <div className="grid grid-cols-4 gap-3 mb-6">
+                    {Array.from({ length: scan!.capacity }, (_, i) => i + 1).map(seat => (
+                      <button
+                        key={seat}
+                        onClick={() => toggleBillSeat(seat)}
+                        className={`h-14 rounded-2xl flex flex-col items-center justify-center text-sm font-black transition-all active:scale-90
+                          ${billSeats.includes(seat)
+                            ? 'bg-blue-500 text-white ring-2 ring-blue-300'
+                            : seat === scan!.seatNumber
+                              ? 'bg-blue-900/40 border-2 border-blue-500/40 text-blue-300'
+                              : 'bg-gray-800 text-gray-400'
+                          }`}
+                      >
+                        <span>{seat}</span>
+                        {seat === scan!.seatNumber && <span className="text-[9px] mt-0.5 opacity-70">me</span>}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    onClick={() => requestBill('SEATS', billSeats)}
+                    disabled={billSending || billSeats.length === 0}
+                    className="w-full py-3.5 rounded-2xl bg-blue-500 hover:bg-blue-400 disabled:opacity-50 text-white font-black text-base active:scale-95 transition-all"
+                  >
+                    {billSending ? '…' : `${tr.billConfirm} (${billSeats.length} ${tr.seat})`}
+                  </button>
+                </>
+              )}
             </motion.div>
           </motion.div>
         )}

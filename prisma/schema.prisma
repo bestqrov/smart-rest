@@ -12,9 +12,55 @@ datasource db {
 enum OrderStatus {
   PENDING
   PREPARING
+  READY       // kitchen done, waiting for waiter to serve
   DELIVERED
   COMPLETED
   CANCELLED
+}
+
+// ─── Certification ────────────────────────────────────────────────────────────
+
+enum CertificationStatus {
+  PENDING    // newly registered, not yet evaluated
+  ELIGIBLE   // passed all metrics, awaiting owner claim
+  CERTIFIED  // officially certified (kit delivered)
+  REVOKED    // previously certified but metrics dropped
+}
+
+// Embedded — live metrics snapshot updated by the monthly cron
+type CertificationMetrics {
+  qrUsageRate      Float @default(0)  // % of orders placed via QR (0-100)
+  avgPreparationTime Float @default(0) // avg minutes from PENDING → READY
+  averageRating    Float @default(0)  // avg order rating (1-5)
+  reviewCount      Int   @default(0)  // total reviews submitted
+  evaluatedAt      DateTime?
+}
+
+// ─── Product Modifiers ────────────────────────────────────────────────────────
+
+// A single selectable option within a modifier group (e.g. "Large +10 MAD")
+type ModifierOption {
+  id             String  // client-generated UUID
+  label          String  // display name: "Large", "Extra Cheese"
+  priceAdjustment Float  @default(0)  // positive = surcharge, negative = discount
+}
+
+// A named group of options attached to a product (e.g. "Size", "Extras")
+type ModifierGroup {
+  id          String
+  name        String          // "Taille", "Extras", "Cuisson"
+  required    Boolean @default(false)
+  multiSelect Boolean @default(false) // false = radio, true = checkbox
+  options     ModifierOption[]
+}
+
+// Snapshot of a customer's choice, stored on OrderItem (immutable history)
+type ChosenModifier {
+  groupId    String
+  groupName  String
+  optionId   String
+  optionLabel String
+  priceAdjustment Float
 }
 
 enum OrderSource {
@@ -185,6 +231,13 @@ model Cafe {
   maintenanceFee    Float?    // maintenance amount (default 25 USD for Gulf/Europe)
   nextBillingDate   DateTime? // next expected payment due date
 
+  // ── Smart Resto Certified ─────────────────────────────────────────────────
+  ownerPhone             String              @default("")
+  ownerEmail             String              @default("")
+  certificationStatus    CertificationStatus @default(PENDING)
+  certificationMetrics   CertificationMetrics?
+  certifiedAt            DateTime?
+
   categories      Category[]
   tables          Table[]
   seats           Seat[]
@@ -212,6 +265,7 @@ model Cafe {
   clientSessions     ClientSession[]
   events             Event[]
   guests             Guest[]
+  loyaltyAccounts    LoyaltyAccount[]
 
 }
 
@@ -309,6 +363,9 @@ model Product {
   status         String   @default("published")
   tags           String[] @default([])
 
+  // ── Modifier groups (e.g. Size, Extras, Cooking style) ───────────────────
+  modifierGroups ModifierGroup[]
+
   orderItems OrderItem[]
   recipe     Recipe?
 
@@ -355,6 +412,8 @@ model Order {
   waiterNotification WaiterNotification?
   rating             Int?
   reviewText         String?
+  // set when status transitions to READY — used for avgPreparationTime metric
+  preparedAt         DateTime?
 
   items      OrderItem[]
   walletLogs WalletLog[]
@@ -377,8 +436,12 @@ model OrderItem {
   quantity  Int
   notes     String?
   // snapshot of price and commission at time of order (immutable history)
-  unitPrice      Float @default(0)
-  commissionRate Float @default(0)
+  unitPrice            Float           @default(0)
+  commissionRate       Float           @default(0)
+  // sum of all chosen modifier price adjustments (immutable snapshot)
+  modifiersDelta       Float           @default(0)
+  // customer's chosen modifier options (immutable snapshot)
+  chosenModifiers      ChosenModifier[]
 
   @@index([orderId])
   @@index([productId])
@@ -425,6 +488,10 @@ model BillRequest {
   tableId    String    @db.ObjectId
   table      Table     @relation(fields: [tableId], references: [id])
   message    String?
+  // Split bill: which seat numbers to close. Empty array = whole table.
+  seatNumbers Int[]    @default([])
+  // "TABLE" = everyone pays together | "SEATS" = specific seats only
+  payScope   String    @default("TABLE")
   createdAt  DateTime  @default(now())
   resolvedAt DateTime?
 
@@ -947,4 +1014,39 @@ model Guest {
 
   @@index([cafeId])
   @@index([eventId])
+}
+
+// ─── Loyalty Program ──────────────────────────────────────────────────────────
+// One record per (cafeId, phone) pair.
+// Points are scoped to each restaurant — no cross-restaurant sharing.
+
+model LoyaltyAccount {
+  id      String @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId  String @db.ObjectId
+  cafe    Cafe   @relation(fields: [cafeId], references: [id])
+
+  // Customer identifier — phone is the most reliable anonymous key we have
+  phone   String
+
+  // Accumulated points (never goes negative)
+  points  Int    @default(0)
+
+  // Running ledger — each entry is immutable
+  ledger  LoyaltyEntry[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([cafeId, phone])
+  @@index([cafeId])
+  @@index([phone])
+}
+
+// Embedded ledger entry — appended on earn or redeem, never mutated
+type LoyaltyEntry {
+  type      String   // "EARN" | "REDEEM"
+  points    Int      // positive = earned, negative = redeemed
+  orderId   String?  // reference to the order that triggered this entry
+  note      String   @default("")
+  createdAt DateTime
 }

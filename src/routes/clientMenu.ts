@@ -11,6 +11,12 @@ router.get('/api/menu/public', async (req: Request, res: Response) => {
     const tableToken = req.query.tableToken as string | undefined
     if (!tableId && !tableToken) return res.status(400).json({ error: 'tableId or tableToken required' })
 
+    // Validate MongoDB ObjectId format to avoid Prisma throwing on malformed input
+    const OBJECT_ID_RE = /^[a-f\d]{24}$/i
+    if (tableId && !OBJECT_ID_RE.test(tableId)) {
+      return res.status(400).json({ error: 'Invalid tableId format' })
+    }
+
     const table = tableId
       ? await prisma.table.findUnique({ where: { id: tableId }, select: { id: true, cafeId: true, isActive: true } })
       : await prisma.table.findFirst({ where: { qrToken: tableToken }, select: { id: true, cafeId: true, isActive: true } })
@@ -19,7 +25,7 @@ router.get('/api/menu/public', async (req: Request, res: Response) => {
     const [cafe, categories] = await Promise.all([
       prisma.cafe.findUnique({
         where: { id: table.cafeId },
-        select: { name: true, isActive: true, logoUrl: true, currency: true, country: true, localIp: true, accentColor: true, primaryFont: true, paymentConfig: true, reservationsEnabled: true }
+        select: { name: true, isActive: true, logoUrl: true, currency: true, country: true, localIp: true, accentColor: true, primaryFont: true, paymentConfig: true, reservationsEnabled: true, certificationStatus: true }
       }),
       prisma.category.findMany({
         where: { cafeId: table.cafeId },
@@ -62,7 +68,8 @@ router.get('/api/menu/public', async (req: Request, res: Response) => {
       localIp:             cafe.localIp ?? null,
       paymentGateway,
       categories,
-      reservationsEnabled: cafe.reservationsEnabled ?? true,
+      reservationsEnabled:  cafe.reservationsEnabled ?? true,
+      certificationStatus:  cafe.certificationStatus,
     })
   } catch (err) {
     return res.status(500).json({ error: 'Failed to fetch menu' })
@@ -105,6 +112,33 @@ router.get('/api/menu/wifi', async (req: Request, res: Response) => {
     return res.json({ ssid: wifi.ssid, password: wifi.password })
   } catch (err) {
     return res.status(500).json({ error: 'Failed' })
+  }
+})
+
+// ─── GET /api/client/menu — public menu by subdomain (used by event guest page) ─
+// No table token required — returns all available categories + products for a cafe.
+
+router.get('/api/client/menu', async (req: Request, res: Response) => {
+  try {
+    const subdomain = req.query.subdomain as string | undefined
+    if (!subdomain) return res.status(400).json({ error: 'subdomain required' })
+
+    const cafe = await prisma.cafe.findUnique({
+      where:  { subdomain },
+      select: { id: true, isActive: true, orderingEnabled: true }
+    })
+    if (!cafe || !cafe.isActive) return res.status(404).json({ error: 'Cafe not found' })
+    if (cafe.orderingEnabled === false) return res.json({ categories: [] })
+
+    const categories = await prisma.category.findMany({
+      where:   { cafeId: cafe.id },
+      orderBy: { order: 'asc' },
+      include: { products: { where: { isAvailable: true }, orderBy: { nameEn: 'asc' } } }
+    })
+
+    return res.json({ categories })
+  } catch (err) {
+    return res.status(500).json({ error: 'Failed to fetch menu' })
   }
 })
 

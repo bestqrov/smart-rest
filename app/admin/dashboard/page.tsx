@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { useLang } from '../lang-context'
 import { A } from '../../../lib/adminI18n'
+import CertificationTracker from './CertificationTracker'
 
 type WaiterCall = { id: number; tableId: number; type: string; message?: string; createdAt: string }
 
@@ -109,7 +110,9 @@ export default function DashboardPage() {
   const bal      = Number(billing?.walletBalance || 0)
 
   return (
-    <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6" dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className="flex min-h-full" dir={isRTL ? 'rtl' : 'ltr'}>
+    {/* ── Main column ───────────────────────────────────────────────────── */}
+    <div className="flex-1 p-4 sm:p-6 max-w-5xl space-y-6 overflow-x-hidden">
 
       {/* Refresh button */}
       <div className="flex items-center justify-between">
@@ -246,6 +249,9 @@ export default function DashboardPage() {
         </div>
 
         <div className="space-y-4">
+          {/* Smart Resto Certified progress */}
+          <CertificationTracker />
+
           {/* Top products */}
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
             <h3 className="font-bold text-gray-800 mb-3">{t.products}</h3>
@@ -292,10 +298,10 @@ export default function DashboardPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="text-gray-400 border-b border-gray-100">
-                <th className="py-2 font-medium text-right">{t.orders}</th>
-                <th className="py-2 font-medium text-right">{t.table}</th>
-                <th className="py-2 font-medium text-right">{t.revenue}</th>
-                <th className="py-2 font-medium text-right">{t.dateRange}</th>
+                <th className="py-2 font-medium text-left">{t.orders}</th>
+                <th className="py-2 font-medium text-left">{t.table}</th>
+                <th className="py-2 font-medium text-left">{t.revenue}</th>
+                <th className="py-2 font-medium text-left">{t.dateRange}</th>
               </tr>
             </thead>
             <tbody>
@@ -311,6 +317,108 @@ export default function DashboardPage() {
           </table>
         </div>
       </div>
+    </div>
+
+    {/* ── Right stats panel — visible on xl screens ──────────────────── */}
+    <aside className="hidden xl:flex flex-col w-72 shrink-0 border-l border-gray-100 bg-white/50 p-5 space-y-5">
+
+      {/* Venue header */}
+      <div className="bg-[#1a2744] rounded-2xl p-4 text-white flex flex-col items-center text-center gap-2">
+        <div className="w-12 h-12 bg-white/15 rounded-xl flex items-center justify-center text-2xl">🍽️</div>
+        <p className="font-black text-sm leading-tight">{stats.cafeName || 'Dolce Resto'}</p>
+        <p className="text-blue-200 text-xs">Smart Menu Dashboard</p>
+      </div>
+
+      {/* Performance circles */}
+      <div>
+        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Performance</p>
+        <div className="grid grid-cols-2 gap-3">
+          {/* Orders conversion */}
+          <div className="bg-white rounded-2xl border border-gray-100 p-3 flex flex-col items-center gap-2">
+            <DonutChart
+              value={stats.ordersCountToday > 0 ? Math.min(99, Math.round((stats.activeOrders / stats.ordersCountToday) * 100)) : 0}
+              color="#10b981"
+            />
+            <p className="text-[10px] text-gray-500 text-center leading-tight">Active</p>
+          </div>
+          {/* AOV ratio */}
+          <div className="bg-white rounded-2xl border border-gray-100 p-3 flex flex-col items-center gap-2">
+            <DonutChart
+              value={stats.aov > 0 ? Math.min(99, Math.round((stats.aov / Math.max(stats.aov, 100)) * 100)) : 0}
+              color="#3b82f6"
+            />
+            <p className="text-[10px] text-gray-500 text-center leading-tight">AOV score</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Revenue en domaine */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-4">
+        <p className="text-xs font-bold text-gray-400 mb-1">Revenues en 1 domaine</p>
+        <p className="text-2xl font-black text-gray-900">
+          {Number(stats.revenue?.today ?? 0).toFixed(2)}
+          <span className="text-sm font-bold text-gray-400 ml-1">{currency}</span>
+        </p>
+        <p className={`text-xs font-bold mt-1 ${stats.ordersCountToday > 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+          {stats.ordersCountToday} {t.todayOrders}
+        </p>
+      </div>
+
+      {/* Performance bar */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-4">
+        <p className="text-xs font-bold text-gray-400 mb-3">Performance Actix</p>
+        <div className="text-center">
+          <p className="text-2xl font-black text-gray-900">
+            {Number(stats.revenue?.week ?? 0).toFixed(2)}
+            <span className="text-sm font-bold text-gray-400 ml-1">{currency}</span>
+          </p>
+          <p className="text-xs text-gray-400 mt-1">7-day revenue</p>
+        </div>
+        {/* Mini bar chart */}
+        <div className="flex items-end gap-1 mt-3 h-12">
+          {(stats.dailySales ?? []).slice(-7).map((d: any, i: number) => {
+            const max = Math.max(...(stats.dailySales ?? []).map((x: any) => x.total || 0), 1)
+            const pct = Math.round(((d.total || 0) / max) * 100)
+            return (
+              <div key={i} className="flex-1 bg-emerald-500 rounded-t-sm transition-all" style={{ height: `${Math.max(4, pct)}%` }} />
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Waiter calls */}
+      {calls.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-2">
+          <p className="text-xs font-bold text-amber-700 flex items-center gap-1">
+            <Bell className="w-3 h-3" /> {calls.length} Active Call{calls.length > 1 ? 's' : ''}
+          </p>
+          {calls.slice(0, 3).map(c => (
+            <div key={c.id} className="text-xs text-amber-800 font-medium">
+              T{c.tableId} — {c.type}
+            </div>
+          ))}
+        </div>
+      )}
+    </aside>
+
+    </div>
+  )
+}
+
+function DonutChart({ value, color }: { value: number; color: string }) {
+  const r = 15.9
+  const circ = 2 * Math.PI * r
+  const offset = circ - (value / 100) * circ
+  return (
+    <div className="relative w-12 h-12">
+      <svg viewBox="0 0 36 36" className="w-12 h-12 -rotate-90">
+        <circle cx="18" cy="18" r={r} fill="none" stroke="#f1f5f9" strokeWidth="3.5" />
+        <circle cx="18" cy="18" r={r} fill="none" stroke={color} strokeWidth="3.5"
+          strokeDasharray={`${value} ${100 - value}`} strokeLinecap="round" />
+      </svg>
+      <span className="absolute inset-0 flex items-center justify-center text-[11px] font-black text-gray-800">
+        {value}%
+      </span>
     </div>
   )
 }

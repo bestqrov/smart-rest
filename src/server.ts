@@ -27,6 +27,7 @@ import superadminRouter from './routes/superadmin'
 import posShiftRouter from './routes/pos/shift'
 import posOrdersRouter from './routes/pos/orders'
 import posCheckoutRouter from './routes/pos/checkout'
+import posCheckoutBySeatsRouter from './routes/pos/checkoutBySeats'
 import posTablesStatusRouter from './routes/pos/tablesStatus'
 import posWaiterRouter from './routes/pos/waiter'
 import kitchenRouter from './routes/kitchen'
@@ -50,9 +51,12 @@ import feedbackRouter from './routes/feedback'
 import landingConfigRouter from './routes/landingConfig'
 import marketingRouter from './routes/marketing'
 import traiteurRouter from './routes/traiteur'
+import loyaltyRouter from './routes/loyalty'
+import adminCertificationRouter from './routes/adminCertification'
 import { registerSocketHandlers } from './socket/handlers'
 import { startWeeklyBillingCron } from './cron/weeklyBilling'
 import { startNightlyCron } from './cron/nightly'
+import { startCertificationCron } from './cron/certificationEval'
 import { initChangeStreams, closeChangeStreams } from './services/changeStreams'
 
 async function main() {
@@ -123,6 +127,7 @@ async function main() {
   app.use(posShiftRouter)
   app.use(posOrdersRouter)
   app.use(posCheckoutRouter)
+  app.use(posCheckoutBySeatsRouter)
   app.use(posTablesStatusRouter)
   app.use(posWaiterRouter)
   app.use(kitchenRouter)
@@ -146,9 +151,11 @@ async function main() {
   app.use(landingConfigRouter)
   app.use('/api/marketing', marketingRouter)
   app.use(traiteurRouter)
+  app.use(loyaltyRouter)
+  app.use(adminCertificationRouter)
 
   // health (both paths — /api/health used by SW offline detection)
-  app.get(['/health', '/api/health'], (req, res) => res.json({ ok: true }))
+  app.get(['/health', '/api/health'], (_req, res) => res.json({ ok: true }))
 
   // Next.js handles all non-API routes (pages, assets, etc.)
   app.use((req, res) => {
@@ -172,6 +179,8 @@ async function main() {
   startWeeklyBillingCron()
   // Start nightly anti-fraud + EOD WhatsApp report cron
   startNightlyCron()
+  // Start monthly Smart Resto Certified evaluation cron
+  startCertificationCron()
 
   httpServer.listen(port, '0.0.0.0', () => {
     logger.info({ msg: 'Server started', port, host: '0.0.0.0' })

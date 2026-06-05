@@ -14,6 +14,7 @@ import NProgressProvider from '../../../src/components/NProgressProvider'
 import { useOffline } from './hooks/useOffline'
 import { useLocalRouter } from './hooks/useLocalRouter'
 import OfflineModal from './components/OfflineModal'
+import CertifiedBadge from './components/CertifiedBadge'
 
 const theme = {
   primary: 'bg-emerald-600',
@@ -47,6 +48,7 @@ type MenuData = {
   marketType?:          MarketType
   localIp?:             string | null
   reservationsEnabled?: boolean
+  certificationStatus?: string
   cafe:                 { name: string; logoUrl?: string | null }
   categories:           Category[]
 }
@@ -143,7 +145,7 @@ function MenuContent({ params }: { params: { subdomain: string } }) {
   })
   const { smartPost } = useLocalRouter({ conn, lanEndpoint })
 
-  // Step 1: request GPS then fetch menu with location headers
+  // Step 1: fetch menu immediately — GPS check is soft (informational only, never blocks)
   useEffect(() => {
     if (!tableToken) {
       setMenuError(s('noToken'))
@@ -151,48 +153,46 @@ function MenuContent({ params }: { params: { subdomain: string } }) {
       return
     }
 
-    if (!navigator.geolocation) {
-      setGpsState('unavailable')
-      setMenuError(s('noGeo'))
-      setLoadingMenu(false)
-      return
+    async function fetchMenu() {
+      try {
+        const res = await fetch(`/api/menu/public?tableToken=${tableToken}`)
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}))
+          setMenuError(body.error ?? s('loadFailed'))
+          setLoadingMenu(false)
+          return
+        }
+        const raw = await res.json()
+        const data: MenuData = {
+          cafeId:               raw.cafeId,
+          tableId:              raw.tableId,
+          marketType:           raw.marketType as MarketType | undefined,
+          localIp:              raw.localIp ?? null,
+          reservationsEnabled:  raw.reservationsEnabled ?? true,
+          certificationStatus:  raw.certificationStatus ?? 'PENDING',
+          cafe:                 { name: raw.cafeName, logoUrl: raw.cafeLogoUrl ?? null },
+          categories:           raw.categories,
+        }
+        setMenuData(data)
+      } catch {
+        setMenuError(s('networkErr'))
+      } finally {
+        setLoadingMenu(false)
+      }
     }
 
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        setGpsState('granted')
-        try {
-          const res = await fetch(`/api/menu/public?tableToken=${tableToken}`)
-          if (!res.ok) {
-            const body = await res.json().catch(() => ({}))
-            setMenuError(body.error ?? s('loadFailed'))
-            setLoadingMenu(false)
-            return
-          }
-          const raw = await res.json()
-          const data: MenuData = {
-            cafeId:               raw.cafeId,
-            tableId:              raw.tableId,
-            marketType:           raw.marketType as MarketType | undefined,
-            localIp:              raw.localIp ?? null,
-            reservationsEnabled:  raw.reservationsEnabled ?? true,
-            cafe:                 { name: raw.cafeName, logoUrl: raw.cafeLogoUrl ?? null },
-            categories:           raw.categories,
-          }
-          setMenuData(data)
-        } catch {
-          setMenuError(s('networkErr'))
-        } finally {
-          setLoadingMenu(false)
-        }
-      },
-      () => {
-        setGpsState('denied')
-        setMenuError(s('gpsDenied'))
-        setLoadingMenu(false)
-      },
-      { timeout: 10000, maximumAge: 30000 }
-    )
+    fetchMenu()
+
+    // GPS is optional — request in background for analytics only, never blocks menu
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        () => setGpsState('granted'),
+        () => setGpsState('denied'),
+        { timeout: 8000, maximumAge: 60000 }
+      )
+    } else {
+      setGpsState('unavailable')
+    }
   }, [params.subdomain, tableToken])
 
   // Live price sync — join menu_room after menu data is available
@@ -396,9 +396,6 @@ function MenuContent({ params }: { params: { subdomain: string } }) {
       <div dir={isRtl ? 'rtl' : 'ltr'} className="min-h-screen flex flex-col items-center justify-center gap-4 p-6 bg-gray-50 text-center">
         <Bell className="w-12 h-12 text-red-400" />
         <p className="text-red-600 font-medium">{menuError ?? s('unexpectedErr')}</p>
-        {gpsState === 'denied' && (
-          <p className="text-sm text-gray-500">{s('gpsHint')}</p>
-        )}
       </div>
     )
   }
@@ -453,6 +450,12 @@ function MenuContent({ params }: { params: { subdomain: string } }) {
             </div>
           </div>
         </header>
+
+        {/* Certified badge — only visible when restaurant is certified */}
+        <CertifiedBadge
+          certified={menuData?.certificationStatus === 'CERTIFIED'}
+          lang={lang as 'ar' | 'fr' | 'en'}
+        />
 
         {/* Category tabs */}
         <div className="sticky top-16 z-20 bg-white/80 backdrop-blur-sm border-b border-gray-100">
@@ -530,6 +533,11 @@ function MenuContent({ params }: { params: { subdomain: string } }) {
             </section>
           ))}
         </main>
+
+        {/* SmartMenu attribution */}
+        <div className="text-center py-4 text-xs text-gray-400/50 select-none">
+          Powered by <span className="font-semibold">SmartMenu</span>
+        </div>
 
         {/* Floating cart button */}
         <AnimatePresence>
