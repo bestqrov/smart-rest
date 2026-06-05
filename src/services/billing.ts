@@ -9,12 +9,10 @@ type Tier = { max: number; fee: number }
 // Commission per order based on total value (MAD)
 
 const MA_TIERS: Tier[] = [
-  { max: 20,       fee: 0.50 },
-  { max: 50,       fee: 3    },
-  { max: 80,       fee: 5    },
-  { max: 100,      fee: 7    },
-  { max: 150,      fee: 10   },
-  { max: Infinity, fee: 15   },
+  { max: 30,       fee: 0.30 },
+  { max: 70,       fee: 0.99 },
+  { max: 150,      fee: 3.99 },
+  { max: Infinity, fee: 11   },  // 10-12 MAD range — using midpoint 11
 ]
 
 // ─── Gulf ─────────────────────────────────────────────────────────────────────
@@ -243,7 +241,7 @@ const COUNTRY_TIERS: Record<string, Tier[]> = {
 // ─── Social share fee per country ─────────────────────────────────────────────
 
 const SOCIAL_FEE: Record<string, number> = {
-  MA: 0.50,
+  MA: 0.30,
   SA: 1.00, AE: 1.00, KW: 0.10, QA: 1.00, BH: 0.10, OM: 0.05,
   DZ: 15,   TN: 0.15, EG: 2,    LY: 0.30, MR: 3,    JO: 0.10,
   SN: 25,   CI: 25,   GA: 25,   CM: 25,   KE: 10,
