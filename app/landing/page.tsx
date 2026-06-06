@@ -167,6 +167,15 @@ function tl<T>(item: { en: T; fr: T; ar: T }, lang: Lang): T {
   return item[lang]
 }
 
+function getEmbedUrl(url: string): string {
+  if (!url) return ''
+  const yt = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&?\s]+)/)
+  if (yt) return `https://www.youtube.com/embed/${yt[1]}?rel=0&modestbranding=1&color=white`
+  const vimeo = url.match(/vimeo\.com\/(\d+)/)
+  if (vimeo) return `https://player.vimeo.com/video/${vimeo[1]}?color=10b981&title=0&byline=0`
+  return url
+}
+
 // ─── Data ──────────────────────────────────────────────────────────────────────
 
 const STATS = [
@@ -663,6 +672,7 @@ type LandingConfig = {
   heroImageUrl?: string
   platformImageUrl?: string
   logoImageUrl?: string
+  promoVideoUrl?: string
   text?: {
     ar?: { tagline?: string; h1a?: string; h1b?: string; h1c?: string; desc?: string; cta1?: string; cta2?: string; trustBar?: string; featTitle?: string; featSub?: string }
     en?: { tagline?: string; h1a?: string; h1b?: string; h1c?: string; desc?: string; cta1?: string; cta2?: string; trustBar?: string; featTitle?: string; featSub?: string }
@@ -733,6 +743,8 @@ export default function LandingPage() {
   const heroImageUrl    = cfg.heroImageUrl    ?? '/assets/mobile.png'
   const platformImageUrl = cfg.platformImageUrl ?? ''
   const logoImageUrl     = cfg.logoImageUrl     ?? '/assets/logo.png'
+  const promoVideoUrl    = cfg.promoVideoUrl    ?? ''
+  const promoEmbedUrl    = getEmbedUrl(promoVideoUrl)
   const contactPhone  = cfg.contact?.whatsapp ?? '+212 6 00 00 00 00'
   const contactEmail  = cfg.contact?.email    ?? 'contact@smartmenu.ma'
   const footerBrand   = cfg.footer?.brandName ?? 'SmartMenu'
@@ -770,6 +782,19 @@ export default function LandingPage() {
 
   return (
     <main dir={isRtl ? 'rtl' : 'ltr'} className="min-h-screen bg-white text-gray-900 font-sans overflow-x-hidden">
+      <style>{`
+        @keyframes heroFadeUp {
+          from { opacity: 0; transform: translateY(22px); }
+          to   { opacity: 1; transform: translateY(0);    }
+        }
+        @keyframes heroFadeIn {
+          from { opacity: 0; transform: scale(0.97); }
+          to   { opacity: 1; transform: scale(1);    }
+        }
+        .hero-title-mobile { animation: heroFadeUp 0.55s cubic-bezier(.22,1,.36,1) both; }
+        .hero-visual       { animation: heroFadeIn 0.65s cubic-bezier(.22,1,.36,1) 0.18s both; }
+        .hero-text-body    { animation: heroFadeUp 0.55s cubic-bezier(.22,1,.36,1) 0.32s both; }
+      `}</style>
 
       <CookieBanner lang={lang} t={t} />
 
@@ -850,23 +875,38 @@ export default function LandingPage() {
         <div className="absolute inset-0 opacity-[0.06]" style={{ backgroundImage: 'linear-gradient(#fff 1px,transparent 1px),linear-gradient(90deg,#fff 1px,transparent 1px)', backgroundSize: '40px 40px' }} />
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[500px] bg-emerald-600/15 rounded-full blur-[120px]" />
 
-        <div className={`relative max-w-7xl mx-auto px-4 pt-16 pb-20 flex flex-col ${isRtl ? 'lg:flex-row-reverse' : 'lg:flex-row'} items-center gap-12 lg:gap-16`}>
+        <div className={`relative max-w-7xl mx-auto px-4 pt-10 pb-14 lg:pt-16 lg:pb-20 flex flex-col ${isRtl ? 'lg:flex-row-reverse' : 'lg:flex-row'} items-center gap-5 lg:gap-16`}>
 
-          {/* Text */}
-          <div className={`flex-1 ${isRtl ? 'text-right' : 'text-left'} text-center lg:text-inherit`}>
-            <div className={`inline-flex items-center gap-2 bg-emerald-900/50 border border-emerald-700/40 text-emerald-300 px-4 py-1.5 rounded-full text-sm font-medium mb-7`}>
+          {/* ── Mobile-first: tagline + title FIRST on small screens ── */}
+          <div className="lg:hidden w-full text-center hero-title-mobile">
+            <div className="inline-flex items-center gap-2 bg-emerald-900/50 border border-emerald-700/40 text-emerald-300 px-4 py-1.5 rounded-full text-sm font-medium mb-4">
               <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
               {t('tagline')}
             </div>
-
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-[1.1] text-white">
+            <h1 className="text-4xl sm:text-5xl font-extrabold leading-[1.1] text-white mt-1">
               {t('h1a')}
               <span className="block bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">{t('h1b')}</span>
             </h1>
+          </div>
 
-            <p className="mt-6 text-base sm:text-lg text-gray-400 leading-relaxed max-w-lg whitespace-pre-line">{t('desc')}</p>
+          {/* ── Text column (desktop: full left col; mobile: desc+CTAs below visual) ── */}
+          <div className={`flex-1 ${isRtl ? 'text-right' : 'text-left'} text-center lg:text-inherit order-3 lg:order-none hero-text-body`}>
 
-            <div className={`mt-8 flex flex-col sm:flex-row gap-3 justify-center ${isRtl ? 'lg:justify-end' : 'lg:justify-start'}`}>
+            {/* Desktop-only title */}
+            <div className="hidden lg:block">
+              <div className="inline-flex items-center gap-2 bg-emerald-900/50 border border-emerald-700/40 text-emerald-300 px-4 py-1.5 rounded-full text-sm font-medium mb-7">
+                <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                {t('tagline')}
+              </div>
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-[1.1] text-white">
+                {t('h1a')}
+                <span className="block bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">{t('h1b')}</span>
+              </h1>
+            </div>
+
+            <p className="mt-5 text-base sm:text-lg text-gray-400 leading-relaxed max-w-lg whitespace-pre-line">{t('desc')}</p>
+
+            <div className={`mt-7 flex flex-col sm:flex-row gap-3 justify-center ${isRtl ? 'lg:justify-end' : 'lg:justify-start'}`}>
               <Link href="/signup" className="flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-white font-bold px-7 py-3.5 rounded-xl shadow-xl shadow-emerald-900/40 transition-all text-base">
                 {t('cta1')} <ArrowRight className="w-4 h-4" />
               </Link>
@@ -876,14 +916,14 @@ export default function LandingPage() {
             </div>
 
             {/* Trust bar */}
-            <p className={`mt-6 text-gray-500 text-sm flex items-center gap-2 justify-center ${isRtl ? 'lg:justify-end' : 'lg:justify-start'}`}>
+            <p className={`mt-5 text-gray-500 text-sm flex items-center gap-2 justify-center ${isRtl ? 'lg:justify-end' : 'lg:justify-start'}`}>
               <span className="flex gap-0.5">
                 {[...Array(5)].map((_, i) => <Star key={i} className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />)}
               </span>
               {t('trustBar')}
             </p>
 
-            <div className={`mt-5 flex flex-wrap gap-2 justify-center ${isRtl ? 'lg:justify-end' : 'lg:justify-start'}`}>
+            <div className={`mt-4 flex flex-wrap gap-2 justify-center ${isRtl ? 'lg:justify-end' : 'lg:justify-start'}`}>
               {ta('badges').map(b => (
                 <span key={b} className="flex items-center gap-1.5 bg-white/8 text-gray-300 border border-white/10 px-3 py-1.5 rounded-full text-xs font-medium">
                   <CheckCircle className="w-3 h-3 text-emerald-400 shrink-0" /> {b}
@@ -892,8 +932,8 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* Dashboard preview visual */}
-          <div className="flex-1 flex items-center justify-center mt-8 lg:mt-0">
+          {/* ── Dashboard visual — order-2 on mobile = after title, before text ── */}
+          <div className="flex-1 flex items-center justify-center mt-1 lg:mt-0 order-2 lg:order-none hero-visual">
             <div className="relative w-full max-w-sm lg:max-w-xl xl:max-w-2xl">
               <div className="absolute -inset-8 rounded-3xl bg-emerald-500/15 blur-3xl" />
               <div className="absolute -inset-16 rounded-3xl bg-teal-500/8 blur-[80px]" />
@@ -970,6 +1010,177 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      {/* ECOSYSTEM SHOWCASE */}
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      <section className="bg-gray-950 py-24 relative overflow-hidden">
+        {/* dot grid */}
+        <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)', backgroundSize: '36px 36px' }} />
+        {/* ambient center glow */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[700px] bg-emerald-600/10 rounded-full blur-[140px] pointer-events-none" />
+
+        <div className="relative max-w-7xl mx-auto px-4">
+
+          {/* Section header */}
+          <div className="text-center mb-14">
+            <span className="inline-block bg-emerald-900/60 text-emerald-400 border border-emerald-700/40 px-4 py-1.5 rounded-full text-sm font-semibold mb-5">
+              {lang === 'ar' ? 'المنصة الشاملة' : lang === 'fr' ? 'Vue d\'ensemble' : 'Platform Overview'}
+            </span>
+            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white leading-[1.1] mb-5">
+              {lang === 'ar' ? (
+                <>كل ما يحتاجه مطعمك.<br /><span className="bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">في نظام واحد.</span></>
+              ) : lang === 'fr' ? (
+                <>Tout ce dont votre restaurant a besoin.<br /><span className="bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">Dans un seul OS.</span></>
+              ) : (
+                <>Everything Your Restaurant Needs.<br /><span className="bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">One Unified OS.</span></>
+              )}
+            </h2>
+            <p className="text-gray-400 text-lg max-w-2xl mx-auto leading-relaxed">
+              {lang === 'ar'
+                ? 'من القوائم الذكية وشاشات المطبخ إلى التسويق بالذكاء الاصطناعي والنشر التلقائي — كل شيء متصل وكل شيء مؤتمت.'
+                : lang === 'fr'
+                ? 'Des menus intelligents aux écrans cuisine, en passant par le marketing IA et la publication sociale — tout connecté, tout automatisé.'
+                : 'From smart menus and kitchen displays to AI marketing and social publishing — all connected, all automated.'}
+            </p>
+          </div>
+
+          {/* Image showcase */}
+          <div className="relative">
+            {/* outer glow ring */}
+            <div className="absolute -inset-6 bg-gradient-to-r from-emerald-500/20 via-teal-400/10 to-emerald-500/20 rounded-3xl blur-2xl" />
+            {/* mid glow */}
+            <div className="absolute -inset-2 bg-gradient-to-br from-emerald-900/30 to-transparent rounded-2xl" />
+            {/* image frame */}
+            <div className="relative rounded-2xl overflow-hidden border border-emerald-700/40 shadow-[0_0_80px_rgba(16,185,129,0.15)] ring-1 ring-white/5">
+              <Image
+                src="/assets/smartrest.png"
+                alt="Smart Resto — Complete Restaurant OS"
+                width={1400}
+                height={900}
+                className="w-full h-auto object-cover"
+                priority
+                unoptimized
+              />
+              {/* subtle bottom fade */}
+              <div className="absolute bottom-0 inset-x-0 h-24 bg-gradient-to-t from-gray-950/60 to-transparent" />
+            </div>
+          </div>
+
+          {/* Benefits bar */}
+          <div className="mt-12 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            {([
+              { icon: TrendingUp, en: 'Increase Revenue',     fr: 'Augmenter les Revenus',  ar: 'زيادة الإيرادات',     color: 'emerald' },
+              { icon: CheckCircle,icon2: CheckCircle, en: 'Reduce Errors',         fr: 'Réduire les Erreurs',    ar: 'تقليل الأخطاء',      color: 'blue'    },
+              { icon: Clock,      en: 'Save Time',            fr: 'Gagner du Temps',         ar: 'توفير الوقت',         color: 'amber'   },
+              { icon: Layers,     en: 'Control Operations',   fr: 'Contrôler les Opérations',ar: 'التحكم في العمليات',  color: 'violet'  },
+              { icon: Star,       en: 'Delight Customers',    fr: 'Ravir les Clients',        ar: 'إسعاد الزبائن',       color: 'rose'    },
+              { icon: Zap,        en: 'Grow Your Brand',      fr: 'Développer votre Marque',  ar: 'تنمية علامتك',       color: 'teal'    },
+            ] as const).map(({ icon: Icon, en: enL, fr: frL, ar: arL, color }) => {
+              const label = lang === 'ar' ? arL : lang === 'fr' ? frL : enL
+              const colorMap: Record<string, { bg: string; text: string; border: string }> = {
+                emerald: { bg: 'bg-emerald-900/40', text: 'text-emerald-300', border: 'border-emerald-700/40' },
+                blue:    { bg: 'bg-blue-900/40',    text: 'text-blue-300',    border: 'border-blue-700/40'    },
+                amber:   { bg: 'bg-amber-900/40',   text: 'text-amber-300',   border: 'border-amber-700/40'   },
+                violet:  { bg: 'bg-violet-900/40',  text: 'text-violet-300',  border: 'border-violet-700/40'  },
+                rose:    { bg: 'bg-rose-900/40',    text: 'text-rose-300',    border: 'border-rose-700/40'    },
+                teal:    { bg: 'bg-teal-900/40',    text: 'text-teal-300',    border: 'border-teal-700/40'    },
+              }
+              const c = colorMap[color]
+              return (
+                <div key={enL} className={`flex flex-col items-center gap-2.5 ${c.bg} border ${c.border} rounded-2xl px-4 py-5 text-center`}>
+                  <div className={`w-10 h-10 rounded-xl ${c.bg} border ${c.border} flex items-center justify-center`}>
+                    <Icon className={`w-5 h-5 ${c.text}`} />
+                  </div>
+                  <span className={`text-sm font-semibold ${c.text} leading-tight`}>{label}</span>
+                </div>
+              )
+            })}
+          </div>
+
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      {/* PROMO VIDEO */}
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      {promoEmbedUrl && (
+        <section className="bg-gray-900 py-24 relative overflow-hidden">
+          <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)', backgroundSize: '36px 36px' }} />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[600px] bg-emerald-600/10 rounded-full blur-[130px] pointer-events-none" />
+
+          <div className="relative max-w-5xl mx-auto px-4">
+
+            {/* Header */}
+            <div className="text-center mb-14">
+              <span className="inline-block bg-emerald-900/60 text-emerald-400 border border-emerald-700/40 px-4 py-1.5 rounded-full text-sm font-semibold mb-5">
+                {lang === 'ar' ? 'شاهده مباشرة' : lang === 'fr' ? 'Voir en Action' : 'See It in Action'}
+              </span>
+              <h2 className="text-4xl sm:text-5xl font-extrabold text-white mb-4 leading-tight">
+                {lang === 'ar' ? (
+                  <>شاهد كيف يحوّل SmartRestau<br /><span className="bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">مطعمك في أقل من 30 دقيقة</span></>
+                ) : lang === 'fr' ? (
+                  <>Regardez comment SmartRestau<br /><span className="bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">transforme un restaurant en 30 min</span></>
+                ) : (
+                  <>Watch How SmartRestau<br /><span className="bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">Transforms a Restaurant in 30 Min</span></>
+                )}
+              </h2>
+              <p className="text-gray-400 text-lg max-w-xl mx-auto">
+                {lang === 'ar'
+                  ? 'من الإعداد الأول إلى أول طلب حقيقي — شاهد كل شيء بالكامل.'
+                  : lang === 'fr'
+                  ? 'De la première config au premier vrai ticket — regardez tout en direct.'
+                  : 'From first setup to first real ticket — watch the full walkthrough.'}
+              </p>
+            </div>
+
+            {/* Browser-frame video */}
+            <div className="relative">
+              {/* outer glow */}
+              <div className="absolute -inset-6 bg-gradient-to-r from-emerald-500/20 via-teal-400/8 to-emerald-500/20 rounded-3xl blur-2xl" />
+              {/* frame */}
+              <div className="relative rounded-2xl overflow-hidden border border-gray-700/70 shadow-[0_0_60px_rgba(16,185,129,0.12)] ring-1 ring-white/5 bg-gray-950">
+                {/* window chrome */}
+                <div className="bg-gray-800/90 px-4 py-3 flex items-center gap-3 border-b border-gray-700/60">
+                  <div className="flex gap-1.5 shrink-0">
+                    <span className="w-3 h-3 rounded-full bg-red-500/80" />
+                    <span className="w-3 h-3 rounded-full bg-yellow-500/80" />
+                    <span className="w-3 h-3 rounded-full bg-green-500/70" />
+                  </div>
+                  <div className="flex-1 flex justify-center">
+                    <span className="text-[11px] text-gray-400 bg-gray-700/50 px-3 py-0.5 rounded-full font-medium">
+                      SmartRestau — Platform Demo
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-emerald-400 font-bold shrink-0">● LIVE</span>
+                </div>
+                {/* 16:9 responsive iframe */}
+                <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
+                  <iframe
+                    src={promoEmbedUrl}
+                    className="absolute inset-0 w-full h-full"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowFullScreen
+                    title="SmartRestau Demo"
+                    loading="lazy"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* CTA below video */}
+            <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
+              <Link href="/signup" className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-white font-bold px-8 py-3.5 rounded-xl shadow-xl shadow-emerald-900/40 transition-all text-base">
+                {t('cta1')} <ArrowRight className="w-4 h-4" />
+              </Link>
+              <a href="#contact" className="flex items-center gap-2 bg-white/8 hover:bg-white/12 border border-white/15 text-gray-300 font-semibold px-8 py-3.5 rounded-xl transition-all text-base">
+                {t('cta2')}
+              </a>
+            </div>
+
+          </div>
+        </section>
+      )}
 
       {/* ══════════════════════════════════════════════════════════════════════ */}
       {/* WHO IS IT FOR — PERSONAS */}
