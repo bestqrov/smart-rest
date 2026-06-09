@@ -7,7 +7,7 @@ import {
   TrendingUp, Users, AlertTriangle, CheckCircle,
   Wallet, Globe, Ban, Edit3, Trash2,
   ChevronDown, ChevronUp, X, Play, CalendarPlus,
-  Coffee, Zap, BarChart3, Sandwich
+  Coffee, Zap, BarChart3, Sandwich, Package
 } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -45,6 +45,9 @@ interface Tenant {
   maintenancePack:  boolean
   maintenanceFee:   number | null
   nextBillingDate:  string | null
+  isSmartInventoryEnabled:        boolean
+  inventoryActivationRequested:   boolean
+  inventoryActivationRequestedAt: string | null
   _count:           { orders: number }
 }
 
@@ -157,6 +160,12 @@ export default function SuperAdminPage() {
   const [mrrData,  setMrrData]  = useState<{ totalMRR_USD: number; computedAt: string; byCountry: any[] } | null>(null)
   const [mrrOpen,  setMrrOpen]  = useState(false)
 
+  // Demo requests
+  const [demoRequests,   setDemoRequests]   = useState<any[]>([])
+  const [demoLoading,    setDemoLoading]    = useState(false)
+  const [demoTab,        setDemoTab]        = useState<'pending'|'activated'|'rejected'>('pending')
+  const [activatingDemo, setActivatingDemo] = useState<string | null>(null)
+
   const secretRef = useRef(secret)
   useEffect(() => { secretRef.current = secret }, [secret])
 
@@ -244,6 +253,15 @@ export default function SuperAdminPage() {
       setDeleteConfirm(null)
       loadAll(1)
     } finally { setDeleting(false) }
+  }
+
+  async function approveInventory(id: string) {
+    setActionId(id)
+    await fetch(`/api/superadmin/tenants/${id}/approve-inventory`, {
+      method: 'POST', headers: superHeader()
+    })
+    setActionId(null)
+    loadAll(page)
   }
 
   function openModal(tenant: Tenant, tab: ModalTab = 'billing') {
@@ -337,6 +355,37 @@ export default function SuperAdminPage() {
     } finally { setMF('loading', false) }
   }
 
+  // ─── Demo requests ────────────────────────────────────────────────────────
+
+  async function loadDemoRequests(status: string) {
+    setDemoLoading(true)
+    try {
+      const res = await fetch(`/api/superadmin/demo-requests?status=${status}`, { headers: superHeader() })
+      if (res.ok) setDemoRequests(await res.json())
+    } finally { setDemoLoading(false) }
+  }
+
+  async function activateDemo(id: string) {
+    setActivatingDemo(id)
+    try {
+      const res = await fetch(`/api/superadmin/demo-requests/${id}/activate`, {
+        method: 'POST', headers: superHeader()
+      })
+      const data = await res.json()
+      if (!res.ok) { alert(data.error ?? 'فشل التفعيل'); return }
+      alert(`✅ تم التفعيل! subdomain: ${data.subdomain}`)
+      loadDemoRequests(demoTab)
+    } finally { setActivatingDemo(null) }
+  }
+
+  async function rejectDemo(id: string) {
+    if (!confirm('هل تريد رفض هذا الطلب؟')) return
+    await fetch(`/api/superadmin/demo-requests/${id}/reject`, {
+      method: 'PATCH', headers: superHeader()
+    })
+    loadDemoRequests(demoTab)
+  }
+
   // ─── Login screen ─────────────────────────────────────────────────────────
 
   if (!authed) {
@@ -415,6 +464,100 @@ export default function SuperAdminPage() {
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             </button>
           </div>
+        </div>
+
+        {/* ── Demo Requests Panel ────────────────────────────────────────────── */}
+        <div className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800">
+            <div className="flex items-center gap-2">
+              <CalendarPlus className="w-5 h-5 text-emerald-400" />
+              <h2 className="text-white font-bold">طلبات التجربة المجانية</h2>
+              {demoRequests.filter(d => d.status === 'pending').length > 0 && (
+                <span className="bg-emerald-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                  {demoRequests.filter(d => d.status === 'pending').length}
+                </span>
+              )}
+            </div>
+            <div className="flex gap-1">
+              {(['pending','activated','rejected'] as const).map(t => (
+                <button
+                  key={t}
+                  onClick={() => { setDemoTab(t); loadDemoRequests(t) }}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${
+                    demoTab === t
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-gray-800 text-gray-400 hover:text-white'
+                  }`}
+                >
+                  {{ pending: 'معلق', activated: 'مُفعّل', rejected: 'مرفوض' }[t]}
+                </button>
+              ))}
+              <button
+                onClick={() => loadDemoRequests(demoTab)}
+                className="p-1.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white transition-colors"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${demoLoading ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
+          </div>
+
+          {demoRequests.length === 0 ? (
+            <div className="py-10 text-center text-gray-600 text-sm">
+              {demoLoading ? 'جاري التحميل...' : 'لا توجد طلبات'}
+              {!demoLoading && demoTab === 'pending' && (
+                <button onClick={() => loadDemoRequests('pending')} className="block mx-auto mt-2 text-emerald-500 text-xs underline">
+                  تحديث
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-800">
+              {demoRequests.map(d => (
+                <div key={d.id} className="flex items-start justify-between px-5 py-4 hover:bg-gray-800/40 transition-colors flex-wrap gap-3">
+                  <div className="space-y-0.5 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-white font-bold text-sm">{d.businessName}</span>
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-gray-800 text-gray-400">
+                        {{ RESTAURANT:'🍽️ مطعم', CAFE:'☕ مقهى', TRAITEUR:'🎂 طراتور', PASTRY:'🧁 حلويات', FOOD_TRUCK:'🚚 فود تراك', HOTEL:'🏨 فندق' }[d.businessType] ?? d.businessType}
+                      </span>
+                    </div>
+                    <p className="text-gray-400 text-xs">{d.ownerName} · {d.city} · {d.country}</p>
+                    <div className="flex items-center gap-3 text-xs text-gray-500">
+                      <span>{d.phone}</span>
+                      <span>{d.email}</span>
+                    </div>
+                    {d.notes && <p className="text-zinc-600 text-xs italic">{d.notes}</p>}
+                    <p className="text-gray-700 text-xs">{new Date(d.createdAt).toLocaleString('ar-MA')}</p>
+                  </div>
+                  {d.status === 'pending' && (
+                    <div className="flex gap-2 shrink-0">
+                      <button
+                        onClick={() => activateDemo(d.id)}
+                        disabled={activatingDemo === d.id}
+                        className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-bold px-3 py-2 rounded-xl transition-colors"
+                      >
+                        {activatingDemo === d.id
+                          ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          : <CheckCircle className="w-3.5 h-3.5" />}
+                        تفعيل 7 أيام
+                      </button>
+                      <button
+                        onClick={() => rejectDemo(d.id)}
+                        className="flex items-center gap-1.5 bg-red-900/50 hover:bg-red-800 text-red-300 text-xs font-bold px-3 py-2 rounded-xl transition-colors"
+                      >
+                        <X className="w-3.5 h-3.5" /> رفض
+                      </button>
+                    </div>
+                  )}
+                  {d.status === 'activated' && (
+                    <span className="text-emerald-400 text-xs font-bold flex items-center gap-1">
+                      <CheckCircle className="w-4 h-4" /> مُفعّل
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* KPI cards */}
@@ -545,7 +688,19 @@ export default function SuperAdminPage() {
                       onClick={() => openModal(t)}
                     >
                       <td className="px-4 py-3">
-                        <div className="font-bold text-white">{t.businessName || t.name}</div>
+                        <div className="font-bold text-white flex items-center gap-2">
+                          {t.businessName || t.name}
+                          {t.inventoryActivationRequested && !t.isSmartInventoryEnabled && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 animate-pulse">
+                              <Package className="w-2.5 h-2.5" /> مخزون
+                            </span>
+                          )}
+                          {t.isSmartInventoryEnabled && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                              <Package className="w-2.5 h-2.5" /> ✓
+                            </span>
+                          )}
+                        </div>
                         <div className="text-gray-500 text-xs">{t.subdomain}</div>
                       </td>
                       <td className="px-4 py-3 text-gray-400 text-xs">{t.country}</td>
@@ -575,12 +730,22 @@ export default function SuperAdminPage() {
                         {bal.toFixed(2)}
                       </td>
                       <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1 flex-wrap">
                           {t.billingStatus !== 'SUSPENDED'
                             ? <RowBtn icon={<Ban className="w-3 h-3" />}     label="إيقاف" color="red"   loading={actionId === t.id} onClick={() => suspend(t.id)} />
                             : <RowBtn icon={<CheckCircle className="w-3 h-3" />} label="تفعيل" color="green" loading={actionId === t.id} onClick={() => reactivate(t.id)} />}
                           <RowBtn icon={<Edit3 className="w-3 h-3" />} label="إعداد" color="blue" loading={false} onClick={() => openModal(t, 'billing')} />
                           <RowBtn icon={<Trash2 className="w-3 h-3" />} label="حذف" color="red" loading={false} onClick={() => setDeleteConfirm(t)} />
+                          {/* Smart Inventory approval button — shows only when requested */}
+                          {t.inventoryActivationRequested && !t.isSmartInventoryEnabled && (
+                            <RowBtn
+                              icon={<Package className="w-3 h-3" />}
+                              label="موافقة مخزون"
+                              color="amber"
+                              loading={actionId === t.id}
+                              onClick={() => approveInventory(t.id)}
+                            />
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -994,10 +1159,15 @@ function FInput({ label, value, onChange, placeholder, type = 'text' }: {
 }
 
 function RowBtn({ icon, label, color, loading, onClick }: {
-  icon: React.ReactNode; label: string; color: 'red' | 'green' | 'blue'
+  icon: React.ReactNode; label: string; color: 'red' | 'green' | 'blue' | 'amber'
   loading: boolean; onClick: () => void
 }) {
-  const cls = { red: 'bg-red-900/50 hover:bg-red-800 text-red-300', green: 'bg-emerald-900/50 hover:bg-emerald-800 text-emerald-300', blue: 'bg-blue-900/50 hover:bg-blue-800 text-blue-300' }
+  const cls = {
+    red:   'bg-red-900/50 hover:bg-red-800 text-red-300',
+    green: 'bg-emerald-900/50 hover:bg-emerald-800 text-emerald-300',
+    blue:  'bg-blue-900/50 hover:bg-blue-800 text-blue-300',
+    amber: 'bg-amber-900/50 hover:bg-amber-800 text-amber-300 border border-amber-700/50 animate-pulse'
+  }
   return (
     <button onClick={onClick} disabled={loading}
       className={`flex items-center gap-1 ${cls[color]} px-2.5 py-1 rounded-lg text-xs font-medium transition-colors disabled:opacity-50`}

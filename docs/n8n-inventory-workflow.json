@@ -1,0 +1,475 @@
+{
+  "__meta": {
+    "title": "Smart Inventory — Low-Stock Alert & WhatsApp Purchase Order",
+    "description": "Triggered by a low-stock webhook from Smart Resto backend or a manual 'Send Purchase Order' button. Fetches supplier details and sends a professional WhatsApp notification.",
+    "version": "1.0.0",
+    "n8n_version": "1.x",
+    "author": "Smart Resto Platform"
+  },
+
+  "name": "SmartResto — Inventory Low-Stock & PO WhatsApp",
+
+  "nodes": [
+
+    {
+      "id": "1",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "inventory-low-stock",
+        "responseMode": "responseNode",
+        "authentication": "headerAuth"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "SmartResto Webhook Secret",
+          "id": "cred_webhook_secret"
+        }
+      },
+      "__comment": "Receives POST from Smart Resto backend when stock falls below threshold. Body: { cafeId, stockItemId, ingredientName, currentQty, minimumThreshold, unit, cafePhone, supplierPhone, supplierName, restaurantName, purchaseOrderItems[] }"
+    },
+
+    {
+      "id": "2",
+      "name": "Manual Trigger (Send PO Button)",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 480],
+      "parameters": {},
+      "__comment": "Alternative trigger when admin clicks 'Send Purchase Order' button in dashboard. Same input payload shape as the webhook."
+    },
+
+    {
+      "id": "3",
+      "name": "Merge Triggers",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2,
+      "position": [440, 380],
+      "parameters": {
+        "mode": "passThrough",
+        "output": "input1"
+      }
+    },
+
+    {
+      "id": "4",
+      "name": "Extract & Validate Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [640, 380],
+      "parameters": {
+        "mode": "manual",
+        "fields": {
+          "values": [
+            {
+              "name": "cafeId",
+              "type": "string",
+              "value": "={{ $json.body.cafeId ?? $json.cafeId }}"
+            },
+            {
+              "name": "restaurantName",
+              "type": "string",
+              "value": "={{ $json.body.restaurantName ?? $json.restaurantName ?? 'Smart Resto Restaurant' }}"
+            },
+            {
+              "name": "supplierName",
+              "type": "string",
+              "value": "={{ $json.body.supplierName ?? $json.supplierName }}"
+            },
+            {
+              "name": "supplierPhone",
+              "type": "string",
+              "value": "={{ $json.body.supplierPhone ?? $json.supplierPhone }}"
+            },
+            {
+              "name": "supplierEmail",
+              "type": "string",
+              "value": "={{ $json.body.supplierEmail ?? $json.supplierEmail }}"
+            },
+            {
+              "name": "triggerType",
+              "type": "string",
+              "value": "={{ $json.body.triggerType ?? 'LOW_STOCK' }}"
+            },
+            {
+              "name": "purchaseOrderId",
+              "type": "string",
+              "value": "={{ $json.body.purchaseOrderId ?? '' }}"
+            },
+            {
+              "name": "purchaseOrderItems",
+              "type": "array",
+              "value": "={{ $json.body.purchaseOrderItems ?? [{ stockItemName: $json.body.ingredientName, unit: $json.body.unit, quantityOrdered: 0, unitCost: 0 }] }}"
+            },
+            {
+              "name": "notes",
+              "type": "string",
+              "value": "={{ $json.body.notes ?? '' }}"
+            },
+            {
+              "name": "totalCost",
+              "type": "number",
+              "value": "={{ $json.body.totalCost ?? 0 }}"
+            }
+          ]
+        }
+      }
+    },
+
+    {
+      "id": "5",
+      "name": "Route by Trigger Type",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 2,
+      "position": [840, 380],
+      "parameters": {
+        "mode": "rules",
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": { "caseSensitive": false },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.triggerType }}",
+                    "rightValue": "LOW_STOCK",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "low_stock"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": false },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.triggerType }}",
+                    "rightValue": "PURCHASE_ORDER",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "purchase_order"
+            }
+          ]
+        }
+      }
+    },
+
+    {
+      "id": "6",
+      "name": "Build Low-Stock WhatsApp Message",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [1040, 260],
+      "parameters": {
+        "mode": "manual",
+        "fields": {
+          "values": [
+            {
+              "name": "whatsappMessage",
+              "type": "string",
+              "value": "={{ `🚨 *Low Stock Alert*\\n\\nHello ${$json.supplierName},\\n\\n*${$json.restaurantName}* is running low on the following items:\\n\\n${$json.purchaseOrderItems.map(i => `• ${i.stockItemName}: needs restocking`).join('\\n')}\\n\\nPlease contact us to arrange a delivery at your earliest convenience.\\n\\nThank you!\\n— ${$json.restaurantName} Management` }}"
+            },
+            {
+              "name": "phoneNumber",
+              "type": "string",
+              "value": "={{ $json.supplierPhone.replace(/\\D/g, '') }}"
+            }
+          ]
+        }
+      }
+    },
+
+    {
+      "id": "7",
+      "name": "Build Purchase Order WhatsApp Message",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [1040, 500],
+      "parameters": {
+        "mode": "manual",
+        "fields": {
+          "values": [
+            {
+              "name": "whatsappMessage",
+              "type": "string",
+              "value": "={{ `📋 *Purchase Order — ${$json.restaurantName}*\\n\\nHello ${$json.supplierName},\\n\\nWe would like to place the following order:\\n\\n${$json.purchaseOrderItems.map(i => `• ${i.stockItemName}: ${i.quantityOrdered} ${i.unit} @ ${i.unitCost.toFixed(2)} each`).join('\\n')}\\n\\n*Estimated Total: ${$json.totalCost.toFixed(2)}*\\n${$json.notes ? `\\nNotes: ${$json.notes}` : ''}\\n\\nPlease confirm availability and expected delivery date.\\n\\nThank you!\\n— ${$json.restaurantName}` }}"
+            },
+            {
+              "name": "phoneNumber",
+              "type": "string",
+              "value": "={{ $json.supplierPhone.replace(/\\D/g, '') }}"
+            },
+            {
+              "name": "purchaseOrderId",
+              "type": "string",
+              "value": "={{ $json.purchaseOrderId }}"
+            }
+          ]
+        }
+      }
+    },
+
+    {
+      "id": "8",
+      "name": "Merge Messages",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2,
+      "position": [1240, 380],
+      "parameters": {
+        "mode": "passThrough",
+        "output": "input1"
+      }
+    },
+
+    {
+      "id": "9",
+      "name": "Check: Has Phone?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1440, 380],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.phoneNumber }}",
+              "rightValue": "",
+              "operator": { "type": "string", "operation": "notEquals" }
+            }
+          ]
+        }
+      }
+    },
+
+    {
+      "id": "10a",
+      "name": "Send WhatsApp via Twilio",
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [1640, 260],
+      "parameters": {
+        "operation": "sendSms",
+        "from": "whatsapp:+14155238886",
+        "to": "={{ 'whatsapp:+' + $json.phoneNumber }}",
+        "message": "={{ $json.whatsappMessage }}"
+      },
+      "credentials": {
+        "twilioApi": {
+          "name": "Twilio API",
+          "id": "cred_twilio"
+        }
+      },
+      "__comment": "Option A: Twilio WhatsApp Sandbox (free for testing) or production WhatsApp Business. Replace 'from' number with your Twilio WhatsApp sender."
+    },
+
+    {
+      "id": "10b",
+      "name": "Send WhatsApp via ZAPI (Alternative)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1640, 400],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.z-api.io/instances/{{ $env.ZAPI_INSTANCE_ID }}/token/{{ $env.ZAPI_TOKEN }}/send-text",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Client-Token", "value": "={{ $env.ZAPI_CLIENT_TOKEN }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": {
+          "phone": "={{ $json.phoneNumber }}",
+          "message": "={{ $json.whatsappMessage }}"
+        }
+      },
+      "__comment": "Option B: ZAPI.io — Brazilian WhatsApp API provider, very popular in MENA/Africa. Cheaper than Twilio. Set ZAPI_INSTANCE_ID, ZAPI_TOKEN, ZAPI_CLIENT_TOKEN in n8n env vars."
+    },
+
+    {
+      "id": "10c",
+      "name": "Open WhatsApp URL Fallback",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [1640, 540],
+      "parameters": {
+        "mode": "manual",
+        "fields": {
+          "values": [
+            {
+              "name": "whatsappWebUrl",
+              "type": "string",
+              "value": "={{ 'https://wa.me/' + $json.phoneNumber + '?text=' + encodeURIComponent($json.whatsappMessage) }}"
+            },
+            {
+              "name": "note",
+              "type": "string",
+              "value": "No WhatsApp API configured. Use this URL to open WhatsApp Web manually."
+            }
+          ]
+        }
+      },
+      "__comment": "Fallback when phone is missing. Returns a wa.me deep link that the admin can open manually."
+    },
+
+    {
+      "id": "11",
+      "name": "Mark PO as Sent in Smart Resto",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1840, 260],
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SMARTRESTO_API_URL + '/api/v1/inventory/purchase-orders/' + $json.purchaseOrderId }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "={{ 'Bearer ' + $env.SMARTRESTO_API_TOKEN }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": {
+          "sentViaWhatsApp": true,
+          "status": "ordered"
+        }
+      },
+      "__comment": "Calls back into Smart Resto API to mark the PO as sent and status=ordered. Set SMARTRESTO_API_URL (e.g. https://app.smartresto.com) and SMARTRESTO_API_TOKEN in n8n env vars."
+    },
+
+    {
+      "id": "12",
+      "name": "Send Success Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2040, 380],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: true, message: 'WhatsApp sent', phone: $json.phoneNumber, purchaseOrderId: $json.purchaseOrderId }) }}"
+      }
+    },
+
+    {
+      "id": "13",
+      "name": "Send Error Response (No Phone)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1840, 540],
+      "parameters": {
+        "respondWith": "json",
+        "responseCode": 422,
+        "responseBody": "={{ JSON.stringify({ ok: false, error: 'Supplier has no phone number configured', whatsappUrl: $json.whatsappWebUrl ?? null }) }}"
+      }
+    }
+
+  ],
+
+  "connections": {
+    "Webhook Trigger": {
+      "main": [[{ "node": "Merge Triggers", "type": "main", "index": 0 }]]
+    },
+    "Manual Trigger (Send PO Button)": {
+      "main": [[{ "node": "Merge Triggers", "type": "main", "index": 1 }]]
+    },
+    "Merge Triggers": {
+      "main": [[{ "node": "Extract & Validate Data", "type": "main", "index": 0 }]]
+    },
+    "Extract & Validate Data": {
+      "main": [[{ "node": "Route by Trigger Type", "type": "main", "index": 0 }]]
+    },
+    "Route by Trigger Type": {
+      "main": [
+        [{ "node": "Build Low-Stock WhatsApp Message",    "type": "main", "index": 0 }],
+        [{ "node": "Build Purchase Order WhatsApp Message", "type": "main", "index": 0 }]
+      ]
+    },
+    "Build Low-Stock WhatsApp Message": {
+      "main": [[{ "node": "Merge Messages", "type": "main", "index": 0 }]]
+    },
+    "Build Purchase Order WhatsApp Message": {
+      "main": [[{ "node": "Merge Messages", "type": "main", "index": 1 }]]
+    },
+    "Merge Messages": {
+      "main": [[{ "node": "Check: Has Phone?", "type": "main", "index": 0 }]]
+    },
+    "Check: Has Phone?": {
+      "main": [
+        [{ "node": "Send WhatsApp via Twilio", "type": "main", "index": 0 }],
+        [{ "node": "Open WhatsApp URL Fallback", "type": "main", "index": 0 }]
+      ]
+    },
+    "Send WhatsApp via Twilio": {
+      "main": [[{ "node": "Mark PO as Sent in Smart Resto", "type": "main", "index": 0 }]]
+    },
+    "Mark PO as Sent in Smart Resto": {
+      "main": [[{ "node": "Send Success Response", "type": "main", "index": 0 }]]
+    },
+    "Open WhatsApp URL Fallback": {
+      "main": [[{ "node": "Send Error Response (No Phone)", "type": "main", "index": 0 }]]
+    }
+  },
+
+  "settings": {
+    "executionOrder": "v1"
+  },
+
+  "__setup_instructions": {
+    "environment_variables": {
+      "SMARTRESTO_API_URL":     "Your Smart Resto base URL, e.g. https://app.smartresto.com",
+      "SMARTRESTO_API_TOKEN":   "A long-lived admin JWT for a superadmin account (or a dedicated service account)",
+      "INVENTORY_WEBHOOK_SECRET": "Must match INVENTORY_WEBHOOK_SECRET in your .env file",
+      "ZAPI_INSTANCE_ID":       "Your Z-API instance ID (if using Z-API instead of Twilio)",
+      "ZAPI_TOKEN":             "Your Z-API token",
+      "ZAPI_CLIENT_TOKEN":      "Your Z-API client token"
+    },
+    "webhook_payload_from_backend": {
+      "description": "When Smart Resto fires the low-stock webhook, it should POST this shape",
+      "example": {
+        "cafeId":           "6639c3f...",
+        "triggerType":      "PURCHASE_ORDER",
+        "restaurantName":   "Café Atlas",
+        "supplierName":     "United Foods Maroc",
+        "supplierPhone":    "+212661234567",
+        "supplierEmail":    "orders@unitedfoods.ma",
+        "purchaseOrderId":  "6649d3f...",
+        "purchaseOrderItems": [
+          { "stockItemName": "Beef", "unit": "kg", "quantityOrdered": 10, "unitCost": 85.0 },
+          { "stockItemName": "Tomatoes", "unit": "kg", "quantityOrdered": 5, "unitCost": 8.0 }
+        ],
+        "totalCost": 890.0,
+        "notes": "Please deliver before 8am"
+      }
+    },
+    "whatsapp_provider_options": [
+      {
+        "name": "Twilio WhatsApp",
+        "pros": "Reliable, well-documented, official Meta partner",
+        "cons": "Requires WhatsApp Business Account approval. Sandbox free.",
+        "node": "n8n-nodes-base.twilio"
+      },
+      {
+        "name": "Z-API (ZAPI.io)",
+        "pros": "No approval needed, cheaper, popular in MENA/Africa, works with personal WhatsApp numbers",
+        "cons": "Not officially endorsed by Meta",
+        "node": "n8n-nodes-base.httpRequest (custom)"
+      },
+      {
+        "name": "wa.me URL Fallback",
+        "pros": "Zero configuration, always works",
+        "cons": "Requires manual click — not truly automated",
+        "node": "n8n-nodes-base.set (generates URL)"
+      }
+    ]
+  }
+}

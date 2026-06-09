@@ -483,6 +483,9 @@ router.get('/api/superadmin/tenants/rich', requireSuperAdmin, async (req: Reques
           weeklyOrderCount: true,
           billingCycle: true, maintenancePack: true,
           maintenanceFee: true, nextBillingDate: true,
+          isSmartInventoryEnabled: true,
+          inventoryActivationRequested: true,
+          inventoryActivationRequestedAt: true,
           _count: { select: { orders: true } }
         }
       })
@@ -623,16 +626,18 @@ router.get('/api/superadmin/webhooks/expiring-tomorrow', requireSuperAdmin, asyn
 router.patch('/api/superadmin/tenants/:id/features', requireSuperAdmin, async (req: Request, res: Response) => {
   try {
     const id = req.params['id'] as string
-    const { smartWifiEnabled, cashierPosEnabled, orderingEnabled } = req.body as {
-      smartWifiEnabled?:  boolean
-      cashierPosEnabled?: boolean
-      orderingEnabled?:   boolean
+    const { smartWifiEnabled, cashierPosEnabled, orderingEnabled, isSmartInventoryEnabled } = req.body as {
+      smartWifiEnabled?:         boolean
+      cashierPosEnabled?:        boolean
+      orderingEnabled?:          boolean
+      isSmartInventoryEnabled?:  boolean
     }
 
     const data: Record<string, boolean> = {}
-    if (smartWifiEnabled  != null) data['smartWifiEnabled']  = Boolean(smartWifiEnabled)
-    if (cashierPosEnabled != null) data['cashierPosEnabled'] = Boolean(cashierPosEnabled)
-    if (orderingEnabled   != null) data['orderingEnabled']   = Boolean(orderingEnabled)
+    if (smartWifiEnabled        != null) data['smartWifiEnabled']        = Boolean(smartWifiEnabled)
+    if (cashierPosEnabled       != null) data['cashierPosEnabled']       = Boolean(cashierPosEnabled)
+    if (orderingEnabled         != null) data['orderingEnabled']         = Boolean(orderingEnabled)
+    if (isSmartInventoryEnabled != null) data['isSmartInventoryEnabled'] = Boolean(isSmartInventoryEnabled)
 
     if (Object.keys(data).length === 0) {
       return res.status(400).json({ error: 'No feature flags provided' })
@@ -643,7 +648,8 @@ router.patch('/api/superadmin/tenants/:id/features', requireSuperAdmin, async (r
       data,
       select: {
         id: true, businessName: true,
-        smartWifiEnabled: true, cashierPosEnabled: true, orderingEnabled: true
+        smartWifiEnabled: true, cashierPosEnabled: true, orderingEnabled: true,
+        isSmartInventoryEnabled: true
       }
     })
 
@@ -652,6 +658,37 @@ router.patch('/api/superadmin/tenants/:id/features', requireSuperAdmin, async (r
   } catch (err) {
     logger.error({ msg: 'PATCH features error', err })
     return res.status(500).json({ error: 'Failed' })
+  }
+})
+
+// ─── POST /api/superadmin/tenants/:id/approve-inventory ──────────────────────
+// Approve a restaurant's Smart Inventory activation request.
+// Sets isSmartInventoryEnabled=true and clears the pending request flag.
+
+router.post('/api/superadmin/tenants/:id/approve-inventory', requireSuperAdmin, async (req: Request, res: Response) => {
+  try {
+    const id = req.params['id'] as string
+
+    const cafe = await prisma.cafe.findUnique({
+      where:  { id },
+      select: { inventoryActivationRequested: true, isSmartInventoryEnabled: true }
+    })
+    if (!cafe) return res.status(404).json({ error: 'Cafe not found' })
+
+    await prisma.cafe.update({
+      where: { id },
+      data:  {
+        isSmartInventoryEnabled:        true,
+        inventoryActivationRequested:   false,
+        inventoryActivationRequestedAt: null
+      }
+    })
+
+    logger.info({ msg: 'Smart Inventory approved', cafeId: id })
+    return res.json({ ok: true })
+  } catch (err) {
+    logger.error({ msg: 'approve-inventory error', err })
+    return res.status(500).json({ error: 'Failed to approve' })
   }
 })
 

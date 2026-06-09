@@ -184,6 +184,9 @@ model Cafe {
   lng          Float?
   socialLinks  Json?
 
+  // ── Geo-targeting (used by n8n regional campaigns) ───────────────────────
+  city         String  @default("")
+
   isActive            Boolean       @default(true)
   isProfileComplete   Boolean       @default(false)
   walletBalance       Float         @default(0.0)
@@ -198,19 +201,39 @@ model Cafe {
   // Smart WiFi — optional embedded config (null = feature not configured)
   smartWifi           SmartWifi?
 
-  // ── Branding (QR menu appearance) ────────────────────────────────────────
-  accentColor  String @default("#059669")  // hex color for QR menu theme
-  primaryFont  String @default("Cairo")    // Google Font name
-  localIp      String?                     // LAN IP for offline fallback (set in Settings → e.g. 192.168.1.100)
+  // ── Subscription package (used for feature gating & n8n segmentation) ────
+  // 'Free' | '6-Month' | 'Annual'
+  packageType         String    @default("Free")
+  // $5 one-time upsell for artistic/custom QR code design
+  isArtisticQrPaid    Boolean   @default(false)
+
+  // ── Gamification counters (drive certification unlock) ────────────────────
+  // Incremented by n8n webhook on every confirmed event/reservation
+  totalEventsHosted      Int     @default(0)
+  totalReservationsCount Int     @default(0)
+  // Unlocked when thresholds are crossed (evaluated by certificationEval cron)
+  isCertified            Boolean @default(false)
+
+  // ── Branding (QR menu appearance + logo analysis) ─────────────────────────
+  accentColor      String @default("#059669")  // hex color for QR menu theme
+  // Primary brand color extracted from logo via n8n image analysis pipeline
+  logoAccentColor  String @default("")
+  primaryFont      String @default("Cairo")    // Google Font name
+  localIp          String?                     // LAN IP for offline fallback (set in Settings → e.g. 192.168.1.100)
 
   // ── Payment gateway configuration (set in Settings → Payments) ────────────
   paymentConfig PaymentConfig?
 
   // ── Per-restaurant feature flags (toggled by superadmin or admin) ──────────
-  smartWifiEnabled      Boolean @default(false)
-  cashierPosEnabled     Boolean @default(true)
-  orderingEnabled       Boolean @default(true)
-  reservationsEnabled   Boolean @default(true)
+  smartWifiEnabled         Boolean @default(false)
+  cashierPosEnabled        Boolean @default(true)
+  orderingEnabled          Boolean @default(true)
+  reservationsEnabled      Boolean @default(true)
+  // Smart Inventory & Supplier Management add-on
+  isSmartInventoryEnabled          Boolean   @default(false)
+  // Set to true when the restaurant owner requests activation (pending superadmin approval)
+  inventoryActivationRequested     Boolean   @default(false)
+  inventoryActivationRequestedAt   DateTime?
 
   // ── Supplier-finder quota (resets monthly, Premium plan only) ─────────────
   supplierSearchesUsed Int       @default(0)
@@ -230,6 +253,13 @@ model Cafe {
   maintenancePack   Boolean   @default(false)  // $25 service & maintenance fee
   maintenanceFee    Float?    // maintenance amount (default 25 USD for Gulf/Europe)
   nextBillingDate   DateTime? // next expected payment due date
+
+  // ── Social media credentials (per-cafe, filled when owner connects accounts) ─
+  fbPageId          String @default("")  // Facebook Page numeric ID
+  fbAccessToken     String @default("")  // long-lived FB page token (~60 days)
+  igUserId          String @default("")  // Instagram Business account ID
+  tiktokAccessToken String @default("")  // TikTok OAuth2 access token
+  snapAccessToken   String @default("")  // Snapchat OAuth2 access token
 
   // ── Smart Resto Certified ─────────────────────────────────────────────────
   ownerPhone             String              @default("")
@@ -266,6 +296,19 @@ model Cafe {
   events             Event[]
   guests             Guest[]
   loyaltyAccounts    LoyaltyAccount[]
+  // Smart Inventory module relations
+  inventorySuppliers   InventorySupplier[]
+  purchaseOrders       PurchaseOrder[]
+  systemNotifications  SystemNotification[]
+  // Viral marketing hub — user-generated content with consent tracking
+  reviewsGallery       ReviewGallery[]
+
+  // Indexes for geo-targeting, package segmentation, and n8n campaign queries
+  @@index([country])
+  @@index([city])
+  @@index([packageType])
+  @@index([certificationStatus])
+  @@index([billingStatus])
 
 }
 
@@ -666,22 +709,103 @@ model Lead {
 
 // ─── Reservations (client → kitchen) ─────────────────────────────────────────
 
+// Embedded snapshot of a dish/drink added at reservation time
+// Consumed by n8n to generate personalised post-visit content
+type ReservationItem {
+  productName String
+  quantity    Int
+  notes       String @default("")
+}
+
 model Reservation {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  cafeId    String   @db.ObjectId
-  cafe      Cafe     @relation(fields: [cafeId], references: [id])
-  name      String
-  phone     String
-  guests    Int
-  date      DateTime
-  notes     String   @default("")
-  status    String   @default("PENDING")  // PENDING | ACCEPTED | CANCELLED
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId      String   @db.ObjectId
+  cafe        Cafe     @relation(fields: [cafeId], references: [id])
+  name        String
+  phone       String
+  guests      Int
+  tableNumber Int?     // physical table number (optional, set by staff on confirmation)
+  date        DateTime
+  notes       String   @default("")
+  // PENDING | ACCEPTED | COMPLETED | CANCELLED
+  // COMPLETED triggers n8n review-request flow and gamification counter increment
+  status      String   @default("PENDING")
+  // Pre-order snapshot captured at reservation or updated by waiter during visit
+  // Used by n8n to generate personalised dish highlight content
+  itemsOrdered ReservationItem[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // A completed reservation can produce one review gallery entry
+  reviewGallery ReviewGallery?
 
   @@index([cafeId])
   @@index([status])
   @@index([date])
+}
+
+// ─── Reviews Gallery (Viral Marketing Hub) ───────────────────────────────────
+//
+// Lifecycle (driven by n8n):
+//   1. Reservation reaches COMPLETED → n8n sends a WhatsApp/SMS review request.
+//   2. Customer submits image + review via QR link → document created here.
+//   3. n8n reads userConsentGranted:
+//      - TRUE  → face + full content published to client's social accounts.
+//      - FALSE → n8n blurs faces / crops to dishes+decor only, then publishes.
+//   4. On publish: isPublishedToClientSocial = true, cafe.totalReservationsCount++.
+//   5. Smart Resto blog publication gated on packageType ('6-Month' | 'Annual').
+//
+// Indexes support:
+//   - Dashboard gallery filtered by cafe
+//   - n8n queue: WHERE isPublishedToClientSocial=false AND userConsentGranted=*
+//   - Rating analytics per cafe
+//   - Blog queue: WHERE isPublishedToSmartRestoBlog=false AND rating >= 4
+
+model ReviewGallery {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId        String   @db.ObjectId
+  cafe          Cafe     @relation(fields: [cafeId], references: [id])
+  // Optional link to the originating reservation — enables personalised content
+  reservationId String?  @db.ObjectId @unique
+  reservation   Reservation? @relation(fields: [reservationId], references: [id])
+
+  // ── Media ──────────────────────────────────────────────────────────────────
+  imageUrl      String?  // Cloudinary URL of privacy-processed review photo
+  qrCodeUrl     String?  // Cloudinary URL of the generated artistic QR code
+  reviewText    String   @default("")
+  rating        Int      @default(5)  // 1–5 stars
+
+  // ── Privacy & Consent (GDPR-aligned) ──────────────────────────────────────
+  // TRUE  → n8n may publish full image including faces
+  // FALSE → n8n must run face-blur pipeline before any publication
+  userConsentGranted Boolean @default(false)
+
+  // ── Publishing state (updated by n8n after successful post) ───────────────
+  // Published to the restaurant's own connected social accounts (Instagram, etc.)
+  isPublishedToClientSocial    Boolean  @default(false)
+  publishedToClientSocialAt    DateTime?
+  // Published to the Smart Resto marketing blog (premium packages only)
+  isPublishedToSmartRestoBlog  Boolean  @default(false)
+  publishedToSmartRestoBlogAt  DateTime?
+
+  // ── Moderation ─────────────────────────────────────────────────────────────
+  // 'pending' | 'approved' | 'rejected'
+  // n8n only picks up 'approved' items for publication
+  moderationStatus  String   @default("pending")
+  moderatedAt       DateTime?
+
+  // ── n8n tracing ────────────────────────────────────────────────────────────
+  n8nExecutionId    String?  // execution ID of the publish workflow run
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([cafeId])
+  @@index([cafeId, isPublishedToClientSocial])   // n8n publish queue
+  @@index([cafeId, isPublishedToSmartRestoBlog]) // blog queue
+  @@index([cafeId, rating])                      // rating analytics
+  @@index([moderationStatus])
+  @@index([createdAt])
 }
 
 // ─── Smart Costing — Recipes & Ingredients ───────────────────────────────────
@@ -1049,4 +1173,109 @@ type LoyaltyEntry {
   orderId   String?  // reference to the order that triggered this entry
   note      String   @default("")
   createdAt DateTime
+}
+
+// ─── Smart Inventory & Supplier Management (Premium add-on) ──────────────────
+
+// Embedded line-item inside a PurchaseOrder document
+type PurchaseOrderItem {
+  stockItemName  String
+  unit           String   // g | ml | pcs | kg | L
+  quantityOrdered Float
+  unitCost        Float
+  totalCost       Float
+}
+
+// The restaurant's own saved suppliers (distinct from the B2B Supplier Finder)
+model InventorySupplier {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId        String   @db.ObjectId
+  cafe          Cafe     @relation(fields: [cafeId], references: [id])
+  name          String
+  contactPerson String   @default("")
+  phone         String   @default("")
+  email         String   @default("")
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  purchaseOrders PurchaseOrder[]
+
+  @@index([cafeId])
+  @@index([isActive])
+}
+
+// Tracks purchase order sent to a supplier for restocking
+model PurchaseOrder {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId     String   @db.ObjectId
+  cafe       Cafe     @relation(fields: [cafeId], references: [id])
+  supplierId String   @db.ObjectId
+  supplier   InventorySupplier @relation(fields: [supplierId], references: [id])
+
+  // pending | ordered | received | cancelled
+  status    String   @default("pending")
+  notes     String   @default("")
+  items     PurchaseOrderItem[]
+  totalCost Float    @default(0)
+
+  // Set when the PO is sent via WhatsApp/n8n webhook
+  sentViaWhatsApp Boolean  @default(false)
+  sentAt          DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([cafeId])
+  @@index([supplierId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// ─── Demo Requests — inbound leads from /demo page ───────────────────────────
+// Superadmin reviews and activates a 7-day trial for qualified leads.
+model DemoRequest {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  ownerName    String
+  businessName String
+  businessType String   @default("RESTAURANT")  // RESTAURANT | CAFE | TRAITEUR | PASTRY | FOOD_TRUCK | HOTEL
+  phone        String
+  email        String
+  city         String
+  country      String   @default("MA")
+  notes        String   @default("")
+  // 'pending' | 'activated' | 'rejected'
+  status       String   @default("pending")
+  // Set when superadmin activates the trial → points to the created Cafe
+  cafeId       String?  @db.ObjectId
+  activatedAt  DateTime?
+  activatedBy  String?  // superadmin userId
+  rejectedAt   DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([email])
+}
+
+// In-app alerts: low stock warnings, PO confirmations, etc.
+model SystemNotification {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId    String   @db.ObjectId
+  cafe      Cafe     @relation(fields: [cafeId], references: [id])
+  // LOW_STOCK | PO_SENT | PO_RECEIVED | GENERAL
+  type      String   @default("GENERAL")
+  title     String
+  body      String   @default("")
+  isRead    Boolean  @default(false)
+  // optional reference to the triggering entity
+  refId     String?
+  refType   String?  // "stock_item" | "purchase_order"
+  createdAt DateTime @default(now())
+
+  @@index([cafeId])
+  @@index([isRead])
+  @@index([type])
+  @@index([createdAt])
 }

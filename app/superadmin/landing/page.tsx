@@ -33,6 +33,7 @@ type LandingConfig = {
   heroImageUrl: string
   platformImageUrl: string
   logoImageUrl: string
+  promoVideoUrl?: string
   text: { ar: HeroTextLang; en: HeroTextLang; fr: HeroTextLang }
   faqs: FaqItem[]
   footer: { brandName: string; flags: string; whatsapp: string; email: string; copyright: string }
@@ -81,6 +82,7 @@ const DEFAULT_CONFIG: LandingConfig = {
   heroImageUrl: '/assets/mobile.png',
   platformImageUrl: '',
   logoImageUrl: '',
+  promoVideoUrl: '',
   text: { ar: {}, en: {}, fr: {} },
   faqs: [],
   footer: { brandName: 'SmartMenu', flags: '🇲🇦,🇸🇦,🇦🇪,🇸🇳,🇨🇮,🇰🇪', whatsapp: '+212 6 00 00 00 00', email: 'contact@smartmenu.ma', copyright: `© ${new Date().getFullYear()} SmartMenu` },

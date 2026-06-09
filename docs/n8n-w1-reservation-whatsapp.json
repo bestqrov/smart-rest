@@ -1,0 +1,156 @@
+{
+  "name": "Smart Resto — W1 · Reservation Completed → WhatsApp Review Request",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "reservation-completed",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "node-w1-001",
+      "name": "Webhook — Reservation Completed",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [250, 300],
+      "notes": "Called by Express backend inside the order COMPLETED transaction.\nPayload: { reservationId, cafeId, cafeName, cafeLogoUrl, customerPhone, customerName, packageType }"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "reservationId",
+              "value": "={{ $json.body.reservationId }}",
+              "type": "string"
+            },
+            {
+              "id": "a2",
+              "name": "cafeId",
+              "value": "={{ $json.body.cafeId }}",
+              "type": "string"
+            },
+            {
+              "id": "a3",
+              "name": "cafeName",
+              "value": "={{ $json.body.cafeName }}",
+              "type": "string"
+            },
+            {
+              "id": "a4",
+              "name": "customerPhone",
+              "value": "={{ $json.body.customerPhone }}",
+              "type": "string"
+            },
+            {
+              "id": "a5",
+              "name": "customerName",
+              "value": "={{ $json.body.customerName }}",
+              "type": "string"
+            },
+            {
+              "id": "a6",
+              "name": "reviewUrl",
+              "value": "=https://smartresto.pro/r/{{ $json.body.reservationId }}",
+              "type": "string"
+            },
+            {
+              "id": "a7",
+              "name": "whatsappTo",
+              "value": "=whatsapp:{{ $json.body.customerPhone }}",
+              "type": "string"
+            },
+            {
+              "id": "a8",
+              "name": "whatsappFrom",
+              "value": "=whatsapp:+{{ $env.TWILIO_WHATSAPP_NUMBER }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-w1-002",
+      "name": "Set — Prepare Payload",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.twilio.com/2010-04-01/Accounts/{{ $env.TWILIO_ACCOUNT_SID }}/Messages.json",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "From",
+              "value": "={{ $json.whatsappFrom }}"
+            },
+            {
+              "name": "To",
+              "value": "={{ $json.whatsappTo }}"
+            },
+            {
+              "name": "Body",
+              "value": "=🍽️ شكراً على زيارتك لـ {{ $json.cafeName }}!\n\nنتمنى أنك استمتعت بتجربتك معنا. يسعدنا كثيراً أن تشاركنا تقييمك ⭐\n\nأضف صورة وتعليقك هنا:\n👉 {{ $json.reviewUrl }}\n\n(يستغرق أقل من دقيقة)\n\n— فريق Smart Resto 🌟"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "node-w1-003",
+      "name": "HTTP — Twilio WhatsApp Send",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [750, 300],
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "twilio-basic-auth",
+          "name": "Twilio Basic Auth"
+        }
+      },
+      "notes": "Credentials: set httpBasicAuth → username = TWILIO_ACCOUNT_SID, password = TWILIO_AUTH_TOKEN"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "node-w1-004",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.0,
+      "position": [1000, 300]
+    }
+  ],
+  "connections": {
+    "Webhook — Reservation Completed": {
+      "main": [
+        [{ "node": "Set — Prepare Payload", "type": "main", "index": 0 }]
+      ]
+    },
+    "Set — Prepare Payload": {
+      "main": [
+        [{ "node": "HTTP — Twilio WhatsApp Send", "type": "main", "index": 0 }]
+      ]
+    },
+    "HTTP — Twilio WhatsApp Send": {
+      "main": [
+        [{ "node": "Respond to Webhook", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "errorWorkflow": "Smart Resto — Error Handler"
+  },
+  "tags": ["smartresto", "whatsapp", "reservations"],
+  "notes": "CALLER: Express backend — src/routes/orders.ts — after COMPLETED transaction commits.\n\nREQUIRED ENV VARS:\n  TWILIO_ACCOUNT_SID   — from console.twilio.com\n  TWILIO_AUTH_TOKEN    — from console.twilio.com\n  TWILIO_WHATSAPP_NUMBER — without leading +, e.g. 14155238886\n\nCREDENTIALS in n8n:\n  Add an 'HTTP Basic Auth' credential:\n    Username: {{ TWILIO_ACCOUNT_SID }}\n    Password: {{ TWILIO_AUTH_TOKEN }}\n\nALTERNATIVE (no Twilio approval needed for Morocco):\n  Replace Twilio node with WATI or 360dialog HTTP Request.\n  WATI endpoint: POST https://app.wati.io/api/v1/sendTemplateMessage\n  Body: { whatsappNumber: customerPhone, template_name: 'review_request', broadcast_name: '...' }"
+}

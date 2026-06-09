@@ -334,13 +334,18 @@ router.post('/api/auth/magic-send', async (req: Request, res: Response) => {
   const lang: Lang = resolveLang(req.body?.lang ?? req.query['lang'] as string)
 
   try {
-    const { email, cafeName, subdomain, country = 'MA' } = req.body as {
-      email:      string
-      cafeName:   string
-      subdomain:  string
-      country?:   string
-      lang?:      string
+    const { email, cafeName, subdomain, country = 'MA', businessType = 'RESTAURANT' } = req.body as {
+      email:         string
+      cafeName:      string
+      subdomain:     string
+      country?:      string
+      businessType?: string
+      lang?:         string
     }
+
+    // Normalise businessType — only allow known values
+    const VALID_TYPES = ['RESTAURANT', 'CAFE', 'TRAITEUR', 'PASTRY', 'FOOD_TRUCK', 'HOTEL']
+    const cleanBusinessType = VALID_TYPES.includes(businessType) ? businessType : 'RESTAURANT'
 
     // ── Field presence ────────────────────────────────────────────────────────
     if (!email || !cafeName || !subdomain) {
@@ -390,10 +395,11 @@ router.post('/api/auth/magic-send', async (req: Request, res: Response) => {
         token:    rawToken,
         expiresAt,
         cafeData: {
-          cafeName: cafeName.trim(),
-          subdomain: cleanSubdomain,
-          country:   country.toUpperCase(),
-          currency:  currencyFor(country),
+          cafeName:     cafeName.trim(),
+          subdomain:    cleanSubdomain,
+          country:      country.toUpperCase(),
+          currency:     currencyFor(country),
+          businessType: cleanBusinessType,
           lang
         }
       }
@@ -476,11 +482,12 @@ router.get('/api/auth/magic-verify', async (req: Request, res: Response) => {
 
     // ── Extract stored cafe data ───────────────────────────────────────────────
     const cafeData = record.cafeData as {
-      cafeName:  string
-      subdomain: string
-      country:   string
-      currency:  string
-      lang:      Lang
+      cafeName:     string
+      subdomain:    string
+      country:      string
+      currency:     string
+      businessType: string
+      lang:         Lang
     }
 
     // ── Final uniqueness guard (race condition protection) ─────────────────────
@@ -496,6 +503,8 @@ router.get('/api/auth/magic-verify', async (req: Request, res: Response) => {
     const trialEndsAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
 
     const { user, cafe } = await prisma.$transaction(async (tx) => {
+      const isTraiteur = cafeData.businessType === 'TRAITEUR'
+
       const cafe = await tx.cafe.create({
         data: {
           name:          cafeData.cafeName,
@@ -503,6 +512,8 @@ router.get('/api/auth/magic-verify', async (req: Request, res: Response) => {
           subdomain:     cafeData.subdomain,
           country:       cafeData.country,
           currency:      cafeData.currency,
+          // accountMode drives which dashboard modules are shown at first login
+          accountMode:   isTraiteur ? 'TRAITEUR' : 'RESTAURANT',
           trialEndsAt,
           billingStatus: 'GRACE_PERIOD',
           isActive:      true

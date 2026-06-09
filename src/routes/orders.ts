@@ -5,6 +5,7 @@ import logger from '../logger'
 import prisma from '../prisma'
 import { applyOrderFee } from '../services/billing'
 import { emitKdsTicket, emitOrderStatusUpdate } from '../services/kds'
+import { deductInventoryForOrder } from '../services/inventoryDeduction'
 
 const router = express.Router()
 
@@ -231,6 +232,9 @@ router.patch('/api/orders/:orderId/status', authorizeAdmin, async (req: Request,
 
       if (status === 'COMPLETED' && order.status !== 'COMPLETED') {
         await applyOrderFee(tx, cafeId, orderId, order.totalPrice, cafe?.country ?? 'MA', false, order._count.items)
+
+        // Deduct inventory stock for each recipe ingredient consumed
+        await deductInventoryForOrder(tx, cafeId, orderId)
 
         // Award loyalty points: 10 MAD = 1 point, rounded down
         if (order.customerPhone) {

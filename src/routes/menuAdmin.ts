@@ -212,7 +212,7 @@ router.get('/api/admin/cafe/profile', authorizeAdmin, async (req: Request, res: 
         coffeeRefPrice: true, sandwichRefPrice: true,
         monthlyFee: true, subscriptionTier: true,
         accentColor: true, primaryFont: true, localIp: true,
-        reservationsEnabled: true
+        reservationsEnabled: true, isSmartInventoryEnabled: true
       }
     })
     return res.json(cafe)

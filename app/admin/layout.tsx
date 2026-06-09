@@ -9,7 +9,8 @@ import {
   CreditCard, LogOut, ChevronRight, Menu, X,
   AlertTriangle, Loader2, Gift, Zap, ChefHat, Bell, Monitor,
   Users, BarChart3, Copy, Check, ExternalLink, Building2,
-  Banknote, Wallet, CalendarClock, Sparkles, Settings, Languages, TrendingUp, Film
+  Banknote, Wallet, CalendarClock, Sparkles, Settings, Languages, TrendingUp, Film,
+  Package, Lock
 } from 'lucide-react'
 import { AdminLangProvider, useLang, type AdminLang } from './lang-context'
 import { A, type AdminT } from '@/lib/adminI18n'
@@ -50,6 +51,7 @@ type CafeState = {
   monthlyFee: number | null
   subscriptionTier: string | null
   logoUrl: string | null
+  isSmartInventoryEnabled: boolean
 }
 
 // ── Payment Gate translations ─────────────────────────────────────────────────
@@ -296,16 +298,17 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
         return
       }
       setCafe({
-        name:             profile.businessName || profile.name,
-        subdomain:        profile.subdomain,
-        billingStatus:    profile.billingStatus,
-        inTrial:          finance?.inTrial ?? false,
-        trialEndsAt:      finance?.trialEndsAt ?? null,
-        hasExtendedTrial: profile.hasExtendedTrial ?? false,
-        currency:         profile.currency ?? 'MAD',
-        monthlyFee:       finance?.monthlyFee ?? profile.monthlyFee ?? null,
-        subscriptionTier: finance?.subscriptionTier ?? profile.subscriptionTier ?? null,
-        logoUrl:          profile.logoUrl ?? null,
+        name:                    profile.businessName || profile.name,
+        subdomain:               profile.subdomain,
+        billingStatus:           profile.billingStatus,
+        inTrial:                 finance?.inTrial ?? false,
+        trialEndsAt:             finance?.trialEndsAt ?? null,
+        hasExtendedTrial:        profile.hasExtendedTrial ?? false,
+        currency:                profile.currency ?? 'MAD',
+        monthlyFee:              finance?.monthlyFee ?? profile.monthlyFee ?? null,
+        subscriptionTier:        finance?.subscriptionTier ?? profile.subscriptionTier ?? null,
+        logoUrl:                 profile.logoUrl ?? null,
+        isSmartInventoryEnabled: profile.isSmartInventoryEnabled ?? false,
       })
     }
   }
@@ -393,6 +396,30 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
               </Link>
             )
           })}
+
+          {/* ── Smart Inventory (premium gated item) ────────────────── */}
+          {cafe && (
+            <Link href="/admin/inventory"
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors group relative ${
+                pathname.startsWith('/admin/inventory')
+                  ? 'bg-emerald-600 text-white'
+                  : 'text-gray-400 hover:bg-[#243460] hover:text-white'
+              }`}>
+              <Package className="w-5 h-5 shrink-0" />
+              <span className="text-sm font-medium flex-1">
+                {lang === 'ar' ? 'المخزون' : lang === 'fr' ? 'Inventaire' : 'Inventory'}
+              </span>
+              {!cafe.isSmartInventoryEnabled && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                  <Lock className="w-2.5 h-2.5" />
+                  PRO
+                </span>
+              )}
+              {pathname.startsWith('/admin/inventory') && (
+                <ChevronRight className={`w-4 h-4 opacity-70 ${!isRTL ? 'rotate-180' : ''}`} />
+              )}
+            </Link>
+          )}
         </nav>
 
         <div className="px-3 pb-3 border-t border-[#243460] pt-3">
@@ -474,6 +501,24 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
                   </Link>
                 )
               })}
+
+              {/* Smart Inventory (gated) */}
+              {cafe && (
+                <Link href="/admin/inventory" onClick={() => setOpen(false)}
+                  className={`flex items-center gap-3 px-3 py-3 rounded-xl ${
+                    pathname.startsWith('/admin/inventory')
+                      ? 'bg-emerald-600 text-white'
+                      : 'text-gray-400 hover:bg-[#243460] hover:text-white'
+                  }`}>
+                  <Package className="w-5 h-5" />
+                  <span className="font-medium flex-1">
+                    {lang === 'ar' ? 'المخزون' : lang === 'fr' ? 'Inventaire' : 'Inventory'}
+                  </span>
+                  {!cafe.isSmartInventoryEnabled && (
+                    <Lock className="w-3.5 h-3.5 text-amber-400" />
+                  )}
+                </Link>
+              )}
             </nav>
             <div className="px-3 py-4 border-t border-[#243460] space-y-1">
               <LangSwitcherSidebar />

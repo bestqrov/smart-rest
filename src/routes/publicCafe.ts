@@ -26,4 +26,59 @@ router.get('/api/public/cafe/:subdomain', async (req: Request, res: Response) =>
   }
 })
 
+// Public reservation info — used by the review page app/r/[reservationId]/page.tsx
+// Returns only what the review form needs (no private billing/token data)
+router.get('/api/public/reservation/:reservationId', async (req: Request, res: Response) => {
+  try {
+    const id = (req.params.reservationId as string).trim()
+    const reservation = await prisma.reservation.findUnique({
+      where: { id },
+      include: {
+        cafe: {
+          select: {
+            id: true,
+            name: true,
+            businessName: true,
+            logoUrl: true,
+            packageType: true,
+            isArtisticQrPaid: true,
+            accentColor: true,
+            isActive: true,
+          },
+        },
+        reviewGallery: { select: { id: true } },
+      },
+    })
+
+    if (!reservation || !reservation.cafe.isActive) {
+      return res.status(404).json({ error: 'Reservation not found' })
+    }
+
+    // Don't allow re-submission if already reviewed
+    if (reservation.reviewGallery) {
+      return res.status(409).json({ error: 'Already reviewed' })
+    }
+
+    // Only COMPLETED reservations can receive a review
+    if (reservation.status !== 'COMPLETED') {
+      return res.status(403).json({ error: 'Reservation not completed yet' })
+    }
+
+    const cafe = reservation.cafe
+    return res.json({
+      reservationId  : reservation.id,
+      cafeId         : cafe.id,
+      cafeName       : cafe.businessName || cafe.name,
+      cafeLogoUrl    : cafe.logoUrl ?? null,
+      packageType    : cafe.packageType,
+      isArtisticQrPaid: cafe.isArtisticQrPaid,
+      customerName   : reservation.name || null,
+      customerPhone  : reservation.phone || null,
+      accentColor    : cafe.accentColor,
+    })
+  } catch {
+    return res.status(500).json({ error: 'Server error' })
+  }
+})
+
 export default router

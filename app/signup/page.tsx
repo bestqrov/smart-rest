@@ -27,10 +27,12 @@ const D = {
   page_subtitle:    { ar: 'جاهز في دقيقتين · بدون بطاقة بنكية', fr: 'Prêt en 2 min · Sans carte bancaire', en: 'Ready in 2 min · No credit card', es: 'Listo en 2 min · Sin tarjeta' },
   brand_tagline:    { ar: 'قائمة طعام ذكية لمطعمك', fr: 'Menu numérique intelligent', en: 'Smart digital menu', es: 'Menú digital inteligente' },
   label_lang:       { ar: 'اللغة', fr: 'Langue', en: 'Language', es: 'Idioma' },
+  label_btype:      { ar: 'ما هو نوع منشأتك؟', fr: 'Quel type d\'établissement ?', en: 'What type of establishment?', es: '¿Tipo de establecimiento?' },
   label_cafe:       { ar: 'اسم المطعم أو المقهى', fr: 'Nom du restaurant / café', en: 'Restaurant or café name', es: 'Nombre del restaurante / café' },
   label_sub:        { ar: 'رابط المطعم (subdomain)', fr: 'Adresse web (sous-domaine)', en: 'Web address (subdomain)', es: 'Dirección web (subdominio)' },
   label_email:      { ar: 'البريد الإلكتروني', fr: 'Adresse e-mail', en: 'E-mail address', es: 'Correo electrónico' },
   label_country:    { ar: 'الدولة', fr: 'Pays', en: 'Country', es: 'País' },
+  ph_btype:         { ar: 'اختر نوع المنشأة', fr: 'Choisissez un type', en: 'Select a type', es: 'Selecciona un tipo' },
   ph_cafe:          { ar: 'مثال: مقهى النجمة', fr: 'Ex. Café des Étoiles', en: 'E.g. The Golden Star', es: 'Ej. Café La Estrella' },
   ph_sub:           { ar: 'my-cafe', fr: 'mon-cafe', en: 'my-cafe', es: 'mi-cafe' },
   ph_email:         { ar: 'you@gmail.com', fr: 'vous@gmail.com', en: 'you@gmail.com', es: 'tu@gmail.com' },
@@ -80,6 +82,54 @@ const COUNTRIES: { code: string; label: Record<Lang, string> }[] = [
   { code: 'US', label: { ar: 'الولايات المتحدة 🇺🇸',  fr: 'États-Unis 🇺🇸',           en: 'United States 🇺🇸', es: 'Estados Unidos 🇺🇸' } },
 ]
 
+// ── Business types ────────────────────────────────────────────────────────────
+// accountMode values: 'RESTAURANT' (default) | 'TRAITEUR'
+type BusinessType = {
+  value: string        // accountMode value stored in DB
+  icon:  string
+  label: Record<Lang, string>
+  desc:  Record<Lang, string>
+}
+
+const BUSINESS_TYPES: BusinessType[] = [
+  {
+    value: 'RESTAURANT',
+    icon:  '🍽️',
+    label: { ar: 'مطعم',      fr: 'Restaurant',   en: 'Restaurant',  es: 'Restaurante' },
+    desc:  { ar: 'أكل ومأكولات يومية', fr: 'Cuisine du jour', en: 'Daily meals', es: 'Comidas diarias' },
+  },
+  {
+    value: 'CAFE',
+    icon:  '☕',
+    label: { ar: 'مقهى',      fr: 'Café',          en: 'Café',        es: 'Cafetería' },
+    desc:  { ar: 'مشروبات وحلويات', fr: 'Boissons & snacks', en: 'Drinks & snacks', es: 'Bebidas y snacks' },
+  },
+  {
+    value: 'TRAITEUR',
+    icon:  '🎂',
+    label: { ar: 'طراتور',    fr: 'Traiteur',      en: 'Caterer',     es: 'Catering' },
+    desc:  { ar: 'تنظيم مناسبات وحفلات', fr: 'Événements & buffets', en: 'Events & catering', es: 'Eventos y catering' },
+  },
+  {
+    value: 'PASTRY',
+    icon:  '🧁',
+    label: { ar: 'حلويات',    fr: 'Pâtisserie',    en: 'Bakery',      es: 'Pastelería' },
+    desc:  { ar: 'حلويات ومعجنات', fr: 'Gâteaux & viennoiseries', en: 'Cakes & pastries', es: 'Pasteles y repostería' },
+  },
+  {
+    value: 'FOOD_TRUCK',
+    icon:  '🚚',
+    label: { ar: 'فود تراك',  fr: 'Food Truck',    en: 'Food Truck',  es: 'Food Truck' },
+    desc:  { ar: 'مطعم متنقل', fr: 'Restaurant mobile', en: 'Mobile restaurant', es: 'Restaurante móvil' },
+  },
+  {
+    value: 'HOTEL',
+    icon:  '🏨',
+    label: { ar: 'فندق',      fr: 'Hôtel',         en: 'Hotel',       es: 'Hotel' },
+    desc:  { ar: 'خدمة الغرف والمطعم', fr: 'Room service & restaurant', en: 'Room service & dining', es: 'Room service y restaurante' },
+  },
+]
+
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 
 function toSlug(name: string): string {
@@ -111,6 +161,7 @@ function SignupInner() {
 
   const [logoUrl, setLogoUrl] = useState('/assets/logo.png')
   const [form, setForm]   = useState({ cafeName: '', subdomain: '', email: '', country: 'MA' })
+  const [businessType, setBusinessType] = useState<string>('')
   const [manualSub, setManualSub] = useState(false)
   const [loading, setLoading]     = useState(false)
   const [error,   setError]       = useState<string | null>(null)
@@ -164,6 +215,10 @@ function SignupInner() {
     e.preventDefault()
     setError(null)
 
+    if (!businessType) {
+      setError(lang === 'ar' ? 'يرجى اختيار نوع المنشأة' : lang === 'fr' ? 'Choisissez le type d\'établissement' : 'Please select your establishment type')
+      return
+    }
     if (!form.cafeName.trim() || !form.subdomain.trim() || !form.email.trim()) {
       setError(tx('err_fields', lang)); return
     }
@@ -179,7 +234,7 @@ function SignupInner() {
       const res  = await fetch('/api/auth/magic-send', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ ...form, lang })
+        body:    JSON.stringify({ ...form, businessType, lang })
       })
       const data = await res.json()
       if (!res.ok) {
@@ -275,9 +330,57 @@ function SignupInner() {
             </div>
           </div>
 
+          {/* Business type selector */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-3">
+              {tx('label_btype', lang)}
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              {BUSINESS_TYPES.map((bt) => {
+                const selected = businessType === bt.value
+                return (
+                  <button
+                    key={bt.value}
+                    type="button"
+                    onClick={() => { setBusinessType(bt.value); setError(null) }}
+                    className={`flex flex-col items-center gap-1 p-3 rounded-xl border-2 transition-all text-center ${
+                      selected
+                        ? 'border-amber-400 bg-amber-50 shadow-sm shadow-amber-100'
+                        : 'border-gray-200 hover:border-gray-300 bg-white'
+                    }`}
+                  >
+                    <span className="text-2xl leading-none">{bt.icon}</span>
+                    <span className={`text-xs font-bold leading-tight ${selected ? 'text-amber-700' : 'text-gray-700'}`}>
+                      {bt.label[lang]}
+                    </span>
+                    <span className={`text-[10px] leading-tight hidden sm:block ${selected ? 'text-amber-500' : 'text-gray-400'}`}>
+                      {bt.desc[lang]}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+            {/* Traiteur highlight banner */}
+            {businessType === 'TRAITEUR' && (
+              <div className="mt-3 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl px-4 py-3 text-xs text-amber-800 leading-relaxed">
+                🎉{' '}
+                {lang === 'ar'
+                  ? 'ستحصل على Smart Traîteur — لوحة تحكم متكاملة لإدارة الحجوزات والفعاليات والقوائم بشكل احترافي.'
+                  : lang === 'fr'
+                  ? 'Vous accéderez à Smart Traiteur — tableau de bord complet pour gérer vos événements, réservations et menus.'
+                  : 'You\'ll get Smart Caterer — a full dashboard to manage your events, bookings and menus professionally.'}
+              </div>
+            )}
+          </div>
+
           {/* Cafe name */}
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1.5">{tx('label_cafe', lang)}</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+              {businessType === 'TRAITEUR'
+                ? (lang === 'ar' ? 'اسم شركة الطراتور' : lang === 'fr' ? 'Nom de votre entreprise traiteur' : 'Catering company name')
+                : tx('label_cafe', lang)
+              }
+            </label>
             <input
               type="text"
               name="cafeName"
