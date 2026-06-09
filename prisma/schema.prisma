@@ -206,6 +206,8 @@ model Cafe {
   packageType         String    @default("Free")
   // $5 one-time upsell for artistic/custom QR code design
   isArtisticQrPaid    Boolean   @default(false)
+  // Protected demo/seed account — never bulk-deleted
+  isDemo              Boolean   @default(false)
 
   // ── Gamification counters (drive certification unlock) ────────────────────
   // Incremented by n8n webhook on every confirmed event/reservation

@@ -49,6 +49,7 @@ interface Tenant {
   inventoryActivationRequested:   boolean
   inventoryActivationRequestedAt: string | null
   _count:           { orders: number }
+  isDemo:           boolean
 }
 
 // Countries that get the $25 maintenance pack by default
@@ -169,6 +170,10 @@ export default function SuperAdminPage() {
   // Quick delete by email
   const [deleteEmail,    setDeleteEmail]    = useState('')
   const [delByEmail,     setDelByEmail]     = useState(false)
+
+  // Bulk select
+  const [selectedIds,    setSelectedIds]    = useState<Set<string>>(new Set())
+  const [bulkDeleting,   setBulkDeleting]   = useState(false)
 
   const secretRef = useRef(secret)
   useEffect(() => { secretRef.current = secret }, [secret])
@@ -376,6 +381,51 @@ export default function SuperAdminPage() {
       setDeleteEmail('')
       loadAll(1)
     } finally { setDelByEmail(false) }
+  }
+
+  // ─── Bulk select helpers ──────────────────────────────────────────────────
+
+  function toggleSelect(id: string, isDemo: boolean) {
+    if (isDemo) return
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  function selectAll() {
+    const eligible = tenants.filter(t => !t.isDemo).map(t => t.id)
+    setSelectedIds(new Set(eligible))
+  }
+
+  function clearSelection() { setSelectedIds(new Set()) }
+
+  async function bulkDelete() {
+    if (selectedIds.size === 0) return
+    if (!confirm(`⚠️ سيتم حذف ${selectedIds.size} حساب نهائياً.\nالحسابات المحمية (Demo) ستُتخطى تلقائياً.\n\nهل أنت متأكد؟`)) return
+    setBulkDeleting(true)
+    try {
+      const res  = await fetch('/api/superadmin/tenants/bulk-delete', {
+        method:  'POST',
+        headers: superHeader(),
+        body:    JSON.stringify({ ids: Array.from(selectedIds) }),
+      })
+      const data = await res.json()
+      if (!res.ok) { alert(data.error ?? 'فشل الحذف'); return }
+      alert(`✅ تم الحذف\n• محذوف: ${data.deleted?.length ?? 0}\n• محمي (Demo): ${data.skipped?.length ?? 0}\n• فشل: ${data.failed?.length ?? 0}`)
+      setSelectedIds(new Set())
+      loadAll(1)
+    } finally { setBulkDeleting(false) }
+  }
+
+  async function toggleDemoFlag(id: string, current: boolean) {
+    await fetch(`/api/superadmin/tenants/${id}/set-demo`, {
+      method:  'PATCH',
+      headers: superHeader(),
+      body:    JSON.stringify({ isDemo: !current }),
+    })
+    setTenants(prev => prev.map(t => t.id === id ? { ...t, isDemo: !current } : t))
   }
 
   // ─── Demo requests ────────────────────────────────────────────────────────
@@ -709,12 +759,41 @@ export default function SuperAdminPage() {
           </button>
         </div>
 
+        {/* Bulk action bar */}
+        {selectedIds.size > 0 && (
+          <div className="sticky top-2 z-20 flex items-center justify-between bg-red-950/90 border border-red-700/60 rounded-2xl px-5 py-3 mb-3 backdrop-blur-sm shadow-xl">
+            <span className="text-red-300 font-bold text-sm">{selectedIds.size} حساب محدد</span>
+            <div className="flex items-center gap-2">
+              <button onClick={clearSelection} className="text-xs text-gray-400 hover:text-white px-3 py-1.5 rounded-lg border border-gray-700 hover:border-gray-500 transition-colors">
+                إلغاء التحديد
+              </button>
+              <button
+                onClick={bulkDelete}
+                disabled={bulkDeleting}
+                className="flex items-center gap-1.5 bg-red-700 hover:bg-red-600 disabled:opacity-40 text-white font-bold px-4 py-1.5 rounded-xl transition-colors text-sm"
+              >
+                {bulkDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                حذف {selectedIds.size} حساب
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Tenants table */}
         <div className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-800 text-gray-500 text-xs">
+                  <th className="px-3 py-3 text-center w-10">
+                    <input
+                      type="checkbox"
+                      className="accent-emerald-500 w-4 h-4 cursor-pointer"
+                      checked={tenants.filter(t => !t.isDemo).length > 0 && tenants.filter(t => !t.isDemo).every(t => selectedIds.has(t.id))}
+                      onChange={e => e.target.checked ? selectAll() : clearSelection()}
+                      title="تحديد الكل"
+                    />
+                  </th>
                   <th className="px-4 py-3 text-right font-medium">المقهى</th>
                   <th className="px-4 py-3 text-right font-medium">المنطقة</th>
                   <th className="px-4 py-3 text-right font-medium">الحالة</th>
@@ -728,16 +807,29 @@ export default function SuperAdminPage() {
               </thead>
               <tbody className="divide-y divide-gray-800/50">
                 {tenants.map(t => {
-                  const bal  = Number(t.walletBalance)
-                  const days = trialDaysLeft(t.trialEndsAt)
+                  const bal      = Number(t.walletBalance)
+                  const days     = trialDaysLeft(t.trialEndsAt)
+                  const checked  = selectedIds.has(t.id)
                   return (
                     <tr key={t.id}
-                      className="hover:bg-gray-800/30 transition-colors cursor-pointer"
+                      className={`transition-colors cursor-pointer ${checked ? 'bg-red-950/20' : 'hover:bg-gray-800/30'}`}
                       onClick={() => openModal(t)}
                     >
+                      <td className="px-3 py-3 text-center" onClick={e => { e.stopPropagation(); toggleSelect(t.id, t.isDemo) }}>
+                        {t.isDemo
+                          ? <span title="محمي — لا يمكن حذفه" className="text-amber-500 text-base select-none">🛡</span>
+                          : <input
+                              type="checkbox"
+                              className="accent-emerald-500 w-4 h-4 cursor-pointer"
+                              checked={checked}
+                              onChange={() => toggleSelect(t.id, t.isDemo)}
+                            />
+                        }
+                      </td>
                       <td className="px-4 py-3">
                         <div className="font-bold text-white flex items-center gap-2">
                           {t.businessName || t.name}
+                          {t.isDemo && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">Demo</span>}
                           {t.inventoryActivationRequested && !t.isSmartInventoryEnabled && (
                             <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 animate-pulse">
                               <Package className="w-2.5 h-2.5" /> مخزون
@@ -784,6 +876,13 @@ export default function SuperAdminPage() {
                             : <RowBtn icon={<CheckCircle className="w-3 h-3" />} label="تفعيل" color="green" loading={actionId === t.id} onClick={() => reactivate(t.id)} />}
                           <RowBtn icon={<Edit3 className="w-3 h-3" />} label="إعداد" color="blue" loading={false} onClick={() => openModal(t, 'billing')} />
                           <RowBtn icon={<Trash2 className="w-3 h-3" />} label="حذف" color="red" loading={false} onClick={() => setDeleteConfirm(t)} />
+                          <RowBtn
+                            icon={<span className="text-[11px]">{t.isDemo ? '🛡' : '🔓'}</span>}
+                            label={t.isDemo ? 'محمي' : 'حماية'}
+                            color={t.isDemo ? 'amber' : 'blue'}
+                            loading={false}
+                            onClick={() => toggleDemoFlag(t.id, t.isDemo)}
+                          />
                           {/* Smart Inventory approval button — shows only when requested */}
                           {t.inventoryActivationRequested && !t.isSmartInventoryEnabled && (
                             <RowBtn

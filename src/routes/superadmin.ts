@@ -486,6 +486,7 @@ router.get('/api/superadmin/tenants/rich', requireSuperAdmin, async (req: Reques
           isSmartInventoryEnabled: true,
           inventoryActivationRequested: true,
           inventoryActivationRequestedAt: true,
+          isDemo: true,
           _count: { select: { orders: true } }
         }
       })
@@ -748,6 +749,75 @@ router.delete('/api/superadmin/tenants/:id', requireSuperAdmin, async (req: Requ
     logger.error({ msg: 'DELETE tenant error', cafeId: id, err })
     return res.status(500).json({ error: 'Failed to delete tenant' })
   }
+})
+
+// ─── POST /api/superadmin/tenants/bulk-delete ─────────────────────────────────
+// Bulk-deletes multiple cafes. Skips any cafe with isDemo=true (protected).
+
+router.post('/api/superadmin/tenants/bulk-delete', requireSuperAdmin, async (req: Request, res: Response) => {
+  const { ids } = req.body as { ids?: string[] }
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return res.status(400).json({ error: 'ids[] required' })
+  }
+
+  const cafes = await prisma.cafe.findMany({
+    where: { id: { in: ids } },
+    select: { id: true, subdomain: true, isDemo: true },
+  })
+
+  const toDelete = cafes.filter(c => !c.isDemo)
+  const skipped  = cafes.filter(c =>  c.isDemo).map(c => c.id)
+
+  const deleted: string[] = []
+  const failed:  string[] = []
+
+  for (const cafe of toDelete) {
+    try {
+      const id = cafe.id
+      await prisma.walletLog.deleteMany({ where: { cafeId: id } })
+      await prisma.fraudAlert.deleteMany({ where: { cafeId: id } })
+      await prisma.feedback.deleteMany({ where: { cafeId: id } })
+      await prisma.qrScan.deleteMany({ where: { cafeId: id } })
+      await prisma.printerLog.deleteMany({ where: { cafeId: id } })
+      await prisma.onlinePayment.deleteMany({ where: { cafeId: id } })
+      await prisma.paymentRequest.deleteMany({ where: { cafeId: id } })
+      await prisma.billRequest.deleteMany({ where: { cafeId: id } })
+      await prisma.waiterCall.deleteMany({ where: { cafeId: id } })
+      await prisma.reservation.deleteMany({ where: { cafeId: id } })
+      await prisma.expense.deleteMany({ where: { cafeId: id } })
+      await prisma.stockItem.deleteMany({ where: { cafeId: id } })
+      await prisma.recipe.deleteMany({ where: { cafeId: id } })
+      const orderIds = (await prisma.order.findMany({ where: { cafeId: id }, select: { id: true } })).map(o => o.id)
+      if (orderIds.length > 0) await prisma.orderItem.deleteMany({ where: { orderId: { in: orderIds } } })
+      await prisma.order.deleteMany({ where: { cafeId: id } })
+      await prisma.cashierShift.deleteMany({ where: { cafeId: id } })
+      await prisma.waiterShift.deleteMany({ where: { cafeId: id } })
+      await prisma.waiterQRToken.deleteMany({ where: { cafeId: id } })
+      await prisma.billingTier.deleteMany({ where: { cafeId: id } })
+      await prisma.staff.deleteMany({ where: { cafeId: id } })
+      await prisma.seat.deleteMany({ where: { cafeId: id } })
+      await prisma.table.deleteMany({ where: { cafeId: id } })
+      const catIds = (await prisma.category.findMany({ where: { cafeId: id }, select: { id: true } })).map(c => c.id)
+      if (catIds.length > 0) await prisma.product.deleteMany({ where: { categoryId: { in: catIds } } })
+      await prisma.category.deleteMany({ where: { cafeId: id } })
+      await prisma.user.deleteMany({ where: { cafeId: id } })
+      await prisma.cafe.delete({ where: { id } })
+      deleted.push(id)
+      logger.warn({ msg: 'SuperAdmin bulk-deleted cafe', cafeId: id, subdomain: cafe.subdomain })
+    } catch (err) {
+      logger.error({ msg: 'bulk-delete failed for cafe', cafeId: cafe.id, err })
+      failed.push(cafe.id)
+    }
+  }
+
+  return res.json({ deleted, skipped, failed })
+})
+
+// ─── PATCH /api/superadmin/tenants/:id/set-demo ───────────────────────────────
+router.patch('/api/superadmin/tenants/:id/set-demo', requireSuperAdmin, async (req: Request, res: Response) => {
+  const { isDemo } = req.body as { isDemo: boolean }
+  await prisma.cafe.update({ where: { id: String(req.params['id']) }, data: { isDemo: !!isDemo } })
+  return res.json({ ok: true })
 })
 
 // ─── DELETE /api/superadmin/users/by-email — purge test account by email ──────
