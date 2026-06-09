@@ -750,6 +750,78 @@ router.delete('/api/superadmin/tenants/:id', requireSuperAdmin, async (req: Requ
   }
 })
 
+// ─── DELETE /api/superadmin/users/by-email — purge test account by email ──────
+// Deletes: verificationToken + User + their Cafe (full cascade) by email address.
+// Used to reset test registrations without touching the DB directly.
+
+router.delete('/api/superadmin/users/by-email', requireSuperAdmin, async (req: Request, res: Response) => {
+  const email = ((req.query['email'] as string) ?? '').trim().toLowerCase()
+  if (!email) return res.status(400).json({ error: 'email query param required' })
+
+  try {
+    // 1. Delete any pending magic-link tokens for this email
+    const { count: tokensDeleted } = await prisma.verificationToken.deleteMany({ where: { email } })
+
+    // 2. Find the user
+    const user = await prisma.user.findUnique({
+      where: { email },
+      select: { id: true, cafeId: true }
+    })
+
+    if (!user) {
+      return res.json({ message: 'No user found — tokens cleared', tokensDeleted, userDeleted: false })
+    }
+
+    const cafeId = user.cafeId
+
+    // 3. If user has a cafe, cascade-delete the whole tenant
+    if (cafeId) {
+      // reuse the same cascade order as DELETE /api/superadmin/tenants/:id
+      await prisma.walletLog.deleteMany({ where: { cafeId } })
+      await prisma.fraudAlert.deleteMany({ where: { cafeId } })
+      await prisma.feedback.deleteMany({ where: { cafeId } })
+      await prisma.qrScan.deleteMany({ where: { cafeId } })
+      await prisma.printerLog.deleteMany({ where: { cafeId } })
+      await prisma.onlinePayment.deleteMany({ where: { cafeId } })
+      await prisma.paymentRequest.deleteMany({ where: { cafeId } })
+      await prisma.billRequest.deleteMany({ where: { cafeId } })
+      await prisma.waiterCall.deleteMany({ where: { cafeId } })
+      await prisma.systemNotification.deleteMany({ where: { cafeId } })
+      await prisma.reviewGallery.deleteMany({ where: { cafeId } })
+      await prisma.reservation.deleteMany({ where: { cafeId } })
+      await prisma.expense.deleteMany({ where: { cafeId } })
+      await prisma.purchaseOrder.deleteMany({ where: { cafeId } })
+      await prisma.inventorySupplier.deleteMany({ where: { cafeId } })
+      await prisma.stockItem.deleteMany({ where: { cafeId } })
+      await prisma.recipe.deleteMany({ where: { cafeId } })
+      const orderIds = (await prisma.order.findMany({ where: { cafeId }, select: { id: true } })).map(o => o.id)
+      if (orderIds.length) await prisma.orderItem.deleteMany({ where: { orderId: { in: orderIds } } })
+      await prisma.order.deleteMany({ where: { cafeId } })
+      await prisma.cashierShift.deleteMany({ where: { cafeId } })
+      await prisma.waiterShift.deleteMany({ where: { cafeId } })
+      await prisma.waiterQRToken.deleteMany({ where: { cafeId } })
+      await prisma.billingTier.deleteMany({ where: { cafeId } })
+      await prisma.staff.deleteMany({ where: { cafeId } })
+      await prisma.seat.deleteMany({ where: { cafeId } })
+      await prisma.table.deleteMany({ where: { cafeId } })
+      const catIds = (await prisma.category.findMany({ where: { cafeId }, select: { id: true } })).map(c => c.id)
+      if (catIds.length) await prisma.product.deleteMany({ where: { categoryId: { in: catIds } } })
+      await prisma.category.deleteMany({ where: { cafeId } })
+      await prisma.user.deleteMany({ where: { cafeId } })
+      await prisma.cafe.delete({ where: { id: cafeId } })
+    } else {
+      // User with no cafe — just delete the user record
+      await prisma.user.delete({ where: { id: user.id } })
+    }
+
+    logger.warn({ msg: 'SuperAdmin purged test account by email', email, cafeId })
+    return res.json({ success: true, email, tokensDeleted, cafeId: cafeId ?? null })
+  } catch (err) {
+    logger.error({ msg: 'delete-by-email error', email, err })
+    return res.status(500).json({ error: 'Server error' })
+  }
+})
+
 // ─── POST /api/superadmin/tenants/:id/impersonate ─────────────────────────────
 // Generate a short-lived 1h JWT allowing the superadmin to log in as any
 // restaurant admin. The token is flagged with `impersonated: true` so audit

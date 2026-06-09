@@ -166,6 +166,10 @@ export default function SuperAdminPage() {
   const [demoTab,        setDemoTab]        = useState<'pending'|'activated'|'rejected'>('pending')
   const [activatingDemo, setActivatingDemo] = useState<string | null>(null)
 
+  // Quick delete by email
+  const [deleteEmail,    setDeleteEmail]    = useState('')
+  const [delByEmail,     setDelByEmail]     = useState(false)
+
   const secretRef = useRef(secret)
   useEffect(() => { secretRef.current = secret }, [secret])
 
@@ -355,6 +359,25 @@ export default function SuperAdminPage() {
     } finally { setMF('loading', false) }
   }
 
+  // ─── Quick delete by email ────────────────────────────────────────────────
+
+  async function deleteByEmail() {
+    const em = deleteEmail.trim().toLowerCase()
+    if (!em) return
+    if (!confirm(`⚠️ حذف كامل لحساب:\n${em}\n\nسيُحذف المستخدم + المقهى + كل البيانات. هل أنت متأكد؟`)) return
+    setDelByEmail(true)
+    try {
+      const res = await fetch(`/api/superadmin/users/by-email?email=${encodeURIComponent(em)}`, {
+        method: 'DELETE', headers: superHeader()
+      })
+      const data = await res.json()
+      if (!res.ok) { alert(data.error ?? 'فشل الحذف'); return }
+      alert(`✅ تم الحذف\nالإيميل: ${em}\nالمقهى: ${data.cafeId ?? 'لا يوجد'}`)
+      setDeleteEmail('')
+      loadAll(1)
+    } finally { setDelByEmail(false) }
+  }
+
   // ─── Demo requests ────────────────────────────────────────────────────────
 
   async function loadDemoRequests(status: string) {
@@ -464,6 +487,31 @@ export default function SuperAdminPage() {
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             </button>
           </div>
+        </div>
+
+        {/* ── Quick Delete by Email ──────────────────────────────────────────── */}
+        <div className="bg-red-950/20 border border-red-900/40 rounded-2xl px-5 py-4">
+          <p className="text-red-400 text-xs font-bold uppercase tracking-widest mb-3">🗑️ حذف حساب تجريبي بالإيميل</p>
+          <div className="flex gap-2">
+            <input
+              type="email"
+              value={deleteEmail}
+              onChange={e => setDeleteEmail(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && deleteByEmail()}
+              placeholder="you@gmail.com"
+              dir="ltr"
+              className="flex-1 bg-gray-900 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-red-500 transition-colors"
+            />
+            <button
+              onClick={deleteByEmail}
+              disabled={delByEmail || !deleteEmail.trim()}
+              className="flex items-center gap-2 bg-red-700 hover:bg-red-600 disabled:opacity-40 text-white font-bold px-4 py-2.5 rounded-xl transition-colors text-sm whitespace-nowrap"
+            >
+              {delByEmail ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+              حذف الكامل
+            </button>
+          </div>
+          <p className="text-gray-700 text-xs mt-2">يحذف: User + Cafe + كل البيانات + tokens المعلقة</p>
         </div>
 
         {/* ── Demo Requests Panel ────────────────────────────────────────────── */}
