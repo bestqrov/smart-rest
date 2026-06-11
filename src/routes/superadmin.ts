@@ -487,7 +487,7 @@ router.get('/api/superadmin/tenants/rich', requireSuperAdmin, async (req: Reques
           inventoryActivationRequested: true,
           inventoryActivationRequestedAt: true,
           isDemo: true,
-          _count: { select: { orders: true } }
+          _count: { select: { orders: true, tables: true, staff: true, categories: true } }
         }
       })
     ])
@@ -934,6 +934,32 @@ router.post('/api/superadmin/tenants/:id/impersonate', requireSuperAdmin, async 
     return res.json({ token, expiresIn: '1h', cafe: { id, businessName: cafe.businessName, subdomain: cafe.subdomain } })
   } catch (err) {
     logger.error({ msg: 'POST impersonate error', err })
+    return res.status(500).json({ error: 'Failed' })
+  }
+})
+
+// ─── GET /api/superadmin/revenue-history ──────────────────────────────────────
+router.get('/api/superadmin/revenue-history', requireSuperAdmin, async (_req: Request, res: Response) => {
+  try {
+    const months: { month: string; value: number }[] = []
+    const now = new Date()
+
+    for (let i = 5; i >= 0; i--) {
+      const start = new Date(now.getFullYear(), now.getMonth() - i, 1)
+      const end   = new Date(now.getFullYear(), now.getMonth() - i + 1, 1)
+      const agg   = await prisma.order.aggregate({
+        _sum: { totalCommission: true },
+        where: { isPaid: true, createdAt: { gte: start, lt: end } }
+      })
+      months.push({
+        month: start.toLocaleDateString('fr-MA', { month: 'short', year: '2-digit' }),
+        value: parseFloat((agg._sum.totalCommission ?? 0).toFixed(2))
+      })
+    }
+
+    return res.json(months)
+  } catch (err) {
+    logger.error({ msg: 'GET revenue-history error', err })
     return res.status(500).json({ error: 'Failed' })
   }
 })
