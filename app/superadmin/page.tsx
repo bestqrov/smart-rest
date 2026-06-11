@@ -2,55 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
-import {
-  Shield, RefreshCw, Loader2, Filter,
-  TrendingUp, Users, AlertTriangle, CheckCircle,
-  Wallet, Globe, Ban, Edit3, Trash2,
-  ChevronDown, ChevronUp, X, Play, CalendarPlus,
-  Coffee, Zap, BarChart3, Sandwich, Package
-} from 'lucide-react'
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-interface Overview {
-  totalCafes:       number
-  activeCafes:      number
-  suspendedCafes:   number
-  trialCafes:       number
-  economyCafes:     number
-  advancedCafes:    number
-  totalAccruedDebt: number
-  totalRevenue:     number
-  mrr:              number
-}
-
-interface Tenant {
-  id:               string
-  name:             string
-  businessName:     string
-  subdomain:        string
-  country:          string
-  currency:         string
-  isActive:         boolean
-  walletBalance:    number
-  billingStatus:    string
-  trialEndsAt:      string | null
-  hasExtendedTrial: boolean
-  subscriptionTier: string | null
-  monthlyFee:       number | null
-  coffeeRefPrice:   number | null
-  sandwichRefPrice: number | null
-  weeklyOrderCount: number | null
-  billingCycle:     number | null
-  maintenancePack:  boolean
-  maintenanceFee:   number | null
-  nextBillingDate:  string | null
-  isSmartInventoryEnabled:        boolean
-  inventoryActivationRequested:   boolean
-  inventoryActivationRequestedAt: string | null
-  _count:           { orders: number }
-  isDemo:           boolean
-}
+import { Loader2, Trash2, X, BarChart3, CalendarPlus, Zap, Coffee } from 'lucide-react'
+import type { Overview, Tenant, MrrData, ModalState, Theme } from './components/types'
+import ThemeA from './components/themes/ThemeA'
+import ThemeB from './components/themes/ThemeB'
+import ThemeC from './components/themes/ThemeC'
 
 // Countries that get the $25 maintenance pack by default
 const MAINTENANCE_COUNTRIES = ['SA','AE','KW','QA','BH','OM','FR','ES','BE','DE','IT','NL','PT','GB','US']
@@ -60,22 +16,6 @@ function defaultMaintenance(country: string) {
 }
 
 type ModalTab = 'billing' | 'trial' | 'activate'
-
-interface ModalState {
-  tenant:          Tenant
-  tab:             ModalTab
-  loading:         boolean
-  error:           string
-  coffee:          string
-  sandwich:        string
-  days:            string
-  fee:             string
-  tier:            string
-  billingCycle:    number
-  maintenance:     boolean
-  maintenanceFee:  string
-  preview:  { tier: string; monthlyFee: number; weeklyOrderCount: number } | null
-}
 
 // ─── Commission tier lookup (mirrors billing.ts) ──────────────────────────────
 
@@ -149,7 +89,7 @@ export default function SuperAdminPage() {
   const [sweeping, setSweeping] = useState(false)
   const [sweepMsg, setSweepMsg] = useState('')
 
-  const [filterCountry, setFilterCountry] = useState('')
+  const [filterCountry, setFilterCountry] = useState('MA')
   const [filterStatus,  setFilterStatus]  = useState('')
   const [filterTier,    setFilterTier]    = useState('')
   const [sortBal,       setSortBal]       = useState<'asc' | 'desc'>('asc')
@@ -158,8 +98,22 @@ export default function SuperAdminPage() {
   const [actionId, setActionId] = useState<string | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<Tenant | null>(null)
   const [deleting, setDeleting] = useState(false)
-  const [mrrData,  setMrrData]  = useState<{ totalMRR_USD: number; computedAt: string; byCountry: any[] } | null>(null)
+  const [mrrData,  setMrrData]  = useState<MrrData | null>(null)
   const [mrrOpen,  setMrrOpen]  = useState(false)
+
+  const [revenueHistory, setRevenueHistory] = useState<{ month: string; value: number }[]>([])
+
+  const [theme, setTheme] = useState<Theme>(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('superadmin-theme') as Theme) ?? 'A'
+    }
+    return 'A'
+  })
+
+  function handleSetTheme(t: Theme) {
+    setTheme(t)
+    localStorage.setItem('superadmin-theme', t)
+  }
 
   // Demo requests
   const [demoRequests,   setDemoRequests]   = useState<any[]>([])
@@ -204,6 +158,8 @@ export default function SuperAdminPage() {
         // Fetch MRR breakdown in background
         fetch('/api/superadmin/mrr-breakdown', { headers: superHeader() })
           .then(r => r.ok ? r.json() : null).then(d => d && setMrrData(d))
+        fetch('/api/superadmin/revenue-history', { headers: superHeader() })
+          .then(r => r.ok ? r.json() : null).then(d => d && setRevenueHistory(d))
       }
       if (tenRes.ok) {
         const d = await tenRes.json()
@@ -502,729 +458,59 @@ export default function SuperAdminPage() {
     )
   }
 
-  // ─── Main dashboard ───────────────────────────────────────────────────────
+  // ─── Main dashboard ───────────────────────────────────────────────────────────
 
-  const hasMore = tenants.length < total
+  const themeProps = {
+    overview, tenants, total, mrrData, demoRequests, demoTab, revenueHistory,
+    loading, sweeping, sweepMsg, page, filterCountry, filterStatus, filterTier,
+    sortBal, actionId, selectedIds, bulkDeleting, deleteEmail, delByEmail,
+    demoLoading, activatingDemo, mrrOpen, theme,
+    onLoadAll:          loadAll,
+    onRunSweep:         runSweep,
+    onSuspend:          suspend,
+    onReactivate:       reactivate,
+    onOpenModal:        openModal,
+    onDeleteConfirm:    setDeleteConfirm,
+    onToggleSelect:     toggleSelect,
+    onSelectAll:        selectAll,
+    onClearSelection:   clearSelection,
+    onBulkDelete:       bulkDelete,
+    onToggleDemoFlag:   toggleDemoFlag,
+    onApproveInventory: approveInventory,
+    onDeleteByEmail:    deleteByEmail,
+    onSetDeleteEmail:   setDeleteEmail,
+    onLoadDemoRequests: loadDemoRequests,
+    onActivateDemo:     activateDemo,
+    onRejectDemo:       rejectDemo,
+    onSetDemoTab:       setDemoTab,
+    onSetFilterCountry: setFilterCountry,
+    onSetFilterStatus:  setFilterStatus,
+    onSetFilterTier:    setFilterTier,
+    onSetSortBal:       setSortBal,
+    onSetMrrOpen:       setMrrOpen,
+    onSetTheme:         handleSetTheme,
+    onLoadMore:         () => { const n = page + 1; setPage(n); loadAll(n, true) },
+  }
 
   return (
-    <div className="min-h-screen bg-gray-950 p-4 sm:p-6" dir="rtl">
-      <div className="max-w-7xl mx-auto space-y-5">
+    <>
+      {theme === 'A' && <ThemeA {...themeProps} />}
+      {theme === 'B' && <ThemeB {...themeProps} />}
+      {theme === 'C' && <ThemeC {...themeProps} />}
 
-        {/* Header */}
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div className="flex items-center gap-3">
-            <Image src="/assets/logo.png" alt="Smart Menu" width={36} height={36} className="rounded-xl" />
-            <div>
-              <h1 className="text-white font-extrabold text-xl leading-none">Super Admin</h1>
-              <p className="text-gray-500 text-xs">Smart Resto · لوحة التحكم العليا</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            {sweepMsg && <span className="text-emerald-400 text-xs bg-emerald-950/50 border border-emerald-700 px-3 py-1 rounded-full">{sweepMsg}</span>}
-            <a href="/superadmin/landing"
-              className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 text-gray-200 px-4 py-2 rounded-xl text-sm font-bold transition-colors">
-              <Globe className="w-4 h-4" /> Landing Page
-            </a>
-            <button onClick={runSweep} disabled={sweeping}
-              className="flex items-center gap-2 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white px-4 py-2 rounded-xl text-sm font-bold transition-colors"
-            >
-              {sweeping ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
-              تحليل الاشتراكات
-            </button>
-            <button onClick={() => loadAll(1)} disabled={loading}
-              className="p-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white transition-colors"
-            >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            </button>
-          </div>
-        </div>
-
-        {/* ── Quick Delete by Email ──────────────────────────────────────────── */}
-        <div className="bg-red-950/20 border border-red-900/40 rounded-2xl px-5 py-4">
-          <p className="text-red-400 text-xs font-bold uppercase tracking-widest mb-3">🗑️ حذف حساب تجريبي بالإيميل</p>
-          <div className="flex gap-2">
-            <input
-              type="email"
-              value={deleteEmail}
-              onChange={e => setDeleteEmail(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && deleteByEmail()}
-              placeholder="you@gmail.com"
-              dir="ltr"
-              className="flex-1 bg-gray-900 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-red-500 transition-colors"
-            />
-            <button
-              onClick={deleteByEmail}
-              disabled={delByEmail || !deleteEmail.trim()}
-              className="flex items-center gap-2 bg-red-700 hover:bg-red-600 disabled:opacity-40 text-white font-bold px-4 py-2.5 rounded-xl transition-colors text-sm whitespace-nowrap"
-            >
-              {delByEmail ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-              حذف الكامل
-            </button>
-          </div>
-          <p className="text-gray-700 text-xs mt-2">يحذف: User + Cafe + كل البيانات + tokens المعلقة</p>
-        </div>
-
-        {/* ── Demo Requests Panel ────────────────────────────────────────────── */}
-        <div className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800">
-            <div className="flex items-center gap-2">
-              <CalendarPlus className="w-5 h-5 text-emerald-400" />
-              <h2 className="text-white font-bold">طلبات التجربة المجانية</h2>
-              {demoRequests.filter(d => d.status === 'pending').length > 0 && (
-                <span className="bg-emerald-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
-                  {demoRequests.filter(d => d.status === 'pending').length}
-                </span>
-              )}
-            </div>
-            <div className="flex gap-1">
-              {(['pending','activated','rejected'] as const).map(t => (
-                <button
-                  key={t}
-                  onClick={() => { setDemoTab(t); loadDemoRequests(t) }}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${
-                    demoTab === t
-                      ? 'bg-emerald-600 text-white'
-                      : 'bg-gray-800 text-gray-400 hover:text-white'
-                  }`}
-                >
-                  {{ pending: 'معلق', activated: 'مُفعّل', rejected: 'مرفوض' }[t]}
-                </button>
-              ))}
-              <button
-                onClick={() => loadDemoRequests(demoTab)}
-                className="p-1.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white transition-colors"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${demoLoading ? 'animate-spin' : ''}`} />
-              </button>
-            </div>
-          </div>
-
-          {demoRequests.length === 0 ? (
-            <div className="py-10 text-center text-gray-600 text-sm">
-              {demoLoading ? 'جاري التحميل...' : 'لا توجد طلبات'}
-              {!demoLoading && demoTab === 'pending' && (
-                <button onClick={() => loadDemoRequests('pending')} className="block mx-auto mt-2 text-emerald-500 text-xs underline">
-                  تحديث
-                </button>
-              )}
-            </div>
-          ) : (
-            <div className="divide-y divide-gray-800">
-              {demoRequests.map(d => (
-                <div key={d.id} className="flex items-start justify-between px-5 py-4 hover:bg-gray-800/40 transition-colors flex-wrap gap-3">
-                  <div className="space-y-0.5 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-white font-bold text-sm">{d.businessName}</span>
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-gray-800 text-gray-400">
-                        {{ RESTAURANT:'🍽️ مطعم', CAFE:'☕ مقهى', TRAITEUR:'🎂 طراتور', PASTRY:'🧁 حلويات', FOOD_TRUCK:'🚚 فود تراك', HOTEL:'🏨 فندق' }[d.businessType] ?? d.businessType}
-                      </span>
-                    </div>
-                    <p className="text-gray-400 text-xs">{d.ownerName} · {d.city} · {d.country}</p>
-                    <div className="flex items-center gap-3 text-xs text-gray-500">
-                      <span>{d.phone}</span>
-                      <span>{d.email}</span>
-                    </div>
-                    {d.notes && <p className="text-zinc-600 text-xs italic">{d.notes}</p>}
-                    <p className="text-gray-700 text-xs">{new Date(d.createdAt).toLocaleString('ar-MA')}</p>
-                  </div>
-                  {d.status === 'pending' && (
-                    <div className="flex gap-2 shrink-0">
-                      <button
-                        onClick={() => activateDemo(d.id)}
-                        disabled={activatingDemo === d.id}
-                        className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-bold px-3 py-2 rounded-xl transition-colors"
-                      >
-                        {activatingDemo === d.id
-                          ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          : <CheckCircle className="w-3.5 h-3.5" />}
-                        تفعيل 7 أيام
-                      </button>
-                      <button
-                        onClick={() => rejectDemo(d.id)}
-                        className="flex items-center gap-1.5 bg-red-900/50 hover:bg-red-800 text-red-300 text-xs font-bold px-3 py-2 rounded-xl transition-colors"
-                      >
-                        <X className="w-3.5 h-3.5" /> رفض
-                      </button>
-                    </div>
-                  )}
-                  {d.status === 'activated' && (
-                    <span className="text-emerald-400 text-xs font-bold flex items-center gap-1">
-                      <CheckCircle className="w-4 h-4" /> مُفعّل
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* KPI cards */}
-        {overview && (
-          <>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-              {[
-                { icon: Users,         label: 'إجمالي المقاهي', val: overview.totalCafes,     color: 'text-blue-400',    bg: 'border-blue-800/50'    },
-                { icon: CheckCircle,   label: 'نشطة',            val: overview.activeCafes,    color: 'text-emerald-400', bg: 'border-emerald-800/50' },
-                { icon: AlertTriangle, label: 'موقوفة',           val: overview.suspendedCafes, color: 'text-red-400',     bg: 'border-red-800/50'     },
-                { icon: Globe,         label: 'تجريبية',          val: overview.trialCafes,     color: 'text-amber-400',   bg: 'border-amber-800/50'   },
-              ].map((k, i) => (
-                <div key={i} className={`bg-gray-900 rounded-2xl p-4 border ${k.bg}`}>
-                  <k.icon className={`w-4 h-4 mb-2 ${k.color}`} />
-                  <div className="text-xs text-gray-500 mb-0.5">{k.label}</div>
-                  <div className={`text-2xl font-extrabold ${k.color}`}>{k.val}</div>
-                </div>
-              ))}
-
-              {/* MRR Card — USD + breakdown button */}
-              <div className="bg-violet-950/40 border border-violet-800/50 rounded-2xl p-4 relative">
-                <div className="flex items-center justify-between mb-2">
-                  <TrendingUp className="w-4 h-4 text-violet-400" />
-                  <button onClick={() => setMrrOpen(true)}
-                    title="Breakdown par pays"
-                    className="w-5 h-5 rounded-full bg-violet-900/60 hover:bg-violet-700 flex items-center justify-center text-violet-400 hover:text-white transition-colors text-[10px] font-extrabold">
-                    i
-                  </button>
-                </div>
-                <div className="text-xs text-gray-500 mb-0.5">MRR المتوقع</div>
-                {mrrData ? (
-                  <div className="text-2xl font-extrabold text-violet-400">
-                    ${mrrData.totalMRR_USD.toFixed(0)}
-                    <span className="text-xs text-gray-500 font-normal ml-1">USD/mois</span>
-                  </div>
-                ) : (
-                  <div className="text-2xl font-extrabold text-violet-400 animate-pulse">…</div>
-                )}
-                {mrrData && (
-                  <p className="text-[10px] text-gray-600 mt-1">
-                    {new Date(mrrData.computedAt).toLocaleDateString()}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* Subscription tier split */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-sky-950/40 border border-sky-800 rounded-2xl p-4 flex items-center gap-4">
-                <Coffee className="w-9 h-9 text-sky-400 flex-shrink-0" />
-                <div>
-                  <p className="text-xs text-sky-400 font-bold uppercase tracking-wide">الشريحة الاقتصادية</p>
-                  <p className="text-4xl font-extrabold text-white">{overview.economyCafes}</p>
-                  <p className="text-xs text-sky-300/60 mt-0.5">{"< 50 طلبية / أسبوع"}</p>
-                </div>
-              </div>
-              <div className="bg-violet-950/40 border border-violet-800 rounded-2xl p-4 flex items-center gap-4">
-                <Zap className="w-9 h-9 text-violet-400 flex-shrink-0" />
-                <div>
-                  <p className="text-xs text-violet-400 font-bold uppercase tracking-wide">الشريحة المتقدمة</p>
-                  <p className="text-4xl font-extrabold text-white">{overview.advancedCafes}</p>
-                  <p className="text-xs text-violet-300/60 mt-0.5">{"≥ 50 طلبية / أسبوع"}</p>
-                </div>
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* Filters */}
-        <div className="bg-gray-900 rounded-2xl p-4 border border-gray-800 flex flex-wrap gap-3 items-end">
-          <FSelect label="الدولة" value={filterCountry} onChange={setFilterCountry}>
-            <option value="">الكل</option>
-            <option value="MA">المغرب 🇲🇦</option>
-            <option value="SA">السعودية 🇸🇦</option>
-            <option value="AE">الإمارات 🇦🇪</option>
-          </FSelect>
-          <FSelect label="الحالة" value={filterStatus} onChange={setFilterStatus}>
-            <option value="">الكل</option>
-            <option value="GRACE_PERIOD">تجريبي</option>
-            <option value="COLLECTING_DEBT">نشط</option>
-            <option value="SUSPENDED">موقوف</option>
-          </FSelect>
-          <FSelect label="الشريحة" value={filterTier} onChange={setFilterTier}>
-            <option value="">الكل</option>
-            <option value="ECONOMY">اقتصادي</option>
-            <option value="ADVANCED">متقدم</option>
-          </FSelect>
-          <div>
-            <p className="text-xs text-gray-500 mb-1">الرصيد</p>
-            <button onClick={() => setSortBal(s => s === 'asc' ? 'desc' : 'asc')}
-              className="flex items-center gap-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white"
-            >
-              {sortBal === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-              {sortBal === 'asc' ? 'الأقل أولاً' : 'الأعلى أولاً'}
-            </button>
-          </div>
-          <button onClick={() => { setPage(1); loadAll(1) }}
-            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors"
-          >
-            <Filter className="w-4 h-4" /> تصفية
-          </button>
-        </div>
-
-        {/* Bulk action bar */}
-        {selectedIds.size > 0 && (
-          <div className="sticky top-2 z-20 flex items-center justify-between bg-red-950/90 border border-red-700/60 rounded-2xl px-5 py-3 mb-3 backdrop-blur-sm shadow-xl">
-            <span className="text-red-300 font-bold text-sm">{selectedIds.size} حساب محدد</span>
-            <div className="flex items-center gap-2">
-              <button onClick={clearSelection} className="text-xs text-gray-400 hover:text-white px-3 py-1.5 rounded-lg border border-gray-700 hover:border-gray-500 transition-colors">
-                إلغاء التحديد
-              </button>
-              <button
-                onClick={bulkDelete}
-                disabled={bulkDeleting}
-                className="flex items-center gap-1.5 bg-red-700 hover:bg-red-600 disabled:opacity-40 text-white font-bold px-4 py-1.5 rounded-xl transition-colors text-sm"
-              >
-                {bulkDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                حذف {selectedIds.size} حساب
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Tenants table */}
-        <div className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-800 text-gray-500 text-xs">
-                  <th className="px-3 py-3 text-center w-10">
-                    <input
-                      type="checkbox"
-                      className="accent-emerald-500 w-4 h-4 cursor-pointer"
-                      checked={tenants.filter(t => !t.isDemo).length > 0 && tenants.filter(t => !t.isDemo).every(t => selectedIds.has(t.id))}
-                      onChange={e => e.target.checked ? selectAll() : clearSelection()}
-                      title="تحديد الكل"
-                    />
-                  </th>
-                  <th className="px-4 py-3 text-right font-medium">المقهى</th>
-                  <th className="px-4 py-3 text-right font-medium">المنطقة</th>
-                  <th className="px-4 py-3 text-right font-medium">الحالة</th>
-                  <th className="px-4 py-3 text-center font-medium">التجربة</th>
-                  <th className="px-4 py-3 text-center font-medium">طلبات / أسبوع</th>
-                  <th className="px-4 py-3 text-right font-medium">الشريحة</th>
-                  <th className="px-4 py-3 text-right font-medium">الاشتراك / شهر</th>
-                  <th className="px-4 py-3 text-right font-medium">الرصيد</th>
-                  <th className="px-4 py-3 text-right font-medium">إجراءات</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-800/50">
-                {tenants.map(t => {
-                  const bal      = Number(t.walletBalance)
-                  const days     = trialDaysLeft(t.trialEndsAt)
-                  const checked  = selectedIds.has(t.id)
-                  return (
-                    <tr key={t.id}
-                      className={`transition-colors cursor-pointer ${checked ? 'bg-red-950/20' : 'hover:bg-gray-800/30'}`}
-                      onClick={() => openModal(t)}
-                    >
-                      <td className="px-3 py-3 text-center" onClick={e => { e.stopPropagation(); toggleSelect(t.id, t.isDemo) }}>
-                        {t.isDemo
-                          ? <span title="محمي — لا يمكن حذفه" className="text-amber-500 text-base select-none">🛡</span>
-                          : <input
-                              type="checkbox"
-                              className="accent-emerald-500 w-4 h-4 cursor-pointer"
-                              checked={checked}
-                              onChange={() => toggleSelect(t.id, t.isDemo)}
-                            />
-                        }
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="font-bold text-white flex items-center gap-2">
-                          {t.businessName || t.name}
-                          {t.isDemo && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">Demo</span>}
-                          {t.inventoryActivationRequested && !t.isSmartInventoryEnabled && (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 animate-pulse">
-                              <Package className="w-2.5 h-2.5" /> مخزون
-                            </span>
-                          )}
-                          {t.isSmartInventoryEnabled && (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                              <Package className="w-2.5 h-2.5" /> ✓
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-gray-500 text-xs">{t.subdomain}</div>
-                      </td>
-                      <td className="px-4 py-3 text-gray-400 text-xs">{t.country}</td>
-                      <td className="px-4 py-3">
-                        <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${BILLING_COLORS[t.billingStatus] ?? 'bg-gray-700 text-gray-300'}`}>
-                          {BILLING_LABELS[t.billingStatus] ?? t.billingStatus}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-center text-xs">
-                        {days == null ? <span className="text-gray-600">—</span>
-                          : days > 0  ? <span className="text-amber-400">{days} يوم</span>
-                          :             <span className="text-red-400">انتهت</span>}
-                        {t.hasExtendedTrial && <span className="mr-1 text-sky-400 text-[10px]">↗ممدد</span>}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <span className="font-bold text-white">{t.weeklyOrderCount ?? t._count.orders}</span>
-                      </td>
-                      <td className="px-4 py-3">
-                        {t.subscriptionTier
-                          ? <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${TIER_COLORS[t.subscriptionTier] ?? 'bg-gray-700 text-gray-300'}`}>{TIER_AR[t.subscriptionTier] ?? t.subscriptionTier}</span>
-                          : <span className="text-gray-600 text-xs">—</span>}
-                      </td>
-                      <td className="px-4 py-3 font-bold text-violet-300 text-xs">
-                        {t.monthlyFee != null ? `${t.monthlyFee.toFixed(2)} ${t.currency}` : '—'}
-                      </td>
-                      <td className={`px-4 py-3 font-bold text-xs ${bal < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
-                        {bal.toFixed(2)}
-                      </td>
-                      <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                        <div className="flex items-center gap-1 flex-wrap">
-                          {t.billingStatus !== 'SUSPENDED'
-                            ? <RowBtn icon={<Ban className="w-3 h-3" />}     label="إيقاف" color="red"   loading={actionId === t.id} onClick={() => suspend(t.id)} />
-                            : <RowBtn icon={<CheckCircle className="w-3 h-3" />} label="تفعيل" color="green" loading={actionId === t.id} onClick={() => reactivate(t.id)} />}
-                          <RowBtn icon={<Edit3 className="w-3 h-3" />} label="إعداد" color="blue" loading={false} onClick={() => openModal(t, 'billing')} />
-                          <RowBtn icon={<Trash2 className="w-3 h-3" />} label="حذف" color="red" loading={false} onClick={() => setDeleteConfirm(t)} />
-                          <RowBtn
-                            icon={<span className="text-[11px]">{t.isDemo ? '🛡' : '🔓'}</span>}
-                            label={t.isDemo ? 'محمي' : 'حماية'}
-                            color={t.isDemo ? 'amber' : 'blue'}
-                            loading={false}
-                            onClick={() => toggleDemoFlag(t.id, t.isDemo)}
-                          />
-                          {/* Smart Inventory approval button — shows only when requested */}
-                          {t.inventoryActivationRequested && !t.isSmartInventoryEnabled && (
-                            <RowBtn
-                              icon={<Package className="w-3 h-3" />}
-                              label="موافقة مخزون"
-                              color="amber"
-                              loading={actionId === t.id}
-                              onClick={() => approveInventory(t.id)}
-                            />
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {loading && (
-            <div className="flex items-center justify-center py-8 gap-2 text-gray-500 text-sm">
-              <Loader2 className="w-5 h-5 animate-spin" /> جارٍ التحميل…
-            </div>
-          )}
-          {!loading && tenants.length === 0 && (
-            <div className="text-center py-12 text-gray-600 text-sm">لا توجد بيانات</div>
-          )}
-          {hasMore && !loading && (
-            <div className="p-4 text-center border-t border-gray-800">
-              <button
-                onClick={() => { const n = page + 1; setPage(n); loadAll(n, true) }}
-                className="text-sm text-gray-400 hover:text-emerald-400 transition-colors flex items-center gap-1 mx-auto"
-              >
-                <ChevronDown className="w-4 h-4" /> تحميل المزيد ({total - tenants.length} متبقٍ)
-              </button>
-            </div>
-          )}
-        </div>
-
-      </div>
-
-      {/* ── Modal ── */}
       {modal && (
-        <div
-          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
-          onClick={e => { if (e.target === e.currentTarget) setModal(null) }}
-        >
-          <div className="bg-gray-900 border border-gray-700 rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
-
-            {/* modal header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-800 flex-shrink-0">
-              <div>
-                <h2 className="text-white font-extrabold text-lg">{modal.tenant.businessName || modal.tenant.name}</h2>
-                <p className="text-gray-400 text-xs">{modal.tenant.subdomain} · {modal.tenant.country} · {modal.tenant.currency}</p>
-              </div>
-              <button onClick={() => setModal(null)}
-                className="w-8 h-8 rounded-xl bg-gray-800 hover:bg-gray-700 flex items-center justify-center text-gray-400 hover:text-white"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Tab bar */}
-            <div className="flex border-b border-gray-800 flex-shrink-0">
-              {([
-                { key: 'billing'  as ModalTab, icon: <BarChart3 className="w-3.5 h-3.5" />,    label: 'إعداد الفوترة' },
-                { key: 'trial'    as ModalTab, icon: <CalendarPlus className="w-3.5 h-3.5" />, label: 'تمديد التجربة' },
-                { key: 'activate' as ModalTab, icon: <Zap className="w-3.5 h-3.5" />,          label: 'تفعيل يدوي'   }
-              ]).map(tab => (
-                <button key={tab.key} onClick={() => setMF('tab', tab.key)}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-xs font-bold transition-colors ${
-                    modal.tab === tab.key
-                      ? 'text-emerald-400 border-b-2 border-emerald-400 bg-emerald-950/20'
-                      : 'text-gray-500 hover:text-gray-300'
-                  }`}
-                >
-                  {tab.icon} {tab.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Tab content */}
-            <div className="p-6 space-y-4 overflow-y-auto">
-              {modal.error && (
-                <div className="bg-red-950/50 border border-red-700 rounded-xl px-4 py-2 text-red-300 text-sm">{modal.error}</div>
-              )}
-
-              {/* ── Billing config tab ── */}
-              {modal.tab === 'billing' && <>
-
-                {/* Free subscription banner */}
-                <div className="flex items-center gap-3 bg-emerald-950/40 border border-emerald-800 rounded-2xl px-4 py-3">
-                  <span className="text-2xl">🆓</span>
-                  <div>
-                    <p className="text-emerald-300 font-bold text-sm">Abonnement GRATUIT</p>
-                    <p className="text-emerald-600 text-xs">Revenue = commission par commande uniquement</p>
-                  </div>
-                </div>
-
-                {/* Commission tiers summary */}
-                <div className="bg-gray-800/50 rounded-2xl p-3 space-y-1.5">
-                  <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Commission / commande ({modal.tenant.country})</p>
-                  {modal.tenant.country === 'MA' && [
-                    ['< 20 MAD','0.50 MAD'], ['20–50','3 MAD'], ['50–80','5 MAD'],
-                    ['80–100','7 MAD'], ['100–150','10 MAD'], ['> 150','15 MAD']
-                  ].map(([r,f]) => (
-                    <div key={r} className="flex justify-between text-xs"><span className="text-gray-500">{r}</span><span className="text-white font-bold">{f}</span></div>
-                  ))}
-                  {['SA','AE'].includes(modal.tenant.country) && [
-                    ['< 15','1'], ['15–40','3'], ['40–70','6'], ['70–120','10'], ['120–200','15'], ['> 200','22']
-                  ].map(([r,f]) => (
-                    <div key={r} className="flex justify-between text-xs"><span className="text-gray-500">{r} {modal.tenant.currency}</span><span className="text-white font-bold">{f} {modal.tenant.currency}</span></div>
-                  ))}
-                  {['FR','ES','BE','DE','IT','NL','PT','GB','US'].includes(modal.tenant.country) && [
-                    ['< 5€','€0.10'], ['5–12€','€0.25'], ['12–25€','€0.50'], ['25–50€','€0.80'], ['50–100€','€1.20'], ['> 100€','€2.00']
-                  ].map(([r,f]) => (
-                    <div key={r} className="flex justify-between text-xs"><span className="text-gray-500">{r}</span><span className="text-white font-bold">{f}</span></div>
-                  ))}
-                  {!['MA','SA','AE','FR','ES','BE','DE','IT','NL','PT','GB','US'].includes(modal.tenant.country) && (
-                    <p className="text-gray-500 text-xs">Voir billing.ts pour ce pays</p>
-                  )}
-                </div>
-
-                {/* Maintenance pack */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between bg-gray-800/50 rounded-xl px-4 py-3">
-                    <div>
-                      <p className="text-sm font-bold text-white">Pack Maintenance ($25)</p>
-                      <p className="text-xs text-gray-500">Service & Maintenance — Golfe / Europe</p>
-                    </div>
-                    <button onClick={() => setMF('maintenance', !modal.maintenance)}
-                      className={`w-12 h-6 rounded-full transition-colors relative ${modal.maintenance ? 'bg-emerald-600' : 'bg-gray-600'}`}>
-                      <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${modal.maintenance ? 'translate-x-6' : 'translate-x-0.5'}`} />
-                    </button>
-                  </div>
-                  {modal.maintenance && (
-                    <FInput label="Montant maintenance (USD)" value={modal.maintenanceFee}
-                      onChange={v => setMF('maintenanceFee', v)} placeholder="25" type="number" />
-                  )}
-                </div>
-
-                {/* Billing cycle */}
-                <div>
-                  <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Cycle de paiement</p>
-                  <div className="grid grid-cols-3 gap-2">
-                    {[8, 15, 26].map(d => (
-                      <button key={d} onClick={() => setMF('billingCycle', d)}
-                        className={`py-3 rounded-xl text-sm font-bold transition-all border-2 ${
-                          modal.billingCycle === d
-                            ? 'bg-emerald-600 border-emerald-500 text-white'
-                            : 'bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-500'
-                        }`}>
-                        {d} jours
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Estimation — 10 cafés/j + 10 sandwichs/j × cycle */}
-                {(() => {
-                  const coffeeP   = Number(modal.coffee   || modal.tenant.coffeeRefPrice   || 15)
-                  const sandwichP = Number(modal.sandwich || modal.tenant.sandwichRefPrice || 35)
-                  const est = estimateCycle(
-                    coffeeP, sandwichP,
-                    modal.tenant.country,
-                    modal.billingCycle,
-                    modal.maintenance,
-                    Number(modal.maintenanceFee || 25)
-                  )
-                  const coffeeComm   = getCommission(coffeeP,   modal.tenant.country)
-                  const sandwichComm = getCommission(sandwichP, modal.tenant.country)
-                  return (
-                    <div className="bg-sky-950/30 border border-sky-800 rounded-2xl p-4 space-y-3">
-                      <p className="text-xs font-bold text-sky-400 uppercase tracking-widest">
-                        Estimation / {modal.billingCycle} jours
-                      </p>
-
-                      {/* Base: 10 coffees + 10 sandwiches per day */}
-                      <div className="space-y-1.5 text-xs">
-                        <div className="flex justify-between items-center">
-                          <span className="text-gray-500">
-                            ☕ 10 cafés/j × {modal.billingCycle}j × {coffeeComm} {modal.tenant.currency}
-                          </span>
-                          <span className="text-white font-bold">
-                            {(10 * modal.billingCycle * coffeeComm).toFixed(2)} {modal.tenant.currency}
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-gray-500">
-                            🥪 10 sandwichs/j × {modal.billingCycle}j × {sandwichComm} {modal.tenant.currency}
-                          </span>
-                          <span className="text-white font-bold">
-                            {(10 * modal.billingCycle * sandwichComm).toFixed(2)} {modal.tenant.currency}
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center border-t border-sky-800/60 pt-1.5">
-                          <span className="text-gray-400 font-semibold">Commission totale</span>
-                          <span className="text-sky-300 font-bold">{est.commission.toFixed(2)} {modal.tenant.currency}</span>
-                        </div>
-                        {modal.maintenance && (
-                          <div className="flex justify-between items-center">
-                            <span className="text-gray-400 font-semibold">Pack Maintenance</span>
-                            <span className="text-amber-400 font-bold">+ ${est.maintenanceAmt}</span>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Total */}
-                      <div className="flex items-center justify-between bg-white/5 rounded-xl px-3 py-2.5">
-                        <span className="text-sm font-bold text-white">TOTAL / {modal.billingCycle}j</span>
-                        <div className="text-end">
-                          <span className="text-2xl font-extrabold text-amber-400">{est.total.toFixed(2)}</span>
-                          {' '}<span className="text-amber-300 text-sm">{modal.tenant.currency}</span>
-                        </div>
-                      </div>
-
-                      <p className="text-[10px] text-gray-600">
-                        Basé sur 10 cafés + 10 sandwichs par jour · prix ref: {coffeeP} / {sandwichP} {modal.tenant.currency}
-                      </p>
-                    </div>
-                  )
-                })()}
-
-                {/* Ref prices (for estimation only) */}
-                <details className="group">
-                  <summary className="text-xs text-gray-500 cursor-pointer hover:text-gray-300 list-none flex items-center gap-1">
-                    <Coffee className="w-3 h-3" /> Prix de référence (estimation) ▸
-                  </summary>
-                  <div className="grid grid-cols-2 gap-3 mt-2">
-                    <FInput label="☕ Prix café" value={modal.coffee} onChange={v => setMF('coffee', v)} placeholder="0.00" type="number" />
-                    <FInput label="🥪 Prix sandwich" value={modal.sandwich} onChange={v => setMF('sandwich', v)} placeholder="0.00" type="number" />
-                  </div>
-                </details>
-
-                <button onClick={saveBillingConfig} disabled={modal.loading}
-                  className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold py-3.5 rounded-2xl transition-colors active:scale-95"
-                >
-                  {modal.loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : '💾 Enregistrer la configuration'}
-                </button>
-              </>}
-
-              {/* Trial tab */}
-              {modal.tab === 'trial' && <>
-                <p className="text-gray-400 text-xs leading-relaxed">
-                  تمديد الفترة التجريبية يُعيد ضبط حالة الاشتراك ويمنح المقهى مهلة إضافية لإتمام الدفع.
-                  <br />
-                  انتهاء التجربة الحالي:{' '}
-                  <span className="text-white">{modal.tenant.trialEndsAt ? new Date(modal.tenant.trialEndsAt).toLocaleDateString('ar') : '—'}</span>
-                  {modal.tenant.hasExtendedTrial && ' (ممدد مسبقاً)'}
-                </p>
-                <FInput label="عدد الأيام الإضافية"
-                  value={modal.days} onChange={v => setMF('days', v)} placeholder="7" type="number" />
-                <div className="bg-amber-950/30 border border-amber-800 rounded-xl p-3 text-xs text-amber-300">
-                  التاريخ الجديد المتوقع:{' '}
-                  <strong>{new Date(Date.now() + Number(modal.days || 0) * 86_400_000).toLocaleDateString('ar')}</strong>
-                </div>
-                <button onClick={extendTrial} disabled={modal.loading || !modal.days}
-                  className="w-full bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white font-bold py-3.5 rounded-2xl transition-colors active:scale-95"
-                >
-                  {modal.loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : `📅 تمديد ${modal.days} يوم`}
-                </button>
-              </>}
-
-              {/* Activate tab */}
-              {modal.tab === 'activate' && <>
-                <p className="text-gray-400 text-xs leading-relaxed">
-                  تفعيل يدوي يتجاوز التحليل التلقائي ويُحوّل المقهى مباشرة إلى حالة "نشط – COLLECTING_DEBT".
-                </p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <p className="text-xs text-gray-500 mb-1">الشريحة</p>
-                    <select value={modal.tier} onChange={e => setMF('tier', e.target.value)}
-                      className="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-white text-sm outline-none focus:border-emerald-500"
-                    >
-                      <option value="ECONOMY">اقتصادي ({"< 50 طلبية"})</option>
-                      <option value="ADVANCED">متقدم ({"≥ 50 طلبية"})</option>
-                    </select>
-                  </div>
-                  <FInput label={`الاشتراك الشهري (${modal.tenant.currency})`}
-                    value={modal.fee} onChange={v => setMF('fee', v)} placeholder="0.00" type="number" />
-                </div>
-                <button onClick={manualActivate} disabled={modal.loading || !modal.fee}
-                  className="w-full bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white font-bold py-3.5 rounded-2xl transition-colors active:scale-95"
-                >
-                  {modal.loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : '⚡ تفعيل الحساب'}
-                </button>
-              </>}
-            </div>
-
-          </div>
-        </div>
+        <TenantModalInline
+          modal={modal}
+          setModal={setModal}
+          setMF={setMF}
+          saveBillingConfig={saveBillingConfig}
+          extendTrial={extendTrial}
+          manualActivate={manualActivate}
+          superHeader={superHeader}
+          loadAll={loadAll}
+        />
       )}
 
-      {/* ── MRR Breakdown Modal ── */}
-      {mrrOpen && mrrData && (
-        <div className="fixed inset-0 z-[60] bg-black/85 flex items-center justify-center p-4"
-          onClick={() => setMrrOpen(false)}>
-          <div className="bg-gray-900 border border-violet-800 rounded-3xl w-full max-w-md shadow-2xl overflow-hidden"
-            onClick={e => e.stopPropagation()}>
-            <div className="bg-gradient-to-r from-violet-950 to-slate-900 px-6 py-4 flex items-center justify-between">
-              <div>
-                <h3 className="text-white font-extrabold text-base flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4 text-violet-400" /> MRR المتوقع — Breakdown
-                </h3>
-                <p className="text-violet-400 text-xs mt-0.5">
-                  Calculé le {new Date(mrrData.computedAt).toLocaleString('fr')}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-xs text-gray-500">Total USD/mois</p>
-                <p className="text-2xl font-extrabold text-violet-400">${mrrData.totalMRR_USD.toFixed(2)}</p>
-              </div>
-            </div>
-
-            <div className="p-4 space-y-1 max-h-96 overflow-y-auto">
-              <div className="grid grid-cols-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest px-2 pb-2 border-b border-gray-800">
-                <span>Pays</span><span className="text-right">Cafés</span>
-                <span className="text-right">Commission locale</span>
-                <span className="text-right">USD/mois</span>
-              </div>
-              {mrrData.byCountry.map((r: any) => (
-                <div key={r.country} className="grid grid-cols-4 items-center px-2 py-2 rounded-xl hover:bg-gray-800/50 text-sm">
-                  <span className="font-bold text-white">{r.country}</span>
-                  <span className="text-right text-gray-400">{r.cafes}</span>
-                  <span className="text-right text-gray-300 text-xs">
-                    {r.monthlyCommissionLocal.toFixed(0)} {r.currency}
-                    {r.monthlyMaintenanceUSD > 0 && <span className="text-amber-400"> +${r.monthlyMaintenanceUSD.toFixed(0)}</span>}
-                  </span>
-                  <span className="text-right font-extrabold text-violet-300">${r.monthlyUSD.toFixed(2)}</span>
-                </div>
-              ))}
-            </div>
-
-            <div className="px-4 py-3 border-t border-gray-800 text-[10px] text-gray-600 flex justify-between">
-              <span>Basé sur 10 cafés + 10 sandwichs/jour × orders_weekly × taux de commission</span>
-              <button onClick={() => setMrrOpen(false)} className="text-gray-400 hover:text-white px-2">✕</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Delete confirmation dialog ── */}
       {deleteConfirm && (
         <div className="fixed inset-0 z-[60] bg-black/90 flex items-center justify-center p-4">
           <div className="bg-gray-900 border border-red-800 rounded-2xl w-full max-w-sm shadow-2xl p-6 space-y-4">
@@ -1237,38 +523,288 @@ export default function SuperAdminPage() {
                 <p className="text-gray-400 text-xs mt-0.5">هذا الإجراء لا يمكن التراجع عنه</p>
               </div>
             </div>
-
-            <div className="bg-red-950/40 border border-red-800/50 rounded-xl px-4 py-3 space-y-1">
+            <div className="bg-red-950/40 border border-red-800/50 rounded-xl px-4 py-3">
               <p className="text-red-300 font-bold text-sm">{deleteConfirm.businessName || deleteConfirm.name}</p>
-              <p className="text-red-400 text-xs">{deleteConfirm.subdomain} · {deleteConfirm.country}</p>
-              <p className="text-red-500 text-xs mt-2">
-                سيتم حذف كل الطلبات، المنيو، الطاولات، الموظفين، والسجلات المالية بشكل نهائي.
-              </p>
+              <p className="text-red-500 text-xs mt-1">سيتم حذف كل الطلبات، المنيو، الطاولات، الموظفين، والسجلات.</p>
             </div>
-
-            <div className="flex gap-2 pt-1">
-              <button
-                onClick={() => setDeleteConfirm(null)}
-                disabled={deleting}
-                className="flex-1 px-4 py-2.5 rounded-xl border border-gray-700 text-gray-400 hover:bg-gray-800 text-sm font-semibold transition-colors disabled:opacity-50"
-              >
+            <div className="flex gap-2">
+              <button onClick={() => setDeleteConfirm(null)} disabled={deleting}
+                className="flex-1 px-4 py-2.5 rounded-xl border border-gray-700 text-gray-400 hover:bg-gray-800 text-sm font-semibold">
                 إلغاء
               </button>
-              <button
-                onClick={() => deleteTenant(deleteConfirm.id)}
-                disabled={deleting}
-                className="flex-1 px-4 py-2.5 rounded-xl bg-red-700 hover:bg-red-600 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                {deleting
-                  ? <Loader2 className="w-4 h-4 animate-spin" />
-                  : <Trash2 className="w-4 h-4" />}
+              <button onClick={() => deleteTenant(deleteConfirm.id)} disabled={deleting}
+                className="flex-1 px-4 py-2.5 rounded-xl bg-red-700 hover:bg-red-600 text-white text-sm font-bold flex items-center justify-center gap-2">
+                {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                 {deleting ? 'جارٍ الحذف…' : 'تأكيد الحذف'}
               </button>
             </div>
           </div>
         </div>
       )}
+    </>
+  )
+}
 
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+function TenantModalInline({ modal, setModal, setMF, saveBillingConfig, extendTrial, manualActivate, superHeader, loadAll }: {
+  modal: ModalState
+  setModal: (m: ModalState | null) => void
+  setMF: <K extends keyof ModalState>(k: K, v: ModalState[K]) => void
+  saveBillingConfig: () => void
+  extendTrial: () => void
+  manualActivate: () => void
+  superHeader: () => Record<string, string>
+  loadAll: (p?: number) => void
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
+      onClick={e => { if (e.target === e.currentTarget) setModal(null) }}
+    >
+      <div className="bg-gray-900 border border-gray-700 rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+
+        {/* modal header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-800 flex-shrink-0">
+          <div>
+            <h2 className="text-white font-extrabold text-lg">{modal.tenant.businessName || modal.tenant.name}</h2>
+            <p className="text-gray-400 text-xs">{modal.tenant.subdomain} · {modal.tenant.country} · {modal.tenant.currency}</p>
+          </div>
+          <button onClick={() => setModal(null)}
+            className="w-8 h-8 rounded-xl bg-gray-800 hover:bg-gray-700 flex items-center justify-center text-gray-400 hover:text-white"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Tab bar */}
+        <div className="flex border-b border-gray-800 flex-shrink-0">
+          {([
+            { key: 'billing'  as ModalTab, icon: <BarChart3 className="w-3.5 h-3.5" />,    label: 'إعداد الفوترة' },
+            { key: 'trial'    as ModalTab, icon: <CalendarPlus className="w-3.5 h-3.5" />, label: 'تمديد التجربة' },
+            { key: 'activate' as ModalTab, icon: <Zap className="w-3.5 h-3.5" />,          label: 'تفعيل يدوي'   }
+          ]).map(tab => (
+            <button key={tab.key} onClick={() => setMF('tab', tab.key)}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-xs font-bold transition-colors ${
+                modal.tab === tab.key
+                  ? 'text-emerald-400 border-b-2 border-emerald-400 bg-emerald-950/20'
+                  : 'text-gray-500 hover:text-gray-300'
+              }`}
+            >
+              {tab.icon} {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Tab content */}
+        <div className="p-6 space-y-4 overflow-y-auto">
+          {modal.error && (
+            <div className="bg-red-950/50 border border-red-700 rounded-xl px-4 py-2 text-red-300 text-sm">{modal.error}</div>
+          )}
+
+          {/* ── Billing config tab ── */}
+          {modal.tab === 'billing' && <>
+
+            {/* Free subscription banner */}
+            <div className="flex items-center gap-3 bg-emerald-950/40 border border-emerald-800 rounded-2xl px-4 py-3">
+              <span className="text-2xl">🆓</span>
+              <div>
+                <p className="text-emerald-300 font-bold text-sm">Abonnement GRATUIT</p>
+                <p className="text-emerald-600 text-xs">Revenue = commission par commande uniquement</p>
+              </div>
+            </div>
+
+            {/* Commission tiers summary */}
+            <div className="bg-gray-800/50 rounded-2xl p-3 space-y-1.5">
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Commission / commande ({modal.tenant.country})</p>
+              {modal.tenant.country === 'MA' && [
+                ['< 20 MAD','0.50 MAD'], ['20–50','3 MAD'], ['50–80','5 MAD'],
+                ['80–100','7 MAD'], ['100–150','10 MAD'], ['> 150','15 MAD']
+              ].map(([r,f]) => (
+                <div key={r} className="flex justify-between text-xs"><span className="text-gray-500">{r}</span><span className="text-white font-bold">{f}</span></div>
+              ))}
+              {['SA','AE'].includes(modal.tenant.country) && [
+                ['< 15','1'], ['15–40','3'], ['40–70','6'], ['70–120','10'], ['120–200','15'], ['> 200','22']
+              ].map(([r,f]) => (
+                <div key={r} className="flex justify-between text-xs"><span className="text-gray-500">{r} {modal.tenant.currency}</span><span className="text-white font-bold">{f} {modal.tenant.currency}</span></div>
+              ))}
+              {['FR','ES','BE','DE','IT','NL','PT','GB','US'].includes(modal.tenant.country) && [
+                ['< 5€','€0.10'], ['5–12€','€0.25'], ['12–25€','€0.50'], ['25–50€','€0.80'], ['50–100€','€1.20'], ['> 100€','€2.00']
+              ].map(([r,f]) => (
+                <div key={r} className="flex justify-between text-xs"><span className="text-gray-500">{r}</span><span className="text-white font-bold">{f}</span></div>
+              ))}
+              {!['MA','SA','AE','FR','ES','BE','DE','IT','NL','PT','GB','US'].includes(modal.tenant.country) && (
+                <p className="text-gray-500 text-xs">Voir billing.ts pour ce pays</p>
+              )}
+            </div>
+
+            {/* Maintenance pack */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between bg-gray-800/50 rounded-xl px-4 py-3">
+                <div>
+                  <p className="text-sm font-bold text-white">Pack Maintenance ($25)</p>
+                  <p className="text-xs text-gray-500">Service & Maintenance — Golfe / Europe</p>
+                </div>
+                <button onClick={() => setMF('maintenance', !modal.maintenance)}
+                  className={`w-12 h-6 rounded-full transition-colors relative ${modal.maintenance ? 'bg-emerald-600' : 'bg-gray-600'}`}>
+                  <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${modal.maintenance ? 'translate-x-6' : 'translate-x-0.5'}`} />
+                </button>
+              </div>
+              {modal.maintenance && (
+                <FInput label="Montant maintenance (USD)" value={modal.maintenanceFee}
+                  onChange={v => setMF('maintenanceFee', v)} placeholder="25" type="number" />
+              )}
+            </div>
+
+            {/* Billing cycle */}
+            <div>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Cycle de paiement</p>
+              <div className="grid grid-cols-3 gap-2">
+                {[8, 15, 26].map(d => (
+                  <button key={d} onClick={() => setMF('billingCycle', d)}
+                    className={`py-3 rounded-xl text-sm font-bold transition-all border-2 ${
+                      modal.billingCycle === d
+                        ? 'bg-emerald-600 border-emerald-500 text-white'
+                        : 'bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-500'
+                    }`}>
+                    {d} jours
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Estimation — 10 cafés/j + 10 sandwichs/j × cycle */}
+            {(() => {
+              const coffeeP   = Number(modal.coffee   || modal.tenant.coffeeRefPrice   || 15)
+              const sandwichP = Number(modal.sandwich || modal.tenant.sandwichRefPrice || 35)
+              const est = estimateCycle(
+                coffeeP, sandwichP,
+                modal.tenant.country,
+                modal.billingCycle,
+                modal.maintenance,
+                Number(modal.maintenanceFee || 25)
+              )
+              const coffeeComm   = getCommission(coffeeP,   modal.tenant.country)
+              const sandwichComm = getCommission(sandwichP, modal.tenant.country)
+              return (
+                <div className="bg-sky-950/30 border border-sky-800 rounded-2xl p-4 space-y-3">
+                  <p className="text-xs font-bold text-sky-400 uppercase tracking-widest">
+                    Estimation / {modal.billingCycle} jours
+                  </p>
+
+                  {/* Base: 10 coffees + 10 sandwiches per day */}
+                  <div className="space-y-1.5 text-xs">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-500">
+                        ☕ 10 cafés/j × {modal.billingCycle}j × {coffeeComm} {modal.tenant.currency}
+                      </span>
+                      <span className="text-white font-bold">
+                        {(10 * modal.billingCycle * coffeeComm).toFixed(2)} {modal.tenant.currency}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-500">
+                        🥪 10 sandwichs/j × {modal.billingCycle}j × {sandwichComm} {modal.tenant.currency}
+                      </span>
+                      <span className="text-white font-bold">
+                        {(10 * modal.billingCycle * sandwichComm).toFixed(2)} {modal.tenant.currency}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center border-t border-sky-800/60 pt-1.5">
+                      <span className="text-gray-400 font-semibold">Commission totale</span>
+                      <span className="text-sky-300 font-bold">{est.commission.toFixed(2)} {modal.tenant.currency}</span>
+                    </div>
+                    {modal.maintenance && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-400 font-semibold">Pack Maintenance</span>
+                        <span className="text-amber-400 font-bold">+ ${est.maintenanceAmt}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Total */}
+                  <div className="flex items-center justify-between bg-white/5 rounded-xl px-3 py-2.5">
+                    <span className="text-sm font-bold text-white">TOTAL / {modal.billingCycle}j</span>
+                    <div className="text-end">
+                      <span className="text-2xl font-extrabold text-amber-400">{est.total.toFixed(2)}</span>
+                      {' '}<span className="text-amber-300 text-sm">{modal.tenant.currency}</span>
+                    </div>
+                  </div>
+
+                  <p className="text-[10px] text-gray-600">
+                    Basé sur 10 cafés + 10 sandwichs par jour · prix ref: {coffeeP} / {sandwichP} {modal.tenant.currency}
+                  </p>
+                </div>
+              )
+            })()}
+
+            {/* Ref prices (for estimation only) */}
+            <details className="group">
+              <summary className="text-xs text-gray-500 cursor-pointer hover:text-gray-300 list-none flex items-center gap-1">
+                <Coffee className="w-3 h-3" /> Prix de référence (estimation) ▸
+              </summary>
+              <div className="grid grid-cols-2 gap-3 mt-2">
+                <FInput label="☕ Prix café" value={modal.coffee} onChange={v => setMF('coffee', v)} placeholder="0.00" type="number" />
+                <FInput label="🥪 Prix sandwich" value={modal.sandwich} onChange={v => setMF('sandwich', v)} placeholder="0.00" type="number" />
+              </div>
+            </details>
+
+            <button onClick={saveBillingConfig} disabled={modal.loading}
+              className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold py-3.5 rounded-2xl transition-colors active:scale-95"
+            >
+              {modal.loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : '💾 Enregistrer la configuration'}
+            </button>
+          </>}
+
+          {/* Trial tab */}
+          {modal.tab === 'trial' && <>
+            <p className="text-gray-400 text-xs leading-relaxed">
+              تمديد الفترة التجريبية يُعيد ضبط حالة الاشتراك ويمنح المقهى مهلة إضافية لإتمام الدفع.
+              <br />
+              انتهاء التجربة الحالي:{' '}
+              <span className="text-white">{modal.tenant.trialEndsAt ? new Date(modal.tenant.trialEndsAt).toLocaleDateString('ar') : '—'}</span>
+              {modal.tenant.hasExtendedTrial && ' (ممدد مسبقاً)'}
+            </p>
+            <FInput label="عدد الأيام الإضافية"
+              value={modal.days} onChange={v => setMF('days', v)} placeholder="7" type="number" />
+            <div className="bg-amber-950/30 border border-amber-800 rounded-xl p-3 text-xs text-amber-300">
+              التاريخ الجديد المتوقع:{' '}
+              <strong>{new Date(Date.now() + Number(modal.days || 0) * 86_400_000).toLocaleDateString('ar')}</strong>
+            </div>
+            <button onClick={extendTrial} disabled={modal.loading || !modal.days}
+              className="w-full bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white font-bold py-3.5 rounded-2xl transition-colors active:scale-95"
+            >
+              {modal.loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : `📅 تمديد ${modal.days} يوم`}
+            </button>
+          </>}
+
+          {/* Activate tab */}
+          {modal.tab === 'activate' && <>
+            <p className="text-gray-400 text-xs leading-relaxed">
+              تفعيل يدوي يتجاوز التحليل التلقائي ويُحوّل المقهى مباشرة إلى حالة "نشط – COLLECTING_DEBT".
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <p className="text-xs text-gray-500 mb-1">الشريحة</p>
+                <select value={modal.tier} onChange={e => setMF('tier', e.target.value)}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-white text-sm outline-none focus:border-emerald-500"
+                >
+                  <option value="ECONOMY">اقتصادي ({"< 50 طلبية"})</option>
+                  <option value="ADVANCED">متقدم ({"≥ 50 طلبية"})</option>
+                </select>
+              </div>
+              <FInput label={`الاشتراك الشهري (${modal.tenant.currency})`}
+                value={modal.fee} onChange={v => setMF('fee', v)} placeholder="0.00" type="number" />
+            </div>
+            <button onClick={manualActivate} disabled={modal.loading || !modal.fee}
+              className="w-full bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white font-bold py-3.5 rounded-2xl transition-colors active:scale-95"
+            >
+              {modal.loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : '⚡ تفعيل الحساب'}
+            </button>
+          </>}
+        </div>
+
+      </div>
     </div>
   )
 }
