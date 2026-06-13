@@ -745,8 +745,8 @@ export default function LandingPage() {
   const logoImageUrl     = cfg.logoImageUrl     ?? '/assets/logo.png'
   const promoVideoUrl    = cfg.promoVideoUrl    ?? ''
   const promoEmbedUrl    = getEmbedUrl(promoVideoUrl)
-  const contactPhone  = cfg.contact?.whatsapp ?? '+212 6 00 00 00 00'
-  const contactEmail  = cfg.contact?.email    ?? 'contact@smartmenu.ma'
+  const contactPhone  = cfg.contact?.whatsapp ?? '+212 664546849'
+  const contactEmail  = cfg.contact?.email    ?? 'smartrestau@gmail.com'
   const footerBrand   = cfg.footer?.brandName ?? 'SmartMenu'
   const footerFlags   = cfg.footer?.flags
     ? (Array.isArray(cfg.footer.flags) ? cfg.footer.flags : String(cfg.footer.flags).split(',').map(f => f.trim()).filter(Boolean))
@@ -1727,7 +1727,7 @@ export default function LandingPage() {
             {[
               { icon: MessageCircle, label: 'WhatsApp', value: contactPhone, sub: lang === 'ar' ? 'رد خلال دقائق' : lang === 'fr' ? 'Réponse en minutes' : 'Response in minutes', color: 'text-green-600', bg: 'bg-green-50' },
               { icon: Mail, label: lang === 'ar' ? 'البريد الإلكتروني' : 'Email', value: contactEmail, sub: lang === 'ar' ? 'رد خلال ساعة' : lang === 'fr' ? 'Réponse en 1h' : 'Reply within 1 hour', color: 'text-blue-600', bg: 'bg-blue-50' },
-              { icon: MapPin, label: lang === 'ar' ? 'المقر الرئيسي' : lang === 'fr' ? 'Siège Social' : 'Headquarters', value: lang === 'ar' ? 'الدار البيضاء، المغرب' : 'Casablanca, Morocco', sub: 'MA · SA · AE · SN · CI · KE', color: 'text-amber-600', bg: 'bg-amber-50' },
+              { icon: MapPin, label: lang === 'ar' ? 'العنوان' : lang === 'fr' ? 'Adresse' : 'Address', value: lang === 'ar' ? 'حي محمدي 231، الدار البيضاء' : lang === 'fr' ? 'Hay Mohamedi 231, Casablanca' : 'Hay Mohamedi 231, Casablanca', sub: 'Casablanca, Morocco 🇲🇦', color: 'text-amber-600', bg: 'bg-amber-50' },
             ].map((c, i) => {
               const Icon = c.icon
               return (
