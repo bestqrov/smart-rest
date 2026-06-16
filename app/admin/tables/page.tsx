@@ -218,6 +218,16 @@ export default function TablesPage() {
 
   const mergedTableIds = new Set(tables.filter(t => t.mergedIntoTableId).map(t => t.id))
 
+  // ── Group tables by zone, preserving first-seen order; tables without a zone go last ──
+  const zoneOrder: string[] = []
+  const zoneGroups = new Map<string, TableRow[]>()
+  for (const t of tables) {
+    const key = t.zone || ''
+    if (!zoneGroups.has(key)) { zoneGroups.set(key, []); zoneOrder.push(key) }
+    zoneGroups.get(key)!.push(t)
+  }
+  if (zoneGroups.has('')) { zoneOrder.splice(zoneOrder.indexOf(''), 1); zoneOrder.push('') }
+
   return (
     <div className="p-4 sm:p-6 max-w-5xl mx-auto space-y-6" dir="rtl">
       <div className="flex items-center justify-between">
@@ -346,8 +356,16 @@ export default function TablesPage() {
           <p>لا توجد طاولات بعد. ابدأ بتوليد طاولاتك.</p>
         </div>
       ) : (
-        <div className="space-y-4">
-          {tables.map(table => (
+        <div className="space-y-6">
+          {zoneOrder.map(zoneKey => (
+          <div key={zoneKey || '__none__'} className="space-y-4">
+            {zoneOrder.length > 1 && (
+              <h2 className="flex items-center gap-2 text-sm font-bold text-violet-700 border-b border-violet-100 pb-2">
+                📍 {zoneKey || 'بدون منطقة'}
+                <span className="text-xs font-normal text-gray-400">({zoneGroups.get(zoneKey)!.length} طاولات)</span>
+              </h2>
+            )}
+          {zoneGroups.get(zoneKey)!.map(table => (
             <div key={table.id} className={`rounded-2xl p-5 shadow-sm border transition-colors ${
               !table.isActive
                 ? 'bg-gray-50 border-gray-200 opacity-75'
@@ -485,8 +503,8 @@ export default function TablesPage() {
 
                 {/* Live seat map */}
                 <div className="flex-1">
-                  <p className="text-xs text-gray-400 mb-2">
-                    الطاقة الاستيعابية — {table.capacity} مقاعد ديناميكية
+                  <p className="text-sm text-gray-600 mb-2">
+                    🪑 عدد الكراسي: <span className="font-bold text-gray-900">{table.capacity}</span>
                     {table.activeCount !== undefined && (
                       <span className="ml-2 text-emerald-600 font-semibold">
                         ({table.activeCount} مشغول · {table.vacantCount} شاغر)
@@ -511,6 +529,8 @@ export default function TablesPage() {
                 </div>
               </div>
             </div>
+          ))}
+          </div>
           ))}
         </div>
       )}
