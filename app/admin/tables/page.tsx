@@ -9,7 +9,7 @@ import {
 
 type Seat = { id: string; seatNumber: number; qrToken: string }
 type TableRow = {
-  id: string; tableNumber: number; isActive: boolean; qrToken: string
+  id: string; tableNumber: number; zone: string | null; isActive: boolean; qrToken: string
   capacity: number; displayType: number
   seats: Seat[]
   mergedIntoTableId: string | null
@@ -45,12 +45,19 @@ export default function TablesPage() {
     return { Authorization: `Bearer ${localStorage.getItem('token')}` }
   }
 
+  function syncCountInputs(data: TableRow[]) {
+    if (data.length === 0) return
+    setTableCount(data.length)
+    setDefaultCapacity(data[0].capacity)
+  }
+
   async function loadTables() {
     setLoading(true)
     const r = await fetch('/api/tables', { headers: authHeader() })
     if (r.ok) {
       const data: TableRow[] = await r.json()
       setTables(data)
+      syncCountInputs(data)
       await renderQrCodes(data, subdomain)
       loadSessions(data)
     }
@@ -94,6 +101,7 @@ export default function TablesPage() {
       if (r.ok) {
         const data: TableRow[] = await r.json()
         setTables(data)
+        syncCountInputs(data)
         await renderQrCodes(data, sub)
       }
       setLoading(false)
@@ -350,6 +358,12 @@ export default function TablesPage() {
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2 flex-wrap">
                   <h3 className="font-bold text-gray-800">طاولة {table.tableNumber}</h3>
+
+                  {table.zone && (
+                    <span className="text-xs bg-violet-50 text-violet-700 border border-violet-200 px-2 py-0.5 rounded-full font-medium">
+                      📍 {table.zone}
+                    </span>
+                  )}
 
                   {/* ── Activation badge ── */}
                   {table.isActive ? (

@@ -36,6 +36,7 @@ router.get('/api/tables', authorizeAdmin, async (req: Request, res: Response) =>
       select: {
         id: true,
         tableNumber: true,
+        zone: true,
         isActive: true,
         qrToken: true,
         capacity: true,
@@ -352,12 +353,23 @@ router.post('/api/tables/sync', authorizeAdmin, async (req: Request, res: Respon
     // ── Pre-flight: identify tables to be removed ──────────────────────────
     const allTables = await prisma.table.findMany({
       where: { cafeId },
-      select: { id: true, tableNumber: true }
+      select: {
+        id: true, tableNumber: true,
+        mergedIntoTableId: true,
+        mergedTables: { select: { id: true } }
+      }
     })
 
-    const excessTableIds = allTables
-      .filter(t => t.tableNumber > tableCount)
-      .map(t => t.id)
+    const excessTables = allTables.filter(t => t.tableNumber > tableCount)
+    const excessTableIds = excessTables.map(t => t.id)
+
+    // ── Safety check: never delete a table involved in an active merge ─────
+    const mergedExcess = excessTables.find(t => t.mergedIntoTableId || t.mergedTables.length > 0)
+    if (mergedExcess) {
+      return res.status(409).json({
+        error: `Cannot reduce tables: Table ${mergedExcess.tableNumber} is part of a merge. Unmerge it first.`
+      })
+    }
 
     // ── Safety check: active unpaid orders on tables to be removed ─────────
     if (excessTableIds.length > 0) {
@@ -417,7 +429,7 @@ router.post('/api/tables/sync', authorizeAdmin, async (req: Request, res: Respon
         where: { cafeId },
         orderBy: { tableNumber: 'asc' },
         select: {
-          id: true, tableNumber: true, isActive: true,
+          id: true, tableNumber: true, zone: true, isActive: true,
           qrToken: true, capacity: true, displayType: true,
           mergedIntoTableId: true,
           mergedIntoTable: { select: { id: true, tableNumber: true } },
