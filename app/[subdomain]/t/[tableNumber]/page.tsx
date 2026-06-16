@@ -348,7 +348,7 @@ function TablePageInner() {
               const merged = { ...cached, ...fresh }
               setScan(merged)
               saveSession(cached.tableId, merged)
-              await loadMenu(fresh.cafeId)
+              await loadMenu()
               setPhase('menu')
               startHeartbeat(cached.sessionId)
               return
@@ -371,7 +371,7 @@ function TablePageInner() {
 
         setScan(data)
         saveSession(data.tableId, data)
-        await loadMenu(data.cafeId)
+        await loadMenu()
         setPhase('welcome')
         startHeartbeat(data.sessionId)
 
@@ -387,10 +387,13 @@ function TablePageInner() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tableToken])
 
-  async function loadMenu(cafeId: string) {
+  async function loadMenu() {
     try {
-      const r = await fetch(`/api/menu/${cafeId}`)
-      if (r.ok) setCategories(await r.json())
+      const r = await fetch(`/api/menu/public?tableToken=${encodeURIComponent(tableToken)}`)
+      if (r.ok) {
+        const data = await r.json()
+        setCategories(data.categories || [])
+      }
     } catch {}
   }
 
