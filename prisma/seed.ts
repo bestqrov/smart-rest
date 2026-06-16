@@ -530,7 +530,7 @@ async function upsertTablesAndSeats(cafeId: string, subdomain: string, tableCoun
 
 async function main() {
   if (!process.env.DATABASE_URL) { console.error('DATABASE_URL missing'); process.exit(1) }
-  console.log('🌱 Seeding 9 demo cafes…\n')
+  console.log('🌱 Seeding demo cafe…\n')
 
   // ── 🇲🇦 Morocco ──────────────────────────────────────────────────────────────
   console.log('🇲🇦  Morocco — Café de la Plage (Agadir)')
@@ -540,71 +540,7 @@ async function main() {
   await upsertTablesAndSeats(maCafe.id, 'plage')
   await upsertDemoStaff(maCafe.id)
 
-  // ── 🇸🇦 Saudi Arabia ──────────────────────────────────────────────────────────
-  console.log('\n🇸🇦  Saudi Arabia — مطعم نجد الأصيل (Riyadh)')
-  const saCafe = await upsertCafe({ subdomain: 'najd', name: 'مطعم نجد الأصيل', country: 'SA', currency: 'SAR', lat: 24.7136, lng: 46.6753, adminEmail: 'najd@demo.com', adminPassword: 'demo1234' })
-  const saStats = await upsertMenu(saCafe.id, SA_CATS, SA_PRODUCTS)
-  console.log(`  ✅ ${saStats.cats} categories · ${saStats.products} products`)
-  await upsertTablesAndSeats(saCafe.id, 'najd')
-  await upsertDemoStaff(saCafe.id)
-
-  // ── 🇦🇪 UAE ───────────────────────────────────────────────────────────────────
-  console.log('\n🇦🇪  UAE — مطعم الخليج (Dubai)')
-  const aeCafe = await upsertCafe({ subdomain: 'khalij', name: 'مطعم الخليج', country: 'AE', currency: 'AED', lat: 25.2048, lng: 55.2708, adminEmail: 'khalij@demo.com', adminPassword: 'demo1234' })
-  const aeStats = await upsertMenu(aeCafe.id, AE_CATS, AE_PRODUCTS)
-  console.log(`  ✅ ${aeStats.cats} categories · ${aeStats.products} products`)
-  await upsertTablesAndSeats(aeCafe.id, 'khalij')
-  await upsertDemoStaff(aeCafe.id)
-
-  // ── 🇩🇿 Algeria ──────────────────────────────────────────────────────────────
-  console.log('\n🇩🇿  Algeria — مطعم القصبة (Algiers)')
-  const dzCafe = await upsertCafe({ subdomain: 'casbah', name: 'مطعم القصبة', country: 'DZ', currency: 'DZD', lat: 36.7372, lng: 3.0868, adminEmail: 'casbah@demo.com', adminPassword: 'demo1234' })
-  const dzStats = await upsertMenu(dzCafe.id, DZ_CATS, DZ_PRODUCTS)
-  console.log(`  ✅ ${dzStats.cats} categories · ${dzStats.products} products`)
-  await upsertTablesAndSeats(dzCafe.id, 'casbah')
-  await upsertDemoStaff(dzCafe.id)
-
-  // ── 🇹🇳 Tunisia ──────────────────────────────────────────────────────────────
-  console.log('\n🇹🇳  Tunisia — مقهى سيدي بوسعيد (Tunis)')
-  const tnCafe = await upsertCafe({ subdomain: 'sidi', name: 'مقهى سيدي بوسعيد', country: 'TN', currency: 'TND', lat: 36.8065, lng: 10.1815, adminEmail: 'sidi@demo.com', adminPassword: 'demo1234' })
-  const tnStats = await upsertMenu(tnCafe.id, TN_CATS, TN_PRODUCTS)
-  console.log(`  ✅ ${tnStats.cats} categories · ${tnStats.products} products`)
-  await upsertTablesAndSeats(tnCafe.id, 'sidi')
-  await upsertDemoStaff(tnCafe.id)
-
-  // ── 🇱🇾 Libya ─────────────────────────────────────────────────────────────────
-  console.log('\n🇱🇾  Libya — مطعم طرابلس الكبير (Tripoli)')
-  const lyCafe = await upsertCafe({ subdomain: 'tripoli', name: 'مطعم طرابلس الكبير', country: 'LY', currency: 'LYD', lat: 32.8872, lng: 13.1913, adminEmail: 'tripoli@demo.com', adminPassword: 'demo1234' })
-  const lyStats = await upsertMenu(lyCafe.id, LY_CATS, LY_PRODUCTS)
-  console.log(`  ✅ ${lyStats.cats} categories · ${lyStats.products} products`)
-  await upsertTablesAndSeats(lyCafe.id, 'tripoli')
-  await upsertDemoStaff(lyCafe.id)
-
-  // ── 🇪🇬 Egypt ─────────────────────────────────────────────────────────────────
-  console.log('\n🇪🇬  Egypt — مطعم النيل الأزرق (Cairo)')
-  const egCafe = await upsertCafe({ subdomain: 'nil', name: 'مطعم النيل الأزرق', country: 'EG', currency: 'EGP', lat: 30.0444, lng: 31.2357, adminEmail: 'nil@demo.com', adminPassword: 'demo1234' })
-  const egStats = await upsertMenu(egCafe.id, EG_CATS, EG_PRODUCTS)
-  console.log(`  ✅ ${egStats.cats} categories · ${egStats.products} products`)
-  await upsertTablesAndSeats(egCafe.id, 'nil')
-  await upsertDemoStaff(egCafe.id)
-
-  // ── 🇸🇳 Senegal ───────────────────────────────────────────────────────────────
-  console.log('\n🇸🇳  Senegal — Restaurant Teranga (Dakar)')
-  const snCafe = await upsertCafe({ subdomain: 'teranga', name: 'Restaurant Teranga', country: 'SN', currency: 'XOF', lat: 14.7167, lng: -17.4677, adminEmail: 'teranga@demo.com', adminPassword: 'demo1234' })
-  const snStats = await upsertMenu(snCafe.id, SN_CATS, SN_PRODUCTS)
-  console.log(`  ✅ ${snStats.cats} categories · ${snStats.products} products`)
-  await upsertTablesAndSeats(snCafe.id, 'teranga')
-  await upsertDemoStaff(snCafe.id)
-
-  // ── 🇨🇮 Côte d'Ivoire ────────────────────────────────────────────────────────
-  console.log('\n🇨🇮  Côte d\'Ivoire — Restaurant Le Baobab (Abidjan)')
-  const ciCafe = await upsertCafe({ subdomain: 'baobab', name: 'Restaurant Le Baobab', country: 'CI', currency: 'XOF', lat: 5.3600, lng: -4.0083, adminEmail: 'baobab@demo.com', adminPassword: 'demo1234' })
-  const ciStats = await upsertMenu(ciCafe.id, CI_CATS, CI_PRODUCTS)
-  console.log(`  ✅ ${ciStats.cats} categories · ${ciStats.products} products`)
-  await upsertTablesAndSeats(ciCafe.id, 'baobab')
-  await upsertDemoStaff(ciCafe.id)
-
-  console.log('\n🎉 All 9 cafes seeded.')
+  console.log('\n🎉 Demo cafe seeded.')
 }
 
 export default main
