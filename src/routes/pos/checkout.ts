@@ -61,4 +61,58 @@ router.patch('/api/pos/orders/:orderId/checkout', authorizePOS, async (req: Requ
   }
 })
 
+// ─── PATCH /api/pos/tables/:tableId/checkout — close ALL open orders for a table ──
+
+router.patch('/api/pos/tables/:tableId/checkout', authorizePOS, async (req: Request, res: Response) => {
+  try {
+    const { staffId, cafeId } = req.staff!
+    const tableId = req.params['tableId'] as string
+    const { paymentMethod, printReceipt } = req.body as {
+      paymentMethod?: 'CASH' | 'CARD' | 'ONLINE'
+      printReceipt?:  boolean
+    }
+
+    const orders = await prisma.order.findMany({
+      where: { cafeId, tableId, isPaid: false, billStatus: { in: ['OPENED', 'BILL_REQUESTED'] } },
+      include: { items: { include: { product: true } } }
+    })
+
+    if (!orders.length) return res.status(404).json({ error: 'No open orders for this table' })
+
+    const billStatus = printReceipt ? 'CLOSED_PRINTED' : 'CLOSED_VIRTUAL'
+
+    const updated = await prisma.$transaction(
+      orders.map(o => prisma.order.update({
+        where: { id: o.id },
+        data: {
+          isPaid:          true,
+          paymentMethod:   paymentMethod ?? o.paymentMethod,
+          billStatus,
+          status:          'COMPLETED',
+          totalCommission: o.items.reduce((s, i) => s + i.unitPrice * i.quantity * i.commissionRate, 0),
+        },
+        include: { items: { include: { product: true } } }
+      }))
+    )
+
+    const totalPrice = updated.reduce((s, o) => s + o.totalPrice, 0)
+    // Merge items by productId for receipt
+    const itemMap = new Map<string, { name: string; quantity: number; unitPrice: number }>()
+    for (const o of updated) {
+      for (const i of o.items) {
+        const ex = itemMap.get(i.productId)
+        if (ex) { ex.quantity += i.quantity }
+        else { itemMap.set(i.productId, { name: i.product.nameEn || i.product.nameAr || '', quantity: i.quantity, unitPrice: i.unitPrice }) }
+      }
+    }
+    const items = Array.from(itemMap.values())
+
+    logger.info({ msg: 'POS table checkout', tableId, staffId, orderCount: updated.length, totalPrice })
+    return res.json({ orders: updated, totalPrice, items })
+  } catch (err) {
+    logger.error({ msg: 'PATCH /api/pos/tables/:tableId/checkout error', err })
+    return res.status(500).json({ error: 'Checkout failed' })
+  }
+})
+
 export default router

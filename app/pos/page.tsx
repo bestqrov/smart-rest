@@ -18,7 +18,7 @@ type PayMethod  = 'CASH' | 'CARD' | 'ONLINE'
 
 interface PosTable  { id: string; tableNumber: number; qrToken: string; isActive: boolean; capacity: number; status: TableColor }
 interface Staff     { id: string; name: string; role: string }
-interface OrderItem { id: string; quantity: number; notes: string | null; unitPrice: number; commissionRate: number; product: { nameAr: string; nameEn: string; nameFr: string } }
+interface OrderItem { id: string; productId: string; quantity: number; notes: string | null; unitPrice: number; commissionRate: number; product: { nameAr: string; nameEn: string; nameFr: string } }
 interface TableOrder { id: string; totalPrice: number; totalCommission: number; payMethod: string; orderSource: string; billStatus: string; createdAt: string; items: OrderItem[] }
 interface MenuItem   { id: string; nameEn: string; nameAr: string; nameFr: string; price: number; imageUrl: string | null }
 interface MenuCat    { id: string; nameEn: string; nameAr: string; order: number; products: MenuItem[] }
@@ -38,9 +38,11 @@ function alertBeep(ctx: AudioContext) { beep(ctx, 880, 0.15, 0.35); setTimeout((
 
 // ─── Receipt ──────────────────────────────────────────────────────────────────
 
-function printReceipt(cafeName: string, tableNumber: number, order: TableOrder, currency: string) {
-  const lines = order.items.map(i => `<tr>
-    <td>${i.product.nameEn || i.product.nameAr}</td>
+type ReceiptItem = { name: string; quantity: number; unitPrice: number }
+
+function printReceipt(cafeName: string, tableNumber: number, items: ReceiptItem[], total: number, currency: string) {
+  const lines = items.map(i => `<tr>
+    <td>${i.name}</td>
     <td style="text-align:center">${i.quantity}</td>
     <td style="text-align:right">${(i.unitPrice * i.quantity).toFixed(2)}</td>
   </tr>`).join('')
@@ -57,7 +59,7 @@ function printReceipt(cafeName: string, tableNumber: number, order: TableOrder, 
   <div>Table: <b>${tableNumber}</b></div><div>Date: ${new Date().toLocaleString()}</div><div class="d"></div>
   <table><thead><tr><th>Item</th><th style="text-align:center">Qty</th><th style="text-align:right">Price</th></tr></thead>
   <tbody>${lines}</tbody>
-  <tfoot><tr class="tot"><td colspan="2">TOTAL</td><td style="text-align:right">${order.totalPrice.toFixed(2)} ${currency}</td></tr></tfoot>
+  <tfoot><tr class="tot"><td colspan="2">TOTAL</td><td style="text-align:right">${total.toFixed(2)} ${currency}</td></tr></tfoot>
   </table><div class="d"></div><div class="c" style="font-size:10px">Thank you · شكراً · Merci</div>
   <script>window.onload=()=>{window.print();window.onafterprint=()=>window.close()}<\/script></body></html>`)
   win.document.close()
@@ -105,7 +107,7 @@ export default function POSPage() {
   const [activeCat,   setActiveCat]   = useState('')
   // selected table / order
   const [selTable,    setSelTable]    = useState<PosTable | null>(null)
-  const [tableOrder,  setTableOrder]  = useState<TableOrder | null>(null)
+  const [tableOrders, setTableOrders] = useState<TableOrder[]>([])
   const [loadOrder,   setLoadOrder]   = useState(false)
   // cart (for manual POS orders on empty tables)
   const [cart,        setCart]        = useState<CartItem[]>([])
@@ -255,14 +257,14 @@ export default function POSPage() {
   // Open table
   async function openTable(table: PosTable) {
     if (table.status === 'INACTIVE') return
-    setSelTable(table); setTableOrder(null); setCheckoutErr(''); setCart([])
+    setSelTable(table); setTableOrders([]); setCheckoutErr(''); setCart([])
     setPayMethod('CASH'); setCashInput(''); setDoneTable(null)
     setMobileTab('cart')
     if (table.status === 'EMPTY') return
     setLoadOrder(true)
     try {
       const res = await fetch(`/api/pos/orders/table/${table.id}`, { headers: { Authorization: `Bearer ${posToken}` } })
-      if (res.ok) { const data = await res.json(); setTableOrder(data.orders?.[0] ?? null) }
+      if (res.ok) { const data = await res.json(); setTableOrders(data.orders ?? []) }
     } finally { setLoadOrder(false) }
   }
 
@@ -287,41 +289,31 @@ export default function POSPage() {
     if (!selTable || !posToken) return
     setCheckingOut(true); setCheckoutErr('')
     try {
-      // Manual order (empty table or cart)
-      if (!tableOrder && cart.length > 0) {
+      // If cart has new items, submit them first (smart-merge or create)
+      if (cart.length > 0) {
         const createRes = await fetch('/api/pos/orders', {
           method: 'POST', headers: { Authorization: `Bearer ${posToken}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tableId: selTable.id, items: cart.map(c => ({ productId: c.productId, quantity: c.qty })), payMethod })
+          body: JSON.stringify({ tableId: selTable.id, items: cart.map(c => ({ productId: c.productId, quantity: c.qty })), paymentMethod: payMethod })
         })
         if (!createRes.ok) { const d = await createRes.json(); setCheckoutErr(d.error ?? 'Failed'); return }
-        const created = await createRes.json()
-        const orderId  = created.order?.id
-        if (orderId) {
-          const coRes = await fetch(`/api/pos/orders/${orderId}/checkout`, {
-            method: 'PATCH', headers: { Authorization: `Bearer ${posToken}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ payMethod, printReceipt: doPrint })
-          })
-          if (!coRes.ok) { const d = await coRes.json(); setCheckoutErr(d.error ?? 'Checkout failed'); return }
-          if (doPrint) {
-            const fakeOrder: TableOrder = { id: orderId, totalPrice: cart.reduce((s,c)=>s+c.price*c.qty,0), totalCommission:0, payMethod, orderSource:'POS_MANUAL', billStatus:'PAID', createdAt: new Date().toISOString(),
-              items: cart.map(c=>({ id:c.productId, quantity:c.qty, notes:null, unitPrice:c.price, commissionRate:0, product:{nameEn:c.name,nameAr:c.name,nameFr:c.name} })) }
-            printReceipt(cafeName, selTable.tableNumber, fakeOrder, currency)
-          }
-        }
-      } else if (tableOrder) {
-        // Existing order checkout
-        const res = await fetch(`/api/pos/orders/${tableOrder.id}/checkout`, {
-          method: 'PATCH', headers: { Authorization: `Bearer ${posToken}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ payMethod, printReceipt: doPrint })
-        })
-        if (!res.ok) { const d = await res.json(); setCheckoutErr(d.error ?? 'Failed'); return }
-        if (doPrint) printReceipt(cafeName, selTable.tableNumber, tableOrder, currency)
+      }
+
+      // Close ALL open orders for this table in one call
+      const res = await fetch(`/api/pos/tables/${selTable.id}/checkout`, {
+        method: 'PATCH', headers: { Authorization: `Bearer ${posToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paymentMethod: payMethod, printReceipt: doPrint })
+      })
+      if (!res.ok) { const d = await res.json(); setCheckoutErr(d.error ?? 'Checkout failed'); return }
+
+      if (doPrint) {
+        const d = await res.json()
+        printReceipt(cafeName, selTable.tableNumber, d.items.map((i: OrderItem) => ({ name: i.product.nameEn || i.product.nameAr, quantity: i.quantity, unitPrice: i.unitPrice })), d.totalPrice, currency)
       }
 
       setDoneTable(selTable.tableNumber)
       setTables(prev => prev.map(t => t.id === selTable.id ? { ...t, status: 'EMPTY' } : t))
       setAlertIds(prev => { const n = new Set(prev); n.delete(selTable.id); return n })
-      setCart([]); setTableOrder(null)
+      setCart([]); setTableOrders([])
       setTimeout(() => { setSelTable(null); setDoneTable(null); setMobileTab('tables') }, 2000)
     } finally { setCheckingOut(false) }
   }
@@ -347,21 +339,37 @@ export default function POSPage() {
         setDoneTable(selTable.tableNumber)
         setTables(prev => prev.map(t => t.id === selTable!.id ? { ...t, status: 'EMPTY' } : t))
         setAlertIds(prev => { const n = new Set(prev); n.delete(selTable!.id); return n })
-        setCart([]); setTableOrder(null)
+        setCart([]); setTableOrders([])
         setTimeout(() => { setSelTable(null); setDoneTable(null); setMobileTab('tables') }, 2000)
       }
     } finally { setCheckingOut(false) }
   }
 
-  const cartTotal   = cart.reduce((s, c) => s + c.price * c.qty, 0)
-  const orderTotal  = tableOrder?.totalPrice ?? cartTotal
-  const cashVal     = parseFloat(cashInput) || 0
-  const change      = payMethod === 'CASH' && cashVal > 0 ? cashVal - orderTotal : null
-  const cartCount   = cart.reduce((s, c) => s + c.qty, 0)
-  const alertCount  = alertIds.size
-  const activeItems = menuCats.find(c => c.id === activeCat)?.products ?? []
-  const isManual    = !tableOrder && cart.length === 0
-  const hasOrder    = !!tableOrder || cart.length > 0
+  // Merge all DB order items by productId for unified display
+  const mergedItems = (() => {
+    const map = new Map<string, ReceiptItem & { productId: string }>()
+    for (const order of tableOrders) {
+      for (const item of order.items) {
+        const existing = map.get(item.productId)
+        if (existing) {
+          existing.quantity += item.quantity
+        } else {
+          map.set(item.productId, { productId: item.productId, name: item.product.nameEn || item.product.nameAr, quantity: item.quantity, unitPrice: item.unitPrice })
+        }
+      }
+    }
+    return Array.from(map.values())
+  })()
+
+  const cartTotal        = cart.reduce((s, c) => s + c.price * c.qty, 0)
+  const tableOrdersTotal = tableOrders.reduce((s, o) => s + o.totalPrice, 0)
+  const orderTotal       = tableOrdersTotal + cartTotal
+  const cashVal          = parseFloat(cashInput) || 0
+  const change           = payMethod === 'CASH' && cashVal > 0 ? cashVal - orderTotal : null
+  const cartCount        = cart.reduce((s, c) => s + c.qty, 0)
+  const alertCount       = alertIds.size
+  const activeItems      = menuCats.find(c => c.id === activeCat)?.products ?? []
+  const hasOrder         = tableOrders.length > 0 || cart.length > 0
 
   // ─── PIN Login ──────────────────────────────────────────────────────────────
   if (!posToken) {
@@ -622,7 +630,7 @@ export default function POSPage() {
                     }`}>{selTable.status === 'OPEN_QR' ? 'QR Order' : selTable.status === 'OPEN_MANUAL' ? 'POS Order' : '⚡ Bill Req.'}</span>
                   )}
                 </div>
-                {(cart.length > 0 || tableOrder) && (
+                {(cart.length > 0 || tableOrders.length > 0) && (
                   <span className="text-emerald-400 font-extrabold text-sm">{orderTotal.toFixed(2)} {currency}</span>
                 )}
               </div>
@@ -648,15 +656,14 @@ export default function POSPage() {
 
                 {!loadOrder && !doneTable && (
                   <>
-                    {/* QR/existing order items */}
-                    {tableOrder && tableOrder.items.map(item => (
-                      <div key={item.id} className="flex items-center gap-3 bg-gray-900 rounded-xl px-3 py-3">
+                    {/* All DB order items merged by product */}
+                    {mergedItems.map(item => (
+                      <div key={item.productId} className="flex items-center gap-3 bg-gray-900 rounded-xl px-3 py-3">
                         <div className="w-9 h-9 rounded-lg bg-gray-800 flex items-center justify-center shrink-0">
                           <span className="text-white font-extrabold text-sm">{item.quantity}</span>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-white text-sm font-semibold truncate">{item.product.nameEn || item.product.nameAr}</p>
-                          {item.notes && <p className="text-gray-500 text-xs">{item.notes}</p>}
+                          <p className="text-white text-sm font-semibold truncate">{item.name}</p>
                         </div>
                         <span className="text-gray-300 tabular-nums text-sm font-medium shrink-0">
                           {(item.unitPrice * item.quantity).toFixed(2)}
@@ -693,7 +700,7 @@ export default function POSPage() {
                     ))}
 
                     {/* Empty state */}
-                    {!tableOrder && cart.length === 0 && !loadOrder && (
+                    {tableOrders.length === 0 && cart.length === 0 && !loadOrder && (
                       <div className="flex flex-col items-center justify-center py-12 gap-3 text-center">
                         <ShoppingCart className="w-10 h-10 text-gray-700" />
                         <p className="text-gray-500 text-sm font-medium">No order yet</p>
@@ -810,7 +817,7 @@ export default function POSPage() {
         {([
           { key: 'tables', icon: LayoutGrid,  label: 'Tables',  badge: alertCount },
           { key: 'menu',   icon: UtensilsCrossed, label: 'Menu', badge: 0 },
-          { key: 'cart',   icon: ShoppingCart, label: 'Order',  badge: cartCount + (tableOrder ? 1 : 0) },
+          { key: 'cart',   icon: ShoppingCart, label: 'Order',  badge: cartCount + (tableOrders.length > 0 ? 1 : 0) },
         ] as const).map(({ key, icon: Icon, label, badge }) => (
           <button key={key} onClick={() => {
             setMobileTab(key)
