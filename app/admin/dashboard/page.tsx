@@ -324,8 +324,12 @@ export default function DashboardPage() {
 
       {/* Venue header */}
       <div className="bg-[#1a2744] rounded-2xl p-4 text-white flex flex-col items-center text-center gap-2">
-        <div className="w-12 h-12 bg-white/15 rounded-xl flex items-center justify-center text-2xl">🍽️</div>
-        <p className="font-black text-sm leading-tight">{stats.cafeName || 'Dolce Resto'}</p>
+        {stats.cafeLogoUrl ? (
+          <img src={stats.cafeLogoUrl} alt={stats.cafeName} className="w-12 h-12 rounded-xl object-contain bg-white/15" />
+        ) : (
+          <div className="w-12 h-12 bg-white/15 rounded-xl flex items-center justify-center text-2xl">🍽️</div>
+        )}
+        <p className="font-black text-sm leading-tight">{stats.cafeName || 'Your Venue'}</p>
         <p className="text-blue-200 text-xs">Smart Menu Dashboard</p>
       </div>
 

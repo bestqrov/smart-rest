@@ -23,6 +23,47 @@ const DISPLAY_TYPE_LABELS: Record<number, string> = {
   1: '🃏 Carte', 2: '⛺ Tente', 3: '🎋 Support', 4: '🔮 Acrylique',
 }
 
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => resolve(img)
+    img.onerror = reject
+    img.src = src
+  })
+}
+
+// Composites the cafe logo over the center of a QR code (errorCorrectionLevel 'H'
+// tolerates the occlusion). Falls back to the plain QR if the logo fails to load
+// or taints the canvas (cross-origin without CORS headers).
+async function brandQrWithLogo(qrDataUrl: string, logoUrl: string | null): Promise<string> {
+  if (!logoUrl) return qrDataUrl
+  try {
+    const [qrImg, logoImg] = await Promise.all([loadImage(qrDataUrl), loadImage(logoUrl)])
+    const canvas = document.createElement('canvas')
+    canvas.width = qrImg.width
+    canvas.height = qrImg.height
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return qrDataUrl
+    ctx.drawImage(qrImg, 0, 0)
+
+    const logoSize = qrImg.width * 0.22
+    const pad = logoSize * 0.14
+    const x = (qrImg.width - logoSize) / 2
+    const y = (qrImg.height - logoSize) / 2
+
+    ctx.fillStyle = '#ffffff'
+    ctx.beginPath()
+    ctx.roundRect(x - pad, y - pad, logoSize + pad * 2, logoSize + pad * 2, 8)
+    ctx.fill()
+    ctx.drawImage(logoImg, x, y, logoSize, logoSize)
+
+    return canvas.toDataURL('image/png')
+  } catch {
+    return qrDataUrl
+  }
+}
+
 export default function TablesPage() {
   const [tables, setTables]       = useState<TableRow[]>([])
   const [loading, setLoading]     = useState(true)
@@ -31,6 +72,7 @@ export default function TablesPage() {
   const [defaultCapacity, setDefaultCapacity] = useState(4)
   const [qrImages, setQrImages]   = useState<Record<string, string>>({})
   const [subdomain, setSubdomain] = useState('')
+  const [cafeLogoUrl, setCafeLogoUrl] = useState<string | null>(null)
   const [mergeSource, setMergeSource] = useState<string[]>([])
   const [mergeTarget, setMergeTarget] = useState<string | null>(null)
   const [syncError, setSyncError]   = useState<string | null>(null)
@@ -64,14 +106,16 @@ export default function TablesPage() {
     setLoading(false)
   }
 
-  async function renderQrCodes(data: TableRow[], sub = subdomain) {
+  async function renderQrCodes(data: TableRow[], sub = subdomain, logo = cafeLogoUrl) {
     const origin = typeof window !== 'undefined' ? window.location.origin : ''
     const imgs: Record<string, string> = {}
     for (const t of data) {
       // Single QR per table — uses Table.qrToken (not per-seat)
       const url = `${origin}/${sub}/t/${t.tableNumber}?token=${t.qrToken}`
       try {
-        imgs[t.qrToken] = await QRCode.toDataURL(url, { width: 240, margin: 2, color: { dark: '#064e3b', light: '#ffffff' } })
+        // High error-correction so the center can be occluded by the cafe logo
+        const plain = await QRCode.toDataURL(url, { width: 240, margin: 2, errorCorrectionLevel: 'H', color: { dark: '#064e3b', light: '#ffffff' } })
+        imgs[t.qrToken] = await brandQrWithLogo(plain, logo)
       } catch {}
     }
     setQrImages(imgs)
@@ -97,12 +141,17 @@ export default function TablesPage() {
       const sub   = localStorage.getItem('subdomain') || ''
       setSubdomain(sub)
       setLoading(true)
+
+      const profileRes = await fetch('/api/admin/cafe/profile', { headers: { Authorization: `Bearer ${token}` } })
+      const logo = profileRes.ok ? (await profileRes.json())?.logoUrl ?? null : null
+      setCafeLogoUrl(logo)
+
       const r = await fetch('/api/tables', { headers: { Authorization: `Bearer ${token}` } })
       if (r.ok) {
         const data: TableRow[] = await r.json()
         setTables(data)
         syncCountInputs(data)
-        await renderQrCodes(data, sub)
+        await renderQrCodes(data, sub, logo)
       }
       setLoading(false)
     })()

@@ -124,7 +124,9 @@ router.get('/api/admin/stats', authorizeAdmin, async (req: Request, res: Respons
       select:  { id: true, nameAr: true, nameEn: true, nameFr: true, likesCount: true, imageUrl: true },
     })
 
-    return res.json({ revenue, top, peakHours, aov: Number(aov), dailySales, ordersCountToday, newCustomers, recentCompleted, activeOrders, activeStaff, mostLiked })
+    const cafe = await prisma.cafe.findUnique({ where: { id: cafeId }, select: { name: true, logoUrl: true } })
+
+    return res.json({ revenue, top, peakHours, aov: Number(aov), dailySales, ordersCountToday, newCustomers, recentCompleted, activeOrders, activeStaff, mostLiked, cafeName: cafe?.name, cafeLogoUrl: cafe?.logoUrl })
   } catch (err) {
     logger.error({ msg: 'admin stats error', err })
     return res.status(500).json({ error: 'Failed to fetch stats' })
