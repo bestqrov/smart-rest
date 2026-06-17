@@ -84,6 +84,10 @@ const T = {
   take_order:      { ar: 'أخذ طلب', fr: 'Prendre commande', en: 'Take order', es: 'Tomar pedido' },
   notifications:   { ar: 'الإشعارات', fr: 'Notifications', en: 'Notifications', es: 'Notificaciones' },
   select_table:    { ar: 'اختر الطاولة', fr: 'Choisir une table', en: 'Select table', es: 'Seleccionar mesa' },
+  split_bill:      { ar: 'تقسيم الحساب', fr: "Partager l'addition", en: 'Split Bill', es: 'Dividir cuenta' },
+  payment_done:    { ar: 'تم الدفع!', fr: 'Paiement effectué!', en: 'Done!', es: '¡Listo!' },
+  no_order_yet:    { ar: 'لا طلب بعد', fr: 'Aucune commande', en: 'No order yet', es: 'Sin pedido' },
+  short_amount:    { ar: 'ناقص', fr: 'Manque', en: 'Short', es: 'Falta' },
   // ── Generic ──────────────────────────────────────────────────────────────
   loading:         { ar: 'جارٍ التحميل…', fr: 'Chargement…', en: 'Loading…', es: 'Cargando…' },
   error_generic:   { ar: 'حدث خطأ', fr: 'Une erreur est survenue', en: 'An error occurred', es: 'Ocurrió un error' },

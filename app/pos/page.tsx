@@ -22,7 +22,7 @@ interface Staff     { id: string; name: string; role: string }
 interface OrderItem { id: string; productId: string; quantity: number; notes: string | null; unitPrice: number; commissionRate: number; product: { nameAr: string; nameEn: string; nameFr: string } }
 interface TableOrder { id: string; totalPrice: number; totalCommission: number; payMethod: string; orderSource: string; billStatus: string; createdAt: string; items: OrderItem[] }
 interface MenuItem   { id: string; nameEn: string; nameAr: string; nameFr: string; price: number; imageUrl: string | null }
-interface MenuCat    { id: string; nameEn: string; nameAr: string; order: number; products: MenuItem[] }
+interface MenuCat    { id: string; nameEn: string; nameAr: string; nameFr: string; order: number; products: MenuItem[] }
 interface CartItem   { productId: string; name: string; price: number; qty: number }
 
 // ─── Audio ────────────────────────────────────────────────────────────────────
@@ -78,9 +78,7 @@ const TABLE_STYLE: Record<TableColor, string> = {
   OPEN_MANUAL:    'bg-amber-900/50 border-amber-500 hover:border-amber-300 cursor-pointer active:scale-95',
   BILL_REQUESTED: 'bg-red-900/70 border-red-500 cursor-pointer active:scale-95',
 }
-const TABLE_LABEL: Record<TableColor, string> = {
-  INACTIVE: '—', EMPTY: '', OPEN_QR: 'QR', OPEN_MANUAL: 'POS', BILL_REQUESTED: '💳'
-}
+// TABLE_LABEL is now computed inside the component so it reacts to lang changes
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -88,6 +86,16 @@ export default function POSPage() {
   const [lang, setLangState] = useState<Lang>('ar')
   useEffect(() => { setLangState(getLang()) }, [])
   const L = (key: Parameters<typeof tr>[0]) => tr(key, lang)
+
+  const TABLE_LABEL: Record<TableColor, string> = {
+    INACTIVE: '—', EMPTY: '', OPEN_QR: L('table_qr'), OPEN_MANUAL: L('table_manual'), BILL_REQUESTED: L('table_bill'),
+  }
+
+  function pName(item: { nameAr: string; nameEn: string; nameFr: string }) {
+    return lang === 'ar' ? (item.nameAr || item.nameEn)
+         : lang === 'fr' ? (item.nameFr || item.nameEn)
+         : item.nameEn || item.nameAr
+  }
 
   // auth
   const [posToken,    setPosToken]    = useState<string | null>(null)
@@ -278,7 +286,7 @@ export default function POSPage() {
     setCart(prev => {
       const ex = prev.find(c => c.productId === item.id)
       if (ex) return prev.map(c => c.productId === item.id ? { ...c, qty: c.qty + 1 } : c)
-      return [...prev, { productId: item.id, name: item.nameEn || item.nameAr, price: item.price, qty: 1 }]
+      return [...prev, { productId: item.id, name: pName(item), price: item.price, qty: 1 }]
     })
     if (mobileTab === 'menu') setMobileTab('cart')
   }
@@ -360,7 +368,7 @@ export default function POSPage() {
         if (existing) {
           existing.quantity += item.quantity
         } else {
-          map.set(item.productId, { productId: item.productId, name: item.product.nameEn || item.product.nameAr, quantity: item.quantity, unitPrice: item.unitPrice })
+          map.set(item.productId, { productId: item.productId, name: pName(item.product), quantity: item.quantity, unitPrice: item.unitPrice })
         }
       }
     }
@@ -537,11 +545,11 @@ export default function POSPage() {
           {/* Table map */}
           <div className="shrink-0 border-b border-gray-800 p-3">
             <div className="flex items-center justify-between mb-2.5">
-              <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Tables</span>
+              <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">{L('nav_tables')}</span>
               <div className="flex gap-2 text-[10px] text-gray-600">
                 <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-sky-500 inline-block"/>QR</span>
                 <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500 inline-block"/>POS</span>
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500 inline-block"/>Bill</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500 inline-block"/>{L('table_bill')}</span>
               </div>
             </div>
             <div className="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-5 lg:grid-cols-7 gap-2">
@@ -571,7 +579,7 @@ export default function POSPage() {
                 )
               })}
               {tables.length === 0 && !loadTables && (
-                <p className="col-span-full text-gray-600 text-xs text-center py-4">No tables — set up from admin panel</p>
+                <p className="col-span-full text-gray-600 text-xs text-center py-4">{L('loading')}</p>
               )}
             </div>
           </div>
@@ -587,11 +595,11 @@ export default function POSPage() {
                       ? 'bg-emerald-600 text-white'
                       : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white'
                   }`}>
-                  {cat.nameEn || cat.nameAr}
+                  {pName(cat)}
                 </button>
               ))}
               {menuCats.length === 0 && (
-                <span className="text-gray-600 text-xs py-2">No menu — create from admin panel</span>
+                <span className="text-gray-600 text-xs py-2">{L('loading')}</span>
               )}
             </div>
 
