@@ -25,7 +25,7 @@ router.get('/api/menu/public', async (req: Request, res: Response) => {
     const [cafe, categories] = await Promise.all([
       prisma.cafe.findUnique({
         where: { id: table.cafeId },
-        select: { name: true, isActive: true, logoUrl: true, currency: true, country: true, localIp: true, accentColor: true, primaryFont: true, paymentConfig: true, reservationsEnabled: true, certificationStatus: true }
+        select: { name: true, isActive: true, logoUrl: true, currency: true, country: true, localIp: true, accentColor: true, primaryFont: true, paymentConfig: true, reservationsEnabled: true, certificationStatus: true, socialLinks: true, hasSocialShareAddon: true, isDemo: true }
       }),
       prisma.category.findMany({
         where: { cafeId: table.cafeId },
@@ -70,6 +70,9 @@ router.get('/api/menu/public', async (req: Request, res: Response) => {
       categories,
       reservationsEnabled:  cafe.reservationsEnabled ?? true,
       certificationStatus:  cafe.certificationStatus,
+      socialLinks:          cafe.socialLinks ?? null,
+      hasSocialShareAddon:  cafe.hasSocialShareAddon,
+      isDemo:               cafe.isDemo,
     })
   } catch (err) {
     return res.status(500).json({ error: 'Failed to fetch menu' })

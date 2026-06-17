@@ -306,9 +306,17 @@ function TablePageInner() {
   const [billSeats, setBillSeats] = useState<number[]>([])
   const [billMsg, setBillMsg]     = useState('')
   const [billSending, setBillSending] = useState(false)
+  const [activeCat,   setActiveCat]   = useState('')
+  const [showShare,   setShowShare]   = useState(false)
+  const [cafeShare,   setCafeShare]   = useState<{
+    socialLinks: Record<string, string> | null
+    hasSocialShareAddon: boolean
+    isDemo: boolean
+  }>({ socialLinks: null, hasSocialShareAddon: false, isDemo: false })
 
-  const socketRef    = useRef<Socket | null>(null)
-  const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const socketRef       = useRef<Socket | null>(null)
+  const heartbeatRef    = useRef<ReturnType<typeof setInterval> | null>(null)
+  const sharedOrderRef  = useRef('')  // orderId that already triggered the popup
 
   const tr    = T[lang]
   const isRTL = lang === 'ar'
@@ -392,14 +400,30 @@ function TablePageInner() {
       const r = await fetch(`/api/menu/public?tableToken=${encodeURIComponent(tableToken)}`)
       if (r.ok) {
         const data = await r.json()
-        setCategories(data.categories || [])
+        const cats: Category[] = data.categories || []
+        setCategories(cats)
+        if (cats.length > 0) setActiveCat(cats[0].id)
         // Enrich scan state with logo/name (kept out of /api/qr/scan to avoid huge base64 payload)
         if (data.cafeName || data.cafeLogoUrl) {
           setScan(prev => prev ? { ...prev, cafeName: data.cafeName ?? prev.cafeName, cafeLogoUrl: data.cafeLogoUrl ?? prev.cafeLogoUrl } : prev)
         }
+        setCafeShare({
+          socialLinks:         data.socialLinks ?? null,
+          hasSocialShareAddon: data.hasSocialShareAddon ?? false,
+          isDemo:              data.isDemo ?? false,
+        })
       }
     } catch {}
   }
+
+  // ── Trigger share popup when order is delivered ───────────────────────────
+  useEffect(() => {
+    if (activeOrder?.status === 'DELIVERED' && activeOrder.orderId !== sharedOrderRef.current) {
+      sharedOrderRef.current = activeOrder.orderId
+      const t = setTimeout(() => setShowShare(true), 900)
+      return () => clearTimeout(t)
+    }
+  }, [activeOrder?.status, activeOrder?.orderId])
 
   function startHeartbeat(sessionId: string) {
     if (heartbeatRef.current) clearInterval(heartbeatRef.current)
@@ -566,6 +590,36 @@ function TablePageInner() {
         })
       })).filter(c => c.products.length > 0)
     : categories
+
+  // ── Share helpers ─────────────────────────────────────────────────────────
+
+  const shareImages = (activeOrder?.items ?? []).flatMap(item => {
+    for (const cat of categories) {
+      const p = cat.products.find(pr => pr.id === item.productId)
+      if (p?.imageUrl) return [{ name: item.name, imageUrl: p.imageUrl, qty: item.quantity }]
+    }
+    return []
+  })
+
+  const shareText = [
+    `🍽️ ${scan?.cafeName ?? 'Smart Menu'}`,
+    (activeOrder?.items ?? []).map(i => `${i.quantity}× ${i.name}`).join(', '),
+    '',
+    cafeShare.hasSocialShareAddon && cafeShare.socialLinks
+      ? Object.values(cafeShare.socialLinks as Record<string,string>).join(' ')
+      : '',
+    '#SmartMenu #SmartRestau',
+  ].filter(Boolean).join('\n')
+
+  async function handleShare() {
+    try {
+      if (typeof navigator !== 'undefined' && navigator.share) {
+        await navigator.share({ title: scan?.cafeName ?? 'Smart Menu', text: shareText })
+      } else {
+        await navigator.clipboard.writeText(shareText)
+      }
+    } catch {}
+  }
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
@@ -734,24 +788,47 @@ function TablePageInner() {
         )}
       </AnimatePresence>
 
-      {/* ── Search ── */}
-      <div className="px-4 pt-4 pb-2">
-        <input
-          value={search} onChange={e => setSearch(e.target.value)}
-          placeholder={tr.search}
-          className="w-full bg-gray-800 text-white placeholder-gray-500 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500"
-        />
+      {/* ── Sticky search + category pills ── */}
+      <div className="sticky top-[46px] z-20 bg-gray-950 border-b border-gray-800/60">
+        <div className="px-4 pt-3 pb-2">
+          <input
+            value={search} onChange={e => setSearch(e.target.value)}
+            placeholder={tr.search}
+            className="w-full bg-gray-800 text-white placeholder-gray-500 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500"
+          />
+        </div>
+        {categories.length > 0 && (
+          <div className="flex gap-2 overflow-x-auto px-4 pb-3" style={{ scrollbarWidth: 'none' }}>
+            {categories.map(cat => {
+              const name = lang === 'ar' ? cat.nameAr : lang === 'fr' ? cat.nameFr : cat.nameEn
+              return (
+                <button key={cat.id}
+                  onClick={() => {
+                    setActiveCat(cat.id)
+                    document.getElementById(`cat-${cat.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                  }}
+                  className={`shrink-0 px-4 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap ${
+                    activeCat === cat.id
+                      ? 'bg-emerald-500 text-white'
+                      : 'bg-gray-800 text-gray-400 hover:text-white'
+                  }`}>
+                  {name}
+                </button>
+              )
+            })}
+          </div>
+        )}
       </div>
 
       {/* ── Menu ── */}
-      <div className="pb-36 px-4 space-y-8">
+      <div className="pb-36 px-4 space-y-8 pt-4">
         {filteredCategories.length === 0 && (
           <p className="text-center text-gray-600 py-12">{tr.noItems}</p>
         )}
         {filteredCategories.map(cat => {
           const catName = lang === 'ar' ? cat.nameAr : lang === 'fr' ? cat.nameFr : cat.nameEn
           return (
-            <section key={cat.id}>
+            <section key={cat.id} id={`cat-${cat.id}`} style={{ scrollMarginTop: '120px' }}>
               <h2 className="text-sm font-black uppercase tracking-widest text-emerald-400 mb-3">{catName}</h2>
               <div className="space-y-2">
                 {cat.products.filter(p => p.isAvailable).map(product => {
@@ -979,6 +1056,80 @@ function TablePageInner() {
               </div>
             </motion.div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Share popup — triggered when order is DELIVERED ── */}
+      <AnimatePresence>
+        {showShare && (
+          <>
+            {/* Backdrop */}
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 bg-black/50" onClick={() => setShowShare(false)} />
+
+            {/* Bottom sheet — 50% height */}
+            <motion.div
+              initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 28, stiffness: 260 }}
+              className="fixed bottom-0 left-0 right-0 z-50 bg-gray-900 rounded-t-3xl flex flex-col"
+              style={{ height: '50dvh', minHeight: '280px' }}
+            >
+              {/* Handle + header */}
+              <div className="shrink-0 px-5 pt-3 pb-2">
+                <div className="w-10 h-1 bg-gray-700 rounded-full mx-auto mb-3" />
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-black text-white text-base">
+                      {lang === 'ar' ? '🍽️ تم تقديم طلبك!' : lang === 'fr' ? '🍽️ Commande servie !' : '🍽️ Your order is served!'}
+                    </p>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      {lang === 'ar' ? 'شارك تجربتك مع أصدقائك' : lang === 'fr' ? 'Partagez votre expérience' : 'Share your experience'}
+                    </p>
+                  </div>
+                  <button onClick={() => setShowShare(false)}
+                    className="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center text-gray-400 text-sm shrink-0">
+                    ✕
+                  </button>
+                </div>
+              </div>
+
+              {/* Food photos row */}
+              <div className="shrink-0 flex gap-3 px-5 overflow-x-auto py-2" style={{ scrollbarWidth: 'none' }}>
+                {shareImages.length > 0 ? shareImages.map((item, idx) => (
+                  <div key={idx} className="shrink-0 flex flex-col items-center gap-1">
+                    <div className="relative">
+                      <img src={item.imageUrl} alt={item.name}
+                        className="w-20 h-20 rounded-2xl object-cover border border-gray-700" />
+                      {item.qty > 1 && (
+                        <span className="absolute -top-1 -right-1 bg-emerald-500 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center">
+                          {item.qty}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-gray-400 w-20 text-center truncate">{item.name}</p>
+                  </div>
+                )) : scan?.cafeLogoUrl ? (
+                  <div className="shrink-0 flex flex-col items-center gap-1">
+                    <img src={scan.cafeLogoUrl} alt={scan.cafeName}
+                      className="w-20 h-20 rounded-2xl object-contain bg-white/5 border border-gray-700" />
+                    <p className="text-[10px] text-gray-400 w-20 text-center truncate">{scan.cafeName}</p>
+                  </div>
+                ) : null}
+              </div>
+
+              {/* Share buttons */}
+              <div className="mt-auto px-5 pb-6 space-y-2.5">
+                <button onClick={handleShare}
+                  className="w-full bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white font-bold py-3 rounded-2xl flex items-center justify-center gap-2 transition-all text-sm">
+                  📤 {lang === 'ar' ? 'شارك مع أصدقائك' : lang === 'fr' ? 'Partager avec des amis' : 'Share with friends'}
+                </button>
+                <a href={`https://wa.me/?text=${encodeURIComponent(shareText)}`} target="_blank" rel="noreferrer"
+                  className="w-full bg-[#25D366] active:scale-95 text-white font-bold py-3 rounded-2xl flex items-center justify-center gap-2 text-sm">
+                  💬 WhatsApp
+                </a>
+              </div>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
     </div>
