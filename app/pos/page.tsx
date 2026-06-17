@@ -310,9 +310,10 @@ export default function POSPage() {
       })
       if (!res.ok) { const d = await res.json(); setCheckoutErr(d.error ?? 'Checkout failed'); return }
 
+      const d = await res.json()
       if (doPrint) {
-        const d = await res.json()
-        printReceipt(cafeName, selTable.tableNumber, d.items.map((i: OrderItem) => ({ name: i.product.nameEn || i.product.nameAr, quantity: i.quantity, unitPrice: i.unitPrice })), d.totalPrice, currency)
+        // checkout endpoint returns items already as { name, quantity, unitPrice }
+        printReceipt(cafeName, selTable.tableNumber, d.items as ReceiptItem[], d.totalPrice, currency)
       }
 
       setDoneTable(selTable.tableNumber)
@@ -806,8 +807,8 @@ export default function POSPage() {
                   <div className="grid grid-cols-2 gap-2">
                     <button onClick={() => handleCheckout(true)} disabled={checkingOut}
                       className="py-4 bg-gray-800 hover:bg-gray-700 disabled:opacity-50 text-white rounded-xl font-bold text-sm active:scale-95 transition-all flex flex-col items-center gap-1">
-                      <Printer className="w-5 h-5" />
-                      Print & Pay
+                      {checkingOut ? <Loader2 className="w-5 h-5 animate-spin" /> : <Printer className="w-5 h-5" />}
+                      {checkingOut ? 'Processing…' : 'Print & Pay'}
                     </button>
                     <button onClick={() => handleCheckout(false)} disabled={checkingOut}
                       className="py-4 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-2xl font-extrabold text-base active:scale-95 transition-all shadow-lg shadow-emerald-900/50 flex flex-col items-center gap-1">
