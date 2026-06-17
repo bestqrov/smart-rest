@@ -308,6 +308,7 @@ function TablePageInner() {
   const [billSending, setBillSending] = useState(false)
   const [activeCat,   setActiveCat]   = useState('')
   const [showShare,   setShowShare]   = useState(false)
+  const [userPhoto,   setUserPhoto]   = useState<string | null>(null)
   const [cafeShare,   setCafeShare]   = useState<{
     socialLinks: Record<string, string> | null
     hasSocialShareAddon: boolean
@@ -316,7 +317,8 @@ function TablePageInner() {
 
   const socketRef       = useRef<Socket | null>(null)
   const heartbeatRef    = useRef<ReturnType<typeof setInterval> | null>(null)
-  const sharedOrderRef  = useRef('')  // orderId that already triggered the popup
+  const sharedOrderRef  = useRef('')
+  const cameraInputRef  = useRef<HTMLInputElement | null>(null)
 
   const tr    = T[lang]
   const isRTL = lang === 'ar'
@@ -613,12 +615,29 @@ function TablePageInner() {
 
   async function handleShare() {
     try {
+      if (userPhoto && typeof navigator !== 'undefined' && navigator.canShare) {
+        const res  = await fetch(userPhoto)
+        const blob = await res.blob()
+        const file = new File([blob], 'dish.jpg', { type: blob.type })
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({ title: scan?.cafeName ?? 'Smart Menu', text: shareText, files: [file] })
+          return
+        }
+      }
       if (typeof navigator !== 'undefined' && navigator.share) {
         await navigator.share({ title: scan?.cafeName ?? 'Smart Menu', text: shareText })
       } else {
         await navigator.clipboard.writeText(shareText)
       }
     } catch {}
+  }
+
+  function handleCameraInput(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = ev => setUserPhoto(ev.target?.result as string)
+    reader.readAsDataURL(file)
   }
 
   // ─── Render ───────────────────────────────────────────────────────────────
@@ -1093,9 +1112,38 @@ function TablePageInner() {
                 </div>
               </div>
 
-              {/* Food photos row */}
+              {/* Hidden camera input */}
+              <input
+                ref={cameraInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={handleCameraInput}
+              />
+
+              {/* Photos row: user photo (if any) + menu images + camera button */}
               <div className="shrink-0 flex gap-3 px-5 overflow-x-auto py-2" style={{ scrollbarWidth: 'none' }}>
-                {shareImages.length > 0 ? shareImages.map((item, idx) => (
+
+                {/* User-taken photo — shown first when available */}
+                {userPhoto && (
+                  <div className="shrink-0 flex flex-col items-center gap-1">
+                    <div className="relative">
+                      <img src={userPhoto} alt="photo"
+                        className="w-20 h-20 rounded-2xl object-cover border-2 border-emerald-500 ring-2 ring-emerald-500/30" />
+                      <button onClick={() => setUserPhoto(null)}
+                        className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-white text-[10px] flex items-center justify-center font-bold">
+                        ✕
+                      </button>
+                    </div>
+                    <p className="text-[10px] text-emerald-400 w-20 text-center">
+                      {lang === 'ar' ? 'صورتك' : lang === 'fr' ? 'Ta photo' : 'Your photo'}
+                    </p>
+                  </div>
+                )}
+
+                {/* Menu item images */}
+                {shareImages.map((item, idx) => (
                   <div key={idx} className="shrink-0 flex flex-col items-center gap-1">
                     <div className="relative">
                       <img src={item.imageUrl} alt={item.name}
@@ -1108,13 +1156,27 @@ function TablePageInner() {
                     </div>
                     <p className="text-[10px] text-gray-400 w-20 text-center truncate">{item.name}</p>
                   </div>
-                )) : scan?.cafeLogoUrl ? (
+                ))}
+
+                {/* Cafe logo fallback */}
+                {shareImages.length === 0 && !userPhoto && scan?.cafeLogoUrl && (
                   <div className="shrink-0 flex flex-col items-center gap-1">
                     <img src={scan.cafeLogoUrl} alt={scan.cafeName}
                       className="w-20 h-20 rounded-2xl object-contain bg-white/5 border border-gray-700" />
                     <p className="text-[10px] text-gray-400 w-20 text-center truncate">{scan.cafeName}</p>
                   </div>
-                ) : null}
+                )}
+
+                {/* Camera button — always last */}
+                <button onClick={() => cameraInputRef.current?.click()}
+                  className="shrink-0 flex flex-col items-center gap-1">
+                  <div className="w-20 h-20 rounded-2xl border-2 border-dashed border-gray-600 hover:border-emerald-500 bg-gray-800/60 flex flex-col items-center justify-center gap-1 transition-colors active:scale-95">
+                    <span className="text-2xl">📷</span>
+                    <span className="text-[10px] text-gray-400 font-bold">
+                      {lang === 'ar' ? 'صوّر' : lang === 'fr' ? 'Photo' : 'Photo'}
+                    </span>
+                  </div>
+                </button>
               </div>
 
               {/* Share buttons */}
