@@ -27,6 +27,7 @@ import superadminRouter from './routes/superadmin'
 import posShiftRouter from './routes/pos/shift'
 import posOrdersRouter from './routes/pos/orders'
 import posCheckoutRouter from './routes/pos/checkout'
+import supervisorTablesRouter from './routes/pos/supervisorTables'
 import posCheckoutBySeatsRouter from './routes/pos/checkoutBySeats'
 import posTablesStatusRouter from './routes/pos/tablesStatus'
 import posWaiterRouter from './routes/pos/waiter'
@@ -131,6 +132,7 @@ async function main() {
   app.use(posOrdersRouter)
   app.use(posCheckoutRouter)
   app.use(posCheckoutBySeatsRouter)
+  app.use(supervisorTablesRouter)
   app.use(posTablesStatusRouter)
   app.use(posWaiterRouter)
   app.use(kitchenRouter)

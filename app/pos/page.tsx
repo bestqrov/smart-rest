@@ -9,6 +9,7 @@ import {
   Banknote, CreditCard, Smartphone, Printer, Check,
   Loader2, AlertTriangle, RefreshCw, Clock3
 } from 'lucide-react'
+import { tr, getLang, setLang as saveLang, isRTL, POS_LANGS, type Lang } from '../../src/lib/posI18n'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -84,6 +85,10 @@ const TABLE_LABEL: Record<TableColor, string> = {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function POSPage() {
+  const [lang, setLangState] = useState<Lang>('ar')
+  useEffect(() => { setLangState(getLang()) }, [])
+  const L = (key: Parameters<typeof tr>[0]) => tr(key, lang)
+
   // auth
   const [posToken,    setPosToken]    = useState<string | null>(null)
   const [staff,       setStaff]       = useState<Staff | null>(null)
@@ -374,7 +379,16 @@ export default function POSPage() {
   // ─── PIN Login ──────────────────────────────────────────────────────────────
   if (!posToken) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center p-4" dir="ltr">
+      <div className="min-h-screen bg-gray-950 flex items-center justify-center p-4" dir={isRTL(lang) ? 'rtl' : 'ltr'}>
+        {/* Lang selector */}
+        <div className="absolute top-4 right-4 flex gap-1.5">
+          {POS_LANGS.map(l => (
+            <button key={l.code} onClick={() => { saveLang(l.code); setLangState(l.code) }}
+              className={`w-8 h-8 rounded-lg text-sm transition-all ${lang === l.code ? 'bg-emerald-600' : 'bg-gray-800 hover:bg-gray-700'}`}>
+              {l.flag}
+            </button>
+          ))}
+        </div>
         {cafeLogoUrl && (
           <div className="absolute inset-0 bg-center bg-no-repeat bg-contain opacity-[0.03] pointer-events-none"
             style={{ backgroundImage: `url(${cafeLogoUrl})` }} />
@@ -488,9 +502,18 @@ export default function POSPage() {
             className="w-9 h-9 rounded-xl flex items-center justify-center text-gray-500 hover:text-white transition-colors">
             <RefreshCw className={`w-4 h-4 ${loadTables ? 'animate-spin' : ''}`} />
           </button>
+          {/* Lang selector */}
+          <div className="hidden sm:flex gap-1">
+            {POS_LANGS.map(l => (
+              <button key={l.code} onClick={() => { saveLang(l.code); setLangState(l.code) }}
+                className={`w-7 h-7 rounded-lg text-sm transition-all ${lang === l.code ? 'bg-emerald-700' : 'bg-gray-800 hover:bg-gray-700'}`}>
+                {l.flag}
+              </button>
+            ))}
+          </div>
           <button onClick={logout} className="flex items-center gap-1.5 px-3 py-2 text-gray-500 hover:text-red-400 text-xs font-medium rounded-xl hover:bg-gray-800 transition-colors">
             <LogOut className="w-4 h-4" />
-            <span className="hidden sm:inline">Logout</span>
+            <span className="hidden sm:inline">{L('nav_logout')}</span>
           </button>
         </div>
       </header>
