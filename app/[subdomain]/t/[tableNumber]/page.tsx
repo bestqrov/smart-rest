@@ -613,19 +613,80 @@ function TablePageInner() {
     '#SmartMenu #SmartRestau',
   ].filter(Boolean).join('\n')
 
+  function composeBrandedImage(photoDataUrl: string): Promise<Blob> {
+    return new Promise((resolve, reject) => {
+      const size = 1080
+      const canvas = document.createElement('canvas')
+      canvas.width = size; canvas.height = size
+      const ctx = canvas.getContext('2d')
+      if (!ctx) { reject(new Error('no ctx')); return }
+
+      const photo = new Image()
+      photo.onload = () => {
+        // Cover-crop photo into square
+        const scale = Math.max(size / photo.width, size / photo.height)
+        const sw = photo.width * scale, sh = photo.height * scale
+        ctx.drawImage(photo, (size - sw) / 2, (size - sh) / 2, sw, sh)
+
+        // Dark gradient bottom 45%
+        const grad = ctx.createLinearGradient(0, size * 0.52, 0, size)
+        grad.addColorStop(0, 'rgba(0,0,0,0)')
+        grad.addColorStop(1, 'rgba(0,0,0,0.90)')
+        ctx.fillStyle = grad
+        ctx.fillRect(0, 0, size, size)
+
+        const finish = () => {
+          // "Smart" (white) + "Resto" (orange)
+          ctx.font = "bold 76px -apple-system, BlinkMacSystemFont, Arial, sans-serif"
+          const smartW = ctx.measureText('Smart ').width
+          ctx.fillStyle = '#ffffff'
+          ctx.fillText('Smart ', 52, size - 138)
+          ctx.fillStyle = '#FF4B1F'
+          ctx.fillText('Resto', 52 + smartW, size - 138)
+
+          // Subtitle
+          ctx.font = "34px -apple-system, BlinkMacSystemFont, Arial, sans-serif"
+          ctx.fillStyle = 'rgba(255,255,255,0.82)'
+          ctx.fillText('The AI Operating System for Restaurants', 52, size - 82)
+
+          // Hashtags
+          ctx.font = "26px -apple-system, BlinkMacSystemFont, Arial, sans-serif"
+          ctx.fillStyle = 'rgba(255,255,255,0.50)'
+          ctx.fillText('#SmartMenu  #SmartRestau', 52, size - 34)
+
+          canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob')), 'image/jpeg', 0.93)
+        }
+
+        // Logo top-right
+        const logo = new Image()
+        logo.crossOrigin = 'anonymous'
+        logo.onload = () => {
+          ctx.globalAlpha = 0.92
+          const lsize = 148
+          ctx.drawImage(logo, size - lsize - 28, 28, lsize, lsize)
+          ctx.globalAlpha = 1
+          finish()
+        }
+        logo.onerror = finish
+        logo.src = '/assets/logo.png'
+      }
+      photo.onerror = reject
+      photo.src = photoDataUrl
+    })
+  }
+
   async function handleShare() {
     try {
-      if (userPhoto && typeof navigator !== 'undefined' && navigator.canShare) {
-        const res  = await fetch(userPhoto)
-        const blob = await res.blob()
-        const file = new File([blob], 'dish.jpg', { type: blob.type })
-        if (navigator.canShare({ files: [file] })) {
-          await navigator.share({ title: scan?.cafeName ?? 'Smart Menu', text: shareText, files: [file] })
+      if (userPhoto) {
+        const blob = await composeBrandedImage(userPhoto)
+        const file = new File([blob], 'smartrestau-dish.jpg', { type: 'image/jpeg' })
+        if (typeof navigator !== 'undefined' && navigator.canShare?.({ files: [file] })) {
+          await navigator.share({ title: scan?.cafeName ?? 'Smart Resto', text: shareText, files: [file] })
           return
         }
       }
       if (typeof navigator !== 'undefined' && navigator.share) {
-        await navigator.share({ title: scan?.cafeName ?? 'Smart Menu', text: shareText })
+        await navigator.share({ title: scan?.cafeName ?? 'Smart Resto', text: shareText })
       } else {
         await navigator.clipboard.writeText(shareText)
       }
@@ -1131,13 +1192,18 @@ function TablePageInner() {
                     <div className="relative">
                       <img src={userPhoto} alt="photo"
                         className="w-20 h-20 rounded-2xl object-cover border-2 border-emerald-500 ring-2 ring-emerald-500/30" />
+                      {/* SmartRestau branding badge */}
+                      <div className="absolute bottom-1 left-1 right-1 bg-black/70 rounded-lg px-1 py-0.5 flex items-center justify-center gap-1">
+                        <span className="text-[8px] font-black text-white leading-none">Smart</span>
+                        <span className="text-[8px] font-black text-[#FF4B1F] leading-none">Resto</span>
+                      </div>
                       <button onClick={() => setUserPhoto(null)}
                         className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-white text-[10px] flex items-center justify-center font-bold">
                         ✕
                       </button>
                     </div>
                     <p className="text-[10px] text-emerald-400 w-20 text-center">
-                      {lang === 'ar' ? 'صورتك' : lang === 'fr' ? 'Ta photo' : 'Your photo'}
+                      {lang === 'ar' ? '+ برندينغ' : lang === 'fr' ? '+ branding' : '+ branding'}
                     </p>
                   </div>
                 )}
