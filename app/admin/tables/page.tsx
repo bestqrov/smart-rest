@@ -33,34 +33,96 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   })
 }
 
-// Composites the cafe logo over the center of a QR code (errorCorrectionLevel 'H'
-// tolerates the occlusion). Falls back to the plain QR if the logo fails to load
-// or taints the canvas (cross-origin without CORS headers).
-async function brandQrWithLogo(qrDataUrl: string, logoUrl: string | null): Promise<string> {
-  if (!logoUrl) return qrDataUrl
+/**
+ * Artistic "stealth" QR — data modules as orange circles, finder patterns as
+ * navy rounded squares, large centre logo. Looks like a branded logo element
+ * but scans fine (errorCorrectionLevel H tolerates 30% occlusion).
+ */
+async function makeStealthQr(url: string, logoUrl: string | null): Promise<string> {
   try {
-    const [qrImg, logoImg] = await Promise.all([loadImage(qrDataUrl), loadImage(logoUrl)])
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const qrData: any = (QRCode as any).create(url, { errorCorrectionLevel: 'H' })
+    const modules = qrData.modules
+    const n: number = modules.size
+
+    const SIZE   = 480
+    const MARGIN = Math.round(SIZE * 0.04)
+    const cell   = (SIZE - 2 * MARGIN) / n
+
     const canvas = document.createElement('canvas')
-    canvas.width = qrImg.width
-    canvas.height = qrImg.height
+    canvas.width = SIZE; canvas.height = SIZE
     const ctx = canvas.getContext('2d')
-    if (!ctx) return qrDataUrl
-    ctx.drawImage(qrImg, 0, 0)
+    if (!ctx) throw new Error('no ctx')
 
-    const logoSize = qrImg.width * 0.22
-    const pad = logoSize * 0.14
-    const x = (qrImg.width - logoSize) / 2
-    const y = (qrImg.height - logoSize) / 2
-
+    // White background
     ctx.fillStyle = '#ffffff'
-    ctx.beginPath()
-    ctx.roundRect(x - pad, y - pad, logoSize + pad * 2, logoSize + pad * 2, 8)
-    ctx.fill()
-    ctx.drawImage(logoImg, x, y, logoSize, logoSize)
+    ctx.fillRect(0, 0, SIZE, SIZE)
+
+    const ORANGE = '#FF4B1F'
+    const NAVY   = '#1a2744'
+
+    // Top-left, top-right, bottom-left finder pattern zones (7×7 modules)
+    function isFinder(r: number, c: number) {
+      return (r < 7 && c < 7) || (r < 7 && c >= n - 7) || (r >= n - 7 && c < 7)
+    }
+
+    for (let r = 0; r < n; r++) {
+      for (let c = 0; c < n; c++) {
+        if (!modules.get(r, c)) continue
+        const cx = MARGIN + c * cell + cell / 2
+        const cy = MARGIN + r * cell + cell / 2
+        const sz = cell * 0.82
+
+        ctx.fillStyle = isFinder(r, c) ? NAVY : ORANGE
+
+        if (isFinder(r, c)) {
+          // Rounded squares for finder (navigation) modules
+          ctx.beginPath()
+          ctx.roundRect(cx - sz / 2, cy - sz / 2, sz, sz, sz * 0.28)
+          ctx.fill()
+        } else {
+          // Circles for data modules
+          ctx.beginPath()
+          ctx.arc(cx, cy, sz / 2, 0, Math.PI * 2)
+          ctx.fill()
+        }
+      }
+    }
+
+    // Centre logo — white circle bg + logo
+    if (logoUrl) {
+      const logoImg = await loadImage(logoUrl)
+      const logoSize = SIZE * 0.28
+      const lx = (SIZE - logoSize) / 2
+      const ly = (SIZE - logoSize) / 2
+      const pad = logoSize * 0.16
+
+      // Soft white circle behind logo
+      ctx.fillStyle = '#ffffff'
+      ctx.beginPath()
+      ctx.arc(SIZE / 2, SIZE / 2, logoSize / 2 + pad, 0, Math.PI * 2)
+      ctx.fill()
+
+      ctx.drawImage(logoImg, lx, ly, logoSize, logoSize)
+    }
 
     return canvas.toDataURL('image/png')
   } catch {
-    return qrDataUrl
+    // Fallback: plain QR with logo
+    const plain = await QRCode.toDataURL(url, { width: 320, margin: 2, errorCorrectionLevel: 'H' })
+    if (!logoUrl) return plain
+    try {
+      const [qrImg, logoImg] = await Promise.all([loadImage(plain), loadImage(logoUrl)])
+      const canvas = document.createElement('canvas')
+      canvas.width = qrImg.width; canvas.height = qrImg.height
+      const ctx = canvas.getContext('2d')!
+      ctx.drawImage(qrImg, 0, 0)
+      const ls = qrImg.width * 0.25
+      const px = (qrImg.width - ls) / 2
+      ctx.fillStyle = '#fff'; ctx.fillRect(px - ls * 0.12, px - ls * 0.12, ls + ls * 0.24, ls + ls * 0.24)
+      ctx.drawImage(logoImg, px, px, ls, ls)
+      return canvas.toDataURL('image/png')
+    } catch { return plain }
   }
 }
 
@@ -113,9 +175,7 @@ export default function TablesPage() {
       // Single QR per table — uses Table.qrToken (not per-seat)
       const url = `${origin}/${sub}/t/${t.tableNumber}?token=${t.qrToken}`
       try {
-        // High error-correction so the center can be occluded by the cafe logo
-        const plain = await QRCode.toDataURL(url, { width: 240, margin: 2, errorCorrectionLevel: 'H', color: { dark: '#064e3b', light: '#ffffff' } })
-        imgs[t.qrToken] = await brandQrWithLogo(plain, logo)
+        imgs[t.qrToken] = await makeStealthQr(url, logo)
       } catch {}
     }
     setQrImages(imgs)
