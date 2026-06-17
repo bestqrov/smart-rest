@@ -393,6 +393,10 @@ function TablePageInner() {
       if (r.ok) {
         const data = await r.json()
         setCategories(data.categories || [])
+        // Enrich scan state with logo/name (kept out of /api/qr/scan to avoid huge base64 payload)
+        if (data.cafeName || data.cafeLogoUrl) {
+          setScan(prev => prev ? { ...prev, cafeName: data.cafeName ?? prev.cafeName, cafeLogoUrl: data.cafeLogoUrl ?? prev.cafeLogoUrl } : prev)
+        }
       }
     } catch {}
   }

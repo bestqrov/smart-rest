@@ -548,7 +548,7 @@ router.post('/api/qr/scan', async (req: Request, res: Response) => {
     // Check cafe is live
     const cafe = await prisma.cafe.findUnique({
       where: { id: table.cafeId },
-      select: { isActive: true, subdomain: true, name: true, businessName: true, logoUrl: true }
+      select: { isActive: true, subdomain: true, name: true, businessName: true }
     })
     if (!cafe?.isActive)  return res.status(403).json({ error: 'Venue is currently unavailable' })
 
@@ -596,7 +596,6 @@ router.post('/api/qr/scan', async (req: Request, res: Response) => {
       billingTableId:      billingTable.id,
       billingTableNumber:  billingTable.tableNumber,
       cafeName:     cafe.businessName || cafe.name || '',
-      cafeLogoUrl:  cafe.logoUrl ?? null,
     })
   } catch (err) {
     logger.error({ msg: 'POST /api/qr/scan error', err })
