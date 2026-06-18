@@ -1,0 +1,281 @@
+{
+  "_comment": "Smart Resto — Dish Promo Video Template (1080×1920 · 9s · MP4)",
+  "_variables": {
+    "imageUrl":         "Dish photo URL (full quality, min 800×800)",
+    "logoUrl":          "Restaurant logo URL (square, transparent PNG ideal)",
+    "cafeName":         "Restaurant name — shown bottom-left",
+    "dishName":         "Dish name — Arabic or French, auto RTL/LTR",
+    "price":            "Price string e.g. '85 MAD' or '15 SAR'",
+    "caption":          "1-2 line marketing copy — auto RTL/LTR",
+    "watermarkOpacity": "0 = clean (paid), 0.22 = trial watermark"
+  },
+
+  "output_format": "mp4",
+  "width": 1080,
+  "height": 1920,
+  "frame_rate": 30,
+  "duration": 9,
+  "fill_color": "#0a0a0a",
+
+  "elements": [
+
+    {
+      "id": "dish_photo",
+      "type": "image",
+      "source": "{{imageUrl}}",
+      "width": "100%",
+      "height": "100%",
+      "fit": "cover",
+      "x": "50%",
+      "y": "50%",
+      "x_anchor": "50%",
+      "y_anchor": "50%",
+      "time": 0,
+      "duration": 9,
+      "animations": [
+        {
+          "type": "scale",
+          "easing": "linear",
+          "time": "start",
+          "duration": 9,
+          "scope": "element",
+          "fade": false,
+          "start_scale": "115%",
+          "end_scale": "100%"
+        }
+      ]
+    },
+
+    {
+      "id": "gradient_overlay",
+      "type": "shape",
+      "shape": "rectangle",
+      "width": "100%",
+      "height": "72%",
+      "x": "0%",
+      "y": "100%",
+      "x_anchor": "0%",
+      "y_anchor": "100%",
+      "fill_color": [
+        { "position": 0,   "value": "rgba(0,0,0,0)" },
+        { "position": 0.4, "value": "rgba(0,0,0,0.55)" },
+        { "position": 1,   "value": "rgba(0,0,0,0.95)" }
+      ],
+      "time": 0,
+      "duration": 9
+    },
+
+    {
+      "id": "logo",
+      "type": "image",
+      "source": "{{logoUrl}}",
+      "width": 148,
+      "height": 148,
+      "x": "calc(100% - 52px)",
+      "y": "68px",
+      "x_anchor": "100%",
+      "y_anchor": "0%",
+      "border_radius": 30,
+      "shadow_color": "rgba(0,0,0,0.5)",
+      "shadow_blur": 24,
+      "shadow_x": 0,
+      "shadow_y": 8,
+      "time": 0,
+      "duration": 8.6,
+      "animations": [
+        {
+          "type": "scale",
+          "easing": "back-out",
+          "time": "start",
+          "duration": 0.55,
+          "delay": 0.15,
+          "fade": true,
+          "start_scale": "0%",
+          "end_scale": "100%"
+        }
+      ]
+    },
+
+    {
+      "id": "dish_name",
+      "type": "text",
+      "text": "{{dishName}}",
+      "font_family": "Montserrat",
+      "font_weight": "800",
+      "font_size": 82,
+      "fill_color": "#ffffff",
+      "shadow_color": "rgba(0,0,0,0.6)",
+      "shadow_blur": 18,
+      "shadow_x": 0,
+      "shadow_y": 4,
+      "x": "56px",
+      "y": "calc(100% - 430px)",
+      "x_anchor": "0%",
+      "y_anchor": "100%",
+      "width": "calc(100% - 112px)",
+      "text_direction": "auto",
+      "line_height": "115%",
+      "time": 0,
+      "duration": 8.6,
+      "animations": [
+        {
+          "type": "slide",
+          "easing": "back-out",
+          "time": "start",
+          "duration": 0.65,
+          "delay": 0.45,
+          "direction": "up",
+          "distance": "80px",
+          "fade": true
+        }
+      ]
+    },
+
+    {
+      "id": "price_badge",
+      "type": "text",
+      "text": "{{price}}",
+      "font_family": "Montserrat",
+      "font_weight": "700",
+      "font_size": 46,
+      "fill_color": "#10b981",
+      "background_color": "rgba(16,185,129,0.18)",
+      "background_border_radius": 50,
+      "background_x_padding": "28",
+      "background_y_padding": "12",
+      "x": "56px",
+      "y": "calc(100% - 355px)",
+      "x_anchor": "0%",
+      "y_anchor": "0%",
+      "time": 0,
+      "duration": 8.6,
+      "animations": [
+        {
+          "type": "scale",
+          "easing": "back-out",
+          "time": "start",
+          "duration": 0.45,
+          "delay": 1.0,
+          "fade": true,
+          "start_scale": "0%",
+          "end_scale": "100%"
+        }
+      ]
+    },
+
+    {
+      "id": "caption",
+      "type": "text",
+      "text": "{{caption}}",
+      "font_family": "Montserrat",
+      "font_size": 38,
+      "fill_color": "rgba(255,255,255,0.88)",
+      "x": "56px",
+      "y": "calc(100% - 185px)",
+      "x_anchor": "0%",
+      "y_anchor": "100%",
+      "width": "calc(100% - 112px)",
+      "text_direction": "auto",
+      "line_height": "148%",
+      "time": 0,
+      "duration": 8.6,
+      "animations": [
+        {
+          "type": "slide",
+          "easing": "quad-out",
+          "time": "start",
+          "duration": 0.75,
+          "delay": 1.35,
+          "direction": "up",
+          "distance": "50px",
+          "fade": true
+        }
+      ]
+    },
+
+    {
+      "id": "cafe_name_label",
+      "type": "text",
+      "text": "— {{cafeName}}",
+      "font_family": "Montserrat",
+      "font_weight": "500",
+      "font_size": 28,
+      "fill_color": "rgba(255,255,255,0.42)",
+      "x": "56px",
+      "y": "calc(100% - 52px)",
+      "x_anchor": "0%",
+      "y_anchor": "100%",
+      "time": 0,
+      "duration": 8.6,
+      "animations": [
+        {
+          "type": "fade",
+          "easing": "quad-out",
+          "time": "start",
+          "duration": 0.9,
+          "delay": 1.7
+        }
+      ]
+    },
+
+    {
+      "id": "watermark",
+      "type": "text",
+      "text": "Smart Menu",
+      "font_family": "Montserrat",
+      "font_weight": "700",
+      "font_size": 64,
+      "fill_color": "rgba(255,255,255,1)",
+      "letter_spacing": "10",
+      "x": "50%",
+      "y": "50%",
+      "x_anchor": "50%",
+      "y_anchor": "50%",
+      "rotation": "-35",
+      "opacity": "{{watermarkOpacity}}",
+      "time": 0,
+      "duration": 9
+    },
+
+    {
+      "id": "fade_in_black",
+      "type": "shape",
+      "shape": "rectangle",
+      "width": "100%",
+      "height": "100%",
+      "fill_color": "#000000",
+      "time": 0,
+      "duration": 0.55,
+      "animations": [
+        {
+          "type": "fade",
+          "easing": "quad-out",
+          "time": "end",
+          "duration": 0.55,
+          "fade": true
+        }
+      ]
+    },
+
+    {
+      "id": "fade_out_black",
+      "type": "shape",
+      "shape": "rectangle",
+      "width": "100%",
+      "height": "100%",
+      "fill_color": "#000000",
+      "time": 8.45,
+      "duration": 0.55,
+      "animations": [
+        {
+          "type": "fade",
+          "easing": "quad-in",
+          "time": "start",
+          "duration": 0.55,
+          "fade": true
+        }
+      ]
+    }
+
+  ]
+}

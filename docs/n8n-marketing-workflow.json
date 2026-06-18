@@ -1,0 +1,284 @@
+{
+  "name": "Smart Resto — Marketing · Dish Promo Video Pipeline",
+  "_doc": {
+    "description": "Full pipeline: receives dish data → renders video with Creatomate → publishes to Instagram/TikTok → notifies our server",
+    "trigger": "POST /api/marketing/generate-video fires this webhook with campaign data",
+    "env_vars_needed": [
+      "CREATOMATE_API_KEY     — from creatomate.com dashboard",
+      "UPLOAD_POST_API_KEY    — from upload-post.com dashboard",
+      "MARKETING_CALLBACK_SECRET — random hex, same as in .env"
+    ]
+  },
+
+  "nodes": [
+
+    {
+      "id": "node-001",
+      "name": "Webhook — Receive Campaign",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [200, 400],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "smart-resto-marketing",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "_notes": "Path must match N8N_MARKETING_WEBHOOK_URL in .env.\nPayload: { campaignId, cafeName, country, productName, productPrice, imageUrl, hasWatermark, platforms, callbackUrl, logoUrl? }"
+    },
+
+    {
+      "id": "node-002",
+      "name": "Code — Build Creatomate Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 400],
+      "parameters": {
+        "jsCode": "const d = $input.first().json.body ?? $input.first().json;\n\n// Build caption based on country/language\nconst isGulf    = ['SA','AE','KW','QA','BH','OM'].includes(d.country ?? '');\nconst isMorocco = (d.country ?? 'MA') === 'MA';\n\nlet caption;\nif (isMorocco) {\n  caption = `🔥 ${d.productName} — واو ما كاينش بحالها!\\nتانريكوموندوها لكل عشاق الأكل الطيب 😍`;\n} else if (isGulf) {\n  caption = `🔥 ${d.productName} — تجربة لا تُنسى!\\nنرشحها لكل عشّاق المطبخ الأصيل 😍`;\n} else {\n  caption = `🔥 ${d.productName} — Incroyable!\\nOn vous recommande absolument cette expérience 😍`;\n}\n\n// Price formatting\nconst currencyMap = { MA: 'MAD', SA: 'SAR', AE: 'AED', TN: 'TND', DZ: 'DZD' };\nconst currency    = currencyMap[d.country] ?? 'MAD';\nconst priceStr    = `${d.productPrice?.toFixed ? d.productPrice.toFixed(0) : d.productPrice} ${currency}`;\n\n// Watermark\nconst watermarkOpacity = d.hasWatermark ? '0.22' : '0';\n\n// Logo fallback to SmartRestau generic if cafe has no logo\nconst logoUrl = d.logoUrl || 'https://smartrestau.com/assets/logo.png';\n\nreturn [{\n  json: {\n    // Pass through original fields\n    ...d,\n    // Computed fields for Creatomate\n    caption,\n    priceStr,\n    watermarkOpacity,\n    logoUrl,\n  }\n}];"
+      }
+    },
+
+    {
+      "id": "node-003",
+      "name": "HTTP — POST Creatomate Render",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 400],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.creatomate.com/v1/renders",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.CREATOMATE_API_KEY }}" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "template_id", "value": "={{ $env.CREATOMATE_TEMPLATE_ID }}" },
+            { "name": "modifications", "value": "={{ JSON.stringify({ imageUrl: $json.imageUrl, logoUrl: $json.logoUrl, cafeName: $json.cafeName, dishName: $json.productName, price: $json.priceStr, caption: $json.caption, watermarkOpacity: $json.watermarkOpacity }) }}" }
+          ]
+        },
+        "options": { "timeout": 30000 }
+      },
+      "_notes": "Returns an array. First element: { id, status: 'planned'|'rendering'|'succeeded'|'failed', url }"
+    },
+
+    {
+      "id": "node-004",
+      "name": "Code — Extract Render ID",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [920, 400],
+      "parameters": {
+        "jsCode": "// Creatomate returns an array of renders\nconst renders  = Array.isArray($input.first().json) ? $input.first().json : [$input.first().json];\nconst render   = renders[0];\nconst upstream = $('Code — Build Creatomate Payload').first().json;\n\nreturn [{\n  json: {\n    ...upstream,\n    renderId:     render.id,\n    renderStatus: render.status,\n    videoUrl:     render.url ?? null,\n    attempts:     0,\n  }\n}];"
+      }
+    },
+
+    {
+      "id": "node-005",
+      "name": "Wait — 15s (poll interval)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [1160, 400],
+      "parameters": {
+        "resume": "timeInterval",
+        "unit": "seconds",
+        "amount": 15
+      }
+    },
+
+    {
+      "id": "node-006",
+      "name": "HTTP — Poll Render Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1160, 580],
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.creatomate.com/v1/renders/{{ $json.renderId }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.CREATOMATE_API_KEY }}" }
+          ]
+        },
+        "options": { "timeout": 15000 }
+      }
+    },
+
+    {
+      "id": "node-007",
+      "name": "Code — Check Render Done",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1400, 580],
+      "parameters": {
+        "jsCode": "const poll      = $input.first().json;\nconst upstream  = $('Code — Extract Render ID').first().json;\nconst attempts  = (upstream.attempts ?? 0) + 1;\n\nconst isDone    = poll.status === 'succeeded';\nconst isFailed  = poll.status === 'failed' || attempts >= 10; // max 150s wait\n\nreturn [{\n  json: {\n    ...upstream,\n    renderStatus: poll.status,\n    videoUrl:     poll.url ?? upstream.videoUrl ?? null,\n    attempts,\n    isDone,\n    isFailed,\n  }\n}];"
+      }
+    },
+
+    {
+      "id": "node-008",
+      "name": "IF — Render succeeded?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1640, 580],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "loose" },
+          "conditions": [
+            {
+              "id": "cond-done",
+              "leftValue": "={{ $json.isDone }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "equal" }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "_notes": "TRUE → publish video. FALSE → check if failed or retry."
+    },
+
+    {
+      "id": "node-009",
+      "name": "IF — Failed or retry?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1880, 700],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false },
+          "conditions": [
+            {
+              "id": "cond-failed",
+              "leftValue": "={{ $json.isFailed }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "equal" }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "_notes": "TRUE → callback failed. FALSE → loop back to Wait node."
+    },
+
+    {
+      "id": "node-010",
+      "name": "HTTP — Publish via Upload-Post",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1880, 460],
+      "parameters": {
+        "method": "POST",
+        "url": "https://upload-post.com/api/v1/post",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.UPLOAD_POST_API_KEY }}" },
+            { "name": "Content-Type",  "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ JSON.stringify({ video_url: $json.videoUrl, caption: $json.caption, platforms: $json.platforms }) }}",
+        "options": { "timeout": 60000 }
+      },
+      "_notes": "upload-post.com auto-posts to Instagram Reels, TikTok, Snapchat Spotlight.\nReturns: { jobId, postUrls: { instagram: '...', tiktok: '...' } }\n\nIMPORTANT: Connect your social accounts on upload-post.com dashboard first."
+    },
+
+    {
+      "id": "node-011",
+      "name": "HTTP — Callback SUCCESS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2120, 460],
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $('Code — Extract Render ID').first().json.callbackUrl }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "X-Callback-Secret", "value": "={{ $env.MARKETING_CALLBACK_SECRET }}" },
+            { "name": "Content-Type",      "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ JSON.stringify({ status: 'published', videoUrl: $('Code — Check Render Done').first().json.videoUrl, caption: $('Code — Build Creatomate Payload').first().json.caption, uploadPostJobId: $json.jobId ?? null, socialLinks: $json.postUrls ?? null, n8nExecutionId: $execution.id }) }}"
+      }
+    },
+
+    {
+      "id": "node-012",
+      "name": "HTTP — Callback FAILED",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2120, 700],
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $('Code — Extract Render ID').first().json.callbackUrl }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "X-Callback-Secret", "value": "={{ $env.MARKETING_CALLBACK_SECRET }}" },
+            { "name": "Content-Type",      "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ JSON.stringify({ status: 'failed', n8nExecutionId: $execution.id }) }}"
+      }
+    },
+
+    {
+      "id": "node-013",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [2360, 400],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"ok\": true }"
+      }
+    }
+
+  ],
+
+  "connections": {
+    "Webhook — Receive Campaign":      { "main": [[{ "node": "Code — Build Creatomate Payload", "type": "main", "index": 0 }]] },
+    "Code — Build Creatomate Payload": { "main": [[{ "node": "HTTP — POST Creatomate Render",   "type": "main", "index": 0 }]] },
+    "HTTP — POST Creatomate Render":   { "main": [[{ "node": "Code — Extract Render ID",          "type": "main", "index": 0 }]] },
+    "Code — Extract Render ID":        { "main": [[{ "node": "Wait — 15s (poll interval)",         "type": "main", "index": 0 }]] },
+    "Wait — 15s (poll interval)":      { "main": [[{ "node": "HTTP — Poll Render Status",           "type": "main", "index": 0 }]] },
+    "HTTP — Poll Render Status":       { "main": [[{ "node": "Code — Check Render Done",            "type": "main", "index": 0 }]] },
+    "Code — Check Render Done":        { "main": [[{ "node": "IF — Render succeeded?",              "type": "main", "index": 0 }]] },
+    "IF — Render succeeded?": {
+      "main": [
+        [{ "node": "HTTP — Publish via Upload-Post", "type": "main", "index": 0 }],
+        [{ "node": "IF — Failed or retry?",           "type": "main", "index": 0 }]
+      ]
+    },
+    "IF — Failed or retry?": {
+      "main": [
+        [{ "node": "HTTP — Callback FAILED",        "type": "main", "index": 0 }],
+        [{ "node": "Wait — 15s (poll interval)",    "type": "main", "index": 0 }]
+      ]
+    },
+    "HTTP — Publish via Upload-Post":  { "main": [[{ "node": "HTTP — Callback SUCCESS",  "type": "main", "index": 0 }]] },
+    "HTTP — Callback SUCCESS":         { "main": [[{ "node": "Respond to Webhook",        "type": "main", "index": 0 }]] },
+    "HTTP — Callback FAILED":          { "main": [[{ "node": "Respond to Webhook",        "type": "main", "index": 0 }]] }
+  },
+
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+
+  "active": false,
+  "tags": ["smart-resto", "marketing", "video"]
+}
