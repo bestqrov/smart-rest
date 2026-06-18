@@ -348,10 +348,10 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
     )
 
   return (
-    <div className="min-h-screen bg-gray-50 flex" dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className="h-screen overflow-hidden bg-gray-50 flex" dir={isRTL ? 'rtl' : 'ltr'}>
 
       {/* ── Sidebar (desktop) ─────────────────────────────────────── */}
-      <aside className="hidden md:flex flex-col w-64 bg-[#1a2744] min-h-screen shrink-0">
+      <aside className="hidden md:flex flex-col w-64 bg-[#1a2744] h-full shrink-0 overflow-y-auto">
         <div className="px-5 py-5 border-b border-[#243460]">
           <Link href="/admin/dashboard" className="flex items-center gap-2">
             {cafe?.logoUrl ? (
@@ -533,7 +533,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
       )}
 
       {/* ── Page content ──────────────────────────────────────────── */}
-      <main className="flex-1 md:overflow-y-auto pt-14 md:pt-0 relative">
+      <main className="flex-1 overflow-y-auto pt-14 md:pt-0 relative">
         {/* Watermark — cafe logo at 5% opacity fixed behind all content */}
         {cafe?.logoUrl && (
           <div

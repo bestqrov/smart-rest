@@ -603,15 +603,24 @@ function TablePageInner() {
     return []
   })
 
-  const shareText = [
-    `🍽️ ${scan?.cafeName ?? 'Smart Menu'}`,
-    (activeOrder?.items ?? []).map(i => `${i.quantity}× ${i.name}`).join(', '),
-    '',
-    cafeShare.hasSocialShareAddon && cafeShare.socialLinks
-      ? Object.values(cafeShare.socialLinks as Record<string,string>).join(' ')
-      : '',
-    '#SmartMenu #SmartRestau',
-  ].filter(Boolean).join('\n')
+  function buildShareText(): string {
+    const items = activeOrder?.items ?? []
+    const firstName = items[0]?.name ?? ''
+    const cafe = scan?.cafeName ?? 'Smart Menu'
+    const allNames = items.map(i => i.name).join(', ')
+    const social = cafeShare.hasSocialShareAddon && cafeShare.socialLinks
+      ? '\n' + Object.values(cafeShare.socialLinks as Record<string,string>).join('  ')
+      : ''
+
+    const copies: Record<Lang, string> = {
+      ar: `🔥 واو! طلبت "${firstName}" من ${cafe} وكانت خرافية!\n\nجربتها للمرة الأولى وما خيّبتنيش — أنصح بيها كلشي يحب الأكل الطيب 🍽️✨\n\n${allNames}${social}\n#SmartMenu #SmartRestau`,
+      fr: `🔥 Wow, j'ai commandé "${firstName}" chez ${cafe} et c'était incroyable !\n\nUn must absolu pour tous les amateurs de bonne cuisine 🍽️✨\n\n${allNames}${social}\n#SmartMenu #SmartRestau`,
+      en: `🔥 Wow, just had "${firstName}" at ${cafe} — absolutely incredible!\n\nHighly recommend it to anyone who loves great food 🍽️✨\n\n${allNames}${social}\n#SmartMenu #SmartRestau`,
+      es: `🔥 ¡Wow, pedí "${firstName}" en ${cafe} y fue increíble!\n\nSe lo recomiendo a todos los amantes de la buena comida 🍽️✨\n\n${allNames}${social}\n#SmartMenu #SmartRestau`,
+    }
+    return copies[lang]
+  }
+  const shareText = buildShareText()
 
   function composeBrandedImage(photoDataUrl: string): Promise<Blob> {
     return new Promise((resolve, reject) => {
@@ -829,21 +838,48 @@ function TablePageInner() {
         </div>
       </header>
 
-      {/* ── Order tracker ── */}
+      {/* ── Order tracker — floating prominent card above bottom bar ── */}
       <AnimatePresence>
-        {activeOrder && (
+        {activeOrder && activeOrder.status !== 'DELIVERED' && (
           <motion.div
-            initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-            className="border-b border-gray-700 px-4 py-3"
+            initial={{ y: 120, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 120, opacity: 0 }}
+            transition={{ type: 'spring', damping: 24, stiffness: 280 }}
+            className="fixed left-3 right-3 z-[25] rounded-2xl overflow-hidden shadow-2xl"
+            style={{ bottom: '76px' }}
           >
-            <p className="mb-2 text-xs text-gray-400">
-              {activeOrder.items.map(i => `${i.quantity}× ${i.name}`).join(' · ')}
-            </p>
-            <LiveOrderTracker
-              status={activeOrder.status}
-              orderId={activeOrder.orderId}
-              lang={lang as 'ar' | 'fr' | 'en'}
-            />
+            {/* Pulsing glow behind card */}
+            <div className={`absolute inset-0 rounded-2xl blur-xl opacity-40 -z-10 ${
+              activeOrder.status === 'PREPARING' ? 'bg-amber-500' : 'bg-sky-500'
+            }`} />
+            <div className={`relative rounded-2xl border px-4 py-3 backdrop-blur-md ${
+              activeOrder.status === 'PREPARING'
+                ? 'bg-amber-950/90 border-amber-700/60'
+                : 'bg-sky-950/90 border-sky-700/60'
+            }`}>
+              {/* Header row */}
+              <div className="flex items-center justify-between mb-2.5">
+                <div className="flex items-center gap-2">
+                  <span className={`w-2.5 h-2.5 rounded-full animate-pulse ${
+                    activeOrder.status === 'PREPARING' ? 'bg-amber-400' : 'bg-sky-400'
+                  }`} />
+                  <span className={`text-sm font-black ${
+                    activeOrder.status === 'PREPARING' ? 'text-amber-300' : 'text-sky-300'
+                  }`}>
+                    {activeOrder.status === 'PREPARING' ? tr.preparing : tr.pending}
+                  </span>
+                </div>
+                <span className="text-[10px] text-gray-500 max-w-[55%] text-right truncate">
+                  {activeOrder.items.map(i => `${i.quantity}× ${i.name}`).join(' · ')}
+                </span>
+              </div>
+              <LiveOrderTracker
+                status={activeOrder.status}
+                orderId={activeOrder.orderId}
+                lang={lang as 'ar' | 'fr' | 'en'}
+              />
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
