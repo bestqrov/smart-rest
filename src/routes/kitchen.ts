@@ -7,12 +7,12 @@
  *   ready     → PREPARING → DELIVERED  (kitchen done, notify waiter + customer)
  *
  * Auth: admin JWT (same credential used by the KDS browser session)
- * Multi-tenancy: authorizeAdmin validates orderId belongs to admin's cafeId
+ * Multi-tenancy: authorizeKitchen validates orderId belongs to admin's cafeId
  */
 
 import express, { Request, Response } from 'express'
 import { Server as SocketIOServer } from 'socket.io'
-import { authorizeAdmin } from '../middleware/authorizeAdmin'
+import { authorizeKitchen } from '../middleware/authorizeKitchen'
 import logger from '../logger'
 import prisma from '../prisma'
 import { emitOrderStatusUpdate } from '../services/kds'
@@ -33,7 +33,7 @@ const REQUIRED_PREDECESSOR: Record<'PREPARING' | 'DELIVERED', string> = {
 
 // ─── PATCH /api/kitchen/orders/:orderId ───────────────────────────────────────
 
-router.patch('/api/kitchen/orders/:orderId', authorizeAdmin, async (req: Request, res: Response) => {
+router.patch('/api/kitchen/orders/:orderId', authorizeKitchen, async (req: Request, res: Response) => {
   try {
     const cafeId  = req.admin!.cafeId
     const orderId = req.params.orderId as string
@@ -48,7 +48,7 @@ router.patch('/api/kitchen/orders/:orderId', authorizeAdmin, async (req: Request
     const targetStatus    = STATUS_TARGET[status]
     const requiredCurrent = REQUIRED_PREDECESSOR[targetStatus]
 
-    // authorizeAdmin already confirmed the order belongs to this cafeId
+    // authorizeKitchen already confirmed the order belongs to this cafeId
     const order = await prisma.order.findUnique({
       where: { id: orderId },
       select: { status: true, tableId: true }
@@ -81,9 +81,39 @@ router.patch('/api/kitchen/orders/:orderId', authorizeAdmin, async (req: Request
   }
 })
 
+// ─── GET /api/kitchen/orders/queue — pending + preparing orders ───────────────
+// Replaces the two separate /api/orders?status= calls so kitchen page works
+// with authorizeKitchen instead of needing the general admin orders route.
+
+router.get('/api/kitchen/orders/queue', authorizeKitchen, async (req: Request, res: Response) => {
+  try {
+    const cafeId = req.admin!.cafeId
+    const orders = await prisma.order.findMany({
+      where:   { cafeId, status: { in: ['PENDING', 'PREPARING'] } },
+      orderBy: { createdAt: 'asc' },
+      select: {
+        id: true, status: true, totalPrice: true, createdAt: true, seatNumber: true,
+        table:         { select: { tableNumber: true, mergedIntoTableId: true, mergedIntoTable: { select: { tableNumber: true } } } },
+        originalTable: { select: { tableNumber: true } },
+        seat:          { select: { seatNumber: true } },
+        items: {
+          select: {
+            quantity: true, notes: true,
+            product: { select: { id: true, nameEn: true } },
+          },
+        },
+      },
+    })
+    return res.json(orders)
+  } catch (err) {
+    logger.error({ msg: 'GET /api/kitchen/orders/queue error', err })
+    return res.status(500).json({ error: 'Failed to fetch order queue' })
+  }
+})
+
 // ─── GET /api/kitchen/daily-stats ────────────────────────────────────────────
 
-router.get('/api/kitchen/daily-stats', authorizeAdmin, async (req: Request, res: Response) => {
+router.get('/api/kitchen/daily-stats', authorizeKitchen, async (req: Request, res: Response) => {
   try {
     const cafeId    = req.admin!.cafeId
     const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0)

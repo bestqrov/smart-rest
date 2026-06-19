@@ -476,10 +476,16 @@ async function upsertDemoStaff(cafeId: string) {
     const exists = await prisma.staff.findFirst({ where: { cafeId, name: s.name } })
     if (!exists) {
       const pinCode = await bcrypt.hash(s.pin, 10)
-      await prisma.staff.create({ data: { cafeId, name: s.name, role: s.role, pinCode, isActive: true } })
+      await prisma.staff.create({ data: { cafeId, name: s.name, role: s.role, pinCode, pinDisplay: s.pin, isActive: true } })
       console.log(`  🪪 Staff created: ${s.name} (PIN: ${s.pin})`)
     } else {
-      console.log(`  🪪 Staff exists:  ${s.name}`)
+      // backfill pinDisplay if missing
+      if (!exists.pinDisplay) {
+        await prisma.staff.update({ where: { id: exists.id }, data: { pinDisplay: s.pin } })
+        console.log(`  🪪 Staff updated pinDisplay: ${s.name}`)
+      } else {
+        console.log(`  🪪 Staff exists:  ${s.name}`)
+      }
     }
   }
 }

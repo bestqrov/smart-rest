@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { io as socketIO, Socket } from 'socket.io-client'
-import { Bell, BellOff, ChefHat, CheckCircle2, Clock, AlertTriangle, CheckCheck, XCircle, CalendarClock, Users, Phone, Check, X } from 'lucide-react'
+import { Bell, BellOff, ChefHat, CheckCircle2, AlertTriangle, CheckCheck, XCircle, CalendarClock, Users, Phone, Check, X } from 'lucide-react'
 
 type Lang = 'ar' | 'en' | 'fr' | 'es'
 
@@ -169,7 +169,10 @@ function playKitchenAlert() {
 
 function elapsedMin(iso: string) { return Math.floor((Date.now() - new Date(iso).getTime()) / 60000) }
 function elapsedSec(iso: string) { return Math.floor((Date.now() - new Date(iso).getTime()) / 1000) }
-function authHeader() { return { Authorization: `Bearer ${localStorage.getItem('token')}` } }
+function authHeader() {
+  const t = localStorage.getItem('kitchenToken') || localStorage.getItem('token') || ''
+  return { Authorization: `Bearer ${t}` }
+}
 
 const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || ''
 const STALE_THRESHOLD_MIN = 90
@@ -224,21 +227,40 @@ export default function KitchenPage() {
 
   useEffect(() => { mutedRef.current = muted }, [muted])
 
-  // boot
+  // boot — accepts admin token OR supervisor posToken
   useEffect(() => {
-    const token = localStorage.getItem('token')
-    if (!token) { window.location.href = '/login'; return }
-    try {
-      const p = JSON.parse(atob(token.split('.')[1]))
-      setCafeId(p.cafeId); setAuthed(true)
-    } catch { window.location.href = '/login'; return }
+    // Prefer admin token; fall back to posToken if role is SUPERVISOR
+    const adminToken = localStorage.getItem('token')
+    const posToken   = localStorage.getItem('posToken')
+
+    let activeToken: string | null = null
+    let cafeIdFromToken = ''
+
+    if (adminToken) {
+      try {
+        const p = JSON.parse(atob(adminToken.split('.')[1]))
+        if (p.cafeId) { activeToken = adminToken; cafeIdFromToken = p.cafeId }
+      } catch {}
+    }
+
+    if (!activeToken && posToken) {
+      try {
+        const p = JSON.parse(atob(posToken.split('.')[1]))
+        if (p.cafeId && p.staffRole === 'SUPERVISOR') { activeToken = posToken; cafeIdFromToken = p.cafeId }
+      } catch {}
+    }
+
+    if (!activeToken) { window.location.href = '/login'; return }
+
+    localStorage.setItem('kitchenToken', activeToken)
+    setCafeId(cafeIdFromToken); setAuthed(true)
+
     const saved = localStorage.getItem('sm_lang')
     if (saved === 'ar' || saved === 'en' || saved === 'fr' || saved === 'es') setLang(saved as Lang)
-    // Fetch cafe branding for logo display
-    const tok = token
+
     ;(async () => {
       try {
-        const r = await fetch('/api/admin/cafe/profile', { headers: { Authorization: `Bearer ${tok}` } })
+        const r = await fetch('/api/admin/cafe/profile', { headers: { Authorization: `Bearer ${activeToken}` } })
         if (r.ok) { const d = await r.json(); setCafeLogoUrl(d.logoUrl ?? null); setCafeName(d.businessName || d.name || '') }
       } catch {}
     })()
@@ -251,13 +273,12 @@ export default function KitchenPage() {
   }, [])
 
   async function loadOrders() {
-    const [pend, prep] = await Promise.all([
-      fetch('/api/orders?status=PENDING',   { headers: authHeader() }).then(r => r.ok ? r.json() : []),
-      fetch('/api/orders?status=PREPARING', { headers: authHeader() }).then(r => r.ok ? r.json() : []),
-    ])
-    const toTicket = (o: any, s: 'PENDING' | 'PREPARING'): KdsTicket => ({
+    const orders: any[] = await fetch('/api/kitchen/orders/queue', { headers: authHeader() })
+      .then(r => r.ok ? r.json() : [])
+
+    const toTicket = (o: any): KdsTicket => ({
       orderId:            o.id,
-      cafeId:             o.cafeId,
+      cafeId:             o.cafeId ?? '',
       billingTableNumber: (o.originalTable ?? o.table)?.tableNumber ?? 0,
       mergeLabel:         `T${(o.originalTable ?? o.table)?.tableNumber ?? '?'}`,
       seatGroups: [{
@@ -272,13 +293,10 @@ export default function KitchenPage() {
       }],
       totalPrice: String(o.totalPrice),
       createdAt:  o.createdAt,
-      status:     s,
+      status:     o.status as 'PENDING' | 'PREPARING',
     })
-    const all = [
-      ...(pend as any[]).map(o => toTicket(o, 'PENDING')),
-      ...(prep as any[]).map(o => toTicket(o, 'PREPARING')),
-    ].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
-    setTickets(all)
+
+    setTickets(orders.map(toTicket))
     setLoading(false)
   }
 
@@ -404,7 +422,12 @@ export default function KitchenPage() {
             : <ChefHat className="w-5 h-5 text-amber-400" />
           }
           <div className="flex flex-col leading-tight">
-            <span className="font-extrabold text-sm tracking-wide">{cafeName || tr.title}</span>
+            <div className="flex items-center gap-1.5">
+              {cafeName && <span className="font-extrabold text-sm tracking-wide">{cafeName}</span>}
+              <span className="bg-amber-500 text-gray-950 text-[10px] font-black px-1.5 py-0.5 rounded-md tracking-widest uppercase">
+                🍳 {tr.title}
+              </span>
+            </div>
             <span className="text-[9px] text-gray-500 font-medium">Powered by SmartMenu</span>
           </div>
         </div>
@@ -474,7 +497,11 @@ export default function KitchenPage() {
                     key={t.orderId}
                     onClick={() => setSelectedId(isSel ? null : t.orderId)}
                     className={`w-full text-left px-4 py-4 border-b border-[#2a2f38] transition-all flex items-center justify-between gap-2
-                      ${isSel ? 'bg-[#1e2229]' : 'hover:bg-[#2d333d]'}
+                      ${isSel
+                        ? 'bg-[#1e2229] border-l-2 border-l-amber-400'
+                        : hasAlert && isPend
+                          ? 'bg-red-950/50 border-l-2 border-l-red-500 hover:bg-red-950/70'
+                          : 'hover:bg-[#2d333d]'}
                     `}
                   >
                     <div className="flex flex-col gap-1.5 min-w-0">

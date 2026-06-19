@@ -174,7 +174,7 @@ export default function SettingsPage() {
 
   async function updatePin(staffId: string) {
     const pin = editingPin[staffId] ?? ''
-    if (!/^\d{4}$/.test(pin)) { showToast('PIN يجب أن يكون 4 أرقام', 'error'); return }
+    if (!/^\d{4,8}$/.test(pin)) { showToast('PIN يجب أن يكون بين 4 و 8 أرقام', 'error'); return }
     setSavingPin(staffId)
     try {
       const res = await fetch(`/api/admin/staff/${staffId}/pin`, {
@@ -503,11 +503,11 @@ export default function SettingsPage() {
                           <input
                             type="text"
                             inputMode="numeric"
-                            maxLength={4}
+                            maxLength={8}
                             value={editingPin[s.id]}
-                            onChange={e => setEditingPin(prev => ({ ...prev, [s.id]: e.target.value.replace(/\D/g, '').slice(0, 4) }))}
-                            className="w-16 text-center border-2 border-sky-400 rounded-lg px-2 py-1.5 text-sm font-mono font-bold focus:outline-none"
-                            placeholder="0000"
+                            onChange={e => setEditingPin(prev => ({ ...prev, [s.id]: e.target.value.replace(/\D/g, '').slice(0, 8) }))}
+                            className="w-20 text-center border-2 border-sky-400 rounded-lg px-2 py-1.5 text-sm font-mono font-bold focus:outline-none"
+                            placeholder="4-8 أرقام"
                             autoFocus
                           />
                           <button

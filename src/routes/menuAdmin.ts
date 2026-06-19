@@ -330,7 +330,7 @@ router.post('/api/admin/staff', authorizeAdmin, async (req: Request, res: Respon
     }
 
     if (!name?.trim())            return res.status(400).json({ error: 'name is required' })
-    if (!/^\d{4}$/.test(pinCode)) return res.status(400).json({ error: 'pinCode must be exactly 4 digits' })
+    if (!/^\d{4,8}$/.test(pinCode)) return res.status(400).json({ error: 'pinCode must be 4 to 8 digits' })
     if (!['WAITER','CASHIER','SUPERVISOR'].includes(role)) return res.status(400).json({ error: 'invalid role' })
 
     const ALLOWED_EXTRA = ['WAITER','CASHIER','SUPERVISOR','BARISTA','COOK','CLEANER','DISHWASHER','RUNNER']
@@ -535,8 +535,8 @@ router.patch('/api/admin/staff/:id/pin', authorizeAdmin, async (req: Request, re
     const id     = req.params['id'] as string
     const { pinCode } = req.body as { pinCode?: string }
 
-    if (!pinCode || !/^\d{4}$/.test(pinCode)) {
-      return res.status(400).json({ error: 'pinCode must be exactly 4 digits' })
+    if (!pinCode || !/^\d{4,8}$/.test(pinCode)) {
+      return res.status(400).json({ error: 'pinCode must be 4 to 8 digits' })
     }
 
     const staff = await prisma.staff.findUnique({ where: { id }, select: { cafeId: true } })
@@ -588,6 +588,71 @@ router.post('/api/admin/auth/change-password', authorizeAdmin, async (req: Reque
   } catch (err) {
     logger.error({ msg: 'POST change-password error', err })
     return res.status(500).json({ error: 'Failed to change password' })
+  }
+})
+
+// ─── GET /api/admin/attendance/pointage?month=YYYY-MM ────────────────────────
+// Returns a monthly attendance grid: for each active staff member, which days
+// they had at least one WaiterShift clockIn in the requested month.
+
+router.get('/api/admin/attendance/pointage', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const cafeId = req.admin!.cafeId
+    const monthParam = (req.query.month as string) ?? ''
+
+    // Parse month — default to current month
+    const ref = monthParam.match(/^\d{4}-\d{2}$/)
+      ? new Date(`${monthParam}-01T00:00:00`)
+      : new Date()
+    const year  = ref.getFullYear()
+    const month = ref.getMonth() // 0-based
+    const daysInMonth = new Date(year, month + 1, 0).getDate()
+
+    const start = new Date(year, month, 1)
+    const end   = new Date(year, month + 1, 1)
+
+    const [allStaff, shifts] = await Promise.all([
+      prisma.staff.findMany({
+        where:  { cafeId, isActive: true },
+        select: { id: true, name: true, role: true },
+        orderBy: { name: 'asc' },
+      }),
+      prisma.waiterShift.findMany({
+        where:   { cafeId, clockIn: { gte: start, lt: end } },
+        select:  { staffId: true, clockIn: true, clockOut: true },
+        orderBy: { clockIn: 'asc' },
+      }),
+    ])
+
+    // Group shifts by staffId → day
+    const shiftMap: Record<string, Record<number, { clockIn: Date; clockOut: Date | null }>> = {}
+    for (const s of shifts) {
+      const day = s.clockIn.getDate()
+      if (!shiftMap[s.staffId]) shiftMap[s.staffId] = {}
+      // keep earliest clock-in per day
+      if (!shiftMap[s.staffId][day]) {
+        shiftMap[s.staffId][day] = { clockIn: s.clockIn, clockOut: s.clockOut }
+      }
+    }
+
+    const fmtTime = (d: Date | null) =>
+      d ? d.toLocaleTimeString('fr-MA', { hour: '2-digit', minute: '2-digit', hour12: false }) : null
+
+    const staff = allStaff.map(m => {
+      const dayMap = shiftMap[m.id] ?? {}
+      const days: Record<number, { in: string; out: string | null }> = {}
+      let totalDays = 0
+      for (const [d, v] of Object.entries(dayMap)) {
+        days[Number(d)] = { in: fmtTime(v.clockIn)!, out: fmtTime(v.clockOut) }
+        totalDays++
+      }
+      return { id: m.id, name: m.name, role: m.role, days, totalDays }
+    })
+
+    return res.json({ year, month: month + 1, daysInMonth, staff })
+  } catch (err) {
+    logger.error({ msg: 'GET pointage error', err })
+    return res.status(500).json({ error: 'Failed to fetch pointage' })
   }
 })
 

@@ -7,7 +7,7 @@ import {
   LogOut, Bell, BellOff, ChevronLeft, ShoppingCart,
   UtensilsCrossed, LayoutGrid, Plus, Minus, Trash2,
   Banknote, CreditCard, Smartphone, Printer, Check,
-  Loader2, AlertTriangle, RefreshCw, Clock3
+  Loader2, AlertTriangle, RefreshCw
 } from 'lucide-react'
 import { tr, getLang, setLang as saveLang, isRTL, POS_LANGS, type Lang } from '../../src/lib/posI18n'
 
@@ -246,9 +246,14 @@ export default function POSPage() {
   // Socket
   useEffect(() => {
     if (!posToken || !cafeId) return
-    const socket = socketIO(SOCKET_URL || window.location.origin, { auth: { token: posToken }, transports: ['polling', 'websocket'] })
+    const socket = socketIO(SOCKET_URL || window.location.origin, {
+      auth: { token: posToken },
+      transports: ['websocket', 'polling'],
+      reconnection: true, reconnectionAttempts: Infinity, reconnectionDelay: 1500, reconnectionDelayMax: 8000,
+    })
     socketRef.current = socket
-    socket.on('connect', () => socket.emit('join', `room_${cafeId}`))
+    socket.on('connect',   () => socket.emit('join', `room_${cafeId}`))
+    socket.on('reconnect', () => socket.emit('join', `room_${cafeId}`))
     socket.on('price_updated', () => setPriceBanner(true))
     socket.on('bill_requested', (p: { tableId: string }) => {
       setTables(prev => prev.map(t => t.id === p.tableId ? { ...t, status: 'BILL_REQUESTED' as TableColor } : t))
@@ -258,6 +263,12 @@ export default function POSPage() {
       if (!o.tableId) return
       const color: TableColor = o.orderSource === 'QR_CODE' ? 'OPEN_QR' : 'OPEN_MANUAL'
       setTables(prev => prev.map(t => t.id === o.tableId ? { ...t, status: color } : t))
+    })
+    socket.on('order_status_updated', (p: { status: string; tableId?: string }) => {
+      if ((p.status === 'COMPLETED' || p.status === 'CANCELLED') && p.tableId) {
+        setTables(prev => prev.map(t => t.id === p.tableId ? { ...t, status: 'EMPTY' as TableColor } : t))
+        setAlertIds(prev => { const n = new Set(prev); n.delete(p.tableId!); return n })
+      }
     })
     return () => { socket.disconnect(); socketRef.current = null }
   }, [posToken, cafeId])

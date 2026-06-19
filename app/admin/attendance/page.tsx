@@ -2,10 +2,25 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import QRCode from 'qrcode'
-import { Eye, EyeOff, RefreshCw, QrCode, CalendarClock, Clock, CheckCircle, XCircle } from 'lucide-react'
+import { Eye, EyeOff, RefreshCw, CalendarClock, Clock, ChevronLeft, ChevronRight, Download, TableProperties } from 'lucide-react'
 import { useLang } from '../lang-context'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
+
+interface PointageStaff {
+  id:        string
+  name:      string
+  role:      string
+  days:      Record<number, { in: string; out: string | null }>
+  totalDays: number
+}
+
+interface PointageData {
+  year:        number
+  month:       number
+  daysInMonth: number
+  staff:       PointageStaff[]
+}
 
 interface StaffMember {
   id:          string
@@ -132,6 +147,37 @@ export default function AttendancePage() {
 
   const [staff,   setStaff]   = useState<StaffMember[]>([])
   const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState<'cards' | 'pointage'>('cards')
+
+  // ── Pointage state ─────────────────────────────────────────────────────────
+  const [pointage,      setPointage]      = useState<PointageData | null>(null)
+  const [pointageMonth, setPointageMonth] = useState<string>(() => {
+    const now = new Date()
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  })
+  const [pointageLoading, setPointageLoading] = useState(false)
+
+  const fetchPointage = useCallback(async (month: string) => {
+    setPointageLoading(true)
+    try {
+      const res = await fetch(`/api/admin/attendance/pointage?month=${month}`, { headers: authHeader() })
+      if (res.ok) setPointage(await res.json())
+    } finally { setPointageLoading(false) }
+  }, [])
+
+  useEffect(() => {
+    if (activeTab === 'pointage') fetchPointage(pointageMonth)
+  }, [activeTab, pointageMonth, fetchPointage])
+
+  function shiftMonth(dir: -1 | 1) {
+    const [y, m] = pointageMonth.split('-').map(Number)
+    const d = new Date(y, m - 1 + dir, 1)
+    setPointageMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
+  }
+
+  function printPointage() {
+    window.print()
+  }
 
   // Shared rotating QR state (single QR for all staff — each uses their PIN to identify)
   const [qrDataUrl,   setQrDataUrl]   = useState('')
@@ -234,77 +280,123 @@ export default function AttendancePage() {
 
       </div>
 
-      {/* ── Shared rotating QR banner ── */}
-      <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-5 flex flex-col sm:flex-row items-center gap-5 shadow-lg">
-        {/* QR code */}
-        <div className="shrink-0">
-          {qrLoading || !qrDataUrl ? (
-            <div className="w-40 h-40 bg-slate-700 rounded-xl flex items-center justify-center">
-              <div className="w-8 h-8 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
-            </div>
-          ) : (
-            <div className="rounded-xl overflow-hidden ring-4 ring-amber-400/30 shadow">
-              <img src={qrDataUrl} alt="Staff Login QR" width={160} height={160} />
-            </div>
-          )}
-        </div>
-
-        <div className="flex-1 text-center sm:text-start">
-          <p className="text-white font-bold text-lg mb-1">{t.scanToLogin}</p>
-          <p className="text-slate-400 text-sm mb-3">{t.qrSub}</p>
-
-          {/* Countdown bar */}
-          <div className="mb-3">
-            <div className="flex justify-between text-xs text-slate-400 mb-1">
-              <span>{t.expiresIn}</span>
-              <span className={`font-bold ${qrCountdown < 30 ? 'text-red-400' : 'text-slate-300'}`}>
-                {qrCountdown}s
-              </span>
-            </div>
-            <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all duration-1000 ${
-                  countdownPct > 50 ? 'bg-emerald-500' : countdownPct > 20 ? 'bg-amber-500' : 'bg-red-500'
-                }`}
-                style={{ width: `${countdownPct}%` }}
-              />
-            </div>
-          </div>
-
-          <button onClick={refreshQR}
-            className="flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-white rounded-xl text-sm font-semibold transition-colors">
-            <RefreshCw className="w-4 h-4" /> {t.qrRefresh}
-          </button>
-        </div>
+      {/* ── Tab switcher ── */}
+      <div className="flex gap-1 bg-slate-100 p-1 rounded-xl w-fit">
+        <button
+          onClick={() => setActiveTab('cards')}
+          className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === 'cards' ? 'bg-white shadow text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
+        >
+          <Clock className="w-4 h-4" />
+          {lang === 'ar' ? 'الحضور اللحظي' : lang === 'fr' ? 'Présence live' : 'Live Status'}
+        </button>
+        <button
+          onClick={() => setActiveTab('pointage')}
+          className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === 'pointage' ? 'bg-white shadow text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
+        >
+          <TableProperties className="w-4 h-4" />
+          {lang === 'ar' ? 'جدول الحضور الشهري' : lang === 'fr' ? 'Pointage mensuel' : 'Monthly Grid'}
+        </button>
       </div>
 
-      {/* ── Staff pass cards grid ── */}
-      {loading ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-          {[1,2,3,4].map(i => (
-            <div key={i} className="h-64 rounded-2xl bg-slate-100 animate-pulse" />
-          ))}
-        </div>
-      ) : staff.length === 0 ? (
-        <div className="py-16 text-center text-slate-400">
-          <CalendarClock className="w-12 h-12 mx-auto mb-3 opacity-30" />
-          <p className="text-sm">Aucun employé enregistré / لا يوجد موظفون</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-          {staff.map(member => (
-            <PassCard
-              key={member.id}
-              member={member}
-              lang={lang}
-              t={t}
-              pinRevealed={revealedPins.has(member.id)}
-              onTogglePin={() => togglePin(member.id)}
-              elapsed={elapsed}
-            />
-          ))}
+      {/* ── Pointage mensuel grid ── */}
+      {activeTab === 'pointage' && (
+        <div className="space-y-4">
+          {/* Month nav */}
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div className="flex items-center gap-2">
+              <button onClick={() => shiftMonth(-1)} className="p-2 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors">
+                <ChevronLeft className="w-4 h-4 text-slate-600" />
+              </button>
+              <span className="text-base font-bold text-slate-800 min-w-[120px] text-center">
+                {new Date(`${pointageMonth}-01`).toLocaleDateString(
+                  lang === 'ar' ? 'ar-MA' : lang === 'fr' ? 'fr-FR' : 'en-GB',
+                  { month: 'long', year: 'numeric' }
+                )}
+              </span>
+              <button onClick={() => shiftMonth(1)} className="p-2 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors">
+                <ChevronRight className="w-4 h-4 text-slate-600" />
+              </button>
+            </div>
+            <button
+              onClick={printPointage}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 text-sm font-semibold transition-colors print:hidden"
+            >
+              <Download className="w-4 h-4" />
+              {lang === 'ar' ? 'طباعة' : lang === 'fr' ? 'Imprimer' : 'Print'}
+            </button>
+          </div>
+
+          {/* Grid */}
+          {pointageLoading ? (
+            <div className="h-40 flex items-center justify-center">
+              <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : !pointage || pointage.staff.length === 0 ? (
+            <div className="py-16 text-center text-slate-400">
+              <TableProperties className="w-12 h-12 mx-auto mb-3 opacity-30" />
+              <p className="text-sm">{lang === 'ar' ? 'لا يوجد موظفون' : lang === 'fr' ? 'Aucun employé' : 'No staff'}</p>
+            </div>
+          ) : (
+            <PointageGrid data={pointage} lang={lang} />
+          )}
         </div>
       )}
+
+      {/* ── Live status tab ── */}
+      {activeTab === 'cards' && (<>
+        {/* Shared rotating QR banner */}
+        <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-5 flex flex-col sm:flex-row items-center gap-5 shadow-lg">
+          <div className="shrink-0">
+            {qrLoading || !qrDataUrl ? (
+              <div className="w-40 h-40 bg-slate-700 rounded-xl flex items-center justify-center">
+                <div className="w-8 h-8 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : (
+              <div className="rounded-xl overflow-hidden ring-4 ring-amber-400/30 shadow">
+                <img src={qrDataUrl} alt="Staff Login QR" width={160} height={160} />
+              </div>
+            )}
+          </div>
+          <div className="flex-1 text-center sm:text-start">
+            <p className="text-white font-bold text-lg mb-1">{t.scanToLogin}</p>
+            <p className="text-slate-400 text-sm mb-3">{t.qrSub}</p>
+            <div className="mb-3">
+              <div className="flex justify-between text-xs text-slate-400 mb-1">
+                <span>{t.expiresIn}</span>
+                <span className={`font-bold ${qrCountdown < 30 ? 'text-red-400' : 'text-slate-300'}`}>{qrCountdown}s</span>
+              </div>
+              <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                <div className={`h-full rounded-full transition-all duration-1000 ${countdownPct > 50 ? 'bg-emerald-500' : countdownPct > 20 ? 'bg-amber-500' : 'bg-red-500'}`} style={{ width: `${countdownPct}%` }} />
+              </div>
+            </div>
+            <button onClick={refreshQR} className="flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-white rounded-xl text-sm font-semibold transition-colors">
+              <RefreshCw className="w-4 h-4" /> {t.qrRefresh}
+            </button>
+          </div>
+        </div>
+
+        {/* Staff pass cards */}
+        {loading ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            {[1,2,3,4].map(i => <div key={i} className="h-64 rounded-2xl bg-slate-100 animate-pulse" />)}
+          </div>
+        ) : staff.length === 0 ? (
+          <div className="py-16 text-center text-slate-400">
+            <CalendarClock className="w-12 h-12 mx-auto mb-3 opacity-30" />
+            <p className="text-sm">Aucun employé enregistré / لا يوجد موظفون</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            {staff.map(member => (
+              <PassCard key={member.id} member={member} lang={lang} t={t}
+                pinRevealed={revealedPins.has(member.id)}
+                onTogglePin={() => togglePin(member.id)}
+                elapsed={elapsed}
+              />
+            ))}
+          </div>
+        )}
+      </>)}
     </div>
   )
 }
@@ -413,6 +505,116 @@ function PassCard({
             }
           </div>
         </div>
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PointageGrid — monthly attendance table (like the Excel pointage sheet)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const ROLE_COLOR: Record<string, string> = {
+  SUPERVISOR: 'bg-purple-100 text-purple-700',
+  CASHIER:    'bg-blue-100 text-blue-700',
+  WAITER:     'bg-emerald-100 text-emerald-700',
+}
+
+function PointageGrid({ data, lang }: { data: PointageData; lang: Lang }) {
+  const days = Array.from({ length: data.daysInMonth }, (_, i) => i + 1)
+
+  // Detect weekend (Fri=5/Sat=6 for Morocco, or Sat=6/Sun=0)
+  function isWeekend(day: number) {
+    const d = new Date(data.year, data.month - 1, day).getDay()
+    return d === 5 || d === 6
+  }
+
+  const labelTotal = lang === 'ar' ? 'المجموع' : lang === 'fr' ? 'Total' : 'Total'
+  const labelObs   = lang === 'ar' ? 'ملاحظة' : lang === 'fr' ? 'Observation' : 'Note'
+  const labelName  = lang === 'ar' ? 'الاسم' : lang === 'fr' ? 'Noms / Jours' : 'Name / Days'
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden print:shadow-none print:border-0">
+      {/* print title */}
+      <div className="hidden print:block text-center py-3 font-bold text-lg border-b border-slate-200">
+        Pointage — {String(data.month).padStart(2,'0')}/{data.year}
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs border-collapse" style={{ minWidth: `${60 + data.daysInMonth * 28 + 60 + 80}px` }}>
+          <thead>
+            <tr className="bg-slate-800 text-white">
+              {/* Name column */}
+              <th className="sticky left-0 z-10 bg-slate-800 text-left px-3 py-2.5 font-bold text-[11px] min-w-[140px] border-r border-slate-700">
+                {labelName}
+              </th>
+              {/* Day columns */}
+              {days.map(d => (
+                <th key={d} className={`text-center py-2.5 w-7 font-bold border-r border-slate-700 ${isWeekend(d) ? 'bg-slate-600' : ''}`}>
+                  {d}
+                </th>
+              ))}
+              {/* Total */}
+              <th className="text-center px-2 py-2.5 font-bold border-r border-slate-700 min-w-[44px]">
+                {labelTotal}
+              </th>
+              {/* Observation */}
+              <th className="text-left px-3 py-2.5 font-bold min-w-[80px]">
+                {labelObs}
+              </th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {data.staff.map((member, idx) => (
+              <tr key={member.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+                {/* Name + role */}
+                <td className={`sticky left-0 z-10 px-3 py-2 border-r border-slate-200 font-semibold text-slate-800 ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}>
+                  <div className="flex items-center gap-1.5">
+                    <span>{member.name}</span>
+                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${ROLE_COLOR[member.role] ?? 'bg-slate-100 text-slate-600'}`}>
+                      {member.role === 'SUPERVISOR' ? (lang === 'ar' ? 'مشرف' : 'Sup.') :
+                       member.role === 'CASHIER'    ? (lang === 'ar' ? 'كاشير' : 'Cais.') :
+                                                       (lang === 'ar' ? 'نادل' : 'Serv.')}
+                    </span>
+                  </div>
+                </td>
+
+                {/* Day cells */}
+                {days.map(d => {
+                  const entry = member.days[d]
+                  return (
+                    <td key={d} className={`text-center border-r border-slate-100 py-1.5 ${isWeekend(d) ? 'bg-slate-100' : ''}`}>
+                      {entry ? (
+                        <div className="flex flex-col items-center gap-0.5">
+                          <span className="text-emerald-600 font-black text-sm leading-none">✓</span>
+                          <span className="text-[8px] text-slate-400 leading-none">{entry.in}</span>
+                        </div>
+                      ) : (
+                        <span className="text-slate-200 text-xs">—</span>
+                      )}
+                    </td>
+                  )
+                })}
+
+                {/* Total */}
+                <td className="text-center border-r border-slate-100 font-black text-emerald-600 py-2">
+                  {member.totalDays}
+                </td>
+
+                {/* Observation — blank, for manual notes when printed */}
+                <td className="px-3 py-2 text-slate-300 text-[10px] border-b border-slate-100" />
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Legend */}
+      <div className="px-4 py-2.5 border-t border-slate-100 flex items-center gap-4 text-[11px] text-slate-500 print:hidden">
+        <span className="flex items-center gap-1"><span className="text-emerald-600 font-black">✓</span> {lang === 'fr' ? 'Présent' : lang === 'ar' ? 'حاضر' : 'Present'}</span>
+        <span className="flex items-center gap-1"><span className="text-slate-300">—</span> {lang === 'fr' ? 'Absent' : lang === 'ar' ? 'غائب' : 'Absent'}</span>
+        <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-slate-200 inline-block" /> {lang === 'fr' ? 'Week-end' : lang === 'ar' ? 'عطلة' : 'Weekend'}</span>
       </div>
     </div>
   )
