@@ -188,6 +188,23 @@ export default function LoginPage() {
         localStorage.setItem('token',     data.token)
         localStorage.setItem('cafeId',    data.cafeId)
         localStorage.setItem('subdomain', data.subdomain ?? '')
+
+        // Ensure demo staff exist in production DB
+        const adminHeaders = { 'Content-Type': 'application/json', Authorization: `Bearer ${data.token}` }
+        const staffRes = await fetch('/api/admin/staff', { headers: adminHeaders })
+        if (staffRes.ok) {
+          const staffList: { name: string }[] = await staffRes.json()
+          const names = staffList.map((s: any) => s.name)
+          const toCreate = [
+            { name: 'Demo Cashier',    role: 'CASHIER',    pinCode: '1234' },
+            { name: 'Demo Supervisor', role: 'SUPERVISOR', pinCode: '3333' },
+            { name: 'Demo Waiter',     role: 'WAITER',     pinCode: '2222' },
+          ].filter(s => !names.includes(s.name))
+          await Promise.all(toCreate.map(s =>
+            fetch('/api/admin/staff', { method: 'POST', headers: adminHeaders, body: JSON.stringify(s) })
+          ))
+        }
+
         router.push('/admin/dashboard')
       } else {
         const res = await fetch('/api/pos/shift', {
