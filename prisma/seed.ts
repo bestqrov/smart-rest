@@ -23,7 +23,7 @@ type PrdDef = { cat: string; nameEn: string; nameAr: string; price: number; desc
 const MA_CATS: CatDef[] = [
   { nameEn: 'Breakfast',             nameAr: 'الفطور',                order: 1 },
   { nameEn: 'Starters & Salads',     nameAr: 'المقبلات والسلطات',     order: 2 },
-  { nameEn: 'Traditional Moroccan',  nameAr: 'أطباق مغربية تقليدية', order: 3 },
+  { nameEn: 'Traditional Moroccan',  nameAr: 'أطباق  تقليدية', order: 3 },
   { nameEn: 'Grills & Sandwiches',   nameAr: 'مشاوي وسندويشات',       order: 4 },
   { nameEn: 'Hot Drinks',            nameAr: 'مشروبات ساخنة',         order: 5 },
   { nameEn: 'Cold Drinks & Juices',  nameAr: 'مشروبات باردة وعصائر', order: 6 },
