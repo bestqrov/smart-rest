@@ -118,6 +118,7 @@ export default function LoginPage() {
   const [loading, setLoading]   = useState(false)
   const [showAdminForm, setShowAdminForm] = useState(false)
   const [demoLoading, setDemoLoading]     = useState<string | null>(null)
+  const [demoError, setDemoError]         = useState('')
   const [showMagicOption, setShowMagicOption] = useState(false)
   const [magicSent, setMagicSent]             = useState(false)
   const [magicLoading, setMagicLoading]       = useState(false)
@@ -170,6 +171,7 @@ export default function LoginPage() {
   // ── Demo role login ────────────────────────────────────────────────────────
   async function loginAsRole(roleConfig: typeof DEMO_ROLES[number]) {
     setDemoLoading(roleConfig.role)
+    setDemoError('')
     try {
       if (roleConfig.role === 'BOSS') {
         const res = await fetch('/api/auth/login', {
@@ -178,7 +180,11 @@ export default function LoginPage() {
           body: JSON.stringify({ email: DEMO_CAFE.email, password: DEMO_CAFE.password }),
         })
         const data = await res.json()
-        if (!res.ok) { setDemoLoading(null); return }
+        if (!res.ok) {
+          setDemoError(data.error ?? 'Erreur de connexion')
+          setDemoLoading(null)
+          return
+        }
         localStorage.setItem('token',     data.token)
         localStorage.setItem('cafeId',    data.cafeId)
         localStorage.setItem('subdomain', data.subdomain ?? '')
@@ -190,7 +196,11 @@ export default function LoginPage() {
           body: JSON.stringify({ subdomain: DEMO_CAFE.subdomain, pinCode: roleConfig.pin, action: 'login' }),
         })
         const data = await res.json()
-        if (!res.ok) { setDemoLoading(null); return }
+        if (!res.ok) {
+          setDemoError(data.error ?? 'PIN invalide')
+          setDemoLoading(null)
+          return
+        }
         const { token, staff } = data
         localStorage.setItem('posToken',         token)
         localStorage.setItem('cafeId',           JSON.parse(atob(token.split('.')[1])).cafeId)
@@ -199,7 +209,8 @@ export default function LoginPage() {
         localStorage.setItem('kitchenToken',     token)
         window.location.href = roleConfig.dest
       }
-    } catch {
+    } catch (err) {
+      setDemoError(lang === 'ar' ? 'خطأ في الشبكة' : 'Erreur réseau')
       setDemoLoading(null)
     }
   }
@@ -272,6 +283,13 @@ export default function LoginPage() {
               )
             })}
           </div>
+
+          {demoError && (
+            <div className="mt-3 bg-red-900/40 border border-red-700/50 text-red-300 text-xs rounded-xl px-4 py-2.5 flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />
+              {demoError}
+            </div>
+          )}
         </div>
 
         {/* ── Admin login (collapsible) ── */}
