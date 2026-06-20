@@ -306,6 +306,18 @@ export default function LoginPage() {
           </div>
         </div>
 
+        {/* Staff portal link */}
+        <div className="flex items-center justify-center gap-2">
+          <div className="h-px flex-1 bg-gray-800" />
+          <Link
+            href="/staff"
+            className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-emerald-400 transition-colors font-medium px-2"
+          >
+            {lang === 'ar' ? 'دخول الموظفين (PIN)' : lang === 'fr' ? 'Accès Staff — PIN' : 'Staff Portal — PIN'}
+          </Link>
+          <div className="h-px flex-1 bg-gray-800" />
+        </div>
+
         {/* Footer */}
         <p className="text-center text-xs text-gray-700 pb-4">
           © {new Date().getFullYear()} SmartMenu · MA · SA · AE · SN · CI · KE
