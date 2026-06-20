@@ -32,8 +32,9 @@ export async function authorizeKitchen(req: Request, res: Response, next: NextFu
 
       // Validate orderId ownership if present
       if (req.params.orderId) {
+        const orderId = Array.isArray(req.params.orderId) ? req.params.orderId[0] : req.params.orderId
         const order = await prisma.order.findUnique({
-          where:  { id: req.params.orderId },
+          where:  { id: orderId },
           select: { cafeId: true },
         })
         if (!order || order.cafeId !== payload.cafeId) {
@@ -48,8 +49,9 @@ export async function authorizeKitchen(req: Request, res: Response, next: NextFu
       req.admin = { userId: payload.staffId, cafeId: payload.cafeId } as AdminTokenPayload
 
       if (req.params.orderId) {
+        const orderId = Array.isArray(req.params.orderId) ? req.params.orderId[0] : req.params.orderId
         const order = await prisma.order.findUnique({
-          where:  { id: req.params.orderId },
+          where:  { id: orderId },
           select: { cafeId: true },
         })
         if (!order || order.cafeId !== payload.cafeId) {
