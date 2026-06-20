@@ -479,7 +479,7 @@ export default function KitchenPage() {
 
           {/* ── LEFT: ticket list ── */}
           <div className="w-56 lg:w-64 bg-[#252930] border-r border-[#2a2f38] flex flex-col overflow-hidden shrink-0">
-            <div className="overflow-y-auto flex-1">
+            <div className="overflow-y-auto flex-1" style={{touchAction:'pan-y'}}>
               {allTickets.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-gray-600 gap-2 py-16">
                   <span className="text-3xl">✅</span>
@@ -574,7 +574,7 @@ export default function KitchenPage() {
                   </div>
 
                   {/* Items list */}
-                  <div className="flex-1 overflow-y-auto px-6 py-4 space-y-2">
+                  <div className="flex-1 overflow-y-auto px-6 py-4 space-y-2" style={{touchAction:'pan-y'}}>
                     {items.map((item, i) => (
                       <div key={i} className="flex items-start gap-4 bg-[#252930] rounded-xl px-5 py-4">
                         {/* Qty badge */}
@@ -624,7 +624,7 @@ export default function KitchenPage() {
 
       ) : (
         /* ── Reservations ── */
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto" style={{touchAction:'pan-y'}}>
           <div className="sticky top-0 bg-violet-950/80 backdrop-blur px-4 py-2 border-b border-violet-900/40">
             <h2 className="font-bold text-violet-300 text-sm flex items-center gap-2">
               <CalendarClock className="w-4 h-4" /> {tr.reservations} — {pendingRes.length}

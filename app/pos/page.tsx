@@ -526,7 +526,7 @@ export default function POSPage() {
           <div className="hidden sm:flex gap-1">
             {POS_LANGS.map(l => (
               <button key={l.code} onClick={() => { saveLang(l.code); setLangState(l.code) }}
-                className={`w-7 h-7 rounded-lg text-sm transition-all ${lang === l.code ? 'bg-emerald-700' : 'bg-gray-800 hover:bg-gray-700'}`}>
+                className={`w-10 h-10 rounded-lg text-sm transition-all ${lang === l.code ? 'bg-emerald-700' : 'bg-gray-800 hover:bg-gray-700'}`}>
                 {l.flag}
               </button>
             ))}
@@ -598,7 +598,7 @@ export default function POSPage() {
           {/* Menu Browser */}
           <div className="flex-1 flex flex-col overflow-hidden">
             {/* Category tabs */}
-            <div className="shrink-0 border-b border-gray-800 flex gap-1 px-3 py-2 overflow-x-auto scrollbar-none">
+            <div className="shrink-0 border-b border-gray-800 flex gap-1 px-3 py-2 overflow-x-auto scrollbar-none" style={{touchAction:'pan-x'}}>
               {menuCats.map(cat => (
                 <button key={cat.id} onClick={() => setActiveCat(cat.id)}
                   className={`shrink-0 px-4 py-2 rounded-xl text-sm font-bold transition-all ${
@@ -615,7 +615,7 @@ export default function POSPage() {
             </div>
 
             {/* Products grid */}
-            <div className="flex-1 overflow-y-auto p-3">
+            <div className="flex-1 overflow-y-auto p-3" style={{touchAction:'pan-y'}}>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                 {activeItems.map(item => (
                   <button key={item.id} onClick={() => { if (selTable) addToCart(item) }}
@@ -679,7 +679,7 @@ export default function POSPage() {
               </div>
 
               {/* Order items */}
-              <div className="flex-1 overflow-y-auto p-3 space-y-2">
+              <div className="flex-1 overflow-y-auto p-3 space-y-2" style={{touchAction:'pan-y'}}>
                 {loadOrder && (
                   <div className="flex items-center justify-center py-12 gap-2 text-gray-500 text-sm">
                     <Loader2 className="w-5 h-5 animate-spin" /> Loading order…
@@ -716,16 +716,16 @@ export default function POSPage() {
 
                     {/* Cart items (manual) */}
                     {cart.map(item => (
-                      <div key={item.productId} className="flex items-center gap-3 bg-gray-900 rounded-xl px-3 py-2.5">
+                      <div key={item.productId} className="flex items-center gap-3 bg-gray-900 rounded-xl px-3 py-2">
                         <div className="flex items-center gap-1 shrink-0">
                           <button onClick={() => updateQty(item.productId, -1)}
-                            className="w-7 h-7 rounded-lg bg-gray-800 hover:bg-gray-700 flex items-center justify-center text-gray-400 hover:text-white active:scale-95 transition-all">
-                            <Minus className="w-3 h-3" />
+                            className="w-10 h-10 rounded-lg bg-gray-800 hover:bg-gray-700 flex items-center justify-center text-gray-400 hover:text-white active:scale-95 transition-all">
+                            <Minus className="w-4 h-4" />
                           </button>
-                          <span className="w-7 text-center text-white font-extrabold text-sm">{item.qty}</span>
+                          <span className="w-8 text-center text-white font-extrabold text-sm">{item.qty}</span>
                           <button onClick={() => updateQty(item.productId, 1)}
-                            className="w-7 h-7 rounded-lg bg-emerald-900/70 hover:bg-emerald-800 flex items-center justify-center text-emerald-400 hover:text-white active:scale-95 transition-all">
-                            <Plus className="w-3 h-3" />
+                            className="w-10 h-10 rounded-lg bg-emerald-900/70 hover:bg-emerald-800 flex items-center justify-center text-emerald-400 hover:text-white active:scale-95 transition-all">
+                            <Plus className="w-4 h-4" />
                           </button>
                         </div>
                         <div className="flex-1 min-w-0">
@@ -735,8 +735,8 @@ export default function POSPage() {
                         <div className="flex items-center gap-2 shrink-0">
                           <span className="text-gray-300 tabular-nums text-sm">{(item.price * item.qty).toFixed(2)}</span>
                           <button onClick={() => removeFromCart(item.productId)}
-                            className="w-7 h-7 rounded-lg bg-gray-800 hover:bg-red-900/50 flex items-center justify-center text-gray-600 hover:text-red-400 active:scale-95 transition-all">
-                            <Trash2 className="w-3 h-3" />
+                            className="w-10 h-10 rounded-lg bg-gray-800 hover:bg-red-900/50 flex items-center justify-center text-gray-600 hover:text-red-400 active:scale-95 transition-all">
+                            <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
                       </div>
