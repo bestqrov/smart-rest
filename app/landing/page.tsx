@@ -530,6 +530,7 @@ const MARKETS = [
       { en: 'Over 150 MAD',  fr: 'Plus de 150 MAD', ar: 'أكثر من 150 درهم',  fee: '10 — 12 MAD' },
     ],
     note: { en: '−5% if order has 2+ items', fr: '−5% dès 2 articles', ar: 'خصم 5% عند طلب منتجين أو أكثر' },
+    premium: { price: '199', currency: 'MAD', label: '199 MAD / mois' },
   },
   {
     flag: '🇸🇦', currency: 'SAR',
@@ -546,6 +547,7 @@ const MARKETS = [
       { en: 'Over 200 SAR',  fr: 'Plus de 200 SAR', ar: 'أكثر من 200 ريال',fee: '22 SAR' },
     ],
     note: { en: '−5% if order has 2+ items', fr: '−5% dès 2 articles', ar: 'خصم 5% عند طلب منتجين أو أكثر' },
+    premium: { price: '159', currency: 'SAR', label: '159 SAR / month' },
   },
   {
     flag: '🇦🇪', currency: 'AED',
@@ -562,6 +564,7 @@ const MARKETS = [
       { en: 'Over 200 AED',  fr: 'Plus de 200 AED', ar: 'أكثر من 200 درهم',fee: '22 AED' },
     ],
     note: { en: '−5% if order has 2+ items', fr: '−5% dès 2 articles', ar: 'خصم 5% عند طلب منتجين أو أكثر' },
+    premium: { price: '159', currency: 'AED', label: '159 AED / month' },
   },
   {
     flag: '🇩🇿🇹🇳🇪🇬', currency: 'DZD/TND/EGP',
@@ -576,6 +579,7 @@ const MARKETS = [
       { en: 'Libya (LYD)',    fr: 'Libye (LYD)',   ar: 'ليبيا (دينار)',   fee: '0.30 → 8 LYD' },
     ],
     note: { en: '−5% if order has 2+ items', fr: '−5% dès 2 articles', ar: 'خصم 5% عند طلب منتجين أو أكثر' },
+    premium: null,
   },
   {
     flag: '🇫🇷🇪🇸🇧🇪', currency: 'EUR',
@@ -592,6 +596,21 @@ const MARKETS = [
       { en: 'Over €100',  fr: 'Plus de 100€', ar: 'أكثر من 100 يورو', fee: '€2.00' },
     ],
     note: { en: '−5% if order has 2+ items', fr: '−5% dès 2 articles', ar: 'خصم 5% عند طلب منتجين أو أكثر' },
+    premium: { price: '159', currency: 'EUR', label: '159 € / mois' },
+  },
+  {
+    flag: '🇸🇳🇨🇮🇧🇫', currency: 'XOF',
+    en: { country: 'West Africa', cities: 'Dakar · Abidjan · Ouagadougou · Bamako' },
+    fr: { country: "Afrique de l'Ouest", cities: 'Dakar · Abidjan · Ouagadougou · Bamako' },
+    ar: { country: 'غرب أفريقيا', cities: 'داكار · أبيدجان · واغادوغو · باماكو' },
+    color: 'from-yellow-700 to-yellow-900',
+    pricing: [
+      { en: 'Under 2,000 XOF', fr: 'Moins de 2 000 XOF', ar: 'أقل من 2000 فرنك', fee: '50 XOF'  },
+      { en: '2,000 — 5,000',   fr: '2 000 — 5 000',       ar: '2000 — 5000',      fee: '200 XOF' },
+      { en: 'Over 5,000 XOF',  fr: 'Plus de 5 000 XOF',   ar: 'أكثر من 5000',    fee: '500 XOF' },
+    ],
+    note: { en: '−5% if order has 2+ items', fr: '−5% dès 2 articles', ar: 'خصم 5% عند طلب منتجين أو أكثر' },
+    premium: { price: '13 000', currency: 'XOF', label: '13 000 XOF / mois' },
   },
   {
     flag: '🌍', currency: 'XOF/KES/XAF',
@@ -606,6 +625,7 @@ const MARKETS = [
       { en: 'Mobile Money',       fr: 'Mobile Money',        ar: 'موبايل موني',         fee: 'Wave · M-Pesa' },
     ],
     note: { en: '−5% if order has 2+ items', fr: '−5% dès 2 articles', ar: 'خصم 5% عند طلب منتجين أو أكثر' },
+    premium: null,
   },
 ]
 
@@ -1570,6 +1590,15 @@ export default function LandingPage() {
                       <p className="text-[10px] text-blue-600 font-semibold bg-blue-50 rounded-lg px-2 py-1 mb-3">
                         {(m.note as Record<string, string>)[lang] ?? (m.note as Record<string, string>).en}
                       </p>
+                    )}
+                    {'premium' in m && m.premium && (
+                      <div className="mt-3 rounded-lg bg-gradient-to-r from-yellow-500/20 to-amber-500/10 border border-yellow-500/30 px-4 py-3 flex items-center justify-between">
+                        <div>
+                          <span className="text-xs font-bold text-yellow-400 uppercase tracking-wider">💎 Premium</span>
+                          <p className="text-white font-bold text-lg mt-0.5">{(m.premium as { price: string; currency: string; label: string }).label}</p>
+                          <p className="text-gray-400 text-xs">Pas de commission · Toutes les fonctionnalités</p>
+                        </div>
+                      </div>
                     )}
                     <Link href="/signup" className="block text-center bg-gray-900 hover:bg-gray-800 text-white py-2.5 rounded-xl font-bold text-xs transition-colors">
                       {lang === 'ar' ? `ابدأ في ${d.country}` : lang === 'fr' ? `Démarrer en ${d.country}` : `Start in ${d.country}`}
