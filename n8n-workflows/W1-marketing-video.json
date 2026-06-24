@@ -1,0 +1,152 @@
+{
+  "name": "W1 - Marketing Video Generation",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "smart-resto-marketing",
+        "responseMode": "onReceived",
+        "responseData": "={\"received\": true}"
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000001",
+      "name": "Webhook — Receive from App",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "smart-resto-marketing"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.creatomate.com/v1/renders",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer YOUR_CREATOMATE_API_KEY" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={\n  \"template_id\": \"YOUR_CREATOMATE_TEMPLATE_ID\",\n  \"modifications\": {\n    \"product-name\": \"{{ $json.body.productName }}\",\n    \"product-price\": \"{{ $json.body.productPrice }}\",\n    \"restaurant-name\": \"{{ $json.body.cafeName }}\",\n    \"product-image\": \"{{ $json.body.imageUrl }}\",\n    \"logo\": \"{{ $json.body.logoUrl }}\"\n  }\n}"
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000002",
+      "name": "Creatomate — Render Video",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "amount": 30,
+        "unit": "seconds"
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000003",
+      "name": "Wait 30s",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.creatomate.com/v1/renders/{{ $('Creatomate — Render Video').item.json.id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer YOUR_CREATOMATE_API_KEY" }
+          ]
+        }
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000004",
+      "name": "Creatomate — Check Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.status }}",
+              "operation": "equals",
+              "value2": "succeeded"
+            }
+          ]
+        }
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000005",
+      "name": "Video Ready?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Webhook — Receive from App').item.json.body.callbackUrl }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "x-callback-secret", "value": "YOUR_MARKETING_CALLBACK_SECRET" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={\n  \"status\": \"published\",\n  \"videoUrl\": \"{{ $('Creatomate — Check Status').item.json.url }}\",\n  \"caption\": \"{{ $('Webhook — Receive from App').item.json.body.productName }} - {{ $('Webhook — Receive from App').item.json.body.cafeName }}\",\n  \"creatomateId\": \"{{ $('Creatomate — Render Video').item.json.id }}\",\n  \"n8nExecutionId\": \"{{ $execution.id }}\"\n}"
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000006",
+      "name": "Callback — Notify App",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1340, 200]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $('Webhook — Receive from App').item.json.body.callbackUrl }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "x-callback-secret", "value": "YOUR_MARKETING_CALLBACK_SECRET" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={\"status\": \"failed\", \"n8nExecutionId\": \"{{ $execution.id }}\"}"
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000007",
+      "name": "Callback — Mark Failed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1340, 420]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook — Receive from App": {
+      "main": [[{ "node": "Creatomate — Render Video", "type": "main", "index": 0 }]]
+    },
+    "Creatomate — Render Video": {
+      "main": [[{ "node": "Wait 30s", "type": "main", "index": 0 }]]
+    },
+    "Wait 30s": {
+      "main": [[{ "node": "Creatomate — Check Status", "type": "main", "index": 0 }]]
+    },
+    "Creatomate — Check Status": {
+      "main": [[{ "node": "Video Ready?", "type": "main", "index": 0 }]]
+    },
+    "Video Ready?": {
+      "main": [
+        [{ "node": "Callback — Notify App", "type": "main", "index": 0 }],
+        [{ "node": "Callback — Mark Failed", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "tags": [{ "name": "smart-restau" }]
+}

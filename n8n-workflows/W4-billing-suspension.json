@@ -1,0 +1,106 @@
+{
+  "name": "W4 - Billing Suspension → WhatsApp Reminder",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "billing-suspension",
+        "responseMode": "onReceived",
+        "responseData": "={\"received\": true}"
+      },
+      "id": "a1b2c3d4-0004-0004-0004-000000000001",
+      "name": "Webhook — Suspension",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "billing-suspension"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.body.event }}",
+              "operation": "equals",
+              "value2": "CAFE_SUSPENDED"
+            }
+          ]
+        }
+      },
+      "id": "a1b2c3d4-0004-0004-0004-000000000002",
+      "name": "Is Suspended?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.item.json.body;\nconst balance = Math.abs(parseFloat(d.balance)).toFixed(2);\nconst msg = `⚠️ *Votre compte Smart Restau a été suspendu*\\n\\nRaison: Solde insuffisant (-${balance} MAD)\\n\\n💳 Pour réactiver votre compte, veuillez effectuer un paiement:\\n👉 ${d.paymentLink}\\n\\nBesoin d'aide? Contactez-nous.`;\nreturn [{ json: { ...d, message: msg } }];"
+      },
+      "id": "a1b2c3d4-0004-0004-0004-000000000003",
+      "name": "Build WhatsApp Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 200]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://smartrestau.com/api/v1/cafes/{{ $('Webhook — Suspension').item.json.body.cafeId }}/owner-phone",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-internal-secret", "value": "YOUR_INTERNAL_API_SECRET" }
+          ]
+        }
+      },
+      "id": "a1b2c3d4-0004-0004-0004-000000000004",
+      "name": "Get Owner Phone",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [900, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://evolution.smartrestau.com/message/sendText/smart-restau",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "apikey", "value": "YOUR_EVOLUTION_API_KEY" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={\n  \"number\": \"{{ $json.ownerPhone?.replace(/\\D/g, '') }}\",\n  \"text\": \"{{ $('Build WhatsApp Message').item.json.message }}\"\n}"
+      },
+      "id": "a1b2c3d4-0004-0004-0004-000000000005",
+      "name": "WhatsApp — Suspension Alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1120, 200]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook — Suspension": {
+      "main": [[{ "node": "Is Suspended?", "type": "main", "index": 0 }]]
+    },
+    "Is Suspended?": {
+      "main": [
+        [{ "node": "Build WhatsApp Message", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "Build WhatsApp Message": {
+      "main": [[{ "node": "Get Owner Phone", "type": "main", "index": 0 }]]
+    },
+    "Get Owner Phone": {
+      "main": [[{ "node": "WhatsApp — Suspension Alert", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "tags": [{ "name": "smart-restau" }]
+}

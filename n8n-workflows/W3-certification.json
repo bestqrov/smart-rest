@@ -1,0 +1,86 @@
+{
+  "name": "W3 - Cafe Certification → WhatsApp + Email",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "cafe-certification",
+        "responseMode": "onReceived",
+        "responseData": "={\"received\": true}"
+      },
+      "id": "a1b2c3d4-0003-0003-0003-000000000001",
+      "name": "Webhook — Certification",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "cafe-certification"
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.item.json.body;\nconst stars = d.metrics.averageRating?.toFixed(1) || '5.0';\nconst qr = d.metrics.qrUsageRate?.toFixed(0) || '100';\nconst msg = `🏆 *Félicitations ${d.restaurantName}!*\\n\\nVotre restaurant vient d'obtenir la *Certification Smart Restau* ! 🎉\\n\\n📊 Vos performances:\\n⭐ Note moyenne: ${stars}/5\\n📱 Utilisation QR: ${qr}%\\n⏱ Temps de préparation: ${d.metrics.avgPreparationTime?.toFixed(0)} min\\n\\nBravo pour cette excellence ! 🌟`;\nreturn [{ json: { ...d, whatsappMessage: msg } }];"
+      },
+      "id": "a1b2c3d4-0003-0003-0003-000000000002",
+      "name": "Build Messages",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://evolution.smartrestau.com/message/sendText/smart-restau",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "apikey", "value": "YOUR_EVOLUTION_API_KEY" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={\n  \"number\": \"{{ $json.ownerPhone.replace(/\\D/g, '') }}\",\n  \"text\": \"{{ $json.whatsappMessage }}\"\n}"
+      },
+      "id": "a1b2c3d4-0003-0003-0003-000000000003",
+      "name": "WhatsApp — Congrats Owner",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [680, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.resend.com/emails",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer YOUR_RESEND_API_KEY" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={\n  \"from\": \"Smart Resto <noreply@smartrestau.com>\",\n  \"to\": [\"{{ $json.ownerEmail }}\"],\n  \"subject\": \"🏆 Votre restaurant est certifié Smart Restau!\",\n  \"html\": \"<h1>Félicitations {{ $json.restaurantName }}!</h1><p>Votre restaurant a obtenu la <strong>Certification Smart Restau</strong>.</p><p>Note: {{ $json.metrics.averageRating }}/5 | QR: {{ $json.metrics.qrUsageRate }}%</p><p>Merci pour votre excellence!</p>\"\n}"
+      },
+      "id": "a1b2c3d4-0003-0003-0003-000000000004",
+      "name": "Email — Certification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [680, 420]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook — Certification": {
+      "main": [[{ "node": "Build Messages", "type": "main", "index": 0 }]]
+    },
+    "Build Messages": {
+      "main": [
+        [{ "node": "WhatsApp — Congrats Owner", "type": "main", "index": 0 }],
+        [{ "node": "Email — Certification", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "tags": [{ "name": "smart-restau" }]
+}
