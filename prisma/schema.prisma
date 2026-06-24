@@ -199,6 +199,7 @@ model Cafe {
   trialEndsAt         DateTime?
   hasExtendedTrial    Boolean       @default(false)
   billingStatus       BillingStatus @default(GRACE_PERIOD)
+  isPremium           Boolean       @default(false)
   hasSocialShareAddon Boolean       @default(false)
   // 'CAFE' = simple cafe (drinks + light snacks), 'RESTAURANT' = full meals + kitchen
   tier                String        @default("CAFE")
@@ -1373,4 +1374,21 @@ model ActiveSession {
   @@index([userIdentifier])           // device re-identification
   @@index([cafeId, status])           // dashboard live view
   @@index([tableId, status])          // per-table active tokens
+}
+
+// ─── Premium Subscription Plans ───────────────────────────────────────────────
+// One document per country/region. Superadmin can update prices and feature flags at runtime.
+
+model PremiumPlan {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  country      String   @unique  // "MA" | "SN" | "SA" | "AE" | "EU"
+  currency     String            // "MAD" | "XOF" | "SAR" | "AED" | "EUR"
+  monthlyPrice Float             // 199 | 13000 | 159
+
+  hasMarketing     Boolean @default(true)  // video marketing feature
+  hasCertification Boolean @default(true)  // certification badge
+  hasAnalytics     Boolean @default(true)  // advanced analytics
+  hasNoCommission  Boolean @default(true)  // skip per-order commission
+
+  updatedAt DateTime @updatedAt
 }
