@@ -531,6 +531,28 @@ async function upsertTablesAndSeats(cafeId: string, subdomain: string, tableCoun
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// Premium Plans
+// ═══════════════════════════════════════════════════════════════════════════════
+
+async function seedPremiumPlans() {
+  const plans = [
+    { country: 'MA', currency: 'MAD', monthlyPrice: 199   },
+    { country: 'SN', currency: 'XOF', monthlyPrice: 13000 },
+    { country: 'SA', currency: 'SAR', monthlyPrice: 159   },
+    { country: 'AE', currency: 'AED', monthlyPrice: 159   },
+    { country: 'EU', currency: 'EUR', monthlyPrice: 159   },
+  ]
+  for (const plan of plans) {
+    await prisma.premiumPlan.upsert({
+      where:  { country: plan.country },
+      update: {},
+      create: { ...plan, hasMarketing: true, hasCertification: true, hasAnalytics: true, hasNoCommission: true },
+    })
+  }
+  console.log('✅ PremiumPlans seeded')
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // Main
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -547,6 +569,8 @@ async function main() {
   await upsertDemoStaff(maCafe.id)
 
   console.log('\n🎉 Demo cafe seeded.')
+
+  await seedPremiumPlans()
 }
 
 export default main
