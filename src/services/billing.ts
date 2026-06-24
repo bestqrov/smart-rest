@@ -285,12 +285,16 @@ export async function applyOrderFee(
 ): Promise<void> {
   const cafe = await tx.cafe.findUnique({
     where:  { id: cafeId },
-    select: { trialEndsAt: true, walletBalance: true, hasSocialShareAddon: true }
+    select: { trialEndsAt: true, walletBalance: true, hasSocialShareAddon: true, isPremium: true, country: true }
   })
 
   if (!cafe) throw new Error(`Cafe ${cafeId} not found`)
 
   if (cafe.trialEndsAt && new Date() < cafe.trialEndsAt) return
+  if (cafe.isPremium) {
+    const plan = await tx.premiumPlan.findUnique({ where: { country: cafe.country } })
+    if (plan?.hasNoCommission) return
+  }
   if (isSocialAction && !cafe.hasSocialShareAddon) return
 
   const fee             = calculateContextualFee(orderTotal, country, isSocialAction, itemCount)
