@@ -673,6 +673,9 @@ export default function KitchenPage() {
           </div>
         </div>
       )}
+      <footer className="text-center py-2 border-t border-[#2a2f38]">
+        <p className="text-[10px] text-gray-600 opacity-40 select-none">© 2026 Smart Restau</p>
+      </footer>
     </div>
   )
 }

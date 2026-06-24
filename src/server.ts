@@ -57,6 +57,7 @@ import adminCertificationRouter from './routes/adminCertification'
 import inventoryAdminRouter from './routes/inventoryAdmin'
 import reviewGalleryRouter from './routes/reviewGallery'
 import demoRequestsRouter from './routes/demoRequests'
+import zonesRouter from './routes/zones'
 import { registerSocketHandlers } from './socket/handlers'
 import { startWeeklyBillingCron } from './cron/weeklyBilling'
 import { startNightlyCron } from './cron/nightly'
@@ -161,6 +162,7 @@ async function main() {
   app.use(inventoryAdminRouter)
   app.use(reviewGalleryRouter)
   app.use(demoRequestsRouter)
+  app.use(zonesRouter)
 
   // health (both paths — /api/health used by SW offline detection)
   app.get(['/health', '/api/health'], (_req, res) => res.json({ ok: true }))

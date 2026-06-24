@@ -852,9 +852,15 @@ export default function POSPage() {
               </div>
             </div>
           )}
+          <p className="hidden md:block text-[10px] text-center text-gray-700 opacity-40 select-none py-1 bg-gray-950 shrink-0">
+            © 2026 Smart Restau
+          </p>
         </div>
       </div>
 
+      <p className="md:hidden text-[10px] text-center text-gray-700 opacity-40 select-none py-0.5 bg-gray-900">
+        © 2026 Smart Restau
+      </p>
       {/* ── Mobile bottom tabs ──────────────────────────────────────────────── */}
       <div className="md:hidden shrink-0 border-t border-gray-800 bg-gray-900 flex items-stretch h-16">
         {([

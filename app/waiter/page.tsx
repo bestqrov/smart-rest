@@ -907,6 +907,9 @@ export default function WaiterPage() {
               </span>
             </div>
           </div>
+          <p className="text-[10px] text-center text-gray-600 opacity-50 select-none pb-2">
+            © 2026 Smart Restau
+          </p>
         </aside>
 
         </div>

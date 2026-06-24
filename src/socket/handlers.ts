@@ -190,6 +190,91 @@ export function registerSocketHandlers(io: SocketIOServer) {
       }
     })
 
+    // ── join_zone_session_room — ActiveSession customer joins their dedicated room
+    // Room: zone_session_room_{cafeId}_{activeSessionId}
+    // Scoped per-session so flash events reach exactly one device.
+    socket.on('join_zone_session_room', async (payload: { activeSessionId: string }) => {
+      try {
+        const { activeSessionId } = payload
+        if (!activeSessionId) return
+
+        const session = await prisma.activeSession.findUnique({
+          where:  { id: activeSessionId },
+          select: { id: true, cafeId: true, zoneId: true, status: true }
+        })
+
+        if (!session || session.status === 'PAID') {
+          socket.emit('error', { message: 'Session not found or already closed' })
+          return
+        }
+
+        const room = `zone_session_room_${session.cafeId}_${session.id}`
+        socket.join(room)
+        ;(socket as any).data = {
+          ...(socket as any).data,
+          cafeId:          session.cafeId,
+          activeSessionId: session.id,
+          zoneId:          session.zoneId
+        }
+
+        logger.debug({ msg: 'Zone-session customer joined room', room, activeSessionId })
+      } catch (err) {
+        logger.error({ msg: 'join_zone_session_room error', err, payload })
+      }
+    })
+
+    // ── waiter_mark_served — waiter marks zone-session order as delivered ──────
+    // Transitions order READY → DELIVERED, dismisses client flash overlay.
+    // Guard: admin JWT required (waiter tablet is authenticated).
+    socket.on('waiter_mark_served', async (payload: {
+      cafeId:          string
+      orderId:         string
+      activeSessionId: string
+    }) => {
+      try {
+        const { cafeId, orderId, activeSessionId } = payload
+        const admin = (socket as any).data?.admin
+        if (!admin || String(admin.cafeId) !== cafeId) return
+
+        const order = await prisma.order.findUnique({
+          where:  { id: orderId },
+          select: {
+            cafeId:          true,
+            status:          true,
+            activeSessionId: true,
+            activeSession: {
+              select: { id: true, tokenNumber: true, zoneId: true, zone: { select: { name: true } } }
+            }
+          }
+        })
+
+        if (!order || order.cafeId !== cafeId) return
+        if (order.status !== 'READY') {
+          socket.emit('error', { message: 'Order must be in READY status to mark as served' })
+          return
+        }
+
+        await prisma.order.update({
+          where: { id: orderId },
+          data:  { status: 'DELIVERED', preparedAt: new Date() }
+        })
+
+        const broadcastPayload = { orderId, status: 'DELIVERED', activeSessionId }
+
+        // Notify admin/waiter dashboard
+        io.to(`room_${cafeId}`).emit('order_status_updated', broadcastPayload)
+        io.to(`kds_room_${cafeId}`).emit('kds_order_updated', broadcastPayload)
+
+        // Tell the specific client device to dismiss the flash overlay
+        const clientRoom = `zone_session_room_${cafeId}_${activeSessionId}`
+        io.to(clientRoom).emit('flash_dismiss', { orderId })
+
+        logger.info({ msg: 'Waiter marked as served', orderId, activeSessionId, cafeId })
+      } catch (err) {
+        logger.error({ msg: 'waiter_mark_served error', err, payload })
+      }
+    })
+
     // ── request_bill ────────────────────────────────────────────────────────
     socket.on('request_bill', async (payload: { cafeId: string; tableId: string; message?: string }) => {
       try {
@@ -284,9 +369,10 @@ export function registerSocketHandlers(io: SocketIOServer) {
       }
     })
 
-    // ── kds_ready — kitchen marks order ready → DELIVERED ───────────────────
+    // ── kds_ready — kitchen marks order ready ────────────────────────────────
+    // Normal table orders:  PREPARING → DELIVERED  (existing flow unchanged)
+    // Zone / ActiveSession: PREPARING → READY + flash signal to client device
     // Multi-tenancy guard: admin.cafeId must match payload cafeId.
-    // Emits waiter_order_ready so the POS waiter UI can alert with beep/flash.
     socket.on('kds_ready', async (payload: { cafeId: string; orderId: string }) => {
       try {
         const { cafeId, orderId } = payload
@@ -294,11 +380,53 @@ export function registerSocketHandlers(io: SocketIOServer) {
         if (!admin || String(admin.cafeId) !== cafeId) return
 
         const order = await prisma.order.findUnique({
-          where: { id: orderId }, select: { cafeId: true, tableId: true, status: true }
+          where: { id: orderId },
+          select: {
+            cafeId:          true,
+            tableId:         true,
+            status:          true,
+            activeSessionId: true,
+            activeSession: {
+              select: {
+                id:          true,
+                tokenNumber: true,
+                zone:        { select: { id: true, name: true } }
+              }
+            }
+          }
         })
-        // Double-check DB cafeId to prevent cross-tenant mutation via crafted payloads
         if (!order || order.cafeId !== cafeId || order.status !== 'PREPARING') return
 
+        // ── Zone / Match Mode order — stop at READY, trigger flash signal ──
+        if (order.activeSession) {
+          await prisma.order.update({ where: { id: orderId }, data: { status: 'READY', preparedAt: new Date() } })
+
+          const update = { orderId, status: 'READY', activeSessionId: order.activeSession.id }
+          io.to(`room_${cafeId}`).emit('order_status_updated', update)
+          io.to(`kds_room_${cafeId}`).emit('kds_order_updated', update)
+
+          // Flash signal to the specific customer device
+          const clientRoom = `zone_session_room_${cafeId}_${order.activeSession.id}`
+          io.to(clientRoom).emit('ready_for_service', {
+            orderId,
+            tokenNumber: order.activeSession.tokenNumber,
+            zoneName:    order.activeSession.zone?.name ?? ''
+          })
+
+          // Alert waiter dashboard: this token needs service
+          io.to(`room_${cafeId}`).emit('zone_token_ready', {
+            orderId,
+            activeSessionId: order.activeSession.id,
+            tokenNumber:     order.activeSession.tokenNumber,
+            zoneName:        order.activeSession.zone?.name ?? '',
+            zoneId:          order.activeSession.zone?.id   ?? ''
+          })
+
+          logger.info({ msg: 'Zone order ready — flash signal emitted', orderId, activeSessionId: order.activeSession.id })
+          return
+        }
+
+        // ── Normal table order — existing flow: PREPARING → DELIVERED ────────
         await prisma.order.update({ where: { id: orderId }, data: { status: 'DELIVERED' } })
 
         const update = { orderId, status: 'DELIVERED', tableId: order.tableId }

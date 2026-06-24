@@ -10,7 +10,7 @@ import {
   AlertTriangle, Loader2, Gift, Zap, ChefHat, Bell, Monitor,
   Users, BarChart3, Copy, Check, ExternalLink, Building2,
   Banknote, Wallet, CalendarClock, Sparkles, Settings, Languages, TrendingUp, Film,
-  Package, Lock
+  Package, Lock, LayoutGrid
 } from 'lucide-react'
 import { AdminLangProvider, useLang, type AdminLang } from './lang-context'
 import { A, type AdminT } from '@/lib/adminI18n'
@@ -22,6 +22,7 @@ const NAV = [
   { href: '/admin/menu-gen',   icon: Sparkles,        key: 'menuAI'     },
   { href: '/admin/menu',       icon: UtensilsCrossed, key: 'menu'       },
   { href: '/admin/tables',     icon: QrCode,          key: 'tables'     },
+  { href: '/admin/zones',      icon: LayoutGrid,      key: 'zones'      },
   { href: '/admin/staff',      icon: Users,           key: 'staff'      },
   { href: '/admin/attendance', icon: CalendarClock,   key: 'attendance' },
   { href: '/admin/financials', icon: BarChart3,       key: 'financials' },
@@ -442,6 +443,9 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
             <span className="text-sm">{t.logout}</span>
           </button>
         </div>
+        <p className="text-[10px] text-center text-gray-600 opacity-50 select-none pb-2">
+          © 2026 Smart Restau
+        </p>
       </aside>
 
       {/* ── Mobile top bar ────────────────────────────────────────── */}
@@ -528,6 +532,9 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
                 <span>{t.logout}</span>
               </button>
             </div>
+            <p className="text-[10px] text-center text-gray-600 opacity-50 select-none pb-2">
+              © 2026 Smart Restau
+            </p>
           </div>
         </div>
       )}

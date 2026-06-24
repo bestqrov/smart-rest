@@ -9,6 +9,12 @@ datasource db {
 
 // ─── Enums ────────────────────────────────────────────────────────────────────
 
+enum ActiveSessionStatus {
+  ACTIVE
+  PENDING_PAYMENT
+  PAID
+}
+
 enum OrderStatus {
   PENDING
   PREPARING
@@ -304,6 +310,9 @@ model Cafe {
   systemNotifications  SystemNotification[]
   // Viral marketing hub — user-generated content with consent tracking
   reviewsGallery       ReviewGallery[]
+  // Zone-Based Dynamic Token (Match Mode)
+  zones                Zone[]
+  activeSessions       ActiveSession[]
 
   // Indexes for geo-targeting, package segmentation, and n8n campaign queries
   @@index([country])
@@ -335,6 +344,10 @@ model Table {
   // Physical QR holder decor style shown in admin: 1=card, 2=tent, 3=stand, 4=acrylic
   displayType Int @default(1)
 
+  // Zone assignment (null = unzoned table)
+  zoneId          String? @db.ObjectId
+  zoneRef         Zone?   @relation(fields: [zoneId], references: [id])
+
   mergedIntoTableId String? @db.ObjectId
   mergedIntoTable   Table?  @relation("TableMerge", fields: [mergedIntoTableId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   mergedTables      Table[] @relation("TableMerge")
@@ -345,9 +358,11 @@ model Table {
   billRequests    BillRequest[]
   waiterCalls     WaiterCall[]
   clientSessions  ClientSession[]
+  activeSessions  ActiveSession[]
 
   @@unique([cafeId, tableNumber])
   @@index([cafeId])
+  @@index([zoneId])
   @@index([mergedIntoTableId])
   @@index([assignedWaiterId])
 }
@@ -449,6 +464,10 @@ model Order {
   sessionId        String?       @db.ObjectId
   session          ClientSession? @relation(fields: [sessionId], references: [id])
 
+  // Zone-Based Dynamic Token — set when order comes from Match Mode / Hybrid zone flow
+  activeSessionId  String?       @db.ObjectId
+  activeSession    ActiveSession? @relation(fields: [activeSessionId], references: [id])
+
   // Waiter who claimed/served this order (set when they acknowledge the notification)
   assignedWaiterId String? @db.ObjectId
   assignedWaiter   Staff?  @relation("OrderWaiterAssignment", fields: [assignedWaiterId], references: [id])
@@ -470,6 +489,7 @@ model Order {
   @@index([assignedWaiterId])
   @@index([orderSource])
   @@index([billStatus])
+  @@index([activeSessionId])
 }
 
 model OrderItem {
@@ -1280,4 +1300,77 @@ model SystemNotification {
   @@index([isRead])
   @@index([type])
   @@index([createdAt])
+}
+
+// ─── Zone-Based Dynamic Token (Match Mode / Hybrid Layout) ───────────────────
+//
+// Normal Mode  → Table has fixed QR → ClientSession assigns seat dynamically
+// Match Mode   → Zone has no physical tables → ActiveSession = row-chair token
+//
+// Flow:
+//   Customer enters zone → scans zone QR → server creates ActiveSession
+//   with next available tokenNumber → userIdentifier stored in browser cookie
+//   → all orders carry activeSessionId
+
+model Zone {
+  id               String  @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId           String  @db.ObjectId
+  cafe             Cafe    @relation(fields: [cafeId], references: [id])
+
+  name             String  // e.g. 'Terrasse', 'Salon VIP', 'Trottoir'
+
+  // QR holder decor style: 1=card, 2=tent, 3=stand, 4=acrylic
+  displayType      Int     @default(1)
+
+  // When true: ignore tables, use row-chair dynamic tokens
+  matchModeActive  Boolean @default(false)
+
+  // Max concurrent token slots (safety cap to avoid overbooking)
+  maxDynamicTokens Int     @default(50)
+
+  tables           Table[]
+  activeSessions   ActiveSession[]
+
+  @@index([cafeId])
+  @@index([cafeId, matchModeActive])
+}
+
+// ─── ActiveSession (Dynamic Token — Zone-Based) ───────────────────────────────
+//
+// One document = one customer device in a zone.
+// tokenNumber is auto-incremented per zone (application layer handles sequence).
+// tableId is null in Match Mode (row chairs have no fixed table).
+
+model ActiveSession {
+  id             String              @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId         String              @db.ObjectId
+  cafe           Cafe                @relation(fields: [cafeId], references: [id])
+
+  zoneId         String              @db.ObjectId
+  zone           Zone                @relation(fields: [zoneId], references: [id])
+
+  // Null in Match Mode (row-chair); set when zone has fixed tables
+  tableId        String?             @db.ObjectId
+  table          Table?              @relation(fields: [tableId], references: [id])
+
+  // Sequential number within the zone scope (e.g. token #7 at Terrasse)
+  // Application assigns: MAX(tokenNumber) + 1 WHERE zoneId = X AND status = ACTIVE
+  tokenNumber    Int
+
+  // Opaque browser fingerprint — UUID generated once, stored in cookie/localStorage
+  userIdentifier String
+
+  status         ActiveSessionStatus @default(ACTIVE)
+
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  orders         Order[]
+
+  @@index([cafeId])
+  @@index([zoneId])
+  @@index([zoneId, status])           // token assignment query
+  @@index([userIdentifier])           // device re-identification
+  @@index([cafeId, status])           // dashboard live view
+  @@index([tableId, status])          // per-table active tokens
 }
