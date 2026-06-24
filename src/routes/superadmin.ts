@@ -964,4 +964,55 @@ router.get('/api/superadmin/revenue-history', requireSuperAdmin, async (_req: Re
   }
 })
 
+// ─── GET /api/superadmin/premium-plans ────────────────────────────────────────
+router.get('/api/superadmin/premium-plans', requireSuperAdmin, async (_req: Request, res: Response) => {
+  try {
+    const plans = await prisma.premiumPlan.findMany({ orderBy: { country: 'asc' } })
+    return res.json({ plans })
+  } catch (err) {
+    logger.error({ msg: 'premium-plans GET error', err })
+    return res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
+// ─── PUT /api/superadmin/premium-plans/:country ───────────────────────────────
+router.put('/api/superadmin/premium-plans/:country', requireSuperAdmin, async (req: Request, res: Response) => {
+  const country = req.params.country as string
+  const { monthlyPrice, currency, hasMarketing, hasCertification, hasAnalytics, hasNoCommission } = req.body as {
+    monthlyPrice?:     number
+    currency?:         string
+    hasMarketing?:     boolean
+    hasCertification?: boolean
+    hasAnalytics?:     boolean
+    hasNoCommission?:  boolean
+  }
+
+  try {
+    const plan = await prisma.premiumPlan.upsert({
+      where:  { country },
+      update: {
+        ...(monthlyPrice     !== undefined ? { monthlyPrice }     : {}),
+        ...(currency         !== undefined ? { currency }         : {}),
+        ...(hasMarketing     !== undefined ? { hasMarketing }     : {}),
+        ...(hasCertification !== undefined ? { hasCertification } : {}),
+        ...(hasAnalytics     !== undefined ? { hasAnalytics }     : {}),
+        ...(hasNoCommission  !== undefined ? { hasNoCommission }  : {}),
+      },
+      create: {
+        country,
+        currency:         currency         ?? 'MAD',
+        monthlyPrice:     monthlyPrice     ?? 0,
+        hasMarketing:     hasMarketing     ?? true,
+        hasCertification: hasCertification ?? true,
+        hasAnalytics:     hasAnalytics     ?? true,
+        hasNoCommission:  hasNoCommission  ?? true,
+      },
+    })
+    return res.json({ ok: true, plan })
+  } catch (err) {
+    logger.error({ msg: 'premium-plans PUT error', err })
+    return res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
 export default router
