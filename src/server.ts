@@ -59,6 +59,8 @@ import reviewGalleryRouter from './routes/reviewGallery'
 import demoRequestsRouter from './routes/demoRequests'
 import zonesRouter from './routes/zones'
 import equipmentRouter from './routes/equipment'
+import supplierInvoicesRouter from './routes/supplierInvoices'
+import requisitionsRouter     from './routes/requisitions'
 import { registerSocketHandlers } from './socket/handlers'
 import { startWeeklyBillingCron } from './cron/weeklyBilling'
 import { startNightlyCron } from './cron/nightly'
@@ -158,6 +160,8 @@ async function main() {
   app.use(landingConfigRouter)
   app.use('/api/marketing', marketingRouter)
   app.use('/api/v1/equipment', equipmentRouter)
+  app.use('/api/v1/invoices',     supplierInvoicesRouter)
+  app.use('/api/v1/requisitions', requisitionsRouter)
   app.use(traiteurRouter)
   app.use(loyaltyRouter)
   app.use(adminCertificationRouter)
