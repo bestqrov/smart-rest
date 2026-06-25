@@ -2,13 +2,13 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Smart Menu',
-  description: 'القائمة الذكية للمطاعم والمقاهي',
+  title: 'SmartRestau',
+  description: 'نظام تشغيل المطاعم الذكي — إدارة شاملة بالذكاء الاصطناعي',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'Smart Menu',
+    title: 'SmartRestau',
   },
 }
 
