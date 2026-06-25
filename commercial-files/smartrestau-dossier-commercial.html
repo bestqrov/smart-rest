@@ -1,0 +1,1345 @@
+<!DOCTYPE html>
+<html lang="fr" dir="ltr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SmartRestau — Dossier Commercial 2026</title>
+<style>
+  /* ── Reset & Base ─────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --navy:   #0d1526;
+    --navy2:  #162040;
+    --blue:   #2563eb;
+    --blue2:  #3b82f6;
+    --gold:   #f59e0b;
+    --gold2:  #fbbf24;
+    --white:  #f8fafc;
+    --muted:  #94a3b8;
+    --border: rgba(37,99,235,0.25);
+    --green:  #10b981;
+    --red:    #ef4444;
+  }
+
+  body {
+    font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    background: #f1f5f9;
+    color: #0f172a;
+    font-size: 13px;
+    line-height: 1.55;
+  }
+
+  /* ── Print ────────────────────────────────────────────────── */
+  @media print {
+    body { background: white; }
+    .page { box-shadow: none; margin: 0; border-radius: 0; page-break-after: always; }
+    .page:last-child { page-break-after: auto; }
+    @page { margin: 0; size: A4; }
+    .no-print { display: none !important; }
+  }
+
+  /* ── Page shell ───────────────────────────────────────────── */
+  .page {
+    width: 210mm;
+    min-height: 297mm;
+    background: white;
+    margin: 24px auto;
+    border-radius: 4px;
+    box-shadow: 0 4px 32px rgba(0,0,0,0.12);
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* ══════════════════════════════════════════════════════════ */
+  /* PAGE 1 — COVER */
+  /* ══════════════════════════════════════════════════════════ */
+  .cover {
+    background: linear-gradient(150deg, #070d1a 0%, #0d1a3a 55%, #070d1a 100%);
+    min-height: 297mm;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 0;
+    color: white;
+  }
+
+  .cover-top {
+    padding: 40px 50px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+
+  .cover-logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .cover-logo-icon {
+    width: 48px; height: 48px;
+    background: linear-gradient(135deg, #2563eb, #3b82f6);
+    border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+  }
+
+  .cover-logo-text { line-height: 1.1; }
+  .cover-logo-text .brand { font-size: 22px; font-weight: 900; color: white; letter-spacing: -0.5px; }
+  .cover-logo-text .tagline { font-size: 9px; color: #60a5fa; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+
+  .cover-badge {
+    background: rgba(37,99,235,0.25);
+    border: 1px solid rgba(96,165,250,0.4);
+    color: #93c5fd;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 6px 14px;
+    border-radius: 20px;
+    letter-spacing: 0.5px;
+  }
+
+  .cover-hero {
+    padding: 60px 50px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .cover-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(37,99,235,0.2);
+    border: 1px solid rgba(96,165,250,0.3);
+    color: #93c5fd;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 7px 16px;
+    border-radius: 20px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 28px;
+    width: fit-content;
+  }
+  .cover-label::before { content: '●'; color: #60a5fa; animation: none; }
+
+  .cover-h1 {
+    font-size: 52px;
+    font-weight: 900;
+    line-height: 1.05;
+    color: white;
+    margin-bottom: 12px;
+    letter-spacing: -1.5px;
+  }
+
+  .cover-h1 span {
+    background: linear-gradient(90deg, #60a5fa, #93c5fd);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .cover-sub {
+    font-size: 16px;
+    color: #94a3b8;
+    max-width: 480px;
+    line-height: 1.6;
+    margin-bottom: 44px;
+  }
+
+  .cover-stats {
+    display: flex;
+    gap: 32px;
+    flex-wrap: wrap;
+  }
+
+  .cover-stat { text-align: left; }
+  .cover-stat .num { font-size: 28px; font-weight: 900; color: white; line-height: 1; }
+  .cover-stat .num span { color: #60a5fa; }
+  .cover-stat .lbl { font-size: 10px; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+
+  .cover-divider { width: 1px; background: rgba(255,255,255,0.1); }
+
+  .cover-visual {
+    padding: 0 50px 0;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+  }
+
+  .cover-module {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    padding: 14px 10px;
+    text-align: center;
+  }
+  .cover-module .ico { font-size: 18px; margin-bottom: 6px; }
+  .cover-module .name { font-size: 8.5px; color: #94a3b8; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+
+  .cover-footer {
+    padding: 24px 50px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid rgba(255,255,255,0.06);
+    margin-top: 32px;
+  }
+  .cover-footer p { font-size: 9px; color: #475569; }
+  .cover-footer .conf { font-size: 9px; color: #475569; font-style: italic; }
+
+  /* ══════════════════════════════════════════════════════════ */
+  /* INNER PAGES LAYOUT */
+  /* ══════════════════════════════════════════════════════════ */
+
+  .inner { padding: 40px 48px; min-height: 297mm; display: flex; flex-direction: column; }
+
+  .section-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 2px solid #e2e8f0;
+  }
+  .section-header .num {
+    min-width: 36px; height: 36px;
+    background: linear-gradient(135deg, #2563eb, #3b82f6);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 900; color: white;
+  }
+  .section-header .texts { flex: 1; }
+  .section-header .label { font-size: 9px; font-weight: 700; color: #2563eb; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2px; }
+  .section-header h2 { font-size: 22px; font-weight: 900; color: #0f172a; letter-spacing: -0.5px; }
+  .section-header p { font-size: 11.5px; color: #64748b; margin-top: 3px; }
+
+  /* ── Page header strip ─────────────────────────────────── */
+  .page-header {
+    background: linear-gradient(135deg, #070d1a, #0d1a3a);
+    padding: 14px 48px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .page-header .brand { font-size: 13px; font-weight: 900; color: white; }
+  .page-header .brand span { color: #60a5fa; }
+  .page-header .pg { font-size: 9px; color: #475569; font-weight: 600; }
+
+  /* ── Value props row ───────────────────────────────────── */
+  .vp-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px; }
+  .vp-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 16px;
+    background: #f8fafc;
+  }
+  .vp-card .ico { font-size: 22px; margin-bottom: 8px; }
+  .vp-card h4 { font-size: 12px; font-weight: 800; color: #0f172a; margin-bottom: 4px; }
+  .vp-card p { font-size: 10.5px; color: #64748b; line-height: 1.5; }
+  .vp-card.blue { border-color: #bfdbfe; background: #eff6ff; }
+  .vp-card.blue h4 { color: #1d4ed8; }
+  .vp-card.gold { border-color: #fde68a; background: #fffbeb; }
+  .vp-card.gold h4 { color: #d97706; }
+  .vp-card.green { border-color: #bbf7d0; background: #f0fdf4; }
+  .vp-card.green h4 { color: #059669; }
+
+  /* ── Module grid ───────────────────────────────────────── */
+  .module-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .module-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 14px 16px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    background: white;
+  }
+  .module-icon {
+    width: 38px; height: 38px; min-width: 38px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 17px;
+  }
+  .module-body { flex: 1; }
+  .module-body .ai-tag {
+    display: inline-block;
+    background: #f0fdf4; border: 1px solid #bbf7d0; color: #059669;
+    font-size: 7.5px; font-weight: 800; padding: 1px 6px; border-radius: 10px;
+    margin-bottom: 2px; letter-spacing: 0.5px;
+  }
+  .module-body h4 { font-size: 11.5px; font-weight: 800; color: #0f172a; margin-bottom: 3px; }
+  .module-body ul { list-style: none; display: flex; flex-wrap: wrap; gap: 3px 6px; }
+  .module-body ul li { font-size: 9.5px; color: #64748b; }
+  .module-body ul li::before { content: '·  '; color: #cbd5e1; }
+
+  /* ── Features grid ─────────────────────────────────────── */
+  .feat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .feat-card {
+    border: 1px solid #f1f5f9;
+    border-radius: 10px;
+    padding: 12px;
+    background: #f8fafc;
+  }
+  .feat-card .ico { font-size: 16px; margin-bottom: 6px; }
+  .feat-card h5 { font-size: 10.5px; font-weight: 800; color: #0f172a; margin-bottom: 3px; }
+  .feat-card p { font-size: 9.5px; color: #64748b; line-height: 1.45; }
+
+  /* ── Pricing ───────────────────────────────────────────── */
+  .pricing-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .price-card {
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1px solid #e2e8f0;
+  }
+  .price-card .card-header {
+    padding: 14px 16px 10px;
+    color: white;
+  }
+  .price-card .card-header .flag { font-size: 20px; margin-bottom: 4px; }
+  .price-card .card-header h4 { font-size: 13px; font-weight: 900; }
+  .price-card .card-header p { font-size: 9px; color: rgba(255,255,255,0.65); margin-top: 1px; }
+  .price-card .card-body { padding: 12px 16px; background: white; }
+  .price-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; border-bottom: 1px solid #f1f5f9; }
+  .price-row:last-child { border-bottom: none; }
+  .price-row .range { font-size: 10px; color: #475569; }
+  .price-row .fee { font-size: 10.5px; font-weight: 800; color: #2563eb; }
+  .price-note { font-size: 9px; color: #059669; font-weight: 600; margin-top: 6px; padding: 4px 8px; background: #f0fdf4; border-radius: 6px; }
+  .price-premium { margin-top: 6px; padding: 6px 10px; background: linear-gradient(90deg, #fef3c7, #fffbeb); border: 1px solid #fde68a; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; }
+  .price-premium span { font-size: 8.5px; color: #92400e; font-weight: 700; }
+  .price-premium strong { font-size: 11px; color: #d97706; font-weight: 900; }
+
+  /* ── AI steps ──────────────────────────────────────────── */
+  .ai-steps { display: flex; gap: 8px; }
+  .ai-step {
+    flex: 1;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 14px 12px;
+    text-align: center;
+    background: #f8fafc;
+    position: relative;
+  }
+  .ai-step .step-num { font-size: 9px; font-weight: 900; color: #2563eb; letter-spacing: 1px; margin-bottom: 6px; }
+  .ai-step .step-ico { font-size: 22px; margin-bottom: 6px; }
+  .ai-step h5 { font-size: 10px; font-weight: 800; color: #0f172a; margin-bottom: 6px; }
+  .ai-step ul { list-style: none; text-align: left; }
+  .ai-step ul li { font-size: 9px; color: #64748b; padding: 1.5px 0; }
+  .ai-step ul li::before { content: '→ '; color: #2563eb; font-weight: 700; }
+
+  /* ── Testimonials ──────────────────────────────────────── */
+  .testi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .testi-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 16px;
+    background: #f8fafc;
+  }
+  .stars { color: #f59e0b; font-size: 11px; margin-bottom: 8px; }
+  .testi-card p { font-size: 10px; color: #475569; font-style: italic; line-height: 1.55; margin-bottom: 10px; }
+  .testi-author { display: flex; align-items: center; gap: 8px; }
+  .testi-avatar { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #2563eb, #3b82f6); display: flex; align-items: center; justify-content: center; color: white; font-weight: 900; font-size: 12px; }
+  .testi-info .name { font-size: 10.5px; font-weight: 800; color: #0f172a; }
+  .testi-info .role { font-size: 9px; color: #64748b; }
+
+  /* ── FAQ ───────────────────────────────────────────────── */
+  .faq-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .faq-item { padding: 12px 14px; border: 1px solid #e2e8f0; border-radius: 10px; background: #f8fafc; }
+  .faq-item h5 { font-size: 10.5px; font-weight: 800; color: #1d4ed8; margin-bottom: 4px; }
+  .faq-item p { font-size: 10px; color: #475569; line-height: 1.5; }
+
+  /* ── Final CTA page ────────────────────────────────────── */
+  .cta-page {
+    background: linear-gradient(150deg, #070d1a 0%, #0d1a3a 55%, #070d1a 100%);
+    min-height: 297mm;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 60px 60px;
+    color: white;
+  }
+  .cta-page .label { font-size: 10px; font-weight: 700; color: #60a5fa; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 20px; }
+  .cta-page h2 { font-size: 40px; font-weight: 900; line-height: 1.1; letter-spacing: -1px; margin-bottom: 16px; }
+  .cta-page h2 span { background: linear-gradient(90deg, #60a5fa, #93c5fd); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .cta-page .sub { font-size: 15px; color: #94a3b8; max-width: 500px; margin: 0 auto 40px; line-height: 1.6; }
+  .cta-boxes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; width: 100%; max-width: 640px; margin-bottom: 50px; }
+  .cta-box { background: rgba(255,255,255,0.05); border: 1px solid rgba(96,165,250,0.2); border-radius: 14px; padding: 20px 14px; }
+  .cta-box .ico { font-size: 24px; margin-bottom: 8px; }
+  .cta-box h5 { font-size: 11px; font-weight: 800; color: white; margin-bottom: 4px; }
+  .cta-box p { font-size: 9.5px; color: #64748b; }
+
+  .contact-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 40px; width: 100%; max-width: 640px; }
+  .contact-item { text-align: center; }
+  .contact-item .ico2 { font-size: 18px; margin-bottom: 6px; }
+  .contact-item .ct { font-size: 11px; color: #60a5fa; font-weight: 700; }
+  .contact-item .cs { font-size: 9px; color: #475569; margin-top: 2px; }
+
+  .cta-footer { font-size: 9px; color: #334155; }
+  .cta-footer strong { color: #60a5fa; }
+
+  /* ── How it works ──────────────────────────────────────── */
+  .how-steps { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+  .how-step { text-align: center; }
+  .how-step .circle {
+    width: 52px; height: 52px;
+    background: linear-gradient(135deg, #2563eb, #3b82f6);
+    border-radius: 14px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    margin: 0 auto 10px;
+    color: white;
+  }
+  .how-step .circle .s-ico { font-size: 18px; }
+  .how-step .circle .s-num { font-size: 8px; font-weight: 700; opacity: 0.7; }
+  .how-step h5 { font-size: 10.5px; font-weight: 800; color: #0f172a; margin-bottom: 4px; }
+  .how-step p { font-size: 9.5px; color: #64748b; line-height: 1.45; }
+
+  /* ── Enterprise ────────────────────────────────────────── */
+  .enterprise-box {
+    background: linear-gradient(135deg, #0f172a, #162040);
+    border: 1px solid rgba(37,99,235,0.3);
+    border-radius: 16px;
+    padding: 24px 28px;
+    display: flex;
+    gap: 24px;
+    align-items: center;
+    color: white;
+    margin-top: 16px;
+  }
+  .enterprise-box .left { flex: 1; }
+  .enterprise-box h4 { font-size: 16px; font-weight: 900; color: white; margin-bottom: 6px; }
+  .enterprise-box p { font-size: 10.5px; color: #94a3b8; line-height: 1.6; }
+  .enterprise-features { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .enterprise-features span { font-size: 9px; font-weight: 700; background: rgba(37,99,235,0.2); border: 1px solid rgba(96,165,250,0.25); color: #93c5fd; padding: 4px 10px; border-radius: 20px; }
+  .enterprise-box .right { text-align: center; min-width: 160px; }
+  .enterprise-box .cta-btn { background: linear-gradient(135deg, #2563eb, #3b82f6); color: white; padding: 12px 24px; border-radius: 12px; font-size: 11px; font-weight: 800; text-decoration: none; display: block; margin-top: 8px; }
+  .enterprise-box .cta-label { font-size: 9px; color: #475569; margin-top: 6px; }
+
+  /* ── Spacer / Flex fill ────────────────────────────────── */
+  .fill { flex: 1; }
+
+  /* ── Page footer ───────────────────────────────────────── */
+  .page-footer {
+    border-top: 1px solid #f1f5f9;
+    padding: 10px 48px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: auto;
+  }
+  .page-footer p { font-size: 8.5px; color: #94a3b8; }
+
+  /* ── Print button ──────────────────────────────────────── */
+  .print-bar {
+    position: fixed;
+    bottom: 24px; right: 24px;
+    z-index: 1000;
+  }
+  .print-btn {
+    background: linear-gradient(135deg, #2563eb, #3b82f6);
+    color: white;
+    border: none;
+    padding: 14px 24px;
+    border-radius: 14px;
+    font-size: 13px;
+    font-weight: 800;
+    cursor: pointer;
+    box-shadow: 0 8px 24px rgba(37,99,235,0.4);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .print-btn:hover { background: linear-gradient(135deg, #1d4ed8, #2563eb); }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!-- PAGE 1 — COVER                                            -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="page">
+  <div class="cover">
+
+    <div class="cover-top">
+      <div class="cover-logo">
+        <div class="cover-logo-icon">🍽️</div>
+        <div class="cover-logo-text">
+          <div class="brand">SmartRestau</div>
+          <div class="tagline">AI OS · OPERATE · GROW</div>
+        </div>
+      </div>
+      <div class="cover-badge">DOSSIER COMMERCIAL 2026 · CONFIDENTIEL</div>
+    </div>
+
+    <div class="cover-hero">
+      <div class="cover-label">Système d'Exploitation IA pour les Restaurants</div>
+      <h1 class="cover-h1">Le Seul OS<br /><span>dont votre Restaurant<br />a besoin.</span></h1>
+      <p class="cover-sub">Gérez menus, commandes, POS, cuisine, staff, marketing IA et analytiques depuis un seul tableau de bord. Sans abonnement fixe — vous payez uniquement à la commande complétée.</p>
+
+      <div class="cover-stats">
+        <div class="cover-stat">
+          <div class="num">500<span>+</span></div>
+          <div class="lbl">Restaurants & Cafés</div>
+        </div>
+        <div class="cover-divider"></div>
+        <div class="cover-stat">
+          <div class="num">10<span>+</span></div>
+          <div class="lbl">Modules IA Intégrés</div>
+        </div>
+        <div class="cover-divider"></div>
+        <div class="cover-stat">
+          <div class="num">7</div>
+          <div class="lbl">Marchés Couverts</div>
+        </div>
+        <div class="cover-divider"></div>
+        <div class="cover-stat">
+          <div class="num">30<span>min</span></div>
+          <div class="lbl">Mise en Route</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cover-visual">
+      <div class="cover-module"><div class="ico">📱</div><div class="name">Smart Menu</div></div>
+      <div class="cover-module"><div class="ico">🖥️</div><div class="name">Smart POS</div></div>
+      <div class="cover-module"><div class="ico">👨‍🍳</div><div class="name">Kitchen KDS</div></div>
+      <div class="cover-module"><div class="ico">👥</div><div class="name">Smart Staff</div></div>
+      <div class="cover-module"><div class="ico">📅</div><div class="name">Réservations</div></div>
+      <div class="cover-module"><div class="ico">📊</div><div class="name">Analytics</div></div>
+      <div class="cover-module"><div class="ico">🤖</div><div class="name">Marketing IA</div></div>
+      <div class="cover-module"><div class="ico">🎬</div><div class="name">Vidéo IA</div></div>
+      <div class="cover-module"><div class="ico">🌐</div><div class="name">Social Media</div></div>
+      <div class="cover-module"><div class="ico">🏢</div><div class="name">Multi-Branch</div></div>
+    </div>
+
+    <div class="cover-footer">
+      <p>SmartRestau · Hay Mohamedi 231, Casablanca, Maroc 🇲🇦 · contact@smartrestau.ma</p>
+      <p class="conf">Document confidentiel — Réservé aux partenaires commerciaux</p>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!-- PAGE 2 — RÉSUMÉ EXÉCUTIF + PROPOSITION DE VALEUR          -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="page">
+  <div class="page-header">
+    <div class="brand">Smart<span>Restau</span></div>
+    <div class="pg">Dossier Commercial 2026 · Page 2</div>
+  </div>
+  <div class="inner">
+
+    <div class="section-header">
+      <div class="num">01</div>
+      <div class="texts">
+        <div class="label">Executive Summary</div>
+        <h2>Pourquoi SmartRestau ?</h2>
+        <p>La plateforme tout-en-un qui transforme n'importe quel restaurant en business automatisé et rentable.</p>
+      </div>
+    </div>
+
+    <div class="vp-grid" style="margin-bottom:20px;">
+      <div class="vp-card blue">
+        <div class="ico">💸</div>
+        <h4>Zéro Abonnement Fixe</h4>
+        <p>Vous ne payez qu'une micro-commission par commande complétée. Si vous ne vendez rien, vous ne payez rien. Modèle 100% aligné sur votre succès.</p>
+      </div>
+      <div class="vp-card gold">
+        <div class="ico">⚡</div>
+        <h4>Opérationnel en 30 Minutes</h4>
+        <p>De la création du compte au premier ticket en cuisine en moins de 30 minutes. Pas d'installation, pas de matériel supplémentaire. Juste un téléphone.</p>
+      </div>
+      <div class="vp-card green">
+        <div class="ico">🤖</div>
+        <h4>IA Marketing Automatique</h4>
+        <p>Un seul photo de plat génère automatiquement des reels Instagram, TikTok, Facebook — sans agence, sans graphiste, sans travail manuel.</p>
+      </div>
+    </div>
+
+    <div class="vp-grid" style="margin-bottom:20px;">
+      <div class="vp-card">
+        <div class="ico">🌍</div>
+        <h4>7 Marchés, 1 Plateforme</h4>
+        <p>Maroc, Arabie Saoudite, UAE, Afrique du Nord, Europe, Afrique de l'Ouest, Afrique Subsaharienne. Pricing et paiements adaptés à chaque marché (MAD, SAR, AED, XOF, EUR).</p>
+      </div>
+      <div class="vp-card">
+        <div class="ico">🔒</div>
+        <h4>GDPR · SSL · PCI DSS</h4>
+        <p>Infrastructure sécurisée certifiée. Données hébergées conformément aux réglementations locales et internationales. Support 7j/7 en arabe, français et anglais.</p>
+      </div>
+      <div class="vp-card">
+        <div class="ico">📈</div>
+        <h4>Résultats Prouvés</h4>
+        <p>+25% de revenus le premier mois (Café Latte, Agadir). Erreurs de commande proches de zéro. Retour sur investissement moyen constaté : J+30.</p>
+      </div>
+    </div>
+
+    <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:12px; padding:16px 20px; margin-bottom:20px;">
+      <h4 style="font-size:12px; font-weight:800; color:#1d4ed8; margin-bottom:8px;">📌 Problèmes Résolus</h4>
+      <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px;">
+        <div style="font-size:10px; color:#1e3a8a;"><strong>❌ Avant SmartRestau :</strong> commandes perdues à l'oral, erreurs fréquentes, pas de visibilité sur les marges, 0 marketing digital.</div>
+        <div style="font-size:10px; color:#1e3a8a;"><strong>✅ Avec SmartRestau :</strong> 100% des commandes tracées en temps réel, cuisine synchronisée, tableau de bord complet, marketing automatique quotidien.</div>
+        <div style="font-size:10px; color:#1e3a8a;"><strong>🎯 Pour qui :</strong> Restaurants indépendants, cafés, snacks, food courts, hôtels, chaînes et franchises. De 1 à 50+ tables, 1 à 100+ branches.</div>
+      </div>
+    </div>
+
+    <div class="fill"></div>
+    <div class="page-footer">
+      <p>SmartRestau — Dossier Commercial Confidentiel 2026</p>
+      <p>contact@smartrestau.ma · +212 6XX XX XX XX</p>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!-- PAGE 3 — MODULES PLATEFORME                               -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="page">
+  <div class="page-header">
+    <div class="brand">Smart<span>Restau</span></div>
+    <div class="pg">Dossier Commercial 2026 · Page 3</div>
+  </div>
+  <div class="inner">
+
+    <div class="section-header">
+      <div class="num">02</div>
+      <div class="texts">
+        <div class="label">Platform Architecture</div>
+        <h2>10 Modules. Un Seul OS.</h2>
+        <p>Chaque module est intégré nativement — données partagées en temps réel, zéro saisie en double.</p>
+      </div>
+    </div>
+
+    <div class="module-grid">
+
+      <div class="module-card">
+        <div class="module-icon" style="background:#ecfdf5;">📱</div>
+        <div class="module-body">
+          <h4>SMART MENU — Menu Digital QR</h4>
+          <ul>
+            <li>QR code sans application</li>
+            <li>Menu multilingue (AR/FR/EN)</li>
+            <li>Modifications en temps réel</li>
+            <li>Photos & descriptions IA</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="module-card">
+        <div class="module-icon" style="background:#eff6ff;">🖥️</div>
+        <div class="module-body">
+          <h4>SMART POS — Point de Vente</h4>
+          <ul>
+            <li>Prise de commande tablette/mobile</li>
+            <li>Paiements (CB, cash, mobile money)</li>
+            <li>Reçus automatiques</li>
+            <li>Suivi ventes en direct</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="module-card">
+        <div class="module-icon" style="background:#f5f3ff;">👥</div>
+        <div class="module-body">
+          <h4>SMART STAFF — Gestion RH</h4>
+          <ul>
+            <li>Gestion des employés</li>
+            <li>Pointage & présence</li>
+            <li>Planning des équipes</li>
+            <li>Rôles & permissions</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="module-card">
+        <div class="module-icon" style="background:#f0f9ff;">📅</div>
+        <div class="module-body">
+          <h4>SMART RESERVATIONS</h4>
+          <ul>
+            <li>Réservation de tables en ligne</li>
+            <li>Gestion des créneaux</li>
+            <li>Confirmation automatique</li>
+            <li>Historique clients</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="module-card">
+        <div class="module-icon" style="background:#fffbeb;">📊</div>
+        <div class="module-body">
+          <h4>SMART ANALYTICS — BI Temps Réel</h4>
+          <ul>
+            <li>Tableau de bord revenus</li>
+            <li>Performance par plat & table</li>
+            <li>Rapports journaliers/mensuels</li>
+            <li>Insights clients & tendances</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="module-card">
+        <div class="module-icon" style="background:#fdf2f8;">🤖</div>
+        <div class="module-body">
+          <span class="ai-tag">✦ IA</span>
+          <h4>SMART MARKETING IA</h4>
+          <ul>
+            <li>Génération de campagnes auto</li>
+            <li>Contenu social media IA</li>
+            <li>Promotions personnalisées</li>
+            <li>Auto-publication multi-plateformes</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="module-card">
+        <div class="module-icon" style="background:#fff1f2;">🎬</div>
+        <div class="module-body">
+          <span class="ai-tag">✦ IA</span>
+          <h4>SMART VIDÉO IA</h4>
+          <ul>
+            <li>Vidéos publicitaires automatiques</li>
+            <li>Instagram Reels & TikTok</li>
+            <li>YouTube Shorts</li>
+            <li>Stories & contenus photo</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="module-card">
+        <div class="module-icon" style="background:#eef2ff;">🌐</div>
+        <div class="module-body">
+          <h4>SMART SOCIAL — Publication Auto</h4>
+          <ul>
+            <li>Facebook · Instagram · TikTok</li>
+            <li>YouTube Shorts automatique</li>
+            <li>Calendrier de publication</li>
+            <li>Analyse engagement</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="module-card">
+        <div class="module-icon" style="background:#f0fdfa;">🏢</div>
+        <div class="module-body">
+          <h4>SMART MULTI-BRANCH</h4>
+          <ul>
+            <li>Gestion chaînes & franchises</li>
+            <li>Dashboard centralisé</li>
+            <li>Menus par branch</li>
+            <li>Performance comparative</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="module-card">
+        <div class="module-icon" style="background:#f8fafc;">🏷️</div>
+        <div class="module-body">
+          <h4>SMART WHITE LABEL</h4>
+          <ul>
+            <li>Solution agences & revendeurs</li>
+            <li>Branding personnalisé</li>
+            <li>Panel administrateur dédié</li>
+            <li>Commissions partenaires</li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="fill"></div>
+    <div class="page-footer">
+      <p>SmartRestau — Dossier Commercial Confidentiel 2026</p>
+      <p>contact@smartrestau.ma · +212 6XX XX XX XX</p>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!-- PAGE 4 — FONCTIONNALITÉS DÉTAILLÉES                       -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="page">
+  <div class="page-header">
+    <div class="brand">Smart<span>Restau</span></div>
+    <div class="pg">Dossier Commercial 2026 · Page 4</div>
+  </div>
+  <div class="inner">
+
+    <div class="section-header">
+      <div class="num">03</div>
+      <div class="texts">
+        <div class="label">Feature Catalogue</div>
+        <h2>15+ Fonctionnalités Clés</h2>
+        <p>Chaque fonctionnalité est incluse dans le plan de base — aucune option cachée.</p>
+      </div>
+    </div>
+
+    <div class="feat-grid">
+
+      <div class="feat-card">
+        <div class="ico">⚡</div>
+        <h5>Commandes Cuisine Instantanées</h5>
+        <p>Transmission à la cuisine en millisecondes avec alerte audio et écran KDS. Zéro délai, zéro erreur de transmission.</p>
+      </div>
+
+      <div class="feat-card">
+        <div class="ico">👨‍🍳</div>
+        <h5>Écran KDS Cuisine</h5>
+        <p>Écran dédié avec files de commandes en séquence, minuteries de préparation et contrôle opérationnel complet.</p>
+      </div>
+
+      <div class="feat-card">
+        <div class="ico">⭐</div>
+        <h5>Avis Google Automatiques</h5>
+        <p>Invitation post-commande à laisser un avis Google 5 étoiles. Meilleur classement, plus de clients organiques.</p>
+      </div>
+
+      <div class="feat-card">
+        <div class="ico">📢</div>
+        <h5>Moteur Marketing Viral</h5>
+        <p>Chaque client devient canal marketing — partage Instagram auto, invitations amis, portée virale. Pub gratuite sur chaque table.</p>
+      </div>
+
+      <div class="feat-card">
+        <div class="ico">🛡️</div>
+        <h5>Moteur Anti-Fraude</h5>
+        <p>Détection automatique des doublons, comportements suspects et faux avis. Protection complète de vos revenus.</p>
+      </div>
+
+      <div class="feat-card">
+        <div class="ico">💳</div>
+        <h5>Paiements Internationaux</h5>
+        <p>Stripe (Golfe/Europe) · Wave & M-Pesa (Afrique) · Mobile Money · Cash. Chaque marché couvert nativement.</p>
+      </div>
+
+      <div class="feat-card">
+        <div class="ico">📦</div>
+        <h5>Stock Auto-Déduit</h5>
+        <p>Chaque commande déduit automatiquement les ingrédients du stock. Inventaire temps réel, zéro comptage manuel.</p>
+      </div>
+
+      <div class="feat-card">
+        <div class="ico">💰</div>
+        <h5>Smart Costing Engine</h5>
+        <p>Calcul automatique coût vs prix pour chaque plat. Connaissez vos vraies marges et arrêtez de perdre de l'argent.</p>
+      </div>
+
+      <div class="feat-card">
+        <div class="ico">🔔</div>
+        <h5>Bouton Appel Serveur</h5>
+        <p>Un tap depuis le menu appelle le serveur à table. Meilleure expérience client, pourboires plus élevés.</p>
+      </div>
+
+      <div class="feat-card">
+        <div class="ico">🧾</div>
+        <h5>Demande d'Addition Digitale</h5>
+        <p>Le client demande l'addition depuis son téléphone. Rotation des tables plus rapide, plus de couverts par service.</p>
+      </div>
+
+      <div class="feat-card">
+        <div class="ico">🔀</div>
+        <h5>Fusion de Tables</h5>
+        <p>Fusions de tables en un tap pour les grands groupes. Facture unifiée, zéro confusion à l'encaissement.</p>
+      </div>
+
+      <div class="feat-card">
+        <div class="ico">💬</div>
+        <h5>Fidélisation Clients</h5>
+        <p>Collecte de notes et commentaires post-commande. Détectez les problèmes avant qu'ils deviennent publics.</p>
+      </div>
+
+      <div class="feat-card">
+        <div class="ico">🌍</div>
+        <h5>Opérations Multilingues</h5>
+        <p>Arabe, français, anglais sur tout l'OS — menu, écrans cuisine, staff et analytics entièrement localisés.</p>
+      </div>
+
+      <div class="feat-card">
+        <div class="ico">📡</div>
+        <h5>Temps Réel & Offline</h5>
+        <p>WebSockets pour synchronisation instantanée. Mode offline pour zones de faible connectivité. Données sécurisées.</p>
+      </div>
+
+      <div class="feat-card">
+        <div class="ico">📱</div>
+        <h5>QR Menu Sans Application</h5>
+        <p>Les clients scannent et commandent directement dans leur navigateur. Aucun téléchargement, aucun compte requis.</p>
+      </div>
+
+    </div>
+
+    <div class="fill"></div>
+    <div class="page-footer">
+      <p>SmartRestau — Dossier Commercial Confidentiel 2026</p>
+      <p>contact@smartrestau.ma · +212 6XX XX XX XX</p>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!-- PAGE 5 — TARIFICATION PAR MARCHÉ                          -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="page">
+  <div class="page-header">
+    <div class="brand">Smart<span>Restau</span></div>
+    <div class="pg">Dossier Commercial 2026 · Page 5</div>
+  </div>
+  <div class="inner">
+
+    <div class="section-header">
+      <div class="num">04</div>
+      <div class="texts">
+        <div class="label">Pricing — Pay Per Order</div>
+        <h2>Tarification par Marché</h2>
+        <p>Aucun abonnement mensuel fixe. Une micro-commission calculée automatiquement par commande complétée.</p>
+      </div>
+    </div>
+
+    <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px; padding:10px 16px; margin-bottom:16px; display:flex; align-items:center; gap:12px;">
+      <div style="font-size:20px;">💡</div>
+      <div>
+        <strong style="font-size:11px; color:#1d4ed8;">Principe :</strong>
+        <span style="font-size:10.5px; color:#1e40af;"> Commissions dégressives selon le montant du ticket. −5% de réduction si la commande contient 2 articles ou plus. Plan Premium optionnel pour volume élevé.</span>
+      </div>
+    </div>
+
+    <div class="pricing-grid">
+
+      <!-- Maroc -->
+      <div class="price-card">
+        <div class="card-header" style="background:linear-gradient(135deg,#065f46,#047857);">
+          <div class="flag">🇲🇦</div>
+          <h4>Maroc</h4>
+          <p>Agadir · Marrakech · Casablanca · Fès · Rabat</p>
+        </div>
+        <div class="card-body">
+          <div class="price-row"><span class="range">Moins de 30 MAD</span><span class="fee">0.30 MAD</span></div>
+          <div class="price-row"><span class="range">30 — 70 MAD</span><span class="fee">0.99 MAD</span></div>
+          <div class="price-row"><span class="range">70 — 150 MAD</span><span class="fee">3.99 MAD</span></div>
+          <div class="price-row"><span class="range">Plus de 150 MAD</span><span class="fee">10 — 12 MAD</span></div>
+          <div class="price-note">✓ −5% si commande ≥ 2 articles</div>
+          <div class="price-premium"><span>💎 Premium</span><strong>199 MAD / mois</strong></div>
+        </div>
+      </div>
+
+      <!-- Saudi Arabia -->
+      <div class="price-card">
+        <div class="card-header" style="background:linear-gradient(135deg,#14532d,#166534);">
+          <div class="flag">🇸🇦</div>
+          <h4>Arabie Saoudite</h4>
+          <p>Riyad · Djeddah · La Mecque · Dammam</p>
+        </div>
+        <div class="card-body">
+          <div class="price-row"><span class="range">Moins de 15 SAR</span><span class="fee">1 SAR</span></div>
+          <div class="price-row"><span class="range">15 — 40 SAR</span><span class="fee">3 SAR</span></div>
+          <div class="price-row"><span class="range">40 — 70 SAR</span><span class="fee">6 SAR</span></div>
+          <div class="price-row"><span class="range">70 — 120 SAR</span><span class="fee">10 SAR</span></div>
+          <div class="price-row"><span class="range">120 — 200 SAR</span><span class="fee">15 SAR</span></div>
+          <div class="price-row"><span class="range">Plus de 200 SAR</span><span class="fee">22 SAR</span></div>
+          <div class="price-note">✓ −5% si commande ≥ 2 articles</div>
+          <div class="price-premium"><span>💎 Premium</span><strong>159 SAR / month</strong></div>
+        </div>
+      </div>
+
+      <!-- UAE -->
+      <div class="price-card">
+        <div class="card-header" style="background:linear-gradient(135deg,#991b1b,#b91c1c);">
+          <div class="flag">🇦🇪</div>
+          <h4>Émirats Arabes Unis</h4>
+          <p>Dubaï · Abu Dhabi · Sharjah · Ajman</p>
+        </div>
+        <div class="card-body">
+          <div class="price-row"><span class="range">Moins de 15 AED</span><span class="fee">1 AED</span></div>
+          <div class="price-row"><span class="range">15 — 40 AED</span><span class="fee">3 AED</span></div>
+          <div class="price-row"><span class="range">40 — 80 AED</span><span class="fee">6 AED</span></div>
+          <div class="price-row"><span class="range">80 — 130 AED</span><span class="fee">10 AED</span></div>
+          <div class="price-row"><span class="range">130 — 200 AED</span><span class="fee">15 AED</span></div>
+          <div class="price-row"><span class="range">Plus de 200 AED</span><span class="fee">22 AED</span></div>
+          <div class="price-note">✓ −5% si commande ≥ 2 articles</div>
+          <div class="price-premium"><span>💎 Premium</span><strong>159 AED / month</strong></div>
+        </div>
+      </div>
+
+      <!-- Europe -->
+      <div class="price-card">
+        <div class="card-header" style="background:linear-gradient(135deg,#1e3a8a,#1d4ed8);">
+          <div class="flag">🇫🇷🇪🇸🇧🇪</div>
+          <h4>Europe</h4>
+          <p>Paris · Madrid · Bruxelles · Berlin · Rome</p>
+        </div>
+        <div class="card-body">
+          <div class="price-row"><span class="range">Moins de 5€</span><span class="fee">€0.10</span></div>
+          <div class="price-row"><span class="range">5€ — 12€</span><span class="fee">€0.25</span></div>
+          <div class="price-row"><span class="range">12€ — 25€</span><span class="fee">€0.50</span></div>
+          <div class="price-row"><span class="range">25€ — 50€</span><span class="fee">€0.80</span></div>
+          <div class="price-row"><span class="range">50€ — 100€</span><span class="fee">€1.20</span></div>
+          <div class="price-row"><span class="range">Plus de 100€</span><span class="fee">€2.00</span></div>
+          <div class="price-note">✓ −5% si commande ≥ 2 articles</div>
+          <div class="price-premium"><span>💎 Premium</span><strong>159 € / mois</strong></div>
+        </div>
+      </div>
+
+      <!-- North Africa -->
+      <div class="price-card">
+        <div class="card-header" style="background:linear-gradient(135deg,#075985,#0369a1);">
+          <div class="flag">🇩🇿🇹🇳🇪🇬</div>
+          <h4>Afrique du Nord</h4>
+          <p>Alger · Tunis · Le Caire · Tripoli</p>
+        </div>
+        <div class="card-body">
+          <div class="price-row"><span class="range">Algérie (DZD)</span><span class="fee">15 → 450 DZD</span></div>
+          <div class="price-row"><span class="range">Tunisie (TND)</span><span class="fee">0.15 → 5 TND</span></div>
+          <div class="price-row"><span class="range">Égypte (EGP)</span><span class="fee">2 → 60 EGP</span></div>
+          <div class="price-row"><span class="range">Libye (LYD)</span><span class="fee">0.30 → 8 LYD</span></div>
+          <div class="price-note">✓ −5% si commande ≥ 2 articles</div>
+        </div>
+      </div>
+
+      <!-- West Africa / Sub-Saharan -->
+      <div class="price-card">
+        <div class="card-header" style="background:linear-gradient(135deg,#78350f,#92400e);">
+          <div class="flag">🇸🇳🇨🇮🌍</div>
+          <h4>Afrique de l'Ouest & Subsah.</h4>
+          <p>Dakar · Abidjan · Nairobi · Yaoundé</p>
+        </div>
+        <div class="card-body">
+          <div class="price-row"><span class="range">Moins de 2 000 XOF</span><span class="fee">50 XOF</span></div>
+          <div class="price-row"><span class="range">2 000 — 5 000 XOF</span><span class="fee">200 XOF</span></div>
+          <div class="price-row"><span class="range">Plus de 5 000 XOF</span><span class="fee">500 XOF</span></div>
+          <div class="price-row"><span class="range">Kenya (KES)</span><span class="fee">10 → 180 KES</span></div>
+          <div class="price-row"><span class="range">Mobile Money</span><span class="fee">Wave · M-Pesa</span></div>
+          <div class="price-note">✓ −5% si commande ≥ 2 articles</div>
+          <div class="price-premium"><span>💎 Premium</span><strong>13 000 XOF / mois</strong></div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="fill"></div>
+    <div class="page-footer">
+      <p>SmartRestau — Dossier Commercial Confidentiel 2026</p>
+      <p>contact@smartrestau.ma · +212 6XX XX XX XX</p>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!-- PAGE 6 — IA MARKETING ENGINE + HOW IT WORKS               -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="page">
+  <div class="page-header">
+    <div class="brand">Smart<span>Restau</span></div>
+    <div class="pg">Dossier Commercial 2026 · Page 6</div>
+  </div>
+  <div class="inner">
+
+    <div class="section-header">
+      <div class="num">05</div>
+      <div class="texts">
+        <div class="label">AI Food Marketing Engine</div>
+        <h2>0 Agence. 0 Graphiste. 0 Travail Manuel.</h2>
+        <p>Une seule photo de plat suffit pour générer une campagne marketing complète et la publier automatiquement.</p>
+      </div>
+    </div>
+
+    <div class="ai-steps" style="margin-bottom:24px;">
+      <div class="ai-step">
+        <div class="step-num">ÉTAPE 01</div>
+        <div class="step-ico">📸</div>
+        <h5>Photo du Plat</h5>
+        <ul>
+          <li>Depuis votre téléphone</li>
+          <li>Toutes cuisines</li>
+          <li>1 clic upload</li>
+        </ul>
+      </div>
+      <div class="ai-step">
+        <div class="step-num">ÉTAPE 02</div>
+        <div class="step-ico">🧠</div>
+        <h5>IA Analyse</h5>
+        <ul>
+          <li>Ingrédients & présentation</li>
+          <li>Couleurs & ambiance</li>
+          <li>Style & marque</li>
+        </ul>
+      </div>
+      <div class="ai-step">
+        <div class="step-num">ÉTAPE 03</div>
+        <div class="step-ico">✍️</div>
+        <h5>IA Génère le Contenu</h5>
+        <ul>
+          <li>Textes marketing</li>
+          <li>Captions & hashtags</li>
+          <li>Concepts promos</li>
+        </ul>
+      </div>
+      <div class="ai-step">
+        <div class="step-num">ÉTAPE 04</div>
+        <div class="step-ico">🎬</div>
+        <h5>IA Crée les Visuels</h5>
+        <ul>
+          <li>Vidéos publicitaires</li>
+          <li>Instagram Reels</li>
+          <li>TikTok · Shorts</li>
+        </ul>
+      </div>
+      <div class="ai-step">
+        <div class="step-num">ÉTAPE 05</div>
+        <div class="step-ico">🚀</div>
+        <h5>Publication Auto</h5>
+        <ul>
+          <li>Heures optimales</li>
+          <li>Toutes plateformes</li>
+          <li>Zéro travail manuel</li>
+        </ul>
+      </div>
+    </div>
+
+    <div style="background:#fdf2f8; border:1px solid #fce7f3; border-radius:12px; padding:12px 16px; margin-bottom:24px;">
+      <strong style="font-size:11px; color:#9d174d;">Formats générés automatiquement :</strong>
+      <span style="font-size:10.5px; color:#831843;"> Vidéos 16:9 · Instagram Reels 9:16 · TikTok 9:16 · Facebook Posts 1:1 · Stories · YouTube Shorts</span>
+    </div>
+
+    <div class="section-header" style="margin-top:8px;">
+      <div class="num">06</div>
+      <div class="texts">
+        <div class="label">Onboarding Process</div>
+        <h2>Opérationnel en 5 Étapes</h2>
+        <p>De l'inscription au premier ticket cuisine en moins de 30 minutes.</p>
+      </div>
+    </div>
+
+    <div class="how-steps">
+      <div class="how-step">
+        <div class="circle"><div class="s-ico">📝</div><div class="s-num">01</div></div>
+        <h5>Créer le Compte</h5>
+        <p>Email + nom du restaurant. Prêt en 2 minutes.</p>
+      </div>
+      <div class="how-step">
+        <div class="circle"><div class="s-ico">🍽️</div><div class="s-num">02</div></div>
+        <h5>Construire le Menu</h5>
+        <p>Ajoutez catégories, plats et photos.</p>
+      </div>
+      <div class="how-step">
+        <div class="circle"><div class="s-ico">📐</div><div class="s-num">03</div></div>
+        <h5>Configurer les Tables</h5>
+        <p>Plan de salle + QR codes imprimables.</p>
+      </div>
+      <div class="how-step">
+        <div class="circle"><div class="s-ico">👥</div><div class="s-num">04</div></div>
+        <h5>Ajouter l'Équipe</h5>
+        <p>Serveurs, caissiers, managers — rôles définis.</p>
+      </div>
+      <div class="how-step">
+        <div class="circle"><div class="s-ico">🚀</div><div class="s-num">05</div></div>
+        <h5>Lancer le Service</h5>
+        <p>Les clients scannent et commandent. Cuisine synchronisée.</p>
+      </div>
+    </div>
+
+    <div class="fill"></div>
+    <div class="page-footer">
+      <p>SmartRestau — Dossier Commercial Confidentiel 2026</p>
+      <p>contact@smartrestau.ma · +212 6XX XX XX XX</p>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!-- PAGE 7 — TÉMOIGNAGES + FAQ + ENTERPRISE                   -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="page">
+  <div class="page-header">
+    <div class="brand">Smart<span>Restau</span></div>
+    <div class="pg">Dossier Commercial 2026 · Page 7</div>
+  </div>
+  <div class="inner">
+
+    <div class="section-header">
+      <div class="num">07</div>
+      <div class="texts">
+        <div class="label">Success Stories</div>
+        <h2>Ce que disent nos Clients</h2>
+        <p>Restaurants qui tournent sur SmartRestau au quotidien — résultats réels.</p>
+      </div>
+    </div>
+
+    <div class="testi-grid" style="margin-bottom:24px;">
+      <div class="testi-card">
+        <div class="stars">★★★★★</div>
+        <p>"SmartRestau a transformé ma façon de gérer le restaurant. Les erreurs ont pratiquement disparu, la cuisine fonctionne parfaitement et j'ai enfin une vraie visibilité sur mes marges."</p>
+        <div class="testi-author">
+          <div class="testi-avatar">M</div>
+          <div class="testi-info">
+            <div class="name">Mohammed Idrissi</div>
+            <div class="role">Propriétaire — Restaurant Brahim, Marrakech</div>
+          </div>
+        </div>
+      </div>
+      <div class="testi-card">
+        <div class="stars">★★★★★</div>
+        <p>"En moins d'une heure l'opération était live — commandes, cuisine, staff et analytics. Les revenus ont augmenté de <strong>25%</strong> le premier mois car nous avons arrêté de perdre des commandes."</p>
+        <div class="testi-author">
+          <div class="testi-avatar">F</div>
+          <div class="testi-info">
+            <div class="name">Fatima Bouzidi</div>
+            <div class="role">Directrice — Café Latte, Agadir</div>
+          </div>
+        </div>
+      </div>
+      <div class="testi-card">
+        <div class="stars">★★★★★</div>
+        <p>"Gérer 3 branches était un chaos. Maintenant je vois tout depuis un seul dashboard — revenus, charge cuisine, performance staff. C'est un vrai OS pour mon business."</p>
+        <div class="testi-author">
+          <div class="testi-avatar">K</div>
+          <div class="testi-info">
+            <div class="name">Khalid Al-Omari</div>
+            <div class="role">Propriétaire — Food Court, Riyad</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-header">
+      <div class="num">08</div>
+      <div class="texts">
+        <div class="label">FAQ</div>
+        <h2>Questions Fréquentes</h2>
+      </div>
+    </div>
+
+    <div class="faq-grid" style="margin-bottom:20px;">
+      <div class="faq-item">
+        <h5>Les clients doivent-ils télécharger une app ?</h5>
+        <p>Non. Le menu s'ouvre directement dans le navigateur après scan du QR code. Aucun téléchargement, aucun compte requis.</p>
+      </div>
+      <div class="faq-item">
+        <h5>Comment fonctionne la facturation ?</h5>
+        <p>7 jours d'essai gratuit. Ensuite, une petite commission par commande complétée uniquement. Si pas de ventes = pas de frais.</p>
+      </div>
+      <div class="faq-item">
+        <h5>Puis-je modifier le menu à tout moment ?</h5>
+        <p>Oui, depuis votre téléphone ou ordinateur. Ajout, suppression, modification de prix — instantané et en direct.</p>
+      </div>
+      <div class="faq-item">
+        <h5>Supporte-t-il plusieurs branches ?</h5>
+        <p>Oui. Chaque branch a son compte et menu. Plan Enterprise pour gestion centralisée multi-sites depuis un tableau de bord.</p>
+      </div>
+      <div class="faq-item">
+        <h5>Fonctionne-t-il sans connexion internet ?</h5>
+        <p>Mode offline disponible pour les zones de faible connectivité. Synchronisation automatique dès que la connexion est rétablie.</p>
+      </div>
+      <div class="faq-item">
+        <h5>GDPR & sécurité des données ?</h5>
+        <p>100% conforme GDPR. Hébergement certifié SSL + PCI DSS. Données minimales collectées, jamais revendues. Politique de confidentialité disponible.</p>
+      </div>
+    </div>
+
+    <div class="enterprise-box">
+      <div class="left">
+        <h4>🏢 Plan Enterprise & Chaînes</h4>
+        <p>Pour les groupes de restaurants, hôtels, franchises et food courts multi-sites. SLA garanti, branding personnalisé, intégration POS existant et support VIP dédié.</p>
+        <div class="enterprise-features">
+          <span>Branches illimitées</span>
+          <span>Dashboard centralisé</span>
+          <span>SLA 99.9%</span>
+          <span>Support VIP 24/7</span>
+          <span>Intégration POS</span>
+          <span>White Label</span>
+          <span>API accès complet</span>
+        </div>
+      </div>
+      <div class="right">
+        <div style="font-size:11px; color:#94a3b8;">Tarification sur mesure</div>
+        <a href="mailto:contact@smartrestau.ma" class="cta-btn">Nous Contacter →</a>
+        <div class="cta-label">Réponse sous 24h</div>
+      </div>
+    </div>
+
+    <div class="fill"></div>
+    <div class="page-footer">
+      <p>SmartRestau — Dossier Commercial Confidentiel 2026</p>
+      <p>contact@smartrestau.ma · +212 6XX XX XX XX</p>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!-- PAGE 8 — FINAL CTA                                        -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="page">
+  <div class="cta-page">
+
+    <div class="label">🍽️ SmartRestau — L'OS des Restaurants</div>
+    <h2>Votre Restaurant OS<br /><span>est Prêt.</span></h2>
+    <p class="sub">Rejoignez 500+ restaurants et cafés qui tournent déjà sur SmartRestau. Zéro engagement, zéro abonnement fixe, 7 jours d'essai gratuit.</p>
+
+    <div class="cta-boxes">
+      <div class="cta-box">
+        <div class="ico">🎯</div>
+        <h5>7 Jours Gratuits</h5>
+        <p>Tous modules inclus. Aucune carte bancaire.</p>
+      </div>
+      <div class="cta-box">
+        <div class="ico">⚡</div>
+        <h5>30 Min de Setup</h5>
+        <p>Opérationnel immédiatement. Pas d'installation.</p>
+      </div>
+      <div class="cta-box">
+        <div class="ico">💬</div>
+        <h5>Support 7j/7</h5>
+        <p>Arabe · Français · Anglais. Équipe locale.</p>
+      </div>
+    </div>
+
+    <div class="contact-grid">
+      <div class="contact-item">
+        <div class="ico2">📧</div>
+        <div class="ct">contact@smartrestau.ma</div>
+        <div class="cs">Email commercial</div>
+      </div>
+      <div class="contact-item">
+        <div class="ico2">💬</div>
+        <div class="ct">WhatsApp Business</div>
+        <div class="cs">+212 6XX XX XX XX</div>
+      </div>
+      <div class="contact-item">
+        <div class="ico2">📍</div>
+        <div class="ct">Hay Mohamedi 231</div>
+        <div class="cs">Casablanca, Maroc 🇲🇦</div>
+      </div>
+    </div>
+
+    <div style="margin-bottom:20px; display:flex; gap:16px; justify-content:center;">
+      <div style="background:rgba(37,99,235,0.2); border:1px solid rgba(96,165,250,0.3); color:#93c5fd; padding:10px 22px; border-radius:12px; font-size:11px; font-weight:800;">🌐 smartrestau.ma</div>
+      <div style="background:rgba(37,99,235,0.2); border:1px solid rgba(96,165,250,0.3); color:#93c5fd; padding:10px 22px; border-radius:12px; font-size:11px; font-weight:800;">✓ SSL · GDPR · PCI DSS</div>
+      <div style="background:rgba(37,99,235,0.2); border:1px solid rgba(96,165,250,0.3); color:#93c5fd; padding:10px 22px; border-radius:12px; font-size:11px; font-weight:800;">🇲🇦 🇸🇦 🇦🇪 🇫🇷 🇸🇳 🇰🇪</div>
+    </div>
+
+    <div class="cta-footer">
+      <p>© 2026 SmartRestau · Hay Mohamedi 231, Casablanca · Tous droits réservés</p>
+      <p style="margin-top:4px;">Document confidentiel — <strong>Dossier Commercial Partenaires 2026</strong> — Ne pas diffuser sans autorisation</p>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- Print button -->
+<div class="print-bar no-print">
+  <button class="print-btn" onclick="window.print()">
+    🖨️ Exporter en PDF
+  </button>
+</div>
+
+</body>
+</html>
