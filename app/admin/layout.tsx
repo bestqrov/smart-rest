@@ -286,6 +286,8 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
   const [open, setOpen]   = useState(false)
   const [cafe, setCafe]   = useState<CafeState | null>(null)
   const [gateAction, setGateAction] = useState<string | null>(null)
+  const [isDemo, setIsDemo] = useState(false)
+  const [showDemoExit, setShowDemoExit] = useState(false)
 
   function authHeader() { return { Authorization: `Bearer ${localStorage.getItem('token')}` } }
 
@@ -317,7 +319,21 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
     }
   }
 
+  useEffect(() => {
+    setIsDemo(localStorage.getItem('isDemo') === '1')
+  }, [])
+
   useEffect(() => { loadCafe() }, [router, pathname])
+
+  useEffect(() => {
+    if (!isDemo) return
+    function onBeforeUnload(e: BeforeUnloadEvent) {
+      e.preventDefault()
+      e.returnValue = ''
+    }
+    window.addEventListener('beforeunload', onBeforeUnload)
+    return () => window.removeEventListener('beforeunload', onBeforeUnload)
+  }, [isDemo])
 
   async function doGateAction(endpoint: string) {
     setGateAction(endpoint)
@@ -327,9 +343,25 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
   }
 
   function logout() {
+    if (isDemo) { setShowDemoExit(true); return }
     localStorage.removeItem('token')
     localStorage.removeItem('cafeId')
+    localStorage.removeItem('isDemo')
     router.push('/landing')
+  }
+
+  function exitDemo() {
+    localStorage.removeItem('token')
+    localStorage.removeItem('cafeId')
+    localStorage.removeItem('isDemo')
+    router.push('/landing')
+  }
+
+  function signupFromDemo() {
+    localStorage.removeItem('token')
+    localStorage.removeItem('cafeId')
+    localStorage.removeItem('isDemo')
+    router.push('/signup')
   }
 
   const billingBadge: Record<string, string> = {
@@ -352,7 +384,58 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
     )
 
   return (
-    <div className="h-screen overflow-hidden bg-gray-50 flex" dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className="h-screen overflow-hidden bg-gray-50 flex flex-col" dir={isRTL ? 'rtl' : 'ltr'}>
+
+      {/* ── Demo banner ────────────────────────────────────────────── */}
+      {isDemo && (
+        <div className="shrink-0 w-full bg-violet-600 text-white text-xs font-semibold flex items-center justify-between px-4 py-2 z-50">
+          <span>🎮 Mode Démo — aucune donnée n'est sauvegardée</span>
+          <button
+            onClick={() => setShowDemoExit(true)}
+            className="ml-4 px-3 py-1 rounded-lg bg-white/20 hover:bg-white/30 transition-colors text-xs font-bold"
+          >
+            Quitter la démo
+          </button>
+        </div>
+      )}
+
+      {/* ── Demo exit dialog ───────────────────────────────────────── */}
+      {showDemoExit && (
+        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="bg-[#1a2744] rounded-3xl border border-violet-500/30 shadow-2xl max-w-md w-full p-8 text-center space-y-5">
+            <div className="text-4xl">🍽️</div>
+            <h2 className="text-2xl font-extrabold text-white">Smart Restau</h2>
+            <p className="text-slate-300 text-sm leading-relaxed">
+              Vous quittez le mode démo. Tout ce que vous avez fait sera réinitialisé.
+            </p>
+            <p className="text-violet-300 text-sm font-semibold">
+              Envie de tout conserver et de profiter de <span className="text-white">15 jours d'essai gratuit</span> + toutes les fonctionnalités ?
+            </p>
+            <div className="flex flex-col gap-3 pt-2">
+              <button
+                onClick={signupFromDemo}
+                className="w-full py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-white font-bold text-base transition-colors shadow-lg shadow-emerald-900/40"
+              >
+                S'inscrire gratuitement — 15 jours d'essai
+              </button>
+              <button
+                onClick={exitDemo}
+                className="w-full py-2.5 rounded-2xl bg-white/10 hover:bg-white/15 text-slate-300 text-sm transition-colors"
+              >
+                Quitter sans sauvegarder
+              </button>
+              <button
+                onClick={() => setShowDemoExit(false)}
+                className="text-slate-500 hover:text-slate-300 text-xs transition-colors"
+              >
+                Continuer la démo
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="flex flex-1 overflow-hidden">
 
       {/* ── Sidebar (desktop) ─────────────────────────────────────── */}
       <aside className="hidden md:flex flex-col w-64 bg-[#1a2744] h-full shrink-0 overflow-y-auto">
@@ -565,6 +648,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
           actionInFlight={gateAction}
         />
       )}
+      </div>
     </div>
   )
 }

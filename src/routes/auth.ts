@@ -87,6 +87,35 @@ router.post('/api/auth/login', async (req: Request, res: Response) => {
   }
 })
 
+// ─── POST /api/demo-login — auto-login to demo cafe (no credentials) ──────────
+
+router.post('/api/demo-login', async (req: Request, res: Response) => {
+  try {
+    const demoSubdomain = process.env.DEMO_SUBDOMAIN ?? 'plage'
+    const cafe = await prisma.cafe.findUnique({
+      where: { subdomain: demoSubdomain },
+      select: { id: true, subdomain: true },
+    })
+    if (!cafe) return res.status(503).json({ error: 'Demo not available' })
+
+    const user = await prisma.user.findFirst({
+      where: { cafeId: cafe.id },
+      select: { id: true },
+    })
+    if (!user) return res.status(503).json({ error: 'Demo not available' })
+
+    const token = jwt.sign(
+      { userId: user.id, cafeId: cafe.id, subdomain: cafe.subdomain, isDemo: true },
+      JWT_SECRET,
+      { expiresIn: '2h' },
+    )
+    return res.json({ token, cafeId: cafe.id, subdomain: cafe.subdomain, isDemo: true })
+  } catch (err) {
+    logger.error({ msg: 'demo-login error', err })
+    return res.status(500).json({ error: 'Server error' })
+  }
+})
+
 // ─── POST /api/auth/register ──────────────────────────────────────────────────
 
 router.post('/api/auth/register', async (req: Request, res: Response) => {
