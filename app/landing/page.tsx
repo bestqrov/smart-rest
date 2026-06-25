@@ -919,9 +919,9 @@ export default function LandingPage() {
 
           {/* Logo */}
           <div className="flex items-center gap-2.5 shrink-0">
-            <Image src={logoImageUrl} alt="SmartMenu" width={38} height={38} className="rounded-xl shadow-sm object-contain" unoptimized={!logoImageUrl.startsWith('/') || logoImageUrl.startsWith('/uploads/')} />
+            <Image src={logoImageUrl} alt="SmartRestau" width={38} height={38} className="rounded-xl shadow-sm object-contain" unoptimized={!logoImageUrl.startsWith('/') || logoImageUrl.startsWith('/uploads/')} />
             <div className="leading-tight">
-              <span className="font-extrabold text-lg tracking-tight" style={{ color: 'var(--ct)' }}>SmartMenu</span>
+              <span className="font-extrabold text-lg tracking-tight" style={{ color: 'var(--ct)' }}>SmartRestau</span>
               <span className="hidden sm:block text-[10px] font-semibold leading-none" style={{ color: 'var(--ca)' }}>AI OS · OPERATE · GROW</span>
             </div>
           </div>
