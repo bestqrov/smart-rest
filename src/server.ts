@@ -58,6 +58,7 @@ import inventoryAdminRouter from './routes/inventoryAdmin'
 import reviewGalleryRouter from './routes/reviewGallery'
 import demoRequestsRouter from './routes/demoRequests'
 import zonesRouter from './routes/zones'
+import equipmentRouter from './routes/equipment'
 import { registerSocketHandlers } from './socket/handlers'
 import { startWeeklyBillingCron } from './cron/weeklyBilling'
 import { startNightlyCron } from './cron/nightly'
@@ -156,6 +157,7 @@ async function main() {
   app.use(feedbackRouter)
   app.use(landingConfigRouter)
   app.use('/api/marketing', marketingRouter)
+  app.use('/api/v1/equipment', equipmentRouter)
   app.use(traiteurRouter)
   app.use(loyaltyRouter)
   app.use(adminCertificationRouter)
