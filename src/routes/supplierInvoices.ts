@@ -103,7 +103,7 @@ router.patch('/:id', authorizeAdmin, async (req: Request, res: Response) => {
     if (body.documentUrl   !== undefined) data.documentUrl   = body.documentUrl
     if (body.notes         !== undefined) data.notes         = body.notes
 
-    const invoice = await prisma.supplierInvoice.update({ where: { id }, data })
+    const invoice = await prisma.supplierInvoice.update({ where: { id, cafeId } as any, data })
     return res.json(invoice)
   } catch (err) {
     logger.error({ msg: 'invoice update error', err })
