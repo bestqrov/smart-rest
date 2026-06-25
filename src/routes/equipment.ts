@@ -139,6 +139,10 @@ router.patch('/:id', authorizeAdmin, async (req: Request, res: Response) => {
     if (body.notes         !== undefined) data.notes         = body.notes
 
     const equipment = await prisma.equipment.update({ where: { id }, data })
+    // Security check: ensure updated equipment still belongs to requesting cafe
+    if (equipment.cafeId !== cafeId) {
+      throw new Error('Equipment does not belong to this cafe')
+    }
     return res.json(equipment)
   } catch (err) {
     logger.error({ msg: 'equipment update error', err })
