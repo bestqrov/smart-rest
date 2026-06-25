@@ -25,7 +25,7 @@ const T: Record<Lang, Record<string, string | string[]>> = {
     h1a: 'The AI Operating System', h1b: 'for Restaurants',
     h1c: '',
     desc: 'Run your entire restaurant from one intelligent platform.\n\nManage menus, orders, POS, reservations, employees, attendance, marketing, social media and AI automation from a single dashboard.',
-    cta1: 'Start Free Trial', cta2: 'Book a Demo',
+    cta1: 'Start Free Trial', cta2: 'Book a Demo', ctaDemo: 'Try Demo — No Login',
     trustBar: 'Trusted by restaurants across Africa, GCC and Europe.',
     badges: ['No contract', '5-min setup', 'Support 24/7', 'No credit card'],
     whoLabel: 'Who Is It For', whoTitle: 'Built For Every F&B Business',
@@ -72,7 +72,7 @@ const T: Record<Lang, Record<string, string | string[]>> = {
     h1a: "Le Système d'Exploitation IA", h1b: 'pour les Restaurants',
     h1c: '',
     desc: "Pilotez l'intégralité de votre restaurant depuis une plateforme intelligente unique.\n\nGérez menus, commandes, POS, réservations, employés, présence, marketing, réseaux sociaux et automatisation IA depuis un seul tableau de bord.",
-    cta1: 'Essai Gratuit', cta2: 'Réserver une Démo',
+    cta1: 'Essai Gratuit', cta2: 'Réserver une Démo', ctaDemo: 'Essayer la Démo — Sans Inscription',
     trustBar: 'Utilisé par des restaurants en Afrique, GCC et Europe.',
     badges: ['Sans engagement', 'Config 5 min', 'Support 24/7', 'Sans carte bancaire'],
     whoLabel: 'Pour Qui', whoTitle: 'Conçu pour Chaque Business F&B',
@@ -119,7 +119,7 @@ const T: Record<Lang, Record<string, string | string[]>> = {
     h1a: 'نظام التشغيل الذكي', h1b: 'للمطاعم',
     h1c: '',
     desc: 'أدِر مطعمك بالكامل من منصة ذكية واحدة.\n\nأدر قوائمك، طلباتك، POS، الحجوزات، الموظفين، الحضور، التسويق، السوشيال ميديا والأتمتة الذكية من لوحة تحكم واحدة.',
-    cta1: 'ابدأ مجاناً', cta2: 'احجز عرضاً',
+    cta1: 'ابدأ مجاناً', cta2: 'احجز عرضاً', ctaDemo: 'جرّب الديمو — بدون تسجيل',
     trustBar: 'موثوق به من مطاعم في أفريقيا والخليج وأوروبا.',
     badges: ['بدون عقد', 'إعداد 5 دقائق', 'دعم 24/7', 'لا بطاقة بنكية'],
     whoLabel: 'الاستهداف', whoTitle: 'مصمم لكل قطاع F&B',
@@ -165,6 +165,34 @@ const T: Record<Lang, Record<string, string | string[]>> = {
 
 function tl<T>(item: { en: T; fr: T; ar: T }, lang: Lang): T {
   return item[lang]
+}
+
+// ─── Theme system ──────────────────────────────────────────────────────────────
+
+type LandingTheme = 'dark-green' | 'dark-navy' | 'light-blue'
+
+const HERO_GRADIENT: Record<LandingTheme, string> = {
+  'dark-green': 'linear-gradient(135deg, #030712 0%, #111827 60%, #052e16 100%)',
+  'dark-navy':  'linear-gradient(135deg, #070d1a 0%, #0d1a3a 60%, #070d1a 100%)',
+  'light-blue': 'linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 100%)',
+}
+
+const H1_GRADIENT: Record<LandingTheme, string> = {
+  'dark-green': 'linear-gradient(90deg, #34d399, #6ee7b7)',
+  'dark-navy':  'linear-gradient(90deg, #60a5fa, #93c5fd)',
+  'light-blue': 'linear-gradient(90deg, #fbbf24, #f59e0b)',
+}
+
+const HERO_GLOW: Record<LandingTheme, string> = {
+  'dark-green': 'rgba(16,185,129,0.15)',
+  'dark-navy':  'rgba(37,99,235,0.18)',
+  'light-blue': 'transparent',
+}
+
+const THEME_ICONS: Record<LandingTheme, string> = {
+  'dark-green': '🌿',
+  'dark-navy':  '🌊',
+  'light-blue': '☀️',
 }
 
 function getEmbedUrl(url: string): string {
@@ -728,11 +756,11 @@ function CookieBanner({ lang, t }: { lang: Lang; t: (k: string) => string }) {
       <div className={`max-w-5xl mx-auto flex flex-col sm:flex-row items-center gap-4 justify-between ${isRtl ? 'sm:flex-row-reverse' : ''}`}>
         <p className={`text-gray-300 text-sm flex-1 ${isRtl ? 'text-right' : ''}`}>
           {t('cookie')}{' '}
-          <a href="/privacy" className="text-emerald-400 underline hover:text-emerald-300">{t('cookieLink')}</a>.
+          <a href="/privacy" className="underline" style={{ color: 'var(--ca)' }}>{t('cookieLink')}</a>.
         </p>
         <div className="flex gap-2 shrink-0">
           <button onClick={decline} className="px-4 py-2 text-sm text-gray-400 border border-gray-600 rounded-lg hover:bg-gray-800 transition-colors">{t('cookieDecline')}</button>
-          <button onClick={accept} className="px-5 py-2 text-sm bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg transition-colors">{t('cookieAccept')}</button>
+          <button onClick={accept} className="px-5 py-2 text-sm text-white font-semibold rounded-lg transition-colors" style={{ background: 'var(--cp)' }}>{t('cookieAccept')}</button>
         </div>
       </div>
     </div>
@@ -748,6 +776,33 @@ export default function LandingPage() {
   const [email, setEmail] = useState('')
   const [ctaLoading, setCtaLoading] = useState(false)
   const [ctaError, setCtaError] = useState('')
+  const [demoLoading, setDemoLoading] = useState(false)
+  const [theme, setTheme] = useState<LandingTheme>('dark-green')
+
+  useEffect(() => {
+    const saved = localStorage.getItem('landing-theme') as LandingTheme | null
+    if (saved && ['dark-green', 'dark-navy', 'light-blue'].includes(saved)) setTheme(saved)
+  }, [])
+
+  function switchTheme(t: LandingTheme) {
+    setTheme(t)
+    localStorage.setItem('landing-theme', t)
+  }
+
+  async function startDemo() {
+    setDemoLoading(true)
+    try {
+      const res = await fetch('/api/demo-login', { method: 'POST' })
+      if (!res.ok) { setDemoLoading(false); return }
+      const { token, cafeId, isDemo } = await res.json()
+      localStorage.setItem('token', token)
+      localStorage.setItem('cafeId', cafeId)
+      localStorage.setItem('isDemo', isDemo ? '1' : '')
+      router.push('/admin/dashboard')
+    } catch {
+      setDemoLoading(false)
+    }
+  }
   const [openFaq, setOpenFaq] = useState<number | null>(null)
   const [cfg, setCfg] = useState<LandingConfig>({})
 
@@ -801,7 +856,7 @@ export default function LandingPage() {
   ]
 
   return (
-    <main dir={isRtl ? 'rtl' : 'ltr'} className="min-h-screen bg-white text-gray-900 font-sans overflow-x-hidden">
+    <main dir={isRtl ? 'rtl' : 'ltr'} data-theme={theme} className="min-h-screen font-sans overflow-x-hidden" style={{ background: 'var(--cb)', color: 'var(--ct)' }}>
       <style>{`
         @keyframes heroFadeUp {
           from { opacity: 0; transform: translateY(22px); }
@@ -814,6 +869,30 @@ export default function LandingPage() {
         .hero-title-mobile { animation: heroFadeUp 0.55s cubic-bezier(.22,1,.36,1) both; }
         .hero-visual       { animation: heroFadeIn 0.65s cubic-bezier(.22,1,.36,1) 0.18s both; }
         .hero-text-body    { animation: heroFadeUp 0.55s cubic-bezier(.22,1,.36,1) 0.32s both; }
+        main[data-theme="dark-green"] {
+          --cp: #10b981; --cp-h: #34d399;
+          --ca: #34d399; --cg: #34d399;
+          --cb: #030712; --cs: #111827;
+          --cn: rgba(3,7,18,0.97);
+          --cbr: rgba(52,211,153,0.2);
+          --ct: #f9fafb; --ctm: #9ca3af;
+        }
+        main[data-theme="dark-navy"] {
+          --cp: #2563eb; --cp-h: #3b82f6;
+          --ca: #60a5fa; --cg: #f59e0b;
+          --cb: #070d1a; --cs: #0d1526;
+          --cn: rgba(7,13,26,0.97);
+          --cbr: rgba(37,99,235,0.25);
+          --ct: #f8fafc; --ctm: #94a3b8;
+        }
+        main[data-theme="light-blue"] {
+          --cp: #1d4ed8; --cp-h: #2563eb;
+          --ca: #1d4ed8; --cg: #d97706;
+          --cb: #f8fafc; --cs: #ffffff;
+          --cn: rgba(255,255,255,0.98);
+          --cbr: #bfdbfe;
+          --ct: #0f172a; --ctm: #475569;
+        }
       `}</style>
 
       <CookieBanner lang={lang} t={t} />
@@ -827,7 +906,7 @@ export default function LandingPage() {
             <span className="hidden sm:inline"><Globe2 className="w-3 h-3 inline mr-1" />MA · SA · AE · SN · CI · GA · KE</span>
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-green-400 font-medium">{t('systemOk')}</span>
+            <span className="font-medium" style={{ color: 'var(--ca)' }}>{t('systemOk')}</span>
             <span className="text-gray-600">|</span>
             <span className="text-gray-500">SSL · GDPR · PCI DSS</span>
           </div>
@@ -835,32 +914,32 @@ export default function LandingPage() {
       </div>
 
       {/* ── Navbar ── */}
-      <nav className="sticky top-0 z-40 bg-white/95 backdrop-blur shadow-sm border-b border-gray-100">
+      <nav className="sticky top-0 z-40 backdrop-blur shadow-sm border-b" style={{ background: 'var(--cn)', borderColor: 'var(--cbr)' }}>
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
 
           {/* Logo */}
           <div className="flex items-center gap-2.5 shrink-0">
             <Image src={logoImageUrl} alt="SmartMenu" width={38} height={38} className="rounded-xl shadow-sm object-contain" unoptimized={!logoImageUrl.startsWith('/') || logoImageUrl.startsWith('/uploads/')} />
             <div className="leading-tight">
-              <span className="font-extrabold text-lg text-gray-900 tracking-tight">SmartMenu</span>
-              <span className="hidden sm:block text-[10px] text-emerald-600 font-semibold leading-none">AI OS · OPERATE · GROW</span>
+              <span className="font-extrabold text-lg tracking-tight" style={{ color: 'var(--ct)' }}>SmartMenu</span>
+              <span className="hidden sm:block text-[10px] font-semibold leading-none" style={{ color: 'var(--ca)' }}>AI OS · OPERATE · GROW</span>
             </div>
           </div>
 
           {/* Desktop nav links */}
-          <div className="hidden lg:flex items-center gap-6 text-sm text-gray-600 font-medium">
-            <a href="#who"      className="hover:text-emerald-700 transition-colors">{t('whoLabel')}</a>
-            <a href="#platform" className="hover:text-emerald-700 transition-colors">{t('architectureLabel')}</a>
-            <a href="#features" className="hover:text-emerald-700 transition-colors">{t('featLabel')}</a>
-            <a href="#how"      className="hover:text-emerald-700 transition-colors">{t('howLabel')}</a>
-            <a href="#pricing"  className="hover:text-emerald-700 transition-colors">{t('pricingLabel')}</a>
-            <a href="#contact"  className="hover:text-emerald-700 transition-colors">{t('contactLabel')}</a>
+          <div className="hidden lg:flex items-center gap-6 text-sm font-medium" style={{ color: 'var(--ctm)' }}>
+            <a href="#who"      className="transition-colors hover:opacity-100" style={{ color: 'var(--ctm)' }} onMouseEnter={e => (e.currentTarget.style.color = 'var(--ca)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--ctm)')}>{t('whoLabel')}</a>
+            <a href="#platform" className="transition-colors" style={{ color: 'var(--ctm)' }} onMouseEnter={e => (e.currentTarget.style.color = 'var(--ca)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--ctm)')}>{t('architectureLabel')}</a>
+            <a href="#features" className="transition-colors" style={{ color: 'var(--ctm)' }} onMouseEnter={e => (e.currentTarget.style.color = 'var(--ca)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--ctm)')}>{t('featLabel')}</a>
+            <a href="#how"      className="transition-colors" style={{ color: 'var(--ctm)' }} onMouseEnter={e => (e.currentTarget.style.color = 'var(--ca)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--ctm)')}>{t('howLabel')}</a>
+            <a href="#pricing"  className="transition-colors" style={{ color: 'var(--ctm)' }} onMouseEnter={e => (e.currentTarget.style.color = 'var(--ca)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--ctm)')}>{t('pricingLabel')}</a>
+            <a href="#contact"  className="transition-colors" style={{ color: 'var(--ctm)' }} onMouseEnter={e => (e.currentTarget.style.color = 'var(--ca)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--ctm)')}>{t('contactLabel')}</a>
           </div>
 
-          {/* Right: lang switcher + CTAs */}
+          {/* Right: lang switcher + theme switcher + CTAs */}
           <div className="flex items-center gap-2">
             {/* Language switcher */}
-            <div className="flex items-center bg-gray-100 rounded-lg p-0.5 text-xs font-bold">
+            <div className="flex items-center bg-black/10 rounded-lg p-0.5 text-xs font-bold">
               {LANGS.map(l => (
                 <button key={l.code} onClick={() => setLang(l.code)}
                   className={`px-2.5 py-1.5 rounded-md transition-all ${lang === l.code ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
@@ -868,22 +947,48 @@ export default function LandingPage() {
                 </button>
               ))}
             </div>
-            <div className="hidden lg:flex items-center gap-2">
-              <Link href="/login" className="text-sm text-gray-600 hover:text-emerald-700 font-medium px-3 py-2 transition-colors">{t('navLogin')}</Link>
-              <Link href="/signup" className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-bold transition-all shadow-sm">{t('navSignup')}</Link>
+            {/* Theme switcher (desktop) */}
+            <div className="hidden lg:flex items-center bg-black/10 rounded-lg p-0.5">
+              {(['dark-green', 'dark-navy', 'light-blue'] as LandingTheme[]).map(th => (
+                <button
+                  key={th}
+                  onClick={() => switchTheme(th)}
+                  title={th}
+                  className={`px-2 py-1.5 rounded-md text-sm transition-all ${theme === th ? 'bg-white shadow-sm' : 'opacity-50 hover:opacity-80'}`}
+                >
+                  {THEME_ICONS[th]}
+                </button>
+              ))}
             </div>
-            <button className="lg:hidden p-2 rounded-lg hover:bg-gray-100" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+            <div className="hidden lg:flex items-center gap-2">
+              <Link href="/login" className="text-sm font-medium px-3 py-2 transition-colors" style={{ color: 'var(--ctm)' }}>{t('navLogin')}</Link>
+              <Link href="/signup" className="text-white px-4 py-2 rounded-lg text-sm font-bold transition-all shadow-sm" style={{ background: 'var(--cp)' }}>{t('navSignup')}</Link>
+            </div>
+            <button className="lg:hidden p-2 rounded-lg hover:bg-black/10" style={{ color: 'var(--ct)' }} onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
           </div>
         </div>
 
         {mobileMenuOpen && (
-          <div className="lg:hidden border-t border-gray-100 bg-white px-4 py-4 space-y-3">
+          <div className="lg:hidden border-t px-4 py-4 space-y-3" style={{ background: 'var(--cs)', borderColor: 'var(--cbr)' }}>
             {[['#who', t('whoLabel')], ['#platform', t('architectureLabel')], ['#features', t('featLabel')], ['#how', t('howLabel')], ['#pricing', t('pricingLabel')], ['#contact', t('contactLabel')]].map(([href, label]) => (
-              <a key={href} href={href} onClick={() => setMobileMenuOpen(false)} className="block text-gray-700 font-medium py-1.5">{label}</a>
+              <a key={href} href={href} onClick={() => setMobileMenuOpen(false)} className="block font-medium py-1.5" style={{ color: 'var(--ct)' }}>{label}</a>
             ))}
-            <Link href="/signup" onClick={() => setMobileMenuOpen(false)} className="block bg-emerald-600 text-white text-center py-3 rounded-xl font-bold mt-2">{t('navSignup')}</Link>
+            {/* Theme switcher (mobile) */}
+            <div className="flex items-center gap-2 pt-1">
+              {(['dark-green', 'dark-navy', 'light-blue'] as LandingTheme[]).map(th => (
+                <button
+                  key={th}
+                  onClick={() => { switchTheme(th); setMobileMenuOpen(false) }}
+                  className={`flex-1 py-2 rounded-lg text-center text-base transition-all border ${theme === th ? 'text-white border-transparent' : 'border-transparent opacity-60'}`}
+                  style={theme === th ? { background: 'var(--cp)' } : { background: 'var(--cs)', borderColor: 'var(--cbr)' }}
+                >
+                  {THEME_ICONS[th]}
+                </button>
+              ))}
+            </div>
+            <Link href="/signup" onClick={() => setMobileMenuOpen(false)} className="block text-white text-center py-3 rounded-xl font-bold mt-2" style={{ background: 'var(--cp)' }}>{t('navSignup')}</Link>
           </div>
         )}
       </nav>
@@ -891,21 +996,21 @@ export default function LandingPage() {
       {/* ══════════════════════════════════════════════════════════════════════ */}
       {/* HERO */}
       {/* ══════════════════════════════════════════════════════════════════════ */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-gray-950 via-gray-900 to-emerald-950">
+      <section className="relative overflow-hidden" style={{ background: HERO_GRADIENT[theme] }}>
         <div className="absolute inset-0 opacity-[0.06]" style={{ backgroundImage: 'linear-gradient(#fff 1px,transparent 1px),linear-gradient(90deg,#fff 1px,transparent 1px)', backgroundSize: '40px 40px' }} />
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[500px] bg-emerald-600/15 rounded-full blur-[120px]" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[500px] rounded-full blur-[120px]" style={{ background: HERO_GLOW[theme] }} />
 
         <div className={`relative max-w-7xl mx-auto px-4 pt-10 pb-14 lg:pt-16 lg:pb-20 flex flex-col ${isRtl ? 'lg:flex-row-reverse' : 'lg:flex-row'} items-center gap-5 lg:gap-16`}>
 
           {/* ── Mobile-first: tagline + title FIRST on small screens ── */}
           <div className="lg:hidden w-full text-center hero-title-mobile">
-            <div className="inline-flex items-center gap-2 bg-emerald-900/50 border border-emerald-700/40 text-emerald-300 px-4 py-1.5 rounded-full text-sm font-medium mb-4">
-              <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+            <div className="inline-flex items-center gap-2 border px-4 py-1.5 rounded-full text-sm font-medium mb-4" style={{ background: 'var(--cbr)', borderColor: 'var(--cbr)', color: 'var(--ca)' }}>
+              <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: 'var(--ca)' }} />
               {t('tagline')}
             </div>
             <h1 className="text-4xl sm:text-5xl font-extrabold leading-[1.1] text-white mt-1">
               {t('h1a')}
-              <span className="block bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">{t('h1b')}</span>
+              <span className="block bg-clip-text text-transparent" style={{ backgroundImage: H1_GRADIENT[theme] }}>{t('h1b')}</span>
             </h1>
           </div>
 
@@ -914,25 +1019,30 @@ export default function LandingPage() {
 
             {/* Desktop-only title */}
             <div className="hidden lg:block">
-              <div className="inline-flex items-center gap-2 bg-emerald-900/50 border border-emerald-700/40 text-emerald-300 px-4 py-1.5 rounded-full text-sm font-medium mb-7">
-                <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+              <div className="inline-flex items-center gap-2 border px-4 py-1.5 rounded-full text-sm font-medium mb-7" style={{ background: 'var(--cbr)', borderColor: 'var(--cbr)', color: 'var(--ca)' }}>
+                <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: 'var(--ca)' }} />
                 {t('tagline')}
               </div>
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-[1.1] text-white">
                 {t('h1a')}
-                <span className="block bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">{t('h1b')}</span>
+                <span className="block bg-clip-text text-transparent" style={{ backgroundImage: H1_GRADIENT[theme] }}>{t('h1b')}</span>
               </h1>
             </div>
 
             <p className="mt-5 text-base sm:text-lg text-gray-400 leading-relaxed max-w-lg whitespace-pre-line">{t('desc')}</p>
 
             <div className={`mt-7 flex flex-col sm:flex-row gap-3 justify-center ${isRtl ? 'lg:justify-end' : 'lg:justify-start'}`}>
-              <Link href="/signup" className="flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-white font-bold px-7 py-3.5 rounded-xl shadow-xl shadow-emerald-900/40 transition-all text-base">
+              <Link href="/signup" className="flex items-center justify-center gap-2 text-white font-bold px-7 py-3.5 rounded-xl shadow-xl transition-all text-base" style={{ background: 'var(--cp)' }}>
                 {t('cta1')} <ArrowRight className="w-4 h-4" />
               </Link>
-              <a href="#contact" className="flex items-center justify-center gap-2 bg-white/10 hover:bg-white/15 border border-white/20 text-white font-semibold px-7 py-3.5 rounded-xl transition-all text-base">
-                {t('cta2')}
-              </a>
+              <button
+                onClick={startDemo}
+                disabled={demoLoading}
+                className="flex items-center justify-center gap-2 bg-violet-500/20 hover:bg-violet-500/30 border border-violet-500/40 text-violet-200 font-semibold px-7 py-3.5 rounded-xl transition-all text-base disabled:opacity-60"
+              >
+                {demoLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                {t('ctaDemo')}
+              </button>
             </div>
 
             {/* Trust bar */}
@@ -946,7 +1056,7 @@ export default function LandingPage() {
             <div className={`mt-4 flex flex-wrap gap-2 justify-center ${isRtl ? 'lg:justify-end' : 'lg:justify-start'}`}>
               {ta('badges').map(b => (
                 <span key={b} className="flex items-center gap-1.5 bg-white/8 text-gray-300 border border-white/10 px-3 py-1.5 rounded-full text-xs font-medium">
-                  <CheckCircle className="w-3 h-3 text-emerald-400 shrink-0" /> {b}
+                  <CheckCircle className="w-3 h-3 shrink-0" style={{ color: 'var(--ca)' }} /> {b}
                 </span>
               ))}
             </div>
@@ -955,7 +1065,7 @@ export default function LandingPage() {
           {/* ── Dashboard visual — order-2 on mobile = after title, before text ── */}
           <div className="flex-1 flex items-center justify-center mt-1 lg:mt-0 order-2 lg:order-none hero-visual">
             <div className="relative w-full max-w-sm lg:max-w-xl xl:max-w-2xl">
-              <div className="absolute -inset-8 rounded-3xl bg-emerald-500/15 blur-3xl" />
+              <div className="absolute -inset-8 rounded-3xl blur-3xl" style={{ background: HERO_GLOW[theme] }} />
               <div className="absolute -inset-16 rounded-3xl bg-teal-500/8 blur-[80px]" />
 
               {/* Dashboard frame */}
@@ -1017,14 +1127,14 @@ export default function LandingPage() {
       {/* ══════════════════════════════════════════════════════════════════════ */}
       {/* STATS */}
       {/* ══════════════════════════════════════════════════════════════════════ */}
-      <section className="bg-emerald-700 py-10">
+      <section className="py-10" style={{ background: 'var(--cp)' }}>
         <div className="max-w-5xl mx-auto px-4">
-          <p className={`text-emerald-200 text-xs font-semibold uppercase tracking-widest text-center mb-6`}>{t('statsLabel')}</p>
+          <p className="text-white/70 text-xs font-semibold uppercase tracking-widest text-center mb-6">{t('statsLabel')}</p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
             {stats.map(s => (
               <div key={s.value}>
                 <div className="text-4xl font-extrabold text-white">{s.value}</div>
-                <div className="text-emerald-200 text-sm mt-1 font-medium">{tl(s, lang)}</div>
+                <div className="text-white/70 text-sm mt-1 font-medium">{tl(s, lang)}</div>
               </div>
             ))}
           </div>
@@ -1034,26 +1144,26 @@ export default function LandingPage() {
       {/* ══════════════════════════════════════════════════════════════════════ */}
       {/* ECOSYSTEM SHOWCASE */}
       {/* ══════════════════════════════════════════════════════════════════════ */}
-      <section className="bg-gray-950 py-24 relative overflow-hidden">
+      <section className="py-24 relative overflow-hidden" style={{ background: 'var(--cb)' }}>
         {/* dot grid */}
         <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)', backgroundSize: '36px 36px' }} />
         {/* ambient center glow */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[700px] bg-emerald-600/10 rounded-full blur-[140px] pointer-events-none" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[700px] rounded-full blur-[140px] pointer-events-none" style={{ background: HERO_GLOW[theme] }} />
 
         <div className="relative max-w-7xl mx-auto px-4">
 
           {/* Section header */}
           <div className="text-center mb-14">
-            <span className="inline-block bg-emerald-900/60 text-emerald-400 border border-emerald-700/40 px-4 py-1.5 rounded-full text-sm font-semibold mb-5">
+            <span className="inline-block border px-4 py-1.5 rounded-full text-sm font-semibold mb-5" style={{ background: 'var(--cbr)', borderColor: 'var(--cbr)', color: 'var(--ca)' }}>
               {lang === 'ar' ? 'المنصة الشاملة' : lang === 'fr' ? 'Vue d\'ensemble' : 'Platform Overview'}
             </span>
             <h2 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white leading-[1.1] mb-5">
               {lang === 'ar' ? (
-                <>كل ما يحتاجه مطعمك.<br /><span className="bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">في نظام واحد.</span></>
+                <>كل ما يحتاجه مطعمك.<br /><span className="bg-clip-text text-transparent" style={{ backgroundImage: H1_GRADIENT[theme] }}>في نظام واحد.</span></>
               ) : lang === 'fr' ? (
-                <>Tout ce dont votre restaurant a besoin.<br /><span className="bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">Dans un seul OS.</span></>
+                <>Tout ce dont votre restaurant a besoin.<br /><span className="bg-clip-text text-transparent" style={{ backgroundImage: H1_GRADIENT[theme] }}>Dans un seul OS.</span></>
               ) : (
-                <>Everything Your Restaurant Needs.<br /><span className="bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">One Unified OS.</span></>
+                <>Everything Your Restaurant Needs.<br /><span className="bg-clip-text text-transparent" style={{ backgroundImage: H1_GRADIENT[theme] }}>One Unified OS.</span></>
               )}
             </h2>
             <p className="text-gray-400 text-lg max-w-2xl mx-auto leading-relaxed">
@@ -1068,11 +1178,11 @@ export default function LandingPage() {
           {/* Image showcase */}
           <div className="relative">
             {/* outer glow ring */}
-            <div className="absolute -inset-6 bg-gradient-to-r from-emerald-500/20 via-teal-400/10 to-emerald-500/20 rounded-3xl blur-2xl" />
+            <div className="absolute -inset-6 rounded-3xl blur-2xl" style={{ background: HERO_GLOW[theme] }} />
             {/* mid glow */}
-            <div className="absolute -inset-2 bg-gradient-to-br from-emerald-900/30 to-transparent rounded-2xl" />
+            <div className="absolute -inset-2 rounded-2xl" style={{ background: 'var(--cbr)', opacity: 0.3 }} />
             {/* image frame */}
-            <div className="relative rounded-2xl overflow-hidden border border-emerald-700/40 shadow-[0_0_80px_rgba(16,185,129,0.15)] ring-1 ring-white/5">
+            <div className="relative rounded-2xl overflow-hidden border ring-1 ring-white/5" style={{ borderColor: 'var(--cbr)' }}>
               <Image
                 src="/assets/smartrest.png"
                 alt="Smart Resto — Complete Restaurant OS"
@@ -1125,24 +1235,24 @@ export default function LandingPage() {
       {/* PROMO VIDEO */}
       {/* ══════════════════════════════════════════════════════════════════════ */}
       {promoEmbedUrl && (
-        <section className="bg-gray-900 py-24 relative overflow-hidden">
+        <section className="py-24 relative overflow-hidden" style={{ background: 'var(--cs)' }}>
           <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)', backgroundSize: '36px 36px' }} />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[600px] bg-emerald-600/10 rounded-full blur-[130px] pointer-events-none" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[600px] rounded-full blur-[130px] pointer-events-none" style={{ background: HERO_GLOW[theme] }} />
 
           <div className="relative max-w-5xl mx-auto px-4">
 
             {/* Header */}
             <div className="text-center mb-14">
-              <span className="inline-block bg-emerald-900/60 text-emerald-400 border border-emerald-700/40 px-4 py-1.5 rounded-full text-sm font-semibold mb-5">
+              <span className="inline-block border px-4 py-1.5 rounded-full text-sm font-semibold mb-5" style={{ background: 'var(--cbr)', borderColor: 'var(--cbr)', color: 'var(--ca)' }}>
                 {lang === 'ar' ? 'شاهده مباشرة' : lang === 'fr' ? 'Voir en Action' : 'See It in Action'}
               </span>
               <h2 className="text-4xl sm:text-5xl font-extrabold text-white mb-4 leading-tight">
                 {lang === 'ar' ? (
-                  <>شاهد كيف يحوّل SmartRestau<br /><span className="bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">مطعمك في أقل من 30 دقيقة</span></>
+                  <>شاهد كيف يحوّل SmartRestau<br /><span className="bg-clip-text text-transparent" style={{ backgroundImage: H1_GRADIENT[theme] }}>مطعمك في أقل من 30 دقيقة</span></>
                 ) : lang === 'fr' ? (
-                  <>Regardez comment SmartRestau<br /><span className="bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">transforme un restaurant en 30 min</span></>
+                  <>Regardez comment SmartRestau<br /><span className="bg-clip-text text-transparent" style={{ backgroundImage: H1_GRADIENT[theme] }}>transforme un restaurant en 30 min</span></>
                 ) : (
-                  <>Watch How SmartRestau<br /><span className="bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">Transforms a Restaurant in 30 Min</span></>
+                  <>Watch How SmartRestau<br /><span className="bg-clip-text text-transparent" style={{ backgroundImage: H1_GRADIENT[theme] }}>Transforms a Restaurant in 30 Min</span></>
                 )}
               </h2>
               <p className="text-gray-400 text-lg max-w-xl mx-auto">
@@ -1157,7 +1267,7 @@ export default function LandingPage() {
             {/* Browser-frame video */}
             <div className="relative">
               {/* outer glow */}
-              <div className="absolute -inset-6 bg-gradient-to-r from-emerald-500/20 via-teal-400/8 to-emerald-500/20 rounded-3xl blur-2xl" />
+              <div className="absolute -inset-6 rounded-3xl blur-2xl" style={{ background: HERO_GLOW[theme] }} />
               {/* frame */}
               <div className="relative rounded-2xl overflow-hidden border border-gray-700/70 shadow-[0_0_60px_rgba(16,185,129,0.12)] ring-1 ring-white/5 bg-gray-950">
                 {/* window chrome */}
@@ -1172,7 +1282,7 @@ export default function LandingPage() {
                       SmartRestau — Platform Demo
                     </span>
                   </div>
-                  <span className="text-[10px] text-emerald-400 font-bold shrink-0">● LIVE</span>
+                  <span className="text-[10px] font-bold shrink-0" style={{ color: 'var(--ca)' }}>● LIVE</span>
                 </div>
                 {/* 16:9 responsive iframe */}
                 <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
@@ -1190,12 +1300,17 @@ export default function LandingPage() {
 
             {/* CTA below video */}
             <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link href="/signup" className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-white font-bold px-8 py-3.5 rounded-xl shadow-xl shadow-emerald-900/40 transition-all text-base">
+              <Link href="/signup" className="flex items-center gap-2 text-white font-bold px-8 py-3.5 rounded-xl shadow-xl transition-all text-base" style={{ background: 'var(--cp)' }}>
                 {t('cta1')} <ArrowRight className="w-4 h-4" />
               </Link>
-              <a href="#contact" className="flex items-center gap-2 bg-white/8 hover:bg-white/12 border border-white/15 text-gray-300 font-semibold px-8 py-3.5 rounded-xl transition-all text-base">
-                {t('cta2')}
-              </a>
+              <button
+                onClick={startDemo}
+                disabled={demoLoading}
+                className="flex items-center gap-2 bg-violet-500/20 hover:bg-violet-500/30 border border-violet-500/40 text-violet-200 font-semibold px-8 py-3.5 rounded-xl transition-all text-base disabled:opacity-60"
+              >
+                {demoLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                {t('ctaDemo')}
+              </button>
             </div>
 
           </div>
@@ -1205,10 +1320,10 @@ export default function LandingPage() {
       {/* ══════════════════════════════════════════════════════════════════════ */}
       {/* WHO IS IT FOR — PERSONAS */}
       {/* ══════════════════════════════════════════════════════════════════════ */}
-      <section id="who" className="py-24 bg-white">
+      <section id="who" className="py-24" style={{ background: 'var(--cs)' }}>
         <div className="max-w-7xl mx-auto px-4">
           <div className={`mb-14 ${isRtl ? 'text-right' : 'text-left'} text-center`}>
-            <span className="inline-block bg-emerald-100 text-emerald-700 px-4 py-1 rounded-full text-sm font-semibold mb-4">{t('whoLabel')}</span>
+            <span className="inline-block border px-4 py-1 rounded-full text-sm font-semibold mb-4" style={{ background: 'var(--cbr)', borderColor: 'var(--cbr)', color: 'var(--ca)' }}>{t('whoLabel')}</span>
             <h2 className="text-4xl font-extrabold text-gray-900">{t('whoTitle')}</h2>
             <p className="mt-3 text-gray-500 text-lg max-w-2xl mx-auto">{t('whoSub')}</p>
           </div>
@@ -1242,27 +1357,27 @@ export default function LandingPage() {
       {/* ══════════════════════════════════════════════════════════════════════ */}
       {/* PLATFORM ARCHITECTURE */}
       {/* ══════════════════════════════════════════════════════════════════════ */}
-      <section id="platform" className="py-24 bg-gray-950 relative overflow-hidden">
+      <section id="platform" className="py-24 relative overflow-hidden" style={{ background: 'var(--cb)' }}>
         {/* bg dot grid */}
         <div className="absolute inset-0 opacity-[0.035]"
           style={{ backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)', backgroundSize: '32px 32px' }} />
         {/* ambient glows */}
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-emerald-600/10 rounded-full blur-[120px]" />
+        <div className="absolute top-0 left-1/4 w-96 h-96 rounded-full blur-[120px]" style={{ background: HERO_GLOW[theme] }} />
         <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-indigo-600/10 rounded-full blur-[120px]" />
 
         <div className="relative max-w-7xl mx-auto px-4">
 
           {/* Header */}
           <div className="text-center mb-16">
-            <span className="inline-block bg-emerald-900/60 text-emerald-400 border border-emerald-700/40 px-4 py-1 rounded-full text-sm font-semibold mb-5">
+            <span className="inline-block border px-4 py-1 rounded-full text-sm font-semibold mb-5" style={{ background: 'var(--cbr)', borderColor: 'var(--cbr)', color: 'var(--ca)' }}>
               {t('architectureLabel')}
             </span>
             <h2 className="text-4xl sm:text-5xl font-extrabold text-white mb-4">
               {lang === 'ar'
-                ? <>منصة واحدة. <span className="bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">كل عمليات مطعمك.</span></>
+                ? <>منصة واحدة. <span className="bg-clip-text text-transparent" style={{ backgroundImage: H1_GRADIENT[theme] }}>كل عمليات مطعمك.</span></>
                 : lang === 'fr'
-                ? <>Une Plateforme. <span className="bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">Toutes les Opérations.</span></>
-                : <>One Platform. <span className="bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">Every Restaurant Operation.</span></>
+                ? <>Une Plateforme. <span className="bg-clip-text text-transparent" style={{ backgroundImage: H1_GRADIENT[theme] }}>Toutes les Opérations.</span></>
+                : <>One Platform. <span className="bg-clip-text text-transparent" style={{ backgroundImage: H1_GRADIENT[theme] }}>Every Restaurant Operation.</span></>
               }
             </h2>
             <p className="text-gray-400 text-lg max-w-2xl mx-auto">{t('architectureSub')}</p>
@@ -1292,7 +1407,7 @@ export default function LandingPage() {
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <h3 className="text-white font-extrabold text-sm leading-tight">{mod.name[lang]}</h3>
                     {mod.isAi && (
-                      <span className="inline-flex items-center text-[9px] font-extrabold bg-emerald-900/60 text-emerald-400 border border-emerald-700/40 px-1.5 py-0.5 rounded-full leading-none">
+                      <span className="inline-flex items-center text-[9px] font-extrabold border px-1.5 py-0.5 rounded-full leading-none" style={{ background: 'var(--cbr)', borderColor: 'var(--cbr)', color: 'var(--ca)' }}>
                         AI
                       </span>
                     )}
@@ -1329,15 +1444,15 @@ export default function LandingPage() {
       {/* ══════════════════════════════════════════════════════════════════════ */}
       {/* HOW IT WORKS */}
       {/* ══════════════════════════════════════════════════════════════════════ */}
-      <section id="how" className="py-24 bg-gray-50">
+      <section id="how" className="py-24" style={{ background: 'var(--cs)' }}>
         <div className="max-w-6xl mx-auto px-4">
           <div className={`mb-16 text-center`}>
             <span className="inline-block bg-amber-100 text-amber-700 px-4 py-1 rounded-full text-sm font-semibold mb-4">{t('howLabel')}</span>
-            <h2 className="text-4xl font-extrabold text-gray-900">{t('howTitle')}</h2>
-            <p className="mt-3 text-gray-500 text-lg">{t('howSub')}</p>
+            <h2 className="text-4xl font-extrabold" style={{ color: 'var(--ct)' }}>{t('howTitle')}</h2>
+            <p className="mt-3 text-lg" style={{ color: 'var(--ctm)' }}>{t('howSub')}</p>
           </div>
           <div className="relative">
-            <div className="hidden lg:block absolute top-11 left-[12.5%] right-[12.5%] h-0.5 bg-gradient-to-r from-emerald-100 via-emerald-400 to-emerald-100" />
+            <div className="hidden lg:block absolute top-11 left-[12.5%] right-[12.5%] h-0.5" style={{ background: `linear-gradient(90deg, transparent, var(--ca), transparent)` }} />
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
               {HOW_IT_WORKS.map((step, i) => {
                 const Icon = step.icon
@@ -1345,13 +1460,13 @@ export default function LandingPage() {
                 return (
                   <div key={i} className="flex flex-col items-center text-center">
                     <div className="w-22 h-22 relative mb-5">
-                      <div className="w-20 h-20 rounded-2xl bg-emerald-600 text-white flex flex-col items-center justify-center shadow-lg shadow-emerald-200 mx-auto">
+                      <div className="w-20 h-20 rounded-2xl text-white flex flex-col items-center justify-center shadow-lg mx-auto" style={{ background: 'var(--cp)' }}>
                         <Icon className="w-7 h-7" />
                         <span className="text-[10px] font-bold opacity-60 mt-1">{step.step}</span>
                       </div>
                     </div>
-                    <h3 className="font-bold text-gray-900 text-base mb-2">{d.title}</h3>
-                    <p className="text-sm text-gray-500 leading-relaxed">{d.desc}</p>
+                    <h3 className="font-bold text-base mb-2" style={{ color: 'var(--ct)' }}>{d.title}</h3>
+                    <p className="text-sm leading-relaxed" style={{ color: 'var(--ctm)' }}>{d.desc}</p>
                   </div>
                 )
               })}
@@ -1363,12 +1478,12 @@ export default function LandingPage() {
       {/* ══════════════════════════════════════════════════════════════════════ */}
       {/* FEATURES */}
       {/* ══════════════════════════════════════════════════════════════════════ */}
-      <section id="features" className="py-24 bg-white">
+      <section id="features" className="py-24" style={{ background: 'var(--cs)' }}>
         <div className="max-w-7xl mx-auto px-4">
           <div className={`mb-16 text-center`}>
-            <span className="inline-block bg-emerald-100 text-emerald-700 px-4 py-1 rounded-full text-sm font-semibold mb-4">{t('featLabel')}</span>
-            <h2 className="text-4xl font-extrabold text-gray-900">{t('featTitle')}</h2>
-            <p className="mt-3 text-gray-500 text-lg max-w-2xl mx-auto">{t('featSub')}</p>
+            <span className="inline-block border px-4 py-1 rounded-full text-sm font-semibold mb-4" style={{ background: 'var(--cbr)', borderColor: 'var(--cbr)', color: 'var(--ca)' }}>{t('featLabel')}</span>
+            <h2 className="text-4xl font-extrabold" style={{ color: 'var(--ct)' }}>{t('featTitle')}</h2>
+            <p className="mt-3 text-lg max-w-2xl mx-auto" style={{ color: 'var(--ctm)' }}>{t('featSub')}</p>
             {platformImageUrl && (
               <div className="mt-10 flex justify-center">
                 <Image
@@ -1387,12 +1502,12 @@ export default function LandingPage() {
               const Icon = f.icon
               const d = tl(f, lang)
               return (
-                <div key={i} className={`rounded-2xl p-5 border border-gray-100 hover:border-emerald-200 hover:shadow-md transition-all group bg-white ${isRtl ? 'text-right' : ''}`}>
-                  <div className="w-10 h-10 bg-emerald-50 group-hover:bg-emerald-100 rounded-xl flex items-center justify-center mb-4 transition-colors">
-                    <Icon className="w-5 h-5 text-emerald-600" />
+                <div key={i} className={`rounded-2xl p-5 border hover:shadow-md transition-all group ${isRtl ? 'text-right' : ''}`} style={{ background: 'var(--cs)', borderColor: 'var(--cbr)' }}>
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-4 transition-colors" style={{ background: 'var(--cbr)' }}>
+                    <Icon className="w-5 h-5" style={{ color: 'var(--ca)' }} />
                   </div>
-                  <h4 className="font-bold text-gray-900 text-sm mb-1">{d.title}</h4>
-                  <p className="text-xs text-gray-500 leading-relaxed">{d.desc}</p>
+                  <h4 className="font-bold text-sm mb-1" style={{ color: 'var(--ct)' }}>{d.title}</h4>
+                  <p className="text-xs leading-relaxed" style={{ color: 'var(--ctm)' }}>{d.desc}</p>
                 </div>
               )
             })}
@@ -1403,7 +1518,7 @@ export default function LandingPage() {
       {/* ══════════════════════════════════════════════════════════════════════ */}
       {/* AI FOOD MARKETING ENGINE */}
       {/* ══════════════════════════════════════════════════════════════════════ */}
-      <section id="marketing-engine" className="py-24 bg-gray-950 relative overflow-hidden">
+      <section id="marketing-engine" className="py-24 relative overflow-hidden" style={{ background: 'var(--cb)' }}>
         {/* bg grid */}
         <div className="absolute inset-0 opacity-[0.03]"
           style={{ backgroundImage: 'linear-gradient(#fff 1px,transparent 1px),linear-gradient(90deg,#fff 1px,transparent 1px)', backgroundSize: '48px 48px' }} />
@@ -1433,7 +1548,7 @@ export default function LandingPage() {
           {/* ── Workflow pipeline ── */}
           <div className="relative">
             {/* connector line — desktop only */}
-            <div className="hidden lg:block absolute top-[52px] left-[10%] right-[10%] h-px bg-gradient-to-r from-emerald-700/30 via-rose-600/40 to-amber-600/30" />
+            <div className="hidden lg:block absolute top-[52px] left-[10%] right-[10%] h-px" style={{ background: `linear-gradient(90deg, var(--cbr), var(--ca), var(--cg))` }} />
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
               {AI_MARKETING_STEPS.map((s, i) => {
@@ -1548,7 +1663,7 @@ export default function LandingPage() {
       {/* ══════════════════════════════════════════════════════════════════════ */}
       {/* PRICING / MARKETS */}
       {/* ══════════════════════════════════════════════════════════════════════ */}
-      <section id="pricing" className="py-24 bg-gray-50">
+      <section id="pricing" className="py-24" style={{ background: 'var(--cs)' }}>
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center mb-14">
             <span className="inline-block bg-blue-100 text-blue-700 px-4 py-1 rounded-full text-sm font-semibold mb-4">{t('pricingLabel')}</span>
@@ -1557,9 +1672,9 @@ export default function LandingPage() {
           </div>
 
           {/* Trial banner */}
-          <div className="bg-gradient-to-r from-emerald-600 to-teal-600 rounded-3xl p-8 mb-10 text-center text-white">
+          <div className="rounded-3xl p-8 mb-10 text-center text-white" style={{ background: `linear-gradient(135deg, var(--cp), var(--cp-h))` }}>
             <div className="text-5xl font-extrabold mb-2">{t('trialBig')}</div>
-            <div className="text-emerald-100 text-lg mb-5">{t('trialSub')}</div>
+            <div className="text-white/80 text-lg mb-5">{t('trialSub')}</div>
             <div className="flex flex-wrap gap-3 justify-center text-sm">
               {ta('trialBadges').map(b => (
                 <span key={b} className="bg-white/20 px-4 py-1.5 rounded-full">{b}</span>
@@ -1582,7 +1697,7 @@ export default function LandingPage() {
                       {m.pricing.map((p, pi) => (
                         <div key={pi} className="flex items-center justify-between text-sm">
                           <span className="text-gray-500">{tl(p, lang)}</span>
-                          <span className="font-bold text-emerald-600 text-xs">{p.fee}</span>
+                          <span className="font-bold text-xs" style={{ color: 'var(--cp)' }}>{p.fee}</span>
                         </div>
                       ))}
                     </div>
@@ -1624,15 +1739,15 @@ export default function LandingPage() {
       {/* ══════════════════════════════════════════════════════════════════════ */}
       {/* TESTIMONIALS */}
       {/* ══════════════════════════════════════════════════════════════════════ */}
-      <section className="py-24 bg-white">
+      <section className="py-24" style={{ background: 'var(--cs)' }}>
         <div className="max-w-6xl mx-auto px-4">
           <div className="text-center mb-14">
             <span className="inline-block bg-amber-100 text-amber-700 px-4 py-1 rounded-full text-sm font-semibold mb-4">{t('testimonialLabel')}</span>
-            <h2 className="text-4xl font-extrabold text-gray-900">{t('testimonialTitle')}</h2>
+            <h2 className="text-4xl font-extrabold" style={{ color: 'var(--ct)' }}>{t('testimonialTitle')}</h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {testimonials.map((tm, i) => (
-              <div key={i} className={`bg-gray-50 rounded-2xl p-6 border border-gray-100 ${isRtl ? 'text-right' : ''}`}>
+              <div key={i} className={`rounded-2xl p-6 border ${isRtl ? 'text-right' : ''}`} style={{ background: 'var(--cb)', borderColor: 'var(--cbr)' }}>
                 <div className={`flex gap-1 mb-4 ${isRtl ? 'flex-row-reverse justify-end' : ''}`}>
                   {Array.from({ length: tm.rating }).map((_, j) => (
                     <Star key={j} className="w-4 h-4 text-amber-400 fill-amber-400" />
@@ -1642,7 +1757,7 @@ export default function LandingPage() {
                 <div className={`flex items-center gap-3 ${isRtl ? 'flex-row-reverse' : ''}`}>
                   {tm.avatarUrl
                     ? <img src={tm.avatarUrl} alt={tm.name} className="w-9 h-9 rounded-full object-cover shrink-0" />
-                    : <div className="w-9 h-9 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-sm shrink-0">{tm.name[0]}</div>
+                    : <div className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm shrink-0 text-white" style={{ background: 'var(--cp)' }}>{tm.name[0]}</div>
                   }
                   <div>
                     <p className="font-bold text-gray-900 text-sm">{tm.name}</p>
@@ -1658,11 +1773,11 @@ export default function LandingPage() {
       {/* ══════════════════════════════════════════════════════════════════════ */}
       {/* EMAIL CTA */}
       {/* ══════════════════════════════════════════════════════════════════════ */}
-      <section className="py-24 bg-gradient-to-br from-gray-950 via-emerald-950 to-gray-950 relative overflow-hidden">
+      <section className="py-24 relative overflow-hidden" style={{ background: HERO_GRADIENT[theme] }}>
         <div className="absolute inset-0 opacity-5" style={{ backgroundImage: 'radial-gradient(circle,#fff 1px,transparent 1px)', backgroundSize: '30px 30px' }} />
         <div className="relative max-w-2xl mx-auto px-4 text-center">
 
-          <div className="inline-flex items-center gap-2 bg-emerald-900/50 border border-emerald-700/50 text-emerald-300 px-5 py-2 rounded-full text-sm mb-8">
+          <div className="inline-flex items-center gap-2 border px-5 py-2 rounded-full text-sm mb-8" style={{ background: 'var(--cbr)', borderColor: 'var(--cbr)', color: 'var(--ca)' }}>
             <Mail className="w-4 h-4" />
             {lang === 'ar' ? 'شغّل نظام مطعمك — بدون بطاقة بنكية'
               : lang === 'fr' ? 'Lancez votre OS restaurant — sans carte bancaire'
@@ -1671,12 +1786,12 @@ export default function LandingPage() {
 
           <h2 className="text-4xl sm:text-5xl font-extrabold text-white mb-4">
             {t('finalTitle')}<br />
-            <span className="text-emerald-400">
+            <span className="bg-clip-text text-transparent" style={{ backgroundImage: H1_GRADIENT[theme] }}>
               {lang === 'ar' ? 'ابدأ بإيميلك فقط' : lang === 'fr' ? 'Démarrez avec votre Email' : 'Start With Your Email'}
             </span>
           </h2>
 
-          <p className="text-gray-400 mb-10 text-lg">
+          <p className="text-white/70 mb-10 text-lg">
             {lang === 'ar' ? 'أدخل إيميلك وشغّل نظام مطعمك فوراً — طلبات، مطبخ، موظفين، تسويق وحسابات في مكان واحد.'
               : lang === 'fr' ? "Entrez votre email et lancez votre OS restaurant instantanément — commandes, cuisine, staff, marketing et finances au même endroit."
               : 'Enter your email and launch your full restaurant OS instantly — orders, kitchen, staff, marketing and finances in one place.'}
@@ -1693,11 +1808,11 @@ export default function LandingPage() {
                   placeholder={lang === 'ar' ? 'your@email.com' : lang === 'fr' ? 'votre@email.com' : 'your@email.com'}
                   required
                   dir="ltr"
-                  className={`w-full ${isRtl ? 'pr-10 pl-4' : 'pl-10 pr-4'} py-4 rounded-2xl text-gray-900 text-base focus:outline-none focus:ring-2 focus:ring-emerald-400 bg-white`}
+                  className={`w-full ${isRtl ? 'pr-10 pl-4' : 'pl-10 pr-4'} py-4 rounded-2xl text-gray-900 text-base focus:outline-none bg-white`}
                 />
               </div>
               <button type="submit" disabled={ctaLoading}
-                className="flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-400 disabled:bg-gray-600 text-white font-bold px-6 py-4 rounded-2xl transition-all shadow-xl shadow-emerald-900/40 whitespace-nowrap">
+                className="flex items-center justify-center gap-2 disabled:bg-gray-600 text-white font-bold px-6 py-4 rounded-2xl transition-all shadow-xl whitespace-nowrap" style={{ background: 'var(--cp)' }}>
                 {ctaLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <ArrowRight className="w-5 h-5" />}
                 {ctaLoading ? '...'
                   : lang === 'ar' ? 'ابدأ مجاناً'
@@ -1706,7 +1821,7 @@ export default function LandingPage() {
               </button>
             </div>
             {ctaError && <p className="mt-3 text-red-400 text-sm">{ctaError}</p>}
-            <p className="mt-4 text-gray-500 text-xs">{t('finalNote')}</p>
+            <p className="mt-4 text-white/50 text-xs">{t('finalNote')}</p>
           </form>
         </div>
       </section>
@@ -1714,24 +1829,24 @@ export default function LandingPage() {
       {/* ══════════════════════════════════════════════════════════════════════ */}
       {/* FAQ */}
       {/* ══════════════════════════════════════════════════════════════════════ */}
-      <section className="py-24 bg-white">
+      <section className="py-24" style={{ background: 'var(--cs)' }}>
         <div className="max-w-3xl mx-auto px-4">
           <div className="text-center mb-14">
-            <span className="inline-block bg-gray-100 text-gray-600 px-4 py-1 rounded-full text-sm font-semibold mb-4">{t('faqLabel')}</span>
-            <h2 className="text-4xl font-extrabold text-gray-900">{t('faqTitle')}</h2>
+            <span className="inline-block px-4 py-1 rounded-full text-sm font-semibold mb-4" style={{ background: 'var(--cbr)', color: 'var(--ctm)' }}>{t('faqLabel')}</span>
+            <h2 className="text-4xl font-extrabold" style={{ color: 'var(--ct)' }}>{t('faqTitle')}</h2>
           </div>
           <div className="space-y-3">
             {(cfg.faqs && cfg.faqs.length > 0 ? cfg.faqs : FAQS).map((faq, i) => {
               const d = tl(faq, lang)
               return (
-                <div key={i} className={`border rounded-2xl overflow-hidden transition-all ${openFaq === i ? 'border-emerald-300 shadow-sm' : 'border-gray-200'}`}>
+                <div key={i} className="border rounded-2xl overflow-hidden transition-all" style={{ borderColor: openFaq === i ? 'var(--ca)' : 'var(--cbr)' }}>
                   <button onClick={() => setOpenFaq(openFaq === i ? null : i)}
                     className={`w-full flex items-center justify-between px-6 py-4 gap-4 ${isRtl ? 'flex-row-reverse' : ''}`}>
-                    <span className={`font-semibold text-gray-900 text-sm flex-1 ${isRtl ? 'text-right' : 'text-left'}`}>{d.q}</span>
-                    {openFaq === i ? <ChevronUp className="w-5 h-5 text-emerald-600 shrink-0" /> : <ChevronDown className="w-5 h-5 text-gray-400 shrink-0" />}
+                    <span className={`font-semibold text-sm flex-1 ${isRtl ? 'text-right' : 'text-left'}`} style={{ color: 'var(--ct)' }}>{d.q}</span>
+                    {openFaq === i ? <ChevronUp className="w-5 h-5 shrink-0" style={{ color: 'var(--ca)' }} /> : <ChevronDown className="w-5 h-5 shrink-0" style={{ color: 'var(--ctm)' }} />}
                   </button>
                   {openFaq === i && (
-                    <div className={`px-6 pb-4 text-sm text-gray-600 leading-relaxed border-t border-gray-100 pt-3 ${isRtl ? 'text-right' : ''}`}>
+                    <div className={`px-6 pb-4 text-sm leading-relaxed border-t pt-3 ${isRtl ? 'text-right' : ''}`} style={{ color: 'var(--ctm)', borderColor: 'var(--cbr)' }}>
                       {d.a}
                     </div>
                   )}
@@ -1745,12 +1860,12 @@ export default function LandingPage() {
       {/* ══════════════════════════════════════════════════════════════════════ */}
       {/* CONTACT */}
       {/* ══════════════════════════════════════════════════════════════════════ */}
-      <section id="contact" className="py-24 bg-gray-50">
+      <section id="contact" className="py-24" style={{ background: 'var(--cs)' }}>
         <div className="max-w-5xl mx-auto px-4">
           <div className="text-center mb-14">
-            <span className="inline-block bg-emerald-100 text-emerald-700 px-4 py-1 rounded-full text-sm font-semibold mb-4">{t('contactLabel')}</span>
-            <h2 className="text-4xl font-extrabold text-gray-900">{t('contactTitle')}</h2>
-            <p className="mt-3 text-gray-500">{t('contactSub')}</p>
+            <span className="inline-block border px-4 py-1 rounded-full text-sm font-semibold mb-4" style={{ background: 'var(--cbr)', borderColor: 'var(--cbr)', color: 'var(--ca)' }}>{t('contactLabel')}</span>
+            <h2 className="text-4xl font-extrabold" style={{ color: 'var(--ct)' }}>{t('contactTitle')}</h2>
+            <p className="mt-3" style={{ color: 'var(--ctm)' }}>{t('contactSub')}</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {[
@@ -1777,16 +1892,16 @@ export default function LandingPage() {
       {/* ══════════════════════════════════════════════════════════════════════ */}
       {/* FINAL CTA */}
       {/* ══════════════════════════════════════════════════════════════════════ */}
-      <section className="py-20 bg-emerald-700 relative overflow-hidden">
+      <section className="py-20 relative overflow-hidden" style={{ background: `linear-gradient(135deg, var(--cp), var(--cp-h))` }}>
         <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle,#fff 1px,transparent 1px)', backgroundSize: '24px 24px' }} />
         <div className="relative max-w-4xl mx-auto px-4 text-center">
           <h2 className="text-4xl sm:text-5xl font-extrabold text-white mb-4">{t('finalTitle')}</h2>
-          <p className="text-emerald-200 text-xl mb-10">{t('finalSub')}</p>
+          <p className="text-white/80 text-xl mb-10">{t('finalSub')}</p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/signup" className="bg-white hover:bg-gray-50 text-emerald-800 font-extrabold px-10 py-4 rounded-2xl text-base transition-all shadow-xl">{t('finalCta1')}</Link>
+            <Link href="/signup" className="bg-white hover:bg-gray-50 font-extrabold px-10 py-4 rounded-2xl text-base transition-all shadow-xl" style={{ color: 'var(--cp)' }}>{t('finalCta1')}</Link>
             <a href="#contact" className="border-2 border-white/50 hover:border-white text-white font-bold px-10 py-4 rounded-2xl text-base transition-all">{t('finalCta2')}</a>
           </div>
-          <p className="mt-6 text-emerald-300 text-sm">{t('finalNote')}</p>
+          <p className="mt-6 text-white/60 text-sm">{t('finalNote')}</p>
         </div>
       </section>
 
@@ -1846,8 +1961,8 @@ export default function LandingPage() {
             <div>
               <h4 className="text-white font-bold mb-4 text-sm">{t('contactLabel')}</h4>
               <ul className="space-y-3 text-sm">
-                <li className={`flex items-center gap-2 ${isRtl ? 'flex-row-reverse' : ''}`}><Phone className="w-4 h-4 text-emerald-500 shrink-0" /> {footerPhone}</li>
-                <li className={`flex items-center gap-2 ${isRtl ? 'flex-row-reverse' : ''}`}><Mail className="w-4 h-4 text-emerald-500 shrink-0" /> {footerEmail}</li>
+                <li className={`flex items-center gap-2 ${isRtl ? 'flex-row-reverse' : ''}`}><Phone className="w-4 h-4 shrink-0" style={{ color: 'var(--ca)' }} /> {footerPhone}</li>
+                <li className={`flex items-center gap-2 ${isRtl ? 'flex-row-reverse' : ''}`}><Mail className="w-4 h-4 shrink-0" style={{ color: 'var(--ca)' }} /> {footerEmail}</li>
                 <li className={`flex items-center gap-2 ${isRtl ? 'flex-row-reverse' : ''}`}><MessageCircle className="w-4 h-4 text-green-500 shrink-0" /> WhatsApp</li>
                 <li className={`flex items-center gap-2 ${isRtl ? 'flex-row-reverse' : ''}`}><Globe2 className="w-4 h-4 text-blue-500 shrink-0" /> AR · FR · EN</li>
               </ul>
