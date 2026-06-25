@@ -22,13 +22,13 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "Bearer YOUR_CREATOMATE_API_KEY" },
+            { "name": "Authorization", "value": "Bearer 7fedf2231b974868aba0c0a5182b2a5a35fc149ebdec3dbdd84a06807d87b6a2872b1653900addb3055b8402efd907ce" },
             { "name": "Content-Type", "value": "application/json" }
           ]
         },
         "sendBody": true,
         "contentType": "json",
-        "body": "={\n  \"template_id\": \"YOUR_CREATOMATE_TEMPLATE_ID\",\n  \"modifications\": {\n    \"product-name\": \"{{ $json.body.productName }}\",\n    \"product-price\": \"{{ $json.body.productPrice }}\",\n    \"restaurant-name\": \"{{ $json.body.cafeName }}\",\n    \"product-image\": \"{{ $json.body.imageUrl }}\",\n    \"logo\": \"{{ $json.body.logoUrl }}\"\n  }\n}"
+        "body": "={\n  \"template_id\": \"17f0a6ee-f7d5-4f73-aecb-6ad6314608aa\",\n  \"modifications\": {\n    \"dishName\": \"{{ $json.body.productName }}\",\n    \"price\": \"{{ $json.body.productPrice }}\",\n    \"cafeName\": \"{{ $json.body.cafeName }}\",\n    \"imageUrl\": \"{{ $json.body.imageUrl }}\",\n    \"logoUrl\": \"{{ $json.body.logoUrl }}\",\n    \"caption\": \"{{ $json.body.caption || '' }}\",\n    \"watermarkOpacity\": {{ $json.body.hasWatermark ? 0.22 : 0 }}\n  }\n}"
       },
       "id": "a1b2c3d4-0001-0001-0001-000000000002",
       "name": "Creatomate — Render Video",
@@ -54,7 +54,7 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "Bearer YOUR_CREATOMATE_API_KEY" }
+            { "name": "Authorization", "value": "Bearer 7fedf2231b974868aba0c0a5182b2a5a35fc149ebdec3dbdd84a06807d87b6a2872b1653900addb3055b8402efd907ce" }
           ]
         }
       },
@@ -90,7 +90,7 @@
         "headerParameters": {
           "parameters": [
             { "name": "Content-Type", "value": "application/json" },
-            { "name": "x-callback-secret", "value": "YOUR_MARKETING_CALLBACK_SECRET" }
+            { "name": "x-callback-secret", "value": "e9695a86cddf9522380a0edc77745ab4fd542efb226a6f753dd554b3ba685798" }
           ]
         },
         "sendBody": true,
@@ -111,7 +111,7 @@
         "headerParameters": {
           "parameters": [
             { "name": "Content-Type", "value": "application/json" },
-            { "name": "x-callback-secret", "value": "YOUR_MARKETING_CALLBACK_SECRET" }
+            { "name": "x-callback-secret", "value": "e9695a86cddf9522380a0edc77745ab4fd542efb226a6f753dd554b3ba685798" }
           ]
         },
         "sendBody": true,
