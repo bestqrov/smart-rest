@@ -798,6 +798,7 @@ export default function LandingPage() {
       localStorage.setItem('token', token)
       localStorage.setItem('cafeId', cafeId)
       localStorage.setItem('isDemo', isDemo ? '1' : '')
+      localStorage.setItem('sm_admin_lang', lang)
       router.push('/admin/dashboard')
     } catch {
       setDemoLoading(false)
