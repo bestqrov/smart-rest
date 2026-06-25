@@ -35,6 +35,7 @@ const T = {
   ar: {
     title:        'الحجوزات',
     subtitle:     'إدارة حجوزات الزبائن',
+    guestName:    'اسم الضيف',
     listView:     'قائمة',
     calView:      'تقويم',
     search:       'بحث باسم أو رقم هاتف...',
@@ -70,6 +71,7 @@ const T = {
   fr: {
     title:        'Réservations',
     subtitle:     'Gérez vos réservations clients',
+    guestName:    'Nom du client',
     listView:     'Liste',
     calView:      'Calendrier',
     search:       'Rechercher par nom ou téléphone...',
@@ -105,6 +107,7 @@ const T = {
   en: {
     title:        'Reservations',
     subtitle:     'Manage customer reservations',
+    guestName:    'Guest Name',
     listView:     'List',
     calView:      'Calendar',
     search:       'Search by name or phone...',
@@ -140,6 +143,7 @@ const T = {
   es: {
     title:        'Reservaciones',
     subtitle:     'Gestionar reservaciones de clientes',
+    guestName:    'Nombre del cliente',
     listView:     'Lista',
     calView:      'Calendario',
     search:       'Buscar por nombre o teléfono...',
@@ -197,7 +201,9 @@ function fmtTime(dateStr: string) {
   return new Date(dateStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
-const STATUS_META: Record<ResStatus, { label: (t: typeof T['en']) => string; color: string; bg: string; border: string; Icon: React.ElementType }> = {
+type TLabel = { pending: string; accepted: string; completed: string; cancelled: string }
+
+const STATUS_META: Record<ResStatus, { label: (t: TLabel) => string; color: string; bg: string; border: string; Icon: React.ElementType }> = {
   PENDING:   { label: t => t.pending,   color: 'text-amber-400',   bg: 'bg-amber-500/15',   border: 'border-amber-500/30',   Icon: Clock         },
   ACCEPTED:  { label: t => t.accepted,  color: 'text-emerald-400', bg: 'bg-emerald-500/15', border: 'border-emerald-500/30', Icon: CheckCircle2  },
   COMPLETED: { label: t => t.completed, color: 'text-blue-400',    bg: 'bg-blue-500/15',    border: 'border-blue-500/30',    Icon: CalendarCheck },
@@ -726,7 +732,7 @@ export default function ReservationsPage() {
 
             {/* Info grid */}
             <div className="grid grid-cols-2 gap-4">
-              <InfoRow icon={<AlertCircle size={14} />} label={t.name ?? 'Name'} value={selected.name} />
+              <InfoRow icon={<AlertCircle size={14} />} label={t.guestName} value={selected.name} />
               <InfoRow icon={<Phone size={14} />} label={t.phone} value={selected.phone} />
               <InfoRow icon={<CalendarDays size={14} />} label="Date" value={fmt(selected.date, locale)} />
               <InfoRow icon={<Users size={14} />} label={t.guests} value={String(selected.guests)} />

@@ -165,23 +165,23 @@ router.get('/api/admin/reservations', authorizeAdmin, async (req: Request, res: 
     const limitNum = Math.min(100, Math.max(1, parseInt(limit) || 20))
     const skip     = (pageNum - 1) * limitNum
 
-    const where: Record<string, unknown> = { cafeId }
+    const s = search?.trim()
 
-    if (status && status !== 'ALL') where['status'] = status
-
-    if (dateFrom || dateTo) {
-      const dateFilter: Record<string, Date> = {}
-      if (dateFrom) dateFilter['gte'] = new Date(dateFrom)
-      if (dateTo)   dateFilter['lte'] = new Date(new Date(dateTo).setHours(23, 59, 59, 999))
-      where['date'] = dateFilter
-    }
-
-    if (search?.trim()) {
-      const s = search.trim()
-      where['OR'] = [
-        { name:  { contains: s, mode: 'insensitive' } },
-        { phone: { contains: s } },
-      ]
+    const where = {
+      cafeId,
+      ...(status && status !== 'ALL' ? { status } : {}),
+      ...(dateFrom || dateTo ? {
+        date: {
+          ...(dateFrom ? { gte: new Date(dateFrom) }                                                      : {}),
+          ...(dateTo   ? { lte: new Date(new Date(dateTo).setHours(23, 59, 59, 999)) } : {}),
+        },
+      } : {}),
+      ...(s ? {
+        OR: [
+          { name:  { contains: s, mode: 'insensitive' as const } },
+          { phone: { contains: s } },
+        ],
+      } : {}),
     }
 
     const [items, total] = await Promise.all([
@@ -207,14 +207,14 @@ router.get('/api/admin/reservations', authorizeAdmin, async (req: Request, res: 
 router.get('/api/admin/reservations/counts', authorizeAdmin, async (req: Request, res: Response) => {
   try {
     const cafeId = req.admin!.cafeId
-    const rows = await prisma.reservation.groupBy({
-      by: ['status'],
-      where: { cafeId },
-      _count: { _all: true },
-    })
-    const counts: Record<string, number> = { PENDING: 0, ACCEPTED: 0, COMPLETED: 0, CANCELLED: 0 }
-    rows.forEach(r => { counts[r.status] = r._count._all })
-    return res.json(counts)
+    // groupBy is not supported on MongoDB — use 4 parallel count queries instead
+    const [pending, accepted, completed, cancelled] = await Promise.all([
+      prisma.reservation.count({ where: { cafeId, status: 'PENDING'   } }),
+      prisma.reservation.count({ where: { cafeId, status: 'ACCEPTED'  } }),
+      prisma.reservation.count({ where: { cafeId, status: 'COMPLETED' } }),
+      prisma.reservation.count({ where: { cafeId, status: 'CANCELLED' } }),
+    ])
+    return res.json({ PENDING: pending, ACCEPTED: accepted, COMPLETED: completed, CANCELLED: cancelled })
   } catch (err) {
     logger.error({ msg: 'GET /api/admin/reservations/counts error', err })
     return res.status(500).json({ error: 'Failed' })
@@ -257,13 +257,13 @@ router.patch('/api/admin/reservations/:id', authorizeAdmin, async (req: Request,
     const data: { status: string; tableNumber?: number } = { status: newStatus }
     if (tableNumber != null) data.tableNumber = Number(tableNumber)
 
-    const updated = await prisma.reservation.update({ where: { id }, data })
+    await prisma.reservation.update({ where: { id }, data })
 
     const io = req.app.get('io') as import('socket.io').Server | undefined
     if (io) io.to(`kds_room_${cafeId}`).emit('reservation_updated', { id, status: newStatus })
 
     logger.info({ msg: 'Admin reservation update', cafeId, id, status: newStatus })
-    return res.json({ ok: true, reservation: updated })
+    return res.json({ ok: true, status: newStatus })
   } catch (err) {
     logger.error({ msg: 'PATCH /api/admin/reservations/:id error', err })
     return res.status(500).json({ error: 'Failed' })
