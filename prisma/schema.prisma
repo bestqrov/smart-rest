@@ -316,6 +316,8 @@ model Cafe {
   activeSessions       ActiveSession[]
   // Equipment & Maintenance Management
   equipment          Equipment[]
+  supplierInvoices     SupplierInvoice[]
+  purchaseRequisitions PurchaseRequisition[]
 
   // Indexes for geo-targeting, package segmentation, and n8n campaign queries
   @@index([country])
@@ -1444,4 +1446,54 @@ model MaintenanceRecord {
   @@index([equipmentId])
   @@index([cafeId])
   @@index([date])
+}
+
+// ─── Supplier Invoices (Fawatir) ──────────────────────────────────────────────
+
+model SupplierInvoice {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId        String   @db.ObjectId
+  cafe          Cafe     @relation(fields: [cafeId], references: [id])
+
+  supplierName  String
+  invoiceNumber String?
+  amount        Float
+  currency      String   @default("MAD")
+  issueDate     DateTime
+  dueDate       DateTime?
+  status        String   @default("unpaid")
+  documentUrl   String?
+  notes         String?
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([cafeId])
+  @@index([cafeId, status])
+  @@index([dueDate])
+}
+
+// ─── Purchase Requisitions (I7tiyajat) ────────────────────────────────────────
+
+model PurchaseRequisition {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId         String   @db.ObjectId
+  cafe           Cafe     @relation(fields: [cafeId], references: [id])
+
+  itemName       String
+  quantity       Float
+  unit           String   @default("units")
+  estimatedPrice Float?
+  urgency        String   @default("normal")
+  requestedBy    String
+  notes          String?
+  status         String   @default("pending")
+
+  approvedAt     DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([cafeId])
+  @@index([cafeId, status])
+  @@index([cafeId, urgency])
 }
