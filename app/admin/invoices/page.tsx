@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import {
   FileText, Plus, Trash2, Edit3, Loader2, RefreshCw,
-  DollarSign, AlertCircle, CheckCircle2, Clock, XCircle, ExternalLink
+  AlertCircle, CheckCircle2, Clock, XCircle, ExternalLink
 } from 'lucide-react'
 import { useLang } from '../lang-context'
 
