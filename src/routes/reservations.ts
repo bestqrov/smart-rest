@@ -152,4 +152,122 @@ router.patch('/api/kitchen/reservations/:id', authorizeAdmin, async (req: Reques
   }
 })
 
+// ─── GET /api/admin/reservations ─────────────────────────────────────────────
+// Full admin listing — all statuses, with filters and pagination.
+// Query params: status, dateFrom, dateTo, search (name/phone), page, limit
+
+router.get('/api/admin/reservations', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const cafeId = req.admin!.cafeId
+    const { status, dateFrom, dateTo, search, page = '1', limit = '20' } = req.query as Record<string, string>
+
+    const pageNum  = Math.max(1, parseInt(page)  || 1)
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit) || 20))
+    const skip     = (pageNum - 1) * limitNum
+
+    const where: Record<string, unknown> = { cafeId }
+
+    if (status && status !== 'ALL') where['status'] = status
+
+    if (dateFrom || dateTo) {
+      const dateFilter: Record<string, Date> = {}
+      if (dateFrom) dateFilter['gte'] = new Date(dateFrom)
+      if (dateTo)   dateFilter['lte'] = new Date(new Date(dateTo).setHours(23, 59, 59, 999))
+      where['date'] = dateFilter
+    }
+
+    if (search?.trim()) {
+      const s = search.trim()
+      where['OR'] = [
+        { name:  { contains: s, mode: 'insensitive' } },
+        { phone: { contains: s } },
+      ]
+    }
+
+    const [items, total] = await Promise.all([
+      prisma.reservation.findMany({
+        where,
+        orderBy: { date: 'desc' },
+        skip,
+        take: limitNum,
+      }),
+      prisma.reservation.count({ where }),
+    ])
+
+    return res.json({ items, total, page: pageNum, limit: limitNum, pages: Math.ceil(total / limitNum) })
+  } catch (err) {
+    logger.error({ msg: 'GET /api/admin/reservations error', err })
+    return res.status(500).json({ error: 'Failed' })
+  }
+})
+
+// ─── GET /api/admin/reservations/counts ──────────────────────────────────────
+// Summary counts per status (for stats row and calendar dots).
+
+router.get('/api/admin/reservations/counts', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const cafeId = req.admin!.cafeId
+    const rows = await prisma.reservation.groupBy({
+      by: ['status'],
+      where: { cafeId },
+      _count: { _all: true },
+    })
+    const counts: Record<string, number> = { PENDING: 0, ACCEPTED: 0, COMPLETED: 0, CANCELLED: 0 }
+    rows.forEach(r => { counts[r.status] = r._count._all })
+    return res.json(counts)
+  } catch (err) {
+    logger.error({ msg: 'GET /api/admin/reservations/counts error', err })
+    return res.status(500).json({ error: 'Failed' })
+  }
+})
+
+// ─── PATCH /api/admin/reservations/:id ───────────────────────────────────────
+// Extended admin patch: action = accept | cancel | complete, optional tableNumber.
+
+router.patch('/api/admin/reservations/:id', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const cafeId = req.admin!.cafeId
+    const id     = req.params['id'] as string
+    const { action, tableNumber } = req.body as { action?: string; tableNumber?: number }
+
+    if (action !== 'accept' && action !== 'cancel' && action !== 'complete') {
+      return res.status(400).json({ error: 'action must be "accept", "cancel", or "complete"' })
+    }
+
+    const reservation = await prisma.reservation.findUnique({
+      where:  { id },
+      select: { id: true, cafeId: true, status: true },
+    })
+    if (!reservation)                       return res.status(404).json({ error: 'Reservation not found' })
+    if (reservation.cafeId !== cafeId)      return res.status(403).json({ error: 'Forbidden' })
+
+    // Validate allowed transitions
+    const validFrom: Record<string, string[]> = {
+      accept:   ['PENDING'],
+      cancel:   ['PENDING', 'ACCEPTED'],
+      complete: ['ACCEPTED', 'PENDING'],
+    }
+    if (!validFrom[action]!.includes(reservation.status)) {
+      return res.status(422).json({ error: `Cannot ${action} a reservation with status ${reservation.status}` })
+    }
+
+    const statusMap: Record<string, string> = { accept: 'ACCEPTED', cancel: 'CANCELLED', complete: 'COMPLETED' }
+    const newStatus = statusMap[action]!
+
+    const data: { status: string; tableNumber?: number } = { status: newStatus }
+    if (tableNumber != null) data.tableNumber = Number(tableNumber)
+
+    const updated = await prisma.reservation.update({ where: { id }, data })
+
+    const io = req.app.get('io') as import('socket.io').Server | undefined
+    if (io) io.to(`kds_room_${cafeId}`).emit('reservation_updated', { id, status: newStatus })
+
+    logger.info({ msg: 'Admin reservation update', cafeId, id, status: newStatus })
+    return res.json({ ok: true, reservation: updated })
+  } catch (err) {
+    logger.error({ msg: 'PATCH /api/admin/reservations/:id error', err })
+    return res.status(500).json({ error: 'Failed' })
+  }
+})
+
 export default router
