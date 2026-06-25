@@ -179,7 +179,7 @@ export default function InvoicesPage() {
           </div>
           <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4">
             <p className="text-xs text-slate-400">Non payé</p>
-            <p className="text-2xl font-bold text-amber-400 mt-1">{summary.unpaidTotal.toLocaleString('fr-FR')} MAD</p>
+            <p className="text-2xl font-bold text-amber-400 mt-1">{summary.unpaidTotal.toLocaleString('fr-FR')}</p>
           </div>
           <div className="rounded-2xl border border-rose-500/20 bg-rose-500/10 p-4">
             <p className="text-xs text-slate-400">En retard</p>
@@ -187,7 +187,7 @@ export default function InvoicesPage() {
           </div>
           <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4">
             <p className="text-xs text-slate-400">Payé ce mois</p>
-            <p className="text-2xl font-bold text-emerald-400 mt-1">{summary.paidThisMonth.toLocaleString('fr-FR')} MAD</p>
+            <p className="text-2xl font-bold text-emerald-400 mt-1">{summary.paidThisMonth.toLocaleString('fr-FR')}</p>
           </div>
         </div>
       )}

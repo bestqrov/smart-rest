@@ -13,7 +13,7 @@ router.get('/summary/stats', authorizeAdmin, async (req: Request, res: Response)
 
     const invoices = await prisma.supplierInvoice.findMany({
       where: { cafeId },
-      select: { status: true, amount: true, dueDate: true, createdAt: true },
+      select: { status: true, amount: true, dueDate: true, createdAt: true, updatedAt: true },
     })
 
     const unpaidTotal = invoices
@@ -21,11 +21,11 @@ router.get('/summary/stats', authorizeAdmin, async (req: Request, res: Response)
       .reduce((s, i) => s + i.amount, 0)
 
     const overdueCount = invoices.filter(i =>
-      (i.status === 'unpaid') && i.dueDate && new Date(i.dueDate) < now
+      (i.status === 'unpaid' || i.status === 'overdue') && i.dueDate && new Date(i.dueDate) < now
     ).length
 
     const paidThisMonth = invoices
-      .filter(i => i.status === 'paid' && new Date(i.createdAt) >= startOfMonth)
+      .filter(i => i.status === 'paid' && new Date(i.updatedAt) >= startOfMonth)
       .reduce((s, i) => s + i.amount, 0)
 
     return res.json({ unpaidTotal, overdueCount, paidThisMonth, total: invoices.length })
