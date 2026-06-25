@@ -314,6 +314,8 @@ model Cafe {
   // Zone-Based Dynamic Token (Match Mode)
   zones                Zone[]
   activeSessions       ActiveSession[]
+  // Equipment & Maintenance Management
+  equipment          Equipment[]
 
   // Indexes for geo-targeting, package segmentation, and n8n campaign queries
   @@index([country])
@@ -1391,4 +1393,55 @@ model PremiumPlan {
   hasNoCommission  Boolean @default(true)  // skip per-order commission
 
   updatedAt DateTime @updatedAt
+}
+
+// ─── Equipment & Maintenance Management ───────────────────────────────────────
+
+model Equipment {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId          String   @db.ObjectId
+  cafe            Cafe     @relation(fields: [cafeId], references: [id])
+
+  name            String
+  category        String
+  brand           String?
+  serialNumber    String?
+  purchaseDate    DateTime?
+  purchasePrice   Float?
+  supplier        String?
+  warrantyEndsAt  DateTime?
+  receiptUrl      String?
+  photoUrl        String?
+  status          String    @default("active")
+  notes           String?
+
+  maintenanceRecords MaintenanceRecord[]
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([cafeId])
+  @@index([cafeId, status])
+  @@index([warrantyEndsAt])
+}
+
+model MaintenanceRecord {
+  id            String     @id @default(auto()) @map("_id") @db.ObjectId
+  equipmentId   String     @db.ObjectId
+  equipment     Equipment  @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  cafeId        String     @db.ObjectId
+
+  date          DateTime   @default(now())
+  description   String
+  technicianName String?
+  technicianPhone String?
+  cost          Float      @default(0)
+  receiptUrl    String?
+  nextServiceAt DateTime?
+
+  createdAt     DateTime   @default(now())
+
+  @@index([equipmentId])
+  @@index([cafeId])
+  @@index([date])
 }
