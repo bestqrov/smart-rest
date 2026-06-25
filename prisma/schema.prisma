@@ -1468,6 +1468,7 @@ model SupplierInvoice {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
+  @@unique([cafeId, id])
   @@index([cafeId])
   @@index([cafeId, status])
   @@index([dueDate])
