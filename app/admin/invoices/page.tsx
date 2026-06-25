@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import {
-  FileText, Plus, Trash2, Edit3, Loader2, RefreshCw,
+  Receipt, Plus, Trash2, Edit3, Loader2, RefreshCw,
   AlertCircle, CheckCircle2, Clock, XCircle, ExternalLink
 } from 'lucide-react'
 import { useLang } from '../lang-context'
@@ -150,7 +150,7 @@ export default function InvoicesPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-xl bg-violet-500/10">
-            <FileText className="text-violet-400" size={28} />
+            <Receipt className="text-violet-400" size={28} />
           </div>
           <div>
             <h1 className="text-2xl font-bold text-white">Fawatir — Factures</h1>
@@ -276,7 +276,7 @@ export default function InvoicesPage() {
       {/* Invoice list */}
       {items.length === 0 ? (
         <div className="rounded-2xl border border-slate-700 bg-slate-800/40 p-12 text-center">
-          <FileText className="mx-auto text-slate-600 mb-3" size={40} />
+          <Receipt className="mx-auto text-slate-600 mb-3" size={40} />
           <p className="text-slate-400 text-sm">Aucune facture{filter !== 'all' ? ' dans ce filtre' : ''}.</p>
         </div>
       ) : (

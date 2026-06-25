@@ -10,7 +10,7 @@ import {
   AlertTriangle, Loader2, Gift, Zap, ChefHat, Bell, Monitor,
   Users, BarChart3, Copy, Check, ExternalLink, Building2,
   Banknote, Wallet, CalendarClock, Sparkles, Settings, Languages, TrendingUp, Film,
-  Package, Lock, LayoutGrid, Wrench, FileText, ClipboardList
+  Package, Lock, LayoutGrid, Wrench, Receipt, ShoppingCart
 } from 'lucide-react'
 import { AdminLangProvider, useLang, type AdminLang } from './lang-context'
 import { A, type AdminT } from '@/lib/adminI18n'
@@ -28,9 +28,9 @@ const NAV = [
   { href: '/admin/financials', icon: BarChart3,       key: 'financials' },
   { href: '/admin/margins',   icon: TrendingUp,      key: 'margins'    },
   { href: '/admin/equipment',  icon: Wrench,          key: 'equipment'  },
-  { href: '/admin/invoices',      icon: FileText,       key: 'invoices'      },
-  { href: '/admin/requisitions',  icon: ClipboardList,  key: 'requisitions'  },
-  { href: '/admin/marketing',  icon: Film,            key: 'marketing'  },
+  { href: '/admin/invoices',      icon: Receipt,        key: 'invoices'      },
+  { href: '/admin/requisitions',  icon: ShoppingCart,   key: 'requisitions'  },
+  { href: '/admin/marketing',     icon: Film,           key: 'marketing'     },
   { href: '/admin/social',     icon: Share2,          key: 'social'     },
   { href: '/admin/billing',    icon: CreditCard,      key: 'billing'    },
   { href: '/admin/settings',   icon: Settings,        key: 'settings'   },
@@ -471,7 +471,8 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
 
         <nav className="flex-1 px-3 py-4 space-y-1">
           {NAV.map((item) => {
-            const active = pathname === item.href
+            const active      = pathname === item.href
+            const isMarketing = item.href === '/admin/marketing'
             return (
               <Link key={item.href} href={item.href}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors group ${
@@ -479,6 +480,12 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
                 }`}>
                 <item.icon className="w-5 h-5 shrink-0" />
                 <span className="text-sm font-medium flex-1">{t[item.key as keyof AdminT]}</span>
+                {isMarketing && (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-violet-500/20 text-violet-400 border border-violet-500/30">
+                    <Sparkles className="w-2.5 h-2.5" />
+                    PRO
+                  </span>
+                )}
                 {active && <ChevronRight className={`w-4 h-4 opacity-70 ${!isRTL ? 'rotate-180' : ''}`} />}
               </Link>
             )
@@ -580,14 +587,21 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
             )}
             <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
               {NAV.map((item) => {
-                const active = pathname === item.href
+                const active      = pathname === item.href
+                const isMarketing = item.href === '/admin/marketing'
                 return (
                   <Link key={item.href} href={item.href} onClick={() => setOpen(false)}
                     className={`flex items-center gap-3 px-3 py-3 rounded-xl ${
                       active ? 'bg-emerald-600 text-white' : 'text-gray-400 hover:bg-[#243460] hover:text-white'
                     }`}>
-                    <item.icon className="w-5 h-5" />
-                    <span className="font-medium">{t[item.key as keyof AdminT]}</span>
+                    <item.icon className="w-5 h-5 shrink-0" />
+                    <span className="font-medium flex-1">{t[item.key as keyof AdminT]}</span>
+                    {isMarketing && (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-violet-500/20 text-violet-400 border border-violet-500/30">
+                        <Sparkles className="w-2.5 h-2.5" />
+                        PRO
+                      </span>
+                    )}
                   </Link>
                 )
               })}

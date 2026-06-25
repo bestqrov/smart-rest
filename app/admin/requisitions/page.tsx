@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import {
-  ClipboardList, Plus, Trash2, Edit3, Loader2, RefreshCw,
+  ShoppingCart, Plus, Trash2, Edit3, Loader2, RefreshCw,
   CheckCircle2, Clock, Package, XCircle, ChevronRight
 } from 'lucide-react'
 import { useLang } from '../lang-context'
@@ -164,7 +164,7 @@ export default function RequisitionsPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-xl bg-teal-500/10">
-            <ClipboardList className="text-teal-400" size={28} />
+            <ShoppingCart className="text-teal-400" size={28} />
           </div>
           <div>
             <h1 className="text-2xl font-bold text-white">I7tiyajat — Besoins</h1>
@@ -297,7 +297,7 @@ export default function RequisitionsPage() {
       {/* Requisition list */}
       {items.length === 0 ? (
         <div className="rounded-2xl border border-slate-700 bg-slate-800/40 p-12 text-center">
-          <ClipboardList className="mx-auto text-slate-600 mb-3" size={40} />
+          <ShoppingCart className="mx-auto text-slate-600 mb-3" size={40} />
           <p className="text-slate-400 text-sm">Aucune demande{filter !== 'all' ? ' dans ce filtre' : ''}.</p>
         </div>
       ) : (
