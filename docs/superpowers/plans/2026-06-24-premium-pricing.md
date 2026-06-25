@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add a Premium subscription tier (flat monthly fee, no commission) with per-country pricing controlled by the superadmin in real-time.
+**Goal:** Add Premium and Business subscription tiers with per-country pricing controlled by the superadmin in real-time.
 
 **Architecture:** New `PremiumPlan` MongoDB collection stores one doc per country/region. Cafe model gets `isPremium` flag. `applyOrderFee` skips commission for premium cafes. Superadmin UI gets a new "Premium Plans" section. Landing page shows a Premium card alongside the existing commission table.
 
@@ -468,6 +468,42 @@ Expected: no TypeScript errors
 git add app/landing/page.tsx
 git commit -m "feat(landing): add Premium pricing card per market"
 ```
+
+---
+
+---
+
+## Business Pack — Pricing & Features
+
+| Feature | Free | Premium | Business |
+|---------|------|---------|---------|
+| QR Menu | ✅ | ✅ | ✅ |
+| Orders | ✅ | ✅ | ✅ |
+| Commission | 3% | ❌ | ❌ |
+| Marketing Video | ❌ | ✅ | ✅ |
+| Certification | ❌ | ✅ | ✅ |
+| Analytics | ❌ | ✅ | ✅ |
+| Auto-post FB/IG/TikTok | ❌ | ❌ | ✅ |
+| Multi-branch | ❌ | ❌ | ✅ |
+
+**Business Pricing (per cafe/month):**
+- 🇲🇦 Morocco: 299 MAD
+- 🌍 West Africa: 20,000 XOF
+- 🇸🇦 Gulf: 249 SAR/AED
+- 🇪🇺 Europe: 249 EUR
+
+**Auto-posting stack (Business plan):**
+- Facebook + Instagram: Meta Graph API (free)
+- TikTok: TikTok API (free with OAuth)
+- Snapchat: manual (no public API for organic posts)
+
+**Implementation tasks for Business pack (future):**
+- [ ] Add `isBusiness` flag + `BusinessPlan` model to Prisma schema
+- [ ] Add `socialAccounts` to Cafe model (FB page token, IG account id, TikTok token)
+- [ ] Add OAuth flow for Meta (FB/IG) and TikTok in cafe settings
+- [ ] Update W1 n8n workflow to auto-post video URL after render
+- [ ] Add Business Plans section to superadmin UI
+- [ ] Add Business pricing card to landing page
 
 ---
 
