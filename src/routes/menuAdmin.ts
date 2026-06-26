@@ -227,6 +227,66 @@ router.get('/api/admin/cafe/profile', authorizeAdmin, async (req: Request, res: 
   }
 })
 
+// ─── GET /api/admin/cafe/payment-config ──────────────────────────────────────
+router.get('/api/admin/cafe/payment-config', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const cafeId = req.admin!.cafeId
+    const cafe = await prisma.cafe.findUnique({
+      where:  { id: cafeId },
+      select: { paymentConfig: true, country: true },
+    })
+    const pc = (cafe?.paymentConfig ?? {}) as any
+    return res.json({
+      orangeMoneyNumber:     pc.orangeMoneyNumber     ?? '',
+      mtnMoMoNumber:         pc.mtnMoMoNumber         ?? '',
+      waveWallet:            pc.waveWallet             ?? '',
+      moyasarPublishableKey: pc.moyasarPublishableKey  ?? '',
+      stripePublishableKey:  pc.stripePublishableKey   ?? '',
+      stripeAccountId:       pc.stripeAccountId        ?? '',
+      whatsappNumber:        pc.whatsappNumber         ?? '',
+      country:               cafe?.country ?? 'MA',
+    })
+  } catch (err) {
+    logger.error({ msg: 'GET payment-config error', err })
+    return res.status(500).json({ error: 'Failed' })
+  }
+})
+
+// ─── PUT /api/admin/cafe/payment-config ──────────────────────────────────────
+router.put('/api/admin/cafe/payment-config', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const cafeId = req.admin!.cafeId
+    const {
+      orangeMoneyNumber,
+      mtnMoMoNumber,
+      waveWallet,
+      moyasarPublishableKey,
+      stripePublishableKey,
+      stripeAccountId,
+      whatsappNumber,
+    } = req.body
+
+    await prisma.cafe.update({
+      where: { id: cafeId },
+      data:  {
+        paymentConfig: {
+          orangeMoneyNumber:     orangeMoneyNumber     ?? '',
+          mtnMoMoNumber:         mtnMoMoNumber         ?? '',
+          waveWallet:            waveWallet            ?? '',
+          moyasarPublishableKey: moyasarPublishableKey ?? '',
+          stripePublishableKey:  stripePublishableKey  ?? '',
+          stripeAccountId:       stripeAccountId       ?? '',
+          whatsappNumber:        whatsappNumber        ?? '',
+        },
+      },
+    })
+    return res.json({ ok: true })
+  } catch (err) {
+    logger.error({ msg: 'PUT payment-config error', err })
+    return res.status(500).json({ error: 'Failed' })
+  }
+})
+
 // ─── POST /api/admin/menu/seed-demo — one-time demo menu for existing cafes ───
 
 router.post('/api/admin/menu/seed-demo', authorizeAdmin, async (req: Request, res: Response) => {
