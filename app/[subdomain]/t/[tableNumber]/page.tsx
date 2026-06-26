@@ -67,6 +67,14 @@ const T = {
     billConfirm: 'Send Bill Request',
     billRequested: '✅ Bill request sent!',
     billModalTitle: 'How would you like to pay?',
+    shareDone: '🍽️ Your order is served!',
+    shareSub: 'Share your experience with friends',
+    goToPay: 'Request the bill 🧾',
+    thankTitle: (name: string) => `Thank you for visiting ${name}!`,
+    thankSub: 'Wishing you good health and comfort. See you again soon! 🌟',
+    thankBye: 'Goodbye 👋',
+    paymentTitle: 'Ready to pay?',
+    paymentSub: 'Choose how you would like to settle your bill.',
   },
   ar: {
     scanningTitle: 'جارٍ تجهيز طاولتك…',
@@ -115,6 +123,14 @@ const T = {
     billConfirm: 'إرسال طلب الفاتورة',
     billRequested: '✅ تم إرسال طلب الفاتورة!',
     billModalTitle: 'كيف تريد الدفع؟',
+    shareDone: '🍽️ تم تقديم طلبك!',
+    shareSub: 'شارك تجربتك مع أصدقائك',
+    goToPay: 'طلب الحساب 🧾',
+    thankTitle: (name: string) => `شكراً على زيارة ${name}!`,
+    thankSub: 'بالصحة والراحة، نتمنى لكم وقتاً ممتعاً ونراكم قريباً 🌟',
+    thankBye: 'مع السلامة 👋',
+    paymentTitle: 'جاهز للدفع؟',
+    paymentSub: 'اختر طريقة الدفع المناسبة لك.',
   },
   fr: {
     scanningTitle: 'Préparation de votre table…',
@@ -163,6 +179,14 @@ const T = {
     billConfirm: 'Envoyer la demande',
     billRequested: '✅ Demande envoyée !',
     billModalTitle: 'Comment souhaitez-vous payer ?',
+    shareDone: '🍽️ Commande servie !',
+    shareSub: 'Partagez votre expérience avec vos amis',
+    goToPay: "Demander l'addition 🧾",
+    thankTitle: (name: string) => `Merci pour votre visite chez ${name} !`,
+    thankSub: 'Nous vous souhaitons une excellente santé et un bon repos. À bientôt ! 🌟',
+    thankBye: 'Au revoir 👋',
+    paymentTitle: 'Prêt à payer ?',
+    paymentSub: 'Choisissez votre mode de paiement.',
   },
   es: {
     scanningTitle: 'Preparando tu mesa…',
@@ -211,6 +235,14 @@ const T = {
     billConfirm: 'Enviar solicitud',
     billRequested: '✅ ¡Solicitud enviada!',
     billModalTitle: '¿Cómo quieres pagar?',
+    shareDone: '🍽️ ¡Tu pedido ha sido servido!',
+    shareSub: 'Comparte tu experiencia con amigos',
+    goToPay: 'Pedir la cuenta 🧾',
+    thankTitle: (name: string) => `¡Gracias por visitar ${name}!`,
+    thankSub: '¡Te deseamos salud y descanso! Hasta pronto 🌟',
+    thankBye: 'Adiós 👋',
+    paymentTitle: '¿Listo para pagar?',
+    paymentSub: 'Elige cómo quieres pagar.',
   },
 } as const
 
@@ -290,7 +322,8 @@ function TablePageInner() {
   const tableToken  = searchParams.get('token') ?? ''
 
   const [lang, setLang]           = useState<Lang>('en')
-  const [phase, setPhase]         = useState<'scanning' | 'welcome' | 'menu' | 'full' | 'expired' | 'invalid'>('scanning')
+  const [phase, setPhase]         = useState<'scanning' | 'welcome' | 'menu' | 'full' | 'expired' | 'invalid' | 'thankyou'>('scanning')
+  const [showPayment, setShowPayment] = useState(false)
   const [scan, setScan]           = useState<ScanResult | null>(null)
   const [categories, setCategories] = useState<Category[]>([])
   const [cart, setCart]           = useState<CartItem[]>([])
@@ -418,14 +451,27 @@ function TablePageInner() {
     } catch {}
   }
 
-  // ── Trigger share popup when order is delivered ───────────────────────────
+  // ── Trigger share popup when order is DELIVERED ───────────────────────────
   useEffect(() => {
-    if (activeOrder?.status === 'DELIVERED' && activeOrder.orderId !== sharedOrderRef.current) {
+    if (
+      (activeOrder?.status === 'DELIVERED' || activeOrder?.status === 'READY') &&
+      activeOrder.orderId !== sharedOrderRef.current
+    ) {
       sharedOrderRef.current = activeOrder.orderId
       const t = setTimeout(() => setShowShare(true), 900)
       return () => clearTimeout(t)
     }
   }, [activeOrder?.status, activeOrder?.orderId])
+
+  // ── Thank you screen when table checkout is completed ─────────────────────
+  useEffect(() => {
+    if (activeOrder?.status === 'COMPLETED') {
+      setShowShare(false)
+      setShowPayment(false)
+      setPhase('thankyou')
+      if (scan) clearSession(scan.tableId)
+    }
+  }, [activeOrder?.status, scan])
 
   function startHeartbeat(sessionId: string) {
     if (heartbeatRef.current) clearInterval(heartbeatRef.current)
@@ -467,6 +513,12 @@ function TablePageInner() {
     })
     socket.on('order_status_update', (p: { orderId: string; status: string }) => {
       setActiveOrder(prev => prev && prev.orderId === p.orderId ? { ...prev, status: p.status } : prev)
+    })
+    // POS checkout complete → thank you screen
+    socket.on('table_checked_out', () => {
+      setShowShare(false)
+      setShowPayment(false)
+      setActiveOrder(prev => prev ? { ...prev, status: 'COMPLETED' } : prev)
     })
 
     return () => { socket.disconnect() }
@@ -516,7 +568,9 @@ function TablePageInner() {
       }
       if (!r.ok) { setOrderMsg(tr.failedOrder); return }
 
-      setActiveOrder({ orderId: data.orderId, status: 'PENDING', items: cart.map(c => ({ productId: c.productId, name: c.name, quantity: c.quantity, status: 'PENDING' })), totalPrice: cartTotal })
+      const newOrder = { orderId: data.orderId, status: 'PENDING', items: cart.map(c => ({ productId: c.productId, name: c.name, quantity: c.quantity, status: 'PENDING' })), totalPrice: cartTotal }
+      setActiveOrder(newOrder)
+      sharedOrderRef.current = ''
       setCart([])
       setCartOpen(false)
       setOrderMsg(tr.orderPlaced)
@@ -802,6 +856,54 @@ function TablePageInner() {
         <p className="text-xs text-gray-600">{tr.scanningSeats(scan.occupiedCount, scan.capacity)}</p>
 
         <div className="w-8 h-1 rounded-full bg-emerald-500 animate-pulse mt-2" />
+      </motion.div>
+    )
+  }
+
+  // ── Thank you screen ──────────────────────────────────────────────────────
+  if (phase === 'thankyou') {
+    const cafeName = scan?.cafeName ?? 'SmartRestau'
+    const logoUrl  = scan?.cafeLogoUrl ?? null
+    return (
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="min-h-screen bg-gray-950 flex flex-col items-center justify-center p-8 text-center gap-6"
+        dir={isRTL ? 'rtl' : 'ltr'}
+      >
+        {/* Animated checkmark */}
+        <motion.div
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ type: 'spring', delay: 0.1, stiffness: 200 }}
+          className="w-24 h-24 rounded-full bg-emerald-500/20 border-2 border-emerald-500 flex items-center justify-center"
+        >
+          <span className="text-5xl">✅</span>
+        </motion.div>
+
+        {/* Logo + name */}
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
+          className="flex flex-col items-center gap-3">
+          {logoUrl && (
+            <img src={logoUrl} alt={cafeName} className="w-20 h-20 rounded-2xl object-contain border border-white/10 bg-white/5 shadow-xl" />
+          )}
+          <h1 className="text-2xl font-black text-white">{tr.thankTitle(cafeName)}</h1>
+          <p className="text-gray-400 text-sm max-w-xs leading-relaxed">{tr.thankSub}</p>
+        </motion.div>
+
+        {/* Decorative stars */}
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
+          className="flex gap-2 text-2xl">
+          {'⭐'.repeat(5).split('').map((s, i) => (
+            <motion.span key={i} initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.5 + i * 0.08 }}>{s}</motion.span>
+          ))}
+        </motion.div>
+
+        {/* Powered by */}
+        <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.9 }}
+          className="text-xs text-gray-700 mt-2">
+          Powered by <span className="text-white font-bold">Smart</span><span className="text-orange-500 font-bold">Restau</span>
+        </motion.p>
       </motion.div>
     )
   }
@@ -1175,6 +1277,50 @@ function TablePageInner() {
         )}
       </AnimatePresence>
 
+      {/* ── Payment Modal ── */}
+      <AnimatePresence>
+        {showPayment && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/70 flex items-end" onClick={() => setShowPayment(false)}>
+            <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', damping: 30 }}
+              className="w-full bg-gray-900 rounded-t-3xl p-5" onClick={e => e.stopPropagation()}>
+              <div className="w-12 h-1 bg-gray-700 rounded-full mx-auto mb-4" />
+              <div className="flex items-center justify-between mb-1">
+                <h3 className="font-black text-lg text-white">{tr.paymentTitle}</h3>
+                <button onClick={() => setShowPayment(false)} className="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center text-gray-400">✕</button>
+              </div>
+              <p className="text-sm text-gray-400 mb-5">{tr.paymentSub}</p>
+              <div className="space-y-3">
+                <button onClick={() => { callWaiter('pay_cash'); setShowPayment(false); setBillMsg(tr.billRequested); setTimeout(() => setBillMsg(''), 4000) }}
+                  className="w-full bg-gray-800 hover:bg-gray-700 active:scale-95 rounded-2xl p-4 flex items-center gap-4 transition-all">
+                  <span className="text-3xl">💵</span>
+                  <div className={isRTL ? 'text-right' : 'text-left'}>
+                    <p className="font-bold text-white">{tr.payCash}</p>
+                    <p className="text-xs text-gray-400">{isRTL ? 'سيأتي النادل إليك' : lang === 'fr' ? 'Le serveur viendra vous voir' : 'Waiter will come to you'}</p>
+                  </div>
+                </button>
+                <button onClick={() => { callWaiter('pay_tpe'); setShowPayment(false); setBillMsg(tr.billRequested); setTimeout(() => setBillMsg(''), 4000) }}
+                  className="w-full bg-gray-800 hover:bg-gray-700 active:scale-95 rounded-2xl p-4 flex items-center gap-4 transition-all">
+                  <span className="text-3xl">💳</span>
+                  <div className={isRTL ? 'text-right' : 'text-left'}>
+                    <p className="font-bold text-white">{tr.payCard}</p>
+                    <p className="text-xs text-gray-400">{isRTL ? 'سيحضر لك جهاز الدفع' : lang === 'fr' ? 'Le terminal sera apporté' : 'TPE terminal will be brought'}</p>
+                  </div>
+                </button>
+                <button onClick={() => { setShowPayment(false); openBillModal() }}
+                  className="w-full bg-blue-600/20 border border-blue-500/30 hover:bg-blue-600/30 active:scale-95 rounded-2xl p-4 flex items-center gap-4 transition-all">
+                  <span className="text-3xl">🧾</span>
+                  <div className={isRTL ? 'text-right' : 'text-left'}>
+                    <p className="font-bold text-blue-300">{tr.requestBill}</p>
+                    <p className="text-xs text-gray-400">{isRTL ? 'اختر طريقة الدفع وشارك الفاتورة' : lang === 'fr' ? 'Partager ou payer séparément' : 'Split or share the bill'}</p>
+                  </div>
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* ── Share popup — triggered when order is DELIVERED ── */}
       <AnimatePresence>
         {showShare && (
@@ -1195,12 +1341,8 @@ function TablePageInner() {
                 <div className="w-10 h-1 bg-gray-700 rounded-full mx-auto mb-3" />
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-black text-white text-base">
-                      {lang === 'ar' ? '🍽️ تم تقديم طلبك!' : lang === 'fr' ? '🍽️ Commande servie !' : '🍽️ Your order is served!'}
-                    </p>
-                    <p className="text-xs text-gray-400 mt-0.5">
-                      {lang === 'ar' ? 'شارك تجربتك مع أصدقائك' : lang === 'fr' ? 'Partagez votre expérience' : 'Share your experience'}
-                    </p>
+                    <p className="font-black text-white text-base">{tr.shareDone}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">{tr.shareSub}</p>
                   </div>
                   <button onClick={() => setShowShare(false)}
                     className="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center text-gray-400 text-sm shrink-0">
@@ -1291,6 +1433,12 @@ function TablePageInner() {
                   className="w-full bg-[#25D366] active:scale-95 text-white font-bold py-3 rounded-2xl flex items-center justify-center gap-2 text-sm">
                   💬 WhatsApp
                 </a>
+                <button
+                  onClick={() => { setShowShare(false); setShowPayment(true) }}
+                  className="w-full bg-blue-600/20 border border-blue-500/40 text-blue-300 font-bold py-3 rounded-2xl flex items-center justify-center gap-2 text-sm active:scale-95 transition-all"
+                >
+                  {tr.goToPay}
+                </button>
               </div>
             </motion.div>
           </>
