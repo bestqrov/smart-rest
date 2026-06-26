@@ -1015,4 +1015,66 @@ router.put('/api/superadmin/premium-plans/:country', requireSuperAdmin, async (r
   }
 })
 
+// ─── POST /api/superadmin/tenants/purge-test ──────────────────────────────────
+// Deletes ALL cafes not in the `keep` list (subdomains). isDemo cafes are always kept.
+
+router.post('/api/superadmin/tenants/purge-test', requireSuperAdmin, async (req: Request, res: Response) => {
+  try {
+    const { keep = [] } = req.body as { keep?: string[] }
+    const protected_ = [...keep, process.env.DEMO_SUBDOMAIN ?? 'plage']
+
+    const cafes = await prisma.cafe.findMany({
+      where: { subdomain: { notIn: protected_ }, isDemo: false },
+      select: { id: true, subdomain: true },
+    })
+
+    const deleted: string[] = []
+    const failed:  string[] = []
+
+    for (const cafe of cafes) {
+      try {
+        const id = cafe.id
+        await prisma.walletLog.deleteMany({ where: { cafeId: id } })
+        await prisma.fraudAlert.deleteMany({ where: { cafeId: id } })
+        await prisma.feedback.deleteMany({ where: { cafeId: id } })
+        await prisma.qrScan.deleteMany({ where: { cafeId: id } })
+        await prisma.printerLog.deleteMany({ where: { cafeId: id } })
+        await prisma.onlinePayment.deleteMany({ where: { cafeId: id } })
+        await prisma.paymentRequest.deleteMany({ where: { cafeId: id } })
+        await prisma.billRequest.deleteMany({ where: { cafeId: id } })
+        await prisma.waiterCall.deleteMany({ where: { cafeId: id } })
+        await prisma.reservation.deleteMany({ where: { cafeId: id } })
+        await prisma.expense.deleteMany({ where: { cafeId: id } })
+        await prisma.stockItem.deleteMany({ where: { cafeId: id } })
+        await prisma.recipe.deleteMany({ where: { cafeId: id } })
+        const orderIds = (await prisma.order.findMany({ where: { cafeId: id }, select: { id: true } })).map(o => o.id)
+        if (orderIds.length > 0) await prisma.orderItem.deleteMany({ where: { orderId: { in: orderIds } } })
+        await prisma.order.deleteMany({ where: { cafeId: id } })
+        await prisma.cashierShift.deleteMany({ where: { cafeId: id } })
+        await prisma.waiterShift.deleteMany({ where: { cafeId: id } })
+        await prisma.waiterQRToken.deleteMany({ where: { cafeId: id } })
+        await prisma.billingTier.deleteMany({ where: { cafeId: id } })
+        await prisma.staff.deleteMany({ where: { cafeId: id } })
+        await prisma.seat.deleteMany({ where: { cafeId: id } })
+        await prisma.table.deleteMany({ where: { cafeId: id } })
+        const catIds = (await prisma.category.findMany({ where: { cafeId: id }, select: { id: true } })).map(c => c.id)
+        if (catIds.length > 0) await prisma.product.deleteMany({ where: { categoryId: { in: catIds } } })
+        await prisma.category.deleteMany({ where: { cafeId: id } })
+        await prisma.user.deleteMany({ where: { cafeId: id } })
+        await prisma.cafe.delete({ where: { id } })
+        deleted.push(cafe.subdomain)
+        logger.warn({ msg: 'SuperAdmin purge-test deleted cafe', subdomain: cafe.subdomain })
+      } catch (err) {
+        logger.error({ msg: 'purge-test failed for cafe', subdomain: cafe.subdomain, err })
+        failed.push(cafe.subdomain)
+      }
+    }
+
+    return res.json({ deleted, failed, protected: protected_ })
+  } catch (err) {
+    logger.error({ msg: 'purge-test error', err })
+    return res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
 export default router

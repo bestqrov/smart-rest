@@ -131,4 +131,5 @@ export interface ThemeProps {
   onSetMrrOpen:        (v: boolean) => void
   onSetTheme:          (t: Theme) => void
   onLoadMore:          () => void
+  onOpenPurge?:        () => void
 }

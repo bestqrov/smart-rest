@@ -1,11 +1,9 @@
 'use client'
 import { useState } from 'react'
-import { Loader2, RefreshCw, Filter, Ban, CheckCircle, Edit3, Trash2, ChevronDown, Play, CalendarPlus, Package, Globe, TrendingUp } from 'lucide-react'
+import { Loader2, RefreshCw, Filter, Ban, CheckCircle, Edit3, Trash2, ChevronDown, Play, CalendarPlus, Package, Globe, TrendingUp, Flame } from 'lucide-react'
 import type { ThemeProps, Tenant } from '../types'
-import ThemeSwitcher from '../ThemeSwitcher'
 import KpiCards from '../analytics/KpiCards'
 import RevenueChart from '../analytics/RevenueChart'
-import ChurnAlerts from '../analytics/ChurnAlerts'
 import ActivityLog, { logActivity } from '../analytics/ActivityLog'
 import OnboardingProgress from '../analytics/OnboardingProgress'
 
@@ -39,24 +37,35 @@ export default function ThemeA(p: ThemeProps) {
       <div className="max-w-7xl mx-auto space-y-5">
 
         {/* ── Header ── */}
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div>
-            <h1 className="text-xl font-extrabold text-white leading-none">Super Admin</h1>
-            <p className="text-gray-500 text-xs mt-0.5">Smart Resto · لوحة التحكم العليا</p>
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl px-6 py-4 flex items-center justify-between flex-wrap gap-3">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shrink-0 shadow-lg shadow-emerald-900/40">
+              <TrendingUp className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h1 className="text-base font-extrabold text-white leading-none tracking-tight">SmartRestau Console</h1>
+              <p className="text-gray-500 text-xs mt-0.5 font-medium">Superadmin · Operations Center</p>
+            </div>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            <ThemeSwitcher current={p.theme} onChange={p.onSetTheme} />
-            {p.sweepMsg && <span className="text-emerald-400 text-xs bg-emerald-950/50 border border-emerald-700 px-3 py-1 rounded-full">{p.sweepMsg}</span>}
-            <a href="/superadmin/landing" className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 text-gray-200 px-3 py-2 rounded-xl text-sm font-bold transition-colors">
-              <Globe className="w-4 h-4" /> Landing
+            {p.sweepMsg && <span className="text-emerald-400 text-xs bg-emerald-950/50 border border-emerald-700 px-3 py-1 rounded-full font-medium">{p.sweepMsg}</span>}
+            {p.onOpenPurge && (
+              <button onClick={p.onOpenPurge}
+                className="flex items-center gap-2 bg-gray-800 hover:bg-orange-900/60 border border-gray-700 hover:border-orange-700 text-gray-400 hover:text-orange-300 px-3 py-2 rounded-xl text-xs font-bold transition-all">
+                <Flame className="w-3.5 h-3.5" /> Purge
+              </button>
+            )}
+            <a href="/superadmin/landing"
+              className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 px-3 py-2 rounded-xl text-xs font-bold transition-colors">
+              <Globe className="w-3.5 h-3.5" /> Landing
             </a>
             <button onClick={p.onRunSweep} disabled={p.sweeping}
-              className="flex items-center gap-2 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white px-3 py-2 rounded-xl text-sm font-bold transition-colors">
-              {p.sweeping ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
-              تحليل
+              className="flex items-center gap-2 bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 text-white px-3 py-2 rounded-xl text-xs font-bold transition-colors">
+              {p.sweeping ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
+              Sweep
             </button>
             <button onClick={() => p.onLoadAll(1)} disabled={p.loading}
-              className="p-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white transition-colors">
+              className="p-2 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-400 hover:text-white transition-colors">
               <RefreshCw className={`w-4 h-4 ${p.loading ? 'animate-spin' : ''}`} />
             </button>
           </div>
@@ -114,7 +123,7 @@ export default function ThemeA(p: ThemeProps) {
         </div>
 
         {/* ── Churn Alerts ── */}
-        <ChurnAlerts tenants={p.tenants} onOpenModal={p.onOpenModal} />
+        {/* ChurnAlerts removed — only plage + QA Restaurant in prod */}
 
         {/* ── Quick Delete by Email ── */}
         <div className="bg-red-950/20 border border-red-900/40 rounded-2xl px-5 py-4">

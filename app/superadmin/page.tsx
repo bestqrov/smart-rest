@@ -129,6 +129,12 @@ export default function SuperAdminPage() {
   const [selectedIds,    setSelectedIds]    = useState<Set<string>>(new Set())
   const [bulkDeleting,   setBulkDeleting]   = useState(false)
 
+  // Purge test data
+  const [showPurge,    setShowPurge]    = useState(false)
+  const [purgeKeep,    setPurgeKeep]    = useState('plage, qa')
+  const [purging,      setPurging]      = useState(false)
+  const [purgeResult,  setPurgeResult]  = useState<{ deleted: string[]; failed: string[] } | null>(null)
+
   // Premium plans
   const [premiumPlans,   setPremiumPlans]   = useState<any[]>([])
   const [editingPlan,    setEditingPlan]    = useState<any | null>(null)
@@ -426,6 +432,20 @@ export default function SuperAdminPage() {
 
   // ─── Premium Plans ────────────────────────────────────────────────────────
 
+  async function runPurge() {
+    const keep = purgeKeep.split(',').map(s => s.trim()).filter(Boolean)
+    setPurging(true); setPurgeResult(null)
+    try {
+      const res  = await fetch('/api/superadmin/tenants/purge-test', {
+        method: 'POST', headers: superHeader(), body: JSON.stringify({ keep }),
+      })
+      const data = await res.json()
+      setPurgeResult({ deleted: data.deleted ?? [], failed: data.failed ?? [] })
+      loadAll(1)
+    } catch { setPurgeResult({ deleted: [], failed: ['network error'] }) }
+    finally { setPurging(false) }
+  }
+
   async function savePlan(country: string, patch: Record<string, any>) {
     await fetch(`/api/superadmin/premium-plans/${country}`, {
       method:  'PUT',
@@ -488,6 +508,7 @@ export default function SuperAdminPage() {
     loading, sweeping, sweepMsg, page, filterCountry, filterStatus, filterTier,
     sortBal, actionId, selectedIds, bulkDeleting, deleteEmail, delByEmail,
     demoLoading, activatingDemo, mrrOpen, theme,
+    onOpenPurge:        () => { setShowPurge(true); setPurgeResult(null) },
     onLoadAll:          loadAll,
     onRunSweep:         runSweep,
     onSuspend:          suspend,
@@ -606,6 +627,51 @@ export default function SuperAdminPage() {
           superHeader={superHeader}
           loadAll={loadAll}
         />
+      )}
+
+      {showPurge && (
+        <div className="fixed inset-0 z-[60] bg-black/90 flex items-center justify-center p-4">
+          <div className="bg-gray-900 border border-orange-800 rounded-2xl w-full max-w-sm shadow-2xl p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-orange-900/60 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5 text-orange-400" />
+              </div>
+              <div>
+                <h3 className="text-white font-extrabold text-base">Purge Test Data</h3>
+                <p className="text-gray-400 text-xs mt-0.5">Deletes all cafes except protected subdomains</p>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-gray-400 text-xs font-semibold">Protected subdomains (comma-separated)</label>
+              <input
+                value={purgeKeep}
+                onChange={e => setPurgeKeep(e.target.value)}
+                className="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-white text-sm font-mono"
+                placeholder="plage, qa"
+              />
+              <p className="text-gray-600 text-xs">isDemo=true cafes are always kept regardless.</p>
+            </div>
+            {purgeResult && (
+              <div className={`rounded-xl px-4 py-3 text-sm ${purgeResult.failed.length ? 'bg-red-950/40 border border-red-800' : 'bg-emerald-950/40 border border-emerald-800'}`}>
+                {purgeResult.failed.length > 0
+                  ? <p className="text-red-300">Failed: {purgeResult.failed.join(', ')}</p>
+                  : <p className="text-emerald-300">Deleted {purgeResult.deleted.length} cafe(s): {purgeResult.deleted.join(', ') || 'none'}</p>
+                }
+              </div>
+            )}
+            <div className="flex gap-2">
+              <button onClick={() => { setShowPurge(false); setPurgeResult(null) }} disabled={purging}
+                className="flex-1 px-4 py-2.5 rounded-xl border border-gray-700 text-gray-400 hover:bg-gray-800 text-sm font-semibold">
+                Cancel
+              </button>
+              <button onClick={runPurge} disabled={purging}
+                className="flex-1 px-4 py-2.5 rounded-xl bg-orange-700 hover:bg-orange-600 text-white text-sm font-bold flex items-center justify-center gap-2">
+                {purging ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                {purging ? 'Purging…' : 'Purge'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {deleteConfirm && (
