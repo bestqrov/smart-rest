@@ -134,9 +134,9 @@ export default function LoginPage() {
     setDemoLoading(r.role); setDemoError('')
     try {
       if (r.role === 'BOSS') {
-        const res  = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: DEMO_CAFE.email, password: DEMO_CAFE.password }) })
+        const res  = await fetch('/api/demo-login', { method: 'POST' })
         const data = await res.json()
-        if (!res.ok) { setDemoError(data.error ?? 'Erreur'); setDemoLoading(null); return }
+        if (!res.ok) { setDemoError(data.error ?? 'Demo non disponible'); setDemoLoading(null); return }
         localStorage.setItem('token', data.token); localStorage.setItem('cafeId', data.cafeId); localStorage.setItem('subdomain', data.subdomain ?? '')
         const h = { 'Content-Type': 'application/json', Authorization: `Bearer ${data.token}` }
         const staffRes = await fetch('/api/admin/staff', { headers: h })

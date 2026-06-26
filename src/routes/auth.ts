@@ -92,10 +92,25 @@ router.post('/api/auth/login', async (req: Request, res: Response) => {
 router.post('/api/demo-login', async (req: Request, res: Response) => {
   try {
     const demoSubdomain = process.env.DEMO_SUBDOMAIN ?? 'plage'
-    const cafe = await prisma.cafe.findUnique({
+    let cafe = await prisma.cafe.findUnique({
       where: { subdomain: demoSubdomain },
       select: { id: true, subdomain: true },
     })
+
+    // Auto-seed demo data if café doesn't exist yet
+    if (!cafe) {
+      try {
+        const { default: seed } = await import('../../prisma/seed')
+        await seed()
+        cafe = await prisma.cafe.findUnique({
+          where: { subdomain: demoSubdomain },
+          select: { id: true, subdomain: true },
+        })
+      } catch (seedErr) {
+        logger.error({ msg: 'demo auto-seed failed', err: seedErr })
+      }
+    }
+
     if (!cafe) return res.status(503).json({ error: 'Demo not available' })
 
     const user = await prisma.user.findFirst({

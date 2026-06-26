@@ -70,8 +70,12 @@ import { initChangeStreams, closeChangeStreams } from './services/changeStreams'
 
 async function main() {
   if (process.env.DEMO_SEED === 'true') {
-    const { default: seed } = await import('../prisma/seed')
-    await seed()
+    try {
+      const { default: seed } = await import('../prisma/seed')
+      await seed()
+    } catch (e) {
+      console.error('⚠️  Demo seed failed — server will continue without demo data', e)
+    }
   }
 
   const dev = process.env.NODE_ENV !== 'production'
