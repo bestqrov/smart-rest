@@ -464,54 +464,51 @@ export default function EquipmentPage() {
   return (
     <div className={`max-w-5xl mx-auto px-4 py-8 space-y-6 ${isRTL ? 'text-right' : 'text-left'}`} dir={isRTL ? 'rtl' : 'ltr'}>
 
-      {/* ── Header ── */}
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-2xl bg-gradient-to-br from-blue-500/20 to-violet-500/20 ring-1 ring-blue-500/30">
-            <Wrench className="text-blue-400" size={26} />
+      {/* ── Hero Header ── */}
+      <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 p-6 shadow-xl shadow-blue-900/40">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(255,255,255,0.10),transparent_65%)]" />
+        <div className="relative flex items-center justify-between flex-wrap gap-4">
+          <div className="flex items-center gap-4">
+            <div className="p-3 rounded-2xl bg-white/15 ring-1 ring-white/25">
+              <Wrench className="text-white" size={28} />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-white">{t.title}</h1>
+              <p className="text-sm text-blue-100/70 mt-0.5">{t.subtitle}</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-xl font-bold text-white">{t.title}</h1>
-            <p className="text-xs text-slate-400 mt-0.5">{t.subtitle}</p>
+          <div className="flex items-center gap-2">
+            <button onClick={load} title={t.refresh} className="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-colors">
+              <RefreshCw size={15} />
+            </button>
+            <button
+              onClick={() => { setShowForm(true); setEditItem(null); setEquipForm({ ...EMPTY_EQUIP }) }}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-blue-700 text-sm font-bold hover:bg-blue-50 shadow-lg transition-colors"
+            >
+              <Plus size={15} /> {t.add}
+            </button>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={load}
-            title={t.refresh}
-            className="p-2.5 rounded-xl bg-slate-700/60 hover:bg-slate-600/60 text-slate-400 hover:text-white border border-slate-600 transition-colors"
-          >
-            <RefreshCw size={15} />
-          </button>
-          <button
-            onClick={() => { setShowForm(true); setEditItem(null); setEquipForm({ ...EMPTY_EQUIP }) }}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold shadow-lg shadow-blue-500/20 transition-colors"
-          >
-            <Plus size={15} /> {t.add}
-          </button>
-        </div>
-      </div>
-
-      {/* ── Summary stats ── */}
-      {summary && (
-        <>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {summary && (
+          <div className="relative mt-5 grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
-              { label: t.total,         value: summary.total,                        Icon: Package,       bg: 'bg-slate-700/60',    text: 'text-white',        border: 'border-slate-600'       },
-              { label: t.activeLbl,     value: summary.active,                       Icon: CheckCircle2,  bg: 'bg-emerald-500/10',  text: 'text-emerald-400',  border: 'border-emerald-500/20'  },
-              { label: t.brokenOrSAV,   value: summary.maintenance + summary.broken, Icon: AlertTriangle, bg: 'bg-amber-500/10',    text: 'text-amber-400',    border: 'border-amber-500/20'    },
-              { label: t.warrantyAlert, value: summary.warrantyExpiringSoon,         Icon: Shield,        bg: 'bg-rose-500/10',     text: 'text-rose-400',     border: 'border-rose-500/20'     },
+              { label: t.total,         value: summary.total,                        color: 'text-white'       },
+              { label: t.activeLbl,     value: summary.active,                       color: 'text-emerald-300' },
+              { label: t.brokenOrSAV,   value: summary.maintenance + summary.broken, color: 'text-amber-300'   },
+              { label: t.warrantyAlert, value: summary.warrantyExpiringSoon,         color: 'text-rose-300'    },
             ].map(c => (
-              <div key={c.label} className={`rounded-2xl border ${c.border} ${c.bg} p-4 flex items-start gap-3`}>
-                <div className={`mt-0.5 ${c.text}`}><c.Icon size={18} /></div>
-                <div>
-                  <p className="text-xs text-slate-400">{c.label}</p>
-                  <p className={`text-2xl font-bold mt-0.5 ${c.text}`}>{c.value}</p>
-                </div>
+              <div key={c.label} className="bg-white/10 rounded-xl p-3 ring-1 ring-white/10">
+                <p className="text-xs text-white/55 truncate">{c.label}</p>
+                <p className={`text-2xl font-bold mt-0.5 ${c.color}`}>{c.value}</p>
               </div>
             ))}
           </div>
+        )}
+      </div>
 
+      {/* ── Cost summary ── */}
+      {summary && (
+        <>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="rounded-2xl border border-blue-500/20 bg-blue-500/5 p-4 flex items-center gap-3">
               <div className="p-2 rounded-xl bg-blue-500/15"><CreditCard className="text-blue-400" size={18} /></div>

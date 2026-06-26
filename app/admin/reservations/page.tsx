@@ -325,65 +325,65 @@ export default function ReservationsPage() {
   return (
     <div className={`max-w-6xl mx-auto px-4 py-8 space-y-6 ${isRTL ? 'text-right' : 'text-left'}`}>
 
-      {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-emerald-500/10">
-            <CalendarDays className="text-emerald-400" size={26} />
+      {/* ── Hero Header ── */}
+      <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-emerald-600 via-emerald-700 to-teal-800 p-6 shadow-xl shadow-emerald-900/40">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(255,255,255,0.10),transparent_65%)]" />
+        <div className="relative flex items-center justify-between flex-wrap gap-4">
+          <div className="flex items-center gap-4">
+            <div className="p-3 rounded-2xl bg-white/15 ring-1 ring-white/25">
+              <CalendarDays className="text-white" size={28} />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-white">{t.title}</h1>
+              <p className="text-sm text-emerald-100/70 mt-0.5">{t.subtitle}</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-white">{t.title}</h1>
-            <p className="text-sm text-slate-400 mt-0.5">{t.subtitle}</p>
+          <div className="flex items-center gap-2">
+            <div className="flex bg-white/10 rounded-xl overflow-hidden ring-1 ring-white/20">
+              <button
+                onClick={() => setView('list')}
+                className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors ${view === 'list' ? 'bg-white/20 text-white' : 'text-white/60 hover:text-white'}`}
+              >
+                <List size={15} /> {t.listView}
+              </button>
+              <button
+                onClick={() => setView('calendar')}
+                className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors ${view === 'calendar' ? 'bg-white/20 text-white' : 'text-white/60 hover:text-white'}`}
+              >
+                <CalendarDays size={15} /> {t.calView}
+              </button>
+            </div>
+            <button
+              onClick={() => load(page)}
+              className="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-colors"
+            >
+              <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
+            </button>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          {/* View toggle */}
-          <div className="flex bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
-            <button
-              onClick={() => setView('list')}
-              className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors ${view === 'list' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white'}`}
-            >
-              <List size={15} /> {t.listView}
-            </button>
-            <button
-              onClick={() => setView('calendar')}
-              className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors ${view === 'calendar' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white'}`}
-            >
-              <CalendarDays size={15} /> {t.calView}
-            </button>
-          </div>
-          <button
-            onClick={() => load(page)}
-            className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
-          >
-            <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
-          </button>
-        </div>
-      </div>
 
-      {/* Stats row */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {statsCards.map(({ key, value }) => {
-          const meta = STATUS_META[key]
-          const Icon = meta.Icon
-          return (
-            <button
-              key={key}
-              onClick={() => { setFilterStatus(key); setPage(1) }}
-              className={`rounded-2xl border p-4 text-left transition-all ${
-                filterStatus === key
-                  ? `${meta.bg} ${meta.border}`
-                  : 'border-slate-700 bg-slate-800/50 hover:border-slate-600'
-              }`}
-            >
-              <div className="flex items-center gap-2 mb-1">
-                <Icon size={14} className={meta.color} />
-                <p className="text-xs text-slate-400">{meta.label(t)}</p>
-              </div>
-              <p className={`text-2xl font-bold ${meta.color}`}>{value}</p>
-            </button>
+        {/* Stats embedded in banner */}
+        <div className="relative mt-5 grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {statsCards.map(({ key, value }) => {
+            const meta = STATUS_META[key]
+            const Icon = meta.Icon
+            return (
+              <button
+                key={key}
+                onClick={() => { setFilterStatus(key); setPage(1) }}
+                className={`bg-white/10 rounded-xl p-3 ring-1 text-left transition-all hover:bg-white/20 ${
+                  filterStatus === key ? 'ring-white/40 bg-white/20' : 'ring-white/10'
+                }`}
+              >
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Icon size={13} className="text-white/60" />
+                  <p className="text-xs text-white/55 truncate">{meta.label(t)}</p>
+                </div>
+                <p className="text-2xl font-bold text-white">{value}</p>
+              </button>
           )
         })}
+        </div>
       </div>
 
       {/* Filters */}
