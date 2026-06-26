@@ -375,7 +375,8 @@ function TablePageInner() {
   const [optInName,   setOptInName]   = useState('')
   const [optInSending, setOptInSending] = useState(false)
   const [optInDone,   setOptInDone]   = useState(false)
-  const [userPhoto,   setUserPhoto]   = useState<string | null>(null)
+  const [userPhoto,       setUserPhoto]       = useState<string | null>(null)
+  const [selectedShareImg, setSelectedShareImg] = useState<string | null>(null)
   const [cafeShare,   setCafeShare]   = useState<{
     socialLinks: Record<string, string> | null
     hasSocialShareAddon: boolean
@@ -770,7 +771,10 @@ function TablePageInner() {
     const cafe = scan?.cafeName ?? 'Smart Menu'
     const allNames = items.map(i => i.name).join(', ')
     const social = cafeShare.hasSocialShareAddon && cafeShare.socialLinks
-      ? '\n' + Object.values(cafeShare.socialLinks as Record<string,string>).join('  ')
+      ? '\n' + Object.values(cafeShare.socialLinks as Record<string,string>)
+          .filter(v => v && v.trim().length > 0)
+          .map(v => v.trim().startsWith('http') ? v.trim() : `https://${v.trim()}`)
+          .join('\n')
       : ''
 
     const copies: Record<Lang, string> = {
@@ -847,8 +851,10 @@ function TablePageInner() {
 
   async function handleShare() {
     try {
-      if (userPhoto) {
-        const blob = await composeBrandedImage(userPhoto)
+      // Priority: user-taken photo → selected menu image → text only
+      const photoSrc = userPhoto ?? selectedShareImg ?? null
+      if (photoSrc) {
+        const blob = await composeBrandedImage(photoSrc)
         const file = new File([blob], 'smartrestau-dish.jpg', { type: 'image/jpeg' })
         if (typeof navigator !== 'undefined' && navigator.canShare?.({ files: [file] })) {
           await navigator.share({ title: scan?.cafeName ?? 'Smart Resto', text: shareText, files: [file] })
@@ -1654,7 +1660,7 @@ function TablePageInner() {
           <>
             {/* Backdrop */}
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 bg-black/50" onClick={() => setShowShare(false)} />
+              className="fixed inset-0 z-50 bg-black/50" onClick={() => { setShowShare(false); setSelectedShareImg(null) }} />
 
             {/* Bottom sheet — 50% height */}
             <motion.div
@@ -1671,7 +1677,7 @@ function TablePageInner() {
                     <p className="font-black text-white text-base">{tr.shareDone}</p>
                     <p className="text-xs text-gray-400 mt-0.5">{tr.shareSub}</p>
                   </div>
-                  <button onClick={() => setShowShare(false)}
+                  <button onClick={() => { setShowShare(false); setSelectedShareImg(null) }}
                     className="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center text-gray-400 text-sm shrink-0">
                     ✕
                   </button>
@@ -1713,21 +1719,36 @@ function TablePageInner() {
                   </div>
                 )}
 
-                {/* Menu item images */}
-                {shareImages.map((item, idx) => (
-                  <div key={idx} className="shrink-0 flex flex-col items-center gap-1">
-                    <div className="relative">
-                      <img src={item.imageUrl} alt={item.name}
-                        className="w-20 h-20 rounded-2xl object-cover border border-gray-700" />
-                      {item.qty > 1 && (
-                        <span className="absolute -top-1 -right-1 bg-emerald-500 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center">
-                          {item.qty}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-[10px] text-gray-400 w-20 text-center truncate">{item.name}</p>
-                  </div>
-                ))}
+                {/* Menu item images — selectable */}
+                {shareImages.map((item, idx) => {
+                  const isSelected = selectedShareImg === item.imageUrl
+                  return (
+                    <button key={idx} onClick={() => setSelectedShareImg(isSelected ? null : item.imageUrl)}
+                      className="shrink-0 flex flex-col items-center gap-1 active:scale-95 transition-transform">
+                      <div className="relative">
+                        <img src={item.imageUrl} alt={item.name}
+                          className={`w-20 h-20 rounded-2xl object-cover transition-all ${
+                            isSelected
+                              ? 'border-2 border-emerald-400 ring-2 ring-emerald-400/40'
+                              : 'border border-gray-700 opacity-70'
+                          }`} />
+                        {isSelected && (
+                          <div className="absolute inset-0 flex items-end justify-center pb-1.5">
+                            <span className="text-[10px] font-black bg-emerald-500 text-white px-1.5 py-0.5 rounded-full">✓</span>
+                          </div>
+                        )}
+                        {item.qty > 1 && (
+                          <span className="absolute -top-1 -right-1 bg-emerald-500 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center">
+                            {item.qty}
+                          </span>
+                        )}
+                      </div>
+                      <p className={`text-[10px] w-20 text-center truncate ${isSelected ? 'text-emerald-400 font-bold' : 'text-gray-400'}`}>
+                        {item.name}
+                      </p>
+                    </button>
+                  )
+                })}
 
                 {/* Cafe logo fallback */}
                 {shareImages.length === 0 && !userPhoto && scan?.cafeLogoUrl && (
