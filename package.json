@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "build": "npx prisma generate && next build",
+    "build": "./node_modules/.bin/prisma generate && next build",
     "start": "prisma db push && ts-node --transpile-only src/server.ts",
     "dev": "ts-node --transpile-only src/server.ts",
     "smoke": "ts-node scripts/smoke.ts",
@@ -58,6 +58,7 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "prisma": "^4.16.0",
     "@types/bcrypt": "^5.0.2",
     "@types/body-parser": "^1.19.6",
     "@types/cors": "^2.8.19",
