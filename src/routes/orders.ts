@@ -483,4 +483,62 @@ router.get('/api/orders/table/:tableId', authorizeAdmin, async (req: Request, re
   }
 })
 
+// ─── GET /api/orders/session/:sessionId/active ───────────────────────────────
+// Public — called on QR page reload to restore activeOrder state.
+// Returns the most recent non-terminal order for this session so the customer
+// doesn't lose their order tracker after a page refresh or navigation.
+
+router.get('/api/orders/session/:sessionId/active', async (req: Request, res: Response) => {
+  try {
+    const sessionId = String(req.params.sessionId)
+
+    // Validate session exists (no auth needed — sessionId is already a secret)
+    const session = await prisma.clientSession.findUnique({
+      where: { id: sessionId },
+      select: { id: true, cafeId: true, expiresAt: true }
+    })
+    if (!session || session.expiresAt <= new Date()) {
+      return res.status(401).json({ error: 'Session expired' })
+    }
+
+    const order = await prisma.order.findFirst({
+      where: {
+        sessionId: { equals: sessionId },
+        status: { notIn: ['COMPLETED', 'CANCELLED'] }
+      },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true, status: true, totalPrice: true,
+        items: {
+          select: {
+            productId: true, quantity: true,
+            product: { select: { nameEn: true, nameAr: true, nameFr: true, nameEs: true } }
+          }
+        }
+      }
+    })
+
+    if (!order) return res.json({ order: null })
+
+    return res.json({
+      order: {
+        orderId:    order.id,
+        status:     order.status,
+        totalPrice: order.totalPrice,
+        items: order.items.map(i => ({
+          productId: i.productId,
+          name:      i.product.nameEn,
+          nameAr:    i.product.nameAr,
+          nameFr:    i.product.nameFr,
+          nameEs:    i.product.nameEs,
+          quantity:  i.quantity,
+          status:    order.status,
+        }))
+      }
+    })
+  } catch (err) {
+    return res.status(500).json({ error: 'Failed' })
+  }
+})
+
 export default router

@@ -427,6 +427,7 @@ function TablePageInner() {
               setScan(merged)
               saveSession(cached.tableId, merged)
               await loadMenu()
+              await fetchActiveOrder(cached.sessionId, lang)
               setPhase('menu')
               startHeartbeat(cached.sessionId)
               return
@@ -450,6 +451,7 @@ function TablePageInner() {
         setScan(data)
         saveSession(data.tableId, data)
         await loadMenu()
+        await fetchActiveOrder(data.sessionId, lang)
         setPhase('welcome')
         startHeartbeat(data.sessionId)
 
@@ -464,6 +466,28 @@ function TablePageInner() {
     return () => { if (heartbeatRef.current) clearInterval(heartbeatRef.current) }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tableToken])
+
+  // ── Restore active order after page refresh ───────────────────────────────
+  async function fetchActiveOrder(sessionId: string, currentLang: Lang) {
+    try {
+      const r = await fetch(`/api/orders/session/${sessionId}/active`)
+      if (!r.ok) return
+      const data = await r.json()
+      if (!data.order) return
+      const o = data.order
+      setActiveOrder({
+        orderId:    o.orderId,
+        status:     o.status,
+        totalPrice: o.totalPrice,
+        items: o.items.map((i: any) => ({
+          productId: i.productId,
+          name: currentLang === 'ar' ? i.nameAr : currentLang === 'fr' ? i.nameFr : i.nameEn,
+          quantity:  i.quantity,
+          status:    i.status,
+        }))
+      })
+    } catch {}
+  }
 
   async function loadMenu() {
     try {
@@ -1011,22 +1035,17 @@ function TablePageInner() {
   return (
     <div className="min-h-screen bg-gray-950 text-white" dir={isRTL ? 'rtl' : 'ltr'}>
 
-      {/* ── Top bar ── */}
-      <header className="sticky top-0 z-30 bg-gray-900/95 backdrop-blur border-b border-gray-800 px-4 py-2.5 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          {scan.cafeLogoUrl && (
-            <img src={scan.cafeLogoUrl} alt={scan.cafeName} className="w-7 h-7 rounded-lg object-contain bg-white/5 border border-white/10" />
-          )}
+      {/* ── Sticky top bar — minimal navigation ── */}
+      <header className="sticky top-0 z-30 bg-gray-950/95 backdrop-blur border-b border-gray-800/60 px-4 py-2 flex items-center justify-between">
+        <div className="flex items-center gap-1.5">
           <span className="text-xs font-bold bg-emerald-500/20 text-emerald-400 px-2.5 py-1 rounded-full">
             {tr.table} {scan.isMerged ? scan.billingTableNumber : scan.tableNumber}
-            {scan.isMerged && <span className="ml-1 text-amber-400">({tr.mergedWith} {scan.billingTableNumber})</span>}
+            {scan.isMerged && <span className={`${isRTL ? 'mr-1' : 'ml-1'} text-amber-400`}>({tr.mergedWith} {scan.billingTableNumber})</span>}
           </span>
-          <span className="text-xs bg-gray-800 text-gray-300 px-2.5 py-1 rounded-full font-bold">
+          <span className="text-xs bg-gray-800 text-gray-400 px-2.5 py-1 rounded-full font-bold">
             {tr.seat} {scan.seatNumber}
           </span>
         </div>
-
-        {/* Lang selector */}
         <div className="flex items-center gap-0.5">
           {(['ar','en','fr','es'] as Lang[]).map(l => (
             <button key={l} onClick={() => { setLang(l); localStorage.setItem('sm_lang', l) }}
@@ -1036,6 +1055,25 @@ function TablePageInner() {
           ))}
         </div>
       </header>
+
+      {/* ── Cafe hero — logo + name + branding (non-sticky, scrolls away) ── */}
+      <div className="flex flex-col items-center gap-3 py-6 px-4 border-b border-gray-800/60">
+        {scan.cafeLogoUrl ? (
+          <img
+            src={scan.cafeLogoUrl}
+            alt={scan.cafeName ?? ''}
+            className="w-20 h-20 rounded-2xl object-contain bg-white/5 border border-white/10 shadow-2xl"
+          />
+        ) : (
+          <div className="w-20 h-20 rounded-2xl bg-gray-800 flex items-center justify-center text-4xl shadow-2xl">🍽️</div>
+        )}
+        {scan.cafeName && (
+          <h1 className="text-xl font-black text-white tracking-tight">{scan.cafeName}</h1>
+        )}
+        <p className="text-[10px] text-gray-600 font-medium tracking-widest uppercase">
+          Powered by <span className="text-gray-500 font-bold">Smart</span><span className="text-orange-500/80 font-bold">Restau</span> © 2025
+        </p>
+      </div>
 
       {/* ── Order tracker — floating prominent card above bottom bar ── */}
       <AnimatePresence>
@@ -1104,7 +1142,7 @@ function TablePageInner() {
       </AnimatePresence>
 
       {/* ── Sticky search + category pills ── */}
-      <div className="sticky top-[46px] z-20 bg-gray-950 border-b border-gray-800/60">
+      <div className="sticky top-[40px] z-20 bg-gray-950 border-b border-gray-800/60">
         <div className="px-4 pt-3 pb-2">
           <input
             value={search} onChange={e => setSearch(e.target.value)}
@@ -1136,7 +1174,7 @@ function TablePageInner() {
       </div>
 
       {/* ── Menu ── */}
-      <div className="pb-36 px-4 space-y-8 pt-4">
+      <div className="pb-40 px-4 space-y-8 pt-4">
         {filteredCategories.length === 0 && (
           <p className="text-center text-gray-600 py-12">{tr.noItems}</p>
         )}
@@ -1150,28 +1188,33 @@ function TablePageInner() {
                   const name = lang === 'ar' ? product.nameAr : lang === 'fr' ? product.nameFr : product.nameEn
                   const inCart = cart.find(c => c.productId === product.id)
                   return (
-                    <div key={product.id} className="bg-gray-900 rounded-2xl flex items-center gap-3 p-3 border border-gray-800">
+                    <div key={product.id} className={`bg-gray-900 rounded-2xl border border-gray-800/80 overflow-hidden flex ${product.imageUrl ? 'items-stretch' : 'items-center p-3'}`}>
                       {product.imageUrl && (
-                        <img src={product.imageUrl} alt={name} className="w-16 h-16 rounded-xl object-cover shrink-0" />
+                        <img src={product.imageUrl} alt={name}
+                          className="w-24 h-24 object-cover shrink-0 self-stretch" />
                       )}
-                      <div className="flex-1 min-w-0">
-                        <p className="font-bold text-sm text-white leading-tight">{name}</p>
-                        {product.description && <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{product.description}</p>}
-                        <p className="text-emerald-400 font-black text-sm mt-1">{product.price.toFixed(2)}</p>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        {inCart ? (
-                          <>
-                            <button onClick={() => removeFromCart(product.id)}
-                              className="w-7 h-7 rounded-full bg-gray-700 flex items-center justify-center text-white font-bold text-lg leading-none">−</button>
-                            <span className="text-sm font-bold w-5 text-center">{inCart.quantity}</span>
+                      <div className={`flex-1 min-w-0 flex items-center justify-between gap-2 ${product.imageUrl ? 'p-3' : ''}`}>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-sm text-white leading-tight">{name}</p>
+                          {product.description && (
+                            <p className="text-xs text-gray-500 mt-0.5 line-clamp-2 leading-relaxed">{product.description}</p>
+                          )}
+                          <p className="text-emerald-400 font-black text-sm mt-1.5">{product.price.toFixed(2)}</p>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {inCart ? (
+                            <>
+                              <button onClick={() => removeFromCart(product.id)}
+                                className="w-7 h-7 rounded-full bg-gray-700 flex items-center justify-center text-white font-bold text-lg leading-none active:scale-90 transition-transform">−</button>
+                              <span className="text-sm font-black w-5 text-center text-white">{inCart.quantity}</span>
+                              <button onClick={() => addToCart(product)}
+                                className="w-7 h-7 rounded-full bg-emerald-500 flex items-center justify-center text-white font-bold text-lg leading-none active:scale-90 transition-transform">+</button>
+                            </>
+                          ) : (
                             <button onClick={() => addToCart(product)}
-                              className="w-7 h-7 rounded-full bg-emerald-500 flex items-center justify-center text-white font-bold text-lg leading-none">+</button>
-                          </>
-                        ) : (
-                          <button onClick={() => addToCart(product)}
-                            className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-white font-bold text-xl leading-none">+</button>
-                        )}
+                              className="w-9 h-9 rounded-full bg-emerald-500 flex items-center justify-center text-white font-bold text-2xl leading-none active:scale-90 transition-transform shadow-lg shadow-emerald-500/20">+</button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   )
@@ -1182,17 +1225,31 @@ function TablePageInner() {
         })}
       </div>
 
+      {/* ── Footer copyright ── */}
+      <div className="text-center py-6">
+        <p className="text-[10px] text-gray-700 font-medium tracking-widest uppercase">
+          Powered by <span className="text-gray-600 font-bold">Smart</span><span className="text-orange-500/60 font-bold">Restau</span> · © {new Date().getFullYear()} All rights reserved
+        </p>
+      </div>
+
       {/* ── Bottom bar ── */}
-      <div className="fixed bottom-0 left-0 right-0 z-30 p-3 bg-gray-950/95 backdrop-blur border-t border-gray-800 flex gap-2">
+      <div className="fixed bottom-0 left-0 right-0 z-30 bg-gray-950/98 backdrop-blur border-t border-gray-800/80">
+        {/* SmartRestau copyright bar */}
+        <div className="flex items-center justify-center py-1 border-b border-gray-800/50">
+          <span className="text-[9px] text-gray-700 font-medium tracking-widest">
+            Powered by <span className="text-gray-600 font-bold">Smart</span><span className="text-orange-500/50 font-bold">Restau</span>
+          </span>
+        </div>
+        <div className="p-3 flex gap-2">
         {/* Waiter button */}
         <button onClick={() => setWaiterOpen(true)}
-          className="flex-shrink-0 w-12 h-12 rounded-xl bg-gray-800 flex items-center justify-center text-xl">
+          className="flex-shrink-0 w-12 h-12 rounded-xl bg-gray-800/80 border border-gray-700/50 flex items-center justify-center text-xl active:scale-90 transition-transform">
           🔔
         </button>
 
         {/* Bill button */}
         <button onClick={openBillModal}
-          className="flex-shrink-0 w-12 h-12 rounded-xl bg-blue-600/20 border border-blue-500/40 flex items-center justify-center text-xl">
+          className="flex-shrink-0 w-12 h-12 rounded-xl bg-blue-600/15 border border-blue-500/30 flex items-center justify-center text-xl active:scale-90 transition-transform">
           🧾
         </button>
 
@@ -1200,7 +1257,7 @@ function TablePageInner() {
         <button onClick={() => cartCount > 0 && setCartOpen(true)}
           disabled={cartCount === 0}
           className={`flex-1 h-12 rounded-xl font-bold text-sm flex items-center justify-between px-4 transition-all
-            ${cartCount > 0 ? 'bg-emerald-500 text-white active:scale-95' : 'bg-gray-800 text-gray-600'}`}
+            ${cartCount > 0 ? 'bg-emerald-500 text-white active:scale-95 shadow-lg shadow-emerald-500/20' : 'bg-gray-800/80 text-gray-600 border border-gray-700/50'}`}
         >
           <span>{cartCount > 0 ? tr.viewCart : tr.menu}</span>
           {cartCount > 0 && (
@@ -1210,6 +1267,7 @@ function TablePageInner() {
             </span>
           )}
         </button>
+        </div>
       </div>
 
       {/* ── Cart Modal ── */}
