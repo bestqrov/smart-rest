@@ -31,6 +31,7 @@ const NAV = [
   { href: '/admin/invoices',      icon: Receipt,        key: 'invoices'      },
   { href: '/admin/requisitions',  icon: ShoppingCart,   key: 'requisitions'  },
   { href: '/admin/reservations',   icon: CalendarDays,   key: 'reservations'  },
+  { href: '/admin/loyalty',        icon: Gift,           key: 'loyalty'        },
   { href: '/admin/marketing',     icon: Film,           key: 'marketing'     },
   { href: '/admin/social',     icon: Share2,          key: 'social'     },
   { href: '/admin/billing',    icon: CreditCard,      key: 'billing'    },

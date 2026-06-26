@@ -14,6 +14,39 @@ import logger from '../logger'
 
 const router = express.Router()
 
+// ─── GET /api/loyalty/customers — paginated list of all loyalty accounts ──────
+
+router.get('/api/loyalty/customers', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const cafeId = req.admin!.cafeId
+    const search = ((req.query.search as string) ?? '').trim()
+    const page   = Math.max(1, Number(req.query.page  ?? 1))
+    const limit  = Math.min(50, Math.max(1, Number(req.query.limit ?? 20)))
+    const sortBy = (req.query.sort as string) === 'points' ? 'points' : 'updatedAt'
+    const order  = (req.query.order as string) === 'asc' ? 'asc' : 'desc'
+
+    const where = search
+      ? { cafeId, phone: { contains: search } }
+      : { cafeId }
+
+    const [accounts, total] = await Promise.all([
+      prisma.loyaltyAccount.findMany({
+        where,
+        orderBy: { [sortBy]: order },
+        skip: (page - 1) * limit,
+        take: limit,
+        select: { id: true, phone: true, points: true, createdAt: true, updatedAt: true },
+      }),
+      prisma.loyaltyAccount.count({ where }),
+    ])
+
+    return res.json({ accounts, total, page, pages: Math.ceil(total / limit) })
+  } catch (err) {
+    logger.error({ msg: 'GET loyalty/customers error', err })
+    return res.status(500).json({ error: 'Failed to fetch loyalty customers' })
+  }
+})
+
 // ─── GET /api/loyalty/:phone ──────────────────────────────────────────────────
 
 router.get('/api/loyalty/:phone', authorizeAdmin, async (req: Request, res: Response) => {
