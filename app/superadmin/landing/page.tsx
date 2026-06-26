@@ -78,14 +78,14 @@ const DEFAULT_CONFIG: LandingConfig = {
       },
     },
   ],
-  contact: { whatsapp: '+212 6 00 00 00 00', email: 'contact@smartmenu.ma' },
+  contact: { whatsapp: '+34 664 546 849', email: 'SmartRestau@gmail.com' },
   heroImageUrl: '/assets/mobile.png',
   platformImageUrl: '',
   logoImageUrl: '',
   promoVideoUrl: '',
   text: { ar: {}, en: {}, fr: {} },
   faqs: [],
-  footer: { brandName: 'SmartMenu', flags: '🇲🇦,🇸🇦,🇦🇪,🇸🇳,🇨🇮,🇰🇪', whatsapp: '+212 6 00 00 00 00', email: 'contact@smartmenu.ma', copyright: `© ${new Date().getFullYear()} SmartMenu` },
+  footer: { brandName: 'SmartRestau', flags: '🇲🇦,🇸🇦,🇦🇪,🇸🇳,🇨🇮,🇰🇪', whatsapp: '+34 664 546 849', email: 'SmartRestau@gmail.com', copyright: `© ${new Date().getFullYear()} SmartRestau` },
 }
 
 function superHeader(secret: string, email = '') {

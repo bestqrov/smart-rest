@@ -821,15 +821,15 @@ export default function LandingPage() {
   const logoImageUrl     = cfg.logoImageUrl     ?? '/assets/logo.png'
   const promoVideoUrl    = cfg.promoVideoUrl    ?? ''
   const promoEmbedUrl    = getEmbedUrl(promoVideoUrl)
-  const contactPhone  = cfg.contact?.whatsapp ?? '+212 664546849'
-  const contactEmail  = cfg.contact?.email    ?? 'smartrestau@gmail.com'
+  const contactPhone  = cfg.contact?.whatsapp ?? '+34 664 546 849'
+  const contactEmail  = cfg.contact?.email    ?? 'SmartRestau@gmail.com'
   const footerBrand   = cfg.footer?.brandName ?? 'SmartMenu'
   const footerFlags   = cfg.footer?.flags
     ? (Array.isArray(cfg.footer.flags) ? cfg.footer.flags : String(cfg.footer.flags).split(',').map(f => f.trim()).filter(Boolean))
     : ['🇲🇦','🇸🇦','🇦🇪','🇸🇳','🇨🇮','🇰🇪']
   const footerPhone   = cfg.footer?.whatsapp  ?? contactPhone
   const footerEmail   = cfg.footer?.email     ?? contactEmail
-  const footerCopy    = cfg.footer?.copyright ?? `© ${new Date().getFullYear()} SmartMenu`
+  const footerCopy    = cfg.footer?.copyright ?? `© ${new Date().getFullYear()} SmartRestau`
 
   const isRtl = lang === 'ar'
 
