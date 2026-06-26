@@ -22,6 +22,8 @@ type Profile = {
   primaryFont:         string
   localIp:             string
   reservationsEnabled: boolean
+  googleMapsUrl:       string
+  tripadvisorUrl:      string
 }
 
 type StaffMember = {
@@ -95,7 +97,7 @@ export default function SettingsPage() {
   const [profile, setProfile] = useState<Profile>({
     businessName: '', name: '', country: '', currency: '',
     logoUrl: '', accentColor: '#059669', primaryFont: 'Cairo', localIp: '',
-    reservationsEnabled: true,
+    reservationsEnabled: true, googleMapsUrl: '', tripadvisorUrl: '',
   })
 
   useEffect(() => {
@@ -114,6 +116,8 @@ export default function SettingsPage() {
           primaryFont:         d.primaryFont ?? 'Cairo',
           localIp:             d.localIp ?? '',
           reservationsEnabled: d.reservationsEnabled ?? true,
+          googleMapsUrl:       d.googleMapsUrl ?? '',
+          tripadvisorUrl:      d.tripadvisorUrl ?? '',
         })
       })
   }, [router])
@@ -131,6 +135,8 @@ export default function SettingsPage() {
           primaryFont:         profile.primaryFont,
           localIp:             profile.localIp || null,
           reservationsEnabled: profile.reservationsEnabled,
+          googleMapsUrl:       profile.googleMapsUrl || null,
+          tripadvisorUrl:      profile.tripadvisorUrl || null,
         })
       })
       if (res.ok) showToast('تم الحفظ بنجاح ✓', 'success')
@@ -295,6 +301,36 @@ export default function SettingsPage() {
               />
               <p className="text-xs text-gray-400 mt-1">{t.localIpHint}</p>
             </Field>
+          </div>
+
+          {/* Review links */}
+          <div className="space-y-3 pt-2 border-t border-gray-100">
+            <p className="text-sm font-semibold text-gray-800">⭐ {lang === 'ar' ? 'روابط التقييم' : lang === 'fr' ? 'Liens d\'avis clients' : 'Review links'}</p>
+            <p className="text-xs text-gray-400 -mt-1">
+              {lang === 'ar' ? 'تظهر في شاشة الشكر بعد الدفع — اتركها فارغة لإخفائها' : lang === 'fr' ? 'Affichés après paiement — laisser vide pour masquer' : 'Shown on the thank-you screen after payment — leave empty to hide'}
+            </p>
+            <div>
+              <label className="text-xs font-medium text-gray-500 mb-1 block">Google Maps</label>
+              <input
+                value={profile.googleMapsUrl}
+                onChange={e => setProfile(p => ({ ...p, googleMapsUrl: e.target.value.trim() }))}
+                placeholder="https://g.page/r/xxxxx/review"
+                className="input font-mono text-xs"
+                inputMode="url"
+                spellCheck={false}
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-gray-500 mb-1 block">Tripadvisor</label>
+              <input
+                value={profile.tripadvisorUrl}
+                onChange={e => setProfile(p => ({ ...p, tripadvisorUrl: e.target.value.trim() }))}
+                placeholder="https://www.tripadvisor.com/Restaurant_Review-..."
+                className="input font-mono text-xs"
+                inputMode="url"
+                spellCheck={false}
+              />
+            </div>
           </div>
 
           {/* Reservations toggle */}

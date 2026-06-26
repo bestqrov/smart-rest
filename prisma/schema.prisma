@@ -263,6 +263,10 @@ model Cafe {
   maintenanceFee    Float?    // maintenance amount (default 25 USD for Gulf/Europe)
   nextBillingDate   DateTime? // next expected payment due date
 
+  // ── Review links (shown to customer on thank-you screen) ─────────────────
+  googleMapsUrl     String?  // e.g. https://g.page/r/xxx/review
+  tripadvisorUrl    String?  // e.g. https://www.tripadvisor.com/Restaurant_Review-...
+
   // ── Social media credentials (per-cafe, filled when owner connects accounts) ─
   fbPageId          String @default("")  // Facebook Page numeric ID
   fbAccessToken     String @default("")  // long-lived FB page token (~60 days)
