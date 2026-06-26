@@ -553,46 +553,44 @@ export default function POSPage() {
         <div className={`flex flex-col border-r border-gray-800 overflow-hidden
           ${selTable ? 'hidden md:flex md:w-[55%]' : 'flex w-full md:w-[55%]'}`}>
 
-          {/* Table map */}
-          <div className="shrink-0 border-b border-gray-800 p-3">
-            <div className="flex items-center justify-between mb-2.5">
-              <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">{L('nav_tables')}</span>
-              <div className="flex gap-2 text-[10px] text-gray-600">
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-sky-500 inline-block"/>QR</span>
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500 inline-block"/>POS</span>
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500 inline-block"/>{L('table_bill')}</span>
-              </div>
+          {/* Table strip — horizontal scroll, one row */}
+          <div className="shrink-0 border-b border-gray-800 px-3 pt-2 pb-2.5">
+            <div className="flex items-center gap-1 mb-2">
+              <span className="text-[10px] font-bold text-gray-600 uppercase tracking-widest">{L('nav_tables')}</span>
+              <span className="flex-1" />
+              <span className="flex items-center gap-1 text-[10px] text-gray-700"><span className="w-1.5 h-1.5 rounded-full bg-sky-500"/>QR</span>
+              <span className="flex items-center gap-1 text-[10px] text-gray-700"><span className="w-1.5 h-1.5 rounded-full bg-amber-500"/>POS</span>
+              <span className="flex items-center gap-1 text-[10px] text-gray-700"><span className="w-1.5 h-1.5 rounded-full bg-red-500"/>Bill</span>
             </div>
-            <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
+            <div className="flex gap-2 overflow-x-auto scrollbar-none" style={{touchAction:'pan-x'}}>
               {tables.map(t => {
-                const isAlert = alertIds.has(t.id)
+                const isAlert    = alertIds.has(t.id)
                 const isSelected = selTable?.id === t.id
+                const dotColor =
+                  t.status === 'OPEN_QR'        ? 'bg-sky-400' :
+                  t.status === 'OPEN_MANUAL'    ? 'bg-amber-400' :
+                  t.status === 'BILL_REQUESTED' ? 'bg-red-400 animate-ping' : 'bg-transparent'
                 return (
-                  <button key={t.id} disabled={t.status === 'INACTIVE' || t.status === 'EMPTY'}
+                  <button
+                    key={t.id}
+                    disabled={t.status === 'INACTIVE' || t.status === 'EMPTY'}
                     onClick={() => openTable(t)}
-                    className={`relative rounded-2xl border-2 py-3 px-2 flex flex-col items-center gap-0.5 transition-all
+                    className={`relative shrink-0 w-14 h-14 rounded-2xl border-2 flex flex-col items-center justify-center gap-0.5 transition-all active:scale-90
                       ${TABLE_STYLE[t.status]}
                       ${isSelected ? 'ring-2 ring-emerald-500 ring-offset-2 ring-offset-gray-950' : ''}
-                      ${isAlert ? 'animate-pulse' : ''}`}>
-                    <span className={`text-xl font-extrabold leading-none ${
+                      ${isAlert ? 'animate-pulse' : ''}`}
+                  >
+                    <span className={`text-lg font-extrabold leading-none ${
                       t.status === 'INACTIVE' ? 'text-gray-700' :
-                      t.status === 'EMPTY'    ? 'text-gray-400' : 'text-white'
+                      t.status === 'EMPTY'    ? 'text-gray-500' : 'text-white'
                     }`}>{t.tableNumber}</span>
-                    {TABLE_LABEL[t.status] ? (
-                      <span className={`text-[10px] font-bold leading-tight text-center ${
-                        t.status === 'OPEN_QR'        ? 'text-sky-400' :
-                        t.status === 'OPEN_MANUAL'    ? 'text-amber-400' :
-                        t.status === 'BILL_REQUESTED' ? 'text-red-400' : 'text-gray-600'
-                      }`}>{TABLE_LABEL[t.status]}</span>
-                    ) : (
-                      <span className="text-[10px] text-gray-700">—</span>
-                    )}
-                    {isAlert && <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full ring-2 ring-gray-950" />}
+                    <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />
+                    {isAlert && <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-red-500 rounded-full ring-2 ring-gray-950" />}
                   </button>
                 )
               })}
               {tables.length === 0 && !loadTables && (
-                <p className="col-span-full text-gray-600 text-xs text-center py-4">{L('loading')}</p>
+                <span className="text-gray-600 text-xs py-4">{L('loading')}</span>
               )}
             </div>
           </div>
