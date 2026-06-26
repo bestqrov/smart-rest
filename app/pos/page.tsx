@@ -6,8 +6,7 @@ import Image from 'next/image'
 import {
   LogOut, Bell, BellOff, ChevronLeft, ShoppingCart,
   UtensilsCrossed, LayoutGrid, Plus, Minus, Trash2,
-  Banknote, CreditCard, Smartphone, Printer, Check,
-  Loader2, AlertTriangle, RefreshCw
+  Printer, Check, Loader2, AlertTriangle, RefreshCw
 } from 'lucide-react'
 import { tr, getLang, setLang as saveLang, isRTL, POS_LANGS, type Lang } from '../../src/lib/posI18n'
 
@@ -126,6 +125,9 @@ export default function POSPage() {
   const [cart,        setCart]        = useState<CartItem[]>([])
   // checkout
   const [payMethod,   setPayMethod]   = useState<PayMethod>('CASH')
+  const [payLabel,    setPayLabel]    = useState('Espèces')
+  const [payModalOpen, setPayModalOpen] = useState(false)
+  const [payPending,  setPayPending]  = useState<{ method: PayMethod; label: string; icon: string } | null>(null)
   const [cashInput,   setCashInput]   = useState('')
   const [checkingOut, setCheckingOut] = useState(false)
   const [checkoutErr, setCheckoutErr] = useState('')
@@ -779,24 +781,17 @@ export default function POSPage() {
                     <span className="text-2xl font-extrabold text-white">{orderTotal.toFixed(2)} <span className="text-base font-bold text-gray-400">{currency}</span></span>
                   </div>
 
-                  {/* Payment method */}
-                  <div className="grid grid-cols-3 gap-2">
-                    {([
-                      { key: 'CASH',   icon: Banknote,    label: 'Cash'   },
-                      { key: 'CARD',   icon: CreditCard,  label: 'Card'   },
-                      { key: 'ONLINE', icon: Smartphone,  label: 'Online' },
-                    ] as const).map(({ key, icon: Icon, label }) => (
-                      <button key={key} onClick={() => setPayMethod(key)}
-                        className={`py-3 rounded-xl flex flex-col items-center gap-1 text-xs font-bold transition-all active:scale-95 border-2 ${
-                          payMethod === key
-                            ? 'bg-emerald-600 border-emerald-500 text-white'
-                            : 'bg-gray-900 border-gray-800 text-gray-500 hover:border-gray-600 hover:text-gray-300'
-                        }`}>
-                        <Icon className="w-5 h-5" />
-                        {label}
-                      </button>
-                    ))}
-                  </div>
+                  {/* Payment method — trigger */}
+                  <button
+                    onClick={() => { setPayPending(null); setPayModalOpen(true) }}
+                    className="w-full py-3 bg-gray-900 border-2 border-gray-700 hover:border-emerald-600 rounded-xl flex items-center justify-between px-4 transition-all active:scale-95"
+                  >
+                    <span className="text-gray-400 text-xs font-semibold">Paiement</span>
+                    <span className="text-white font-extrabold text-sm flex items-center gap-2">
+                      {payLabel}
+                      <span className="text-gray-500 text-xs">▾</span>
+                    </span>
+                  </button>
 
                   {/* Cash amount + change */}
                   {payMethod === 'CASH' && (
@@ -903,6 +898,77 @@ export default function POSPage() {
           </button>
         ))}
       </div>
+
+      {/* ── Payment Method Modal ─────────────────────────────────────────────── */}
+      {payModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-end sm:items-center justify-center p-4"
+          onClick={() => { setPayModalOpen(false); setPayPending(null) }}>
+          <div className="bg-gray-900 rounded-3xl p-6 w-full max-w-sm shadow-2xl"
+            onClick={e => e.stopPropagation()}>
+
+            {!payPending ? (
+              <>
+                <h3 className="font-black text-lg text-white mb-1">Mode de paiement</h3>
+                <p className="text-gray-500 text-sm mb-5">Choisissez le mode utilisé par le client</p>
+                <div className="space-y-2">
+                  {([
+                    { method: 'CASH'   as PayMethod, label: 'Espèces',      icon: '💵', sub: 'Cash / نقدي' },
+                    { method: 'CARD'   as PayMethod, label: 'TPE / Visa',   icon: '💳', sub: 'Carte bancaire' },
+                    { method: 'ONLINE' as PayMethod, label: 'Apple Pay',    icon: '🍎', sub: 'NFC · iPhone' },
+                    { method: 'ONLINE' as PayMethod, label: 'Google Pay',   icon: '🤖', sub: 'NFC · Android' },
+                    { method: 'ONLINE' as PayMethod, label: 'Orange Money', icon: '🟠', sub: 'Paiement mobile' },
+                  ]).map((opt, i) => (
+                    <button key={i} onClick={() => setPayPending(opt)}
+                      className="w-full flex items-center gap-4 px-4 py-3.5 bg-gray-800 hover:bg-gray-700 border border-gray-700 hover:border-gray-500 rounded-2xl transition-all active:scale-95 text-left">
+                      <span className="text-2xl">{opt.icon}</span>
+                      <div>
+                        <p className="text-white font-bold text-sm">{opt.label}</p>
+                        <p className="text-gray-500 text-xs">{opt.sub}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+                <button onClick={() => { setPayModalOpen(false); setPayPending(null) }}
+                  className="w-full mt-4 py-3 bg-gray-800 hover:bg-gray-700 text-gray-400 rounded-xl font-bold text-sm active:scale-95 transition-all">
+                  Annuler
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="text-center mb-6">
+                  <span className="text-5xl">{payPending.icon}</span>
+                  <h3 className="font-black text-xl text-white mt-3">{payPending.label}</h3>
+                  <p className="text-gray-400 text-sm mt-1">Confirmez-vous ce mode de paiement ?</p>
+                </div>
+                <div className="bg-amber-950/40 border border-amber-800/50 rounded-2xl px-4 py-3 mb-5 text-center">
+                  <p className="text-amber-300 text-xs font-semibold">
+                    {payPending.method === 'CASH'
+                      ? '✔ Assurez-vous d\'avoir reçu les espèces avant de confirmer'
+                      : payPending.method === 'CARD'
+                      ? '✔ Assurez-vous que le TPE a validé le paiement avant de confirmer'
+                      : '✔ Assurez-vous que le paiement mobile est confirmé avant de continuer'}
+                  </p>
+                </div>
+                <div className="flex gap-3">
+                  <button onClick={() => setPayPending(null)}
+                    className="flex-1 py-3 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-xl font-bold text-sm active:scale-95 transition-all">
+                    ← Retour
+                  </button>
+                  <button onClick={() => {
+                    setPayMethod(payPending.method)
+                    setPayLabel(payPending.label)
+                    setPayModalOpen(false)
+                    setPayPending(null)
+                  }}
+                    className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-sm active:scale-95 transition-all flex items-center justify-center gap-2">
+                    <Check className="w-4 h-4" /> Confirmer
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── Split Bill Modal ──────────────────────────────────────────────────── */}
       {splitOpen && selTable && (
