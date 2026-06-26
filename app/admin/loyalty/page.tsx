@@ -3,9 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Gift, Search, X, ChevronLeft, ChevronRight, Phone,
-  Star, TrendingUp, TrendingDown, RefreshCw, Loader2,
-  Users, Award, ArrowUpRight, ArrowDownRight, Clock,
-  CheckCircle2, AlertCircle, ChevronDown,
+  TrendingUp, TrendingDown, RefreshCw, Loader2,
+  Award, ArrowUpRight, ArrowDownRight,
+  CheckCircle2, AlertCircle,
 } from 'lucide-react'
 import { useLang } from '../lang-context'
 
@@ -273,7 +273,6 @@ export default function LoyaltyPage() {
   const isRTL = lang === 'ar'
 
   // ── List state ─────────────────────────────────────────────────────────────
-  const [tab,        setTab]        = useState<'customers' | 'rewards'>('customers')
   const [customers,  setCustomers]  = useState<LoyaltyCustomer[]>([])
   const [total,      setTotal]      = useState(0)
   const [page,       setPage]       = useState(1)
@@ -363,48 +362,28 @@ export default function LoyaltyPage() {
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className={`max-w-6xl mx-auto px-4 py-8 space-y-6 ${isRTL ? 'text-right' : 'text-left'}`} dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className={`max-w-5xl mx-auto px-4 py-6 space-y-5 ${isRTL ? 'text-right' : 'text-left'}`} dir={isRTL ? 'rtl' : 'ltr'}>
 
-      {/* ── Hero Header ── */}
-      <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-violet-600 via-purple-700 to-indigo-800 p-6 shadow-xl shadow-violet-900/40">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(255,255,255,0.10),transparent_65%)]" />
-        <div className="relative flex items-center justify-between flex-wrap gap-4">
-          <div className="flex items-center gap-4">
-            <div className="p-3 rounded-2xl bg-white/15 ring-1 ring-white/25">
-              <Gift className="text-white" size={28} />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-white">{t.title}</h1>
-              <p className="text-sm text-violet-100/70 mt-0.5">{t.subtitle}</p>
-            </div>
+      {/* ── Header ── */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-violet-500/15 border border-violet-500/20 flex items-center justify-center shrink-0">
+            <Gift size={16} className="text-violet-400" />
           </div>
-          <div className="flex items-center gap-3">
-            <div className="bg-white/10 rounded-xl px-4 py-2 text-center">
-              <p className="text-2xl font-black text-white">{total}</p>
-              <p className="text-[11px] text-violet-200/70">{t.totalCustomers}</p>
-            </div>
-            <button onClick={() => loadCustomers()} className="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors">
-              <RefreshCw size={16} />
-            </button>
+          <div>
+            <h1 className="text-base font-bold text-white leading-none">{t.title}</h1>
+            <p className="text-xs text-slate-500 mt-0.5">
+              <span className="text-white font-semibold">{total}</span> {t.totalCustomers}
+            </p>
           </div>
         </div>
+        <button onClick={() => loadCustomers()} className="p-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-400 hover:text-white transition-colors">
+          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+        </button>
       </div>
 
-      {/* ── Tabs ── */}
-      <div className="flex gap-1 bg-slate-800/50 p-1 rounded-xl w-fit">
-        {(['customers', 'rewards'] as const).map(tab_ => (
-          <button key={tab_} onClick={() => setTab(tab_)}
-            className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
-              tab === tab_ ? 'bg-violet-600 text-white shadow' : 'text-slate-400 hover:text-white'
-            }`}>
-            {tab_ === 'customers' ? t.tabCustomers : t.tabRewards}
-          </button>
-        ))}
-      </div>
-
-      {/* ════════════════ CUSTOMERS TAB ════════════════ */}
-      {tab === 'customers' && (
-        <div className="space-y-4">
+      {/* ════════════════ CUSTOMERS ════════════════ */}
+      <div className="space-y-4">
 
           {/* Controls */}
           <div className="flex flex-wrap gap-3 items-center">
@@ -516,34 +495,6 @@ export default function LoyaltyPage() {
             </div>
           )}
         </div>
-      )}
-
-      {/* ════════════════ REWARDS CATALOG TAB ════════════════ */}
-      {tab === 'rewards' && (
-        <div className="space-y-4">
-          <div>
-            <h2 className="text-lg font-bold text-white">{t.rewardTitle}</h2>
-            <p className="text-sm text-slate-500 mt-0.5">{t.rewardSub}</p>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {REWARDS.map(r => (
-              <div key={r.id} className="rounded-2xl border border-slate-700 bg-slate-800/50 p-5 space-y-3 hover:border-violet-500/40 transition-colors">
-                <div className="text-4xl">{r.icon}</div>
-                <div>
-                  <p className="text-white font-semibold">{r.label[lang] ?? r.label.fr}</p>
-                  <p className="text-violet-400 font-black text-xl mt-1">
-                    {r.pts} <span className="text-sm font-medium text-slate-500">{t.rewardPoints}</span>
-                  </p>
-                </div>
-                <div className={`h-1.5 rounded-full bg-slate-700`}>
-                  <div className="h-full rounded-full bg-gradient-to-r from-violet-500 to-purple-400"
-                    style={{ width: `${Math.min(100, (r.pts / 500) * 100)}%` }} />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* ════════════════ CUSTOMER PROFILE PANEL ════════════════ */}
       {showProfile && (
