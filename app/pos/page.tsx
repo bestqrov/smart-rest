@@ -563,29 +563,31 @@ export default function POSPage() {
                 <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500 inline-block"/>{L('table_bill')}</span>
               </div>
             </div>
-            <div className="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-5 lg:grid-cols-7 gap-2">
+            <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
               {tables.map(t => {
                 const isAlert = alertIds.has(t.id)
                 const isSelected = selTable?.id === t.id
                 return (
                   <button key={t.id} disabled={t.status === 'INACTIVE' || t.status === 'EMPTY'}
                     onClick={() => openTable(t)}
-                    className={`relative rounded-xl border-2 p-2 flex flex-col items-center transition-all
+                    className={`relative rounded-2xl border-2 py-3 px-2 flex flex-col items-center gap-0.5 transition-all
                       ${TABLE_STYLE[t.status]}
-                      ${isSelected ? 'ring-2 ring-emerald-500 ring-offset-1 ring-offset-gray-950' : ''}
+                      ${isSelected ? 'ring-2 ring-emerald-500 ring-offset-2 ring-offset-gray-950' : ''}
                       ${isAlert ? 'animate-pulse' : ''}`}>
-                    <span className={`text-base font-extrabold ${
+                    <span className={`text-xl font-extrabold leading-none ${
                       t.status === 'INACTIVE' ? 'text-gray-700' :
-                      t.status === 'EMPTY'    ? 'text-gray-500' : 'text-white'
+                      t.status === 'EMPTY'    ? 'text-gray-400' : 'text-white'
                     }`}>{t.tableNumber}</span>
-                    {TABLE_LABEL[t.status] && (
-                      <span className={`text-[9px] font-bold mt-0.5 ${
+                    {TABLE_LABEL[t.status] ? (
+                      <span className={`text-[10px] font-bold leading-tight text-center ${
                         t.status === 'OPEN_QR'        ? 'text-sky-400' :
                         t.status === 'OPEN_MANUAL'    ? 'text-amber-400' :
                         t.status === 'BILL_REQUESTED' ? 'text-red-400' : 'text-gray-600'
                       }`}>{TABLE_LABEL[t.status]}</span>
+                    ) : (
+                      <span className="text-[10px] text-gray-700">—</span>
                     )}
-                    {isAlert && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full ring-2 ring-gray-950" />}
+                    {isAlert && <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full ring-2 ring-gray-950" />}
                   </button>
                 )
               })}
@@ -616,24 +618,28 @@ export default function POSPage() {
 
             {/* Products grid */}
             <div className="flex-1 overflow-y-auto p-3" style={{touchAction:'pan-y'}}>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-2 lg:grid-cols-3 gap-3">
                 {activeItems.map(item => (
                   <button key={item.id} onClick={() => { if (selTable) addToCart(item) }}
                     disabled={!selTable}
-                    className={`bg-gray-900 border border-gray-800 rounded-2xl p-3 text-left transition-all active:scale-95
+                    className={`bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden text-left transition-all active:scale-95
                       ${selTable ? 'hover:border-emerald-700 hover:bg-gray-800 cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}>
                     {item.imageUrl ? (
-                      <img src={item.imageUrl} alt={item.nameEn} className="w-full h-16 object-cover rounded-xl mb-2" />
+                      <img src={item.imageUrl} alt={item.nameEn} className="w-full aspect-[4/3] object-cover" />
                     ) : (
-                      <div className="w-full h-16 bg-gray-800 rounded-xl flex items-center justify-center mb-2 text-2xl">
-                        <UtensilsCrossed className="w-6 h-6 text-gray-600" />
+                      <div className="w-full aspect-[4/3] bg-gray-800 flex items-center justify-center">
+                        <UtensilsCrossed className="w-8 h-8 text-gray-600" />
                       </div>
                     )}
-                    <p className="text-white font-bold text-xs leading-tight truncate">{item.nameEn || item.nameAr}</p>
-                    <p className="text-emerald-400 font-extrabold text-sm mt-1">{item.price.toFixed(2)} <span className="text-xs font-normal text-gray-500">{currency}</span></p>
-                    <div className={`mt-2 w-full flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-bold transition-colors
-                      ${selTable ? 'bg-emerald-900/50 text-emerald-400 hover:bg-emerald-800/60' : 'bg-gray-800 text-gray-600'}`}>
-                      <Plus className="w-3 h-3" /> Add
+                    <div className="p-2.5">
+                      <p className="text-white font-bold text-xs leading-tight truncate">{pName(item)}</p>
+                      <div className="flex items-center justify-between mt-1.5">
+                        <p className="text-emerald-400 font-extrabold text-sm">{item.price.toFixed(2)} <span className="text-[10px] font-normal text-gray-500">{currency}</span></p>
+                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors
+                          ${selTable ? 'bg-emerald-900/60 text-emerald-400' : 'bg-gray-800 text-gray-600'}`}>
+                          <Plus className="w-3.5 h-3.5" />
+                        </div>
+                      </div>
                     </div>
                   </button>
                 ))}
