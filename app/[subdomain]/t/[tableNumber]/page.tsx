@@ -768,8 +768,8 @@ function TablePageInner() {
   function buildShareText(): string {
     const items = activeOrder?.items ?? []
     const firstName = items[0]?.name ?? ''
-    const cafe = scan?.cafeName ?? 'Smart Menu'
-    const allNames = items.map(i => i.name).join(', ')
+    const cafe = scan?.cafeName ?? ''
+    const allNames = items.map(i => i.name).join(' · ')
     const social = cafeShare.hasSocialShareAddon && cafeShare.socialLinks
       ? '\n' + Object.values(cafeShare.socialLinks as Record<string,string>)
           .filter(v => v && v.trim().length > 0)
@@ -778,16 +778,19 @@ function TablePageInner() {
       : ''
 
     const copies: Record<Lang, string> = {
-      ar: `🔥 واو! طلبت "${firstName}" من ${cafe} وكانت خرافية!\n\nجربتها للمرة الأولى وما خيّبتنيش — أنصح بيها كلشي يحب الأكل الطيب 🍽️✨\n\n${allNames}${social}\n#SmartMenu #SmartRestau`,
-      fr: `🔥 Wow, j'ai commandé "${firstName}" chez ${cafe} et c'était incroyable !\n\nUn must absolu pour tous les amateurs de bonne cuisine 🍽️✨\n\n${allNames}${social}\n#SmartMenu #SmartRestau`,
-      en: `🔥 Wow, just had "${firstName}" at ${cafe} — absolutely incredible!\n\nHighly recommend it to anyone who loves great food 🍽️✨\n\n${allNames}${social}\n#SmartMenu #SmartRestau`,
-      es: `🔥 ¡Wow, pedí "${firstName}" en ${cafe} y fue increíble!\n\nSe lo recomiendo a todos los amantes de la buena comida 🍽️✨\n\n${allNames}${social}\n#SmartMenu #SmartRestau`,
+      ar: `🍽️ ${firstName}${cafe ? ` · ${cafe}` : ''}\n\n${allNames}${social}\n\n#SmartMenu`,
+      fr: `🍽️ ${firstName}${cafe ? ` · ${cafe}` : ''}\n\n${allNames}${social}\n\n#SmartMenu`,
+      en: `🍽️ ${firstName}${cafe ? ` · ${cafe}` : ''}\n\n${allNames}${social}\n\n#SmartMenu`,
+      es: `🍽️ ${firstName}${cafe ? ` · ${cafe}` : ''}\n\n${allNames}${social}\n\n#SmartMenu`,
     }
     return copies[lang]
   }
   const shareText = buildShareText()
 
-  function composeBrandedImage(photoDataUrl: string): Promise<Blob> {
+  function composeBrandedImage(
+    photoDataUrl: string,
+    opts: { cafeLogoUrl?: string | null; cafeName?: string; dishName?: string } = {}
+  ): Promise<Blob> {
     return new Promise((resolve, reject) => {
       const size = 1080
       const canvas = document.createElement('canvas')
@@ -796,53 +799,75 @@ function TablePageInner() {
       if (!ctx) { reject(new Error('no ctx')); return }
 
       const photo = new Image()
+      photo.crossOrigin = 'anonymous'
       photo.onload = () => {
-        // Cover-crop photo into square
+        // Cover-crop into square
         const scale = Math.max(size / photo.width, size / photo.height)
         const sw = photo.width * scale, sh = photo.height * scale
         ctx.drawImage(photo, (size - sw) / 2, (size - sh) / 2, sw, sh)
 
-        // Dark gradient bottom 45%
-        const grad = ctx.createLinearGradient(0, size * 0.52, 0, size)
+        // Dark gradient bottom 38%
+        const grad = ctx.createLinearGradient(0, size * 0.60, 0, size)
         grad.addColorStop(0, 'rgba(0,0,0,0)')
-        grad.addColorStop(1, 'rgba(0,0,0,0.90)')
+        grad.addColorStop(1, 'rgba(0,0,0,0.86)')
         ctx.fillStyle = grad
         ctx.fillRect(0, 0, size, size)
 
         const finish = () => {
-          // "Smart" (white) + "Resto" (orange)
-          ctx.font = "bold 76px -apple-system, BlinkMacSystemFont, Arial, sans-serif"
-          const smartW = ctx.measureText('Smart ').width
+          // Bottom-left: cafe name + dish
+          const bottomY = size - 52
+          if (opts.cafeName) {
+            ctx.font = "bold 44px -apple-system, BlinkMacSystemFont, Arial, sans-serif"
+            ctx.fillStyle = 'rgba(255,255,255,0.95)'
+            ctx.fillText(opts.cafeName, 48, bottomY - 48)
+          }
+          if (opts.dishName) {
+            ctx.font = "30px -apple-system, BlinkMacSystemFont, Arial, sans-serif"
+            ctx.fillStyle = 'rgba(255,255,255,0.62)'
+            ctx.fillText(opts.dishName, 48, bottomY - 8)
+          }
+
+          // SmartRestau watermark — subtle, bottom center, barely visible
+          ctx.globalAlpha = 0.18
+          ctx.font = "20px -apple-system, BlinkMacSystemFont, Arial, sans-serif"
           ctx.fillStyle = '#ffffff'
-          ctx.fillText('Smart ', 52, size - 138)
-          ctx.fillStyle = '#FF4B1F'
-          ctx.fillText('Resto', 52 + smartW, size - 138)
-
-          // Subtitle
-          ctx.font = "34px -apple-system, BlinkMacSystemFont, Arial, sans-serif"
-          ctx.fillStyle = 'rgba(255,255,255,0.82)'
-          ctx.fillText('The AI Operating System for Restaurants', 52, size - 82)
-
-          // Hashtags
-          ctx.font = "26px -apple-system, BlinkMacSystemFont, Arial, sans-serif"
-          ctx.fillStyle = 'rgba(255,255,255,0.50)'
-          ctx.fillText('#SmartMenu  #SmartRestau', 52, size - 34)
+          ctx.textAlign = 'center'
+          ctx.fillText('via SmartRestau', size / 2, size - 14)
+          ctx.textAlign = 'left'
+          ctx.globalAlpha = 1
 
           canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob')), 'image/jpeg', 0.93)
         }
 
-        // Logo top-right
-        const logo = new Image()
-        logo.crossOrigin = 'anonymous'
-        logo.onload = () => {
-          ctx.globalAlpha = 0.92
-          const lsize = 148
-          ctx.drawImage(logo, size - lsize - 28, 28, lsize, lsize)
-          ctx.globalAlpha = 1
+        // Restaurant logo — top-left, prominent
+        if (opts.cafeLogoUrl) {
+          const logo = new Image()
+          logo.crossOrigin = 'anonymous'
+          logo.onload = () => {
+            const lsize = 96
+            const pad = 32
+            const cx = pad + lsize / 2, cy = pad + lsize / 2
+            // White circle bg
+            ctx.globalAlpha = 0.92
+            ctx.beginPath()
+            ctx.arc(cx, cy, lsize / 2 + 6, 0, Math.PI * 2)
+            ctx.fillStyle = '#ffffff'
+            ctx.fill()
+            // Clip logo to circle
+            ctx.save()
+            ctx.beginPath()
+            ctx.arc(cx, cy, lsize / 2, 0, Math.PI * 2)
+            ctx.clip()
+            ctx.drawImage(logo, pad, pad, lsize, lsize)
+            ctx.restore()
+            ctx.globalAlpha = 1
+            finish()
+          }
+          logo.onerror = finish
+          logo.src = opts.cafeLogoUrl
+        } else {
           finish()
         }
-        logo.onerror = finish
-        logo.src = '/assets/logo.png'
       }
       photo.onerror = reject
       photo.src = photoDataUrl
@@ -854,7 +879,11 @@ function TablePageInner() {
       // Priority: user-taken photo → selected menu image → text only
       const photoSrc = userPhoto ?? selectedShareImg ?? null
       if (photoSrc) {
-        const blob = await composeBrandedImage(photoSrc)
+        const blob = await composeBrandedImage(photoSrc, {
+          cafeLogoUrl: scan?.cafeLogoUrl ?? null,
+          cafeName: scan?.cafeName ?? undefined,
+          dishName: activeOrder?.items[0]?.name ?? undefined,
+        })
         const file = new File([blob], 'smartrestau-dish.jpg', { type: 'image/jpeg' })
         if (typeof navigator !== 'undefined' && navigator.canShare?.({ files: [file] })) {
           await navigator.share({ title: scan?.cafeName ?? 'Smart Resto', text: shareText, files: [file] })
