@@ -1,88 +1,87 @@
+'use client'
 import type { Overview, MrrData } from '../types'
 
 interface Props {
-  overview: Overview
-  mrrData:  MrrData | null
+  overview:  Overview
+  mrrData:   MrrData | null
   onOpenMrr: () => void
 }
 
-interface Card {
-  label:  string
-  value:  string | number
-  trend?: string
-  trendUp?: boolean
-  color:  string
-  bg:     string
-  border: string
-  icon:   string
-}
+const CARDS = (o: Overview, mrr: MrrData | null) => [
+  {
+    label:  'Total Restaurants',
+    value:  o.totalCafes,
+    sub:    'Registered tenants',
+    bg:     'bg-blue-500',
+    shadow: 'shadow-blue-600/30',
+    icon:   '🏪',
+  },
+  {
+    label:  'Active',
+    value:  o.activeCafes,
+    sub:    `${Math.round((o.activeCafes / Math.max(o.totalCafes, 1)) * 100)}% of total`,
+    bg:     'bg-emerald-500',
+    shadow: 'shadow-emerald-600/30',
+    icon:   '✅',
+  },
+  {
+    label:  'Trial',
+    value:  o.trialCafes,
+    sub:    'Grace period',
+    bg:     'bg-amber-500',
+    shadow: 'shadow-amber-600/30',
+    icon:   '⏳',
+  },
+  {
+    label:  'Suspended',
+    value:  o.suspendedCafes,
+    sub:    'Need attention',
+    bg:     'bg-red-500',
+    shadow: 'shadow-red-600/30',
+    icon:   '⛔',
+  },
+  {
+    label:  'MRR',
+    value:  mrr ? `$${mrr.totalMRR_USD.toFixed(0)}` : '…',
+    sub:    'Monthly revenue',
+    bg:     'bg-violet-500',
+    shadow: 'shadow-violet-600/30',
+    icon:   '💎',
+    onClick: undefined as (() => void) | undefined,
+  },
+]
 
 export default function KpiCards({ overview, mrrData, onOpenMrr }: Props) {
-  const cards: Card[] = [
-    {
-      label: 'إجمالي المطاعم',
-      value: overview.totalCafes,
-      color: 'text-blue-400', bg: 'from-blue-950/60 to-gray-900', border: 'border-blue-800/40',
-      icon: '🏪',
-    },
-    {
-      label: 'نشطة',
-      value: overview.activeCafes,
-      trend: `${Math.round((overview.activeCafes / Math.max(overview.totalCafes, 1)) * 100)}%`,
-      trendUp: true,
-      color: 'text-emerald-400', bg: 'from-emerald-950/60 to-gray-900', border: 'border-emerald-800/40',
-      icon: '✅',
-    },
-    {
-      label: 'في التجربة',
-      value: overview.trialCafes,
-      color: 'text-amber-400', bg: 'from-amber-950/60 to-gray-900', border: 'border-amber-800/40',
-      icon: '⏳',
-    },
-    {
-      label: 'موقوفة',
-      value: overview.suspendedCafes,
-      color: 'text-red-400', bg: 'from-red-950/60 to-gray-900', border: 'border-red-800/40',
-      icon: '⛔',
-    },
-  ]
+  const cards = CARDS(overview, mrrData)
+  cards[4].onClick = onOpenMrr
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
       {cards.map((c, i) => (
-        <div key={i} className={`bg-gradient-to-br ${c.bg} border ${c.border} rounded-2xl p-4`}>
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xl">{c.icon}</span>
-            {c.trend && (
-              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-lg ${c.trendUp ? 'bg-emerald-900/60 text-emerald-400' : 'bg-red-900/60 text-red-400'}`}>
-                {c.trend}
-              </span>
+        <div
+          key={i}
+          className={`${c.bg} ${c.shadow} rounded-2xl shadow-lg overflow-hidden cursor-default`}
+          onClick={c.onClick}
+        >
+          {/* Main body */}
+          <div className="px-5 py-4 flex items-center justify-between">
+            <div>
+              <p className="text-white/70 text-xs font-semibold uppercase tracking-wide">{c.label}</p>
+              <p className="text-white text-3xl font-black mt-1 leading-none">{c.value}</p>
+            </div>
+            <div className="text-5xl opacity-30 select-none">{c.icon}</div>
+          </div>
+          {/* Footer */}
+          <div className="bg-black/15 px-5 py-2 flex items-center gap-1">
+            <span className="text-white/80 text-xs font-medium">{c.sub}</span>
+            {c.onClick && (
+              <button onClick={c.onClick} className="ml-auto text-white/60 hover:text-white text-[10px] underline transition-colors">
+                Details
+              </button>
             )}
           </div>
-          <div className={`text-3xl font-black ${c.color}`}>{c.value}</div>
-          <div className="text-gray-500 text-xs mt-1 font-medium">{c.label}</div>
         </div>
       ))}
-
-      {/* MRR card */}
-      <div className="bg-gradient-to-br from-violet-950/60 to-gray-900 border border-violet-800/40 rounded-2xl p-4">
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-xl">💎</span>
-          <button
-            onClick={onOpenMrr}
-            className="w-5 h-5 rounded-full bg-violet-900/60 hover:bg-violet-700 flex items-center justify-center text-violet-400 hover:text-white text-[10px] font-black transition-colors"
-            title="Breakdown"
-          >
-            i
-          </button>
-        </div>
-        {mrrData ? (
-          <div className="text-3xl font-black text-violet-400">${mrrData.totalMRR_USD.toFixed(0)}</div>
-        ) : (
-          <div className="text-3xl font-black text-violet-400 animate-pulse">…</div>
-        )}
-        <div className="text-gray-500 text-xs mt-1 font-medium">MRR / شهر</div>
-      </div>
     </div>
   )
 }

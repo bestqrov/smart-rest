@@ -4,6 +4,7 @@ import { Loader2, RefreshCw, Filter, Ban, CheckCircle, Edit3, Trash2, ChevronDow
 import type { ThemeProps, Tenant } from '../types'
 import KpiCards from '../analytics/KpiCards'
 import RevenueChart from '../analytics/RevenueChart'
+import ClientsMap from '../analytics/ClientsMap'
 import ActivityLog, { logActivity } from '../analytics/ActivityLog'
 import OnboardingProgress from '../analytics/OnboardingProgress'
 
@@ -77,8 +78,9 @@ export default function ThemeA(p: ThemeProps) {
         )}
 
         <div className="grid grid-cols-3 gap-4">
-          <div className="col-span-2">
+          <div className="col-span-2 space-y-4">
             <RevenueChart data={p.revenueHistory} />
+            <ClientsMap tenants={p.tenants} />
           </div>
           <div className="space-y-3">
             {/* Demo Requests mini */}
@@ -86,19 +88,19 @@ export default function ThemeA(p: ThemeProps) {
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <CalendarPlus className="w-4 h-4 text-emerald-400" />
-                  <span className="text-white font-bold text-sm">طلبات التجربة</span>
+                  <span className="text-white font-bold text-sm">Demo Requests</span>
                 </div>
                 <div className="flex gap-1">
                   {(['pending','activated','rejected'] as const).map(t => (
                     <button key={t} onClick={() => { p.onSetDemoTab(t); p.onLoadDemoRequests(t) }}
                       className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-colors ${p.demoTab === t ? 'bg-emerald-600 text-white' : 'bg-gray-800 text-gray-500'}`}>
-                      {{ pending:'معلق', activated:'مُفعّل', rejected:'مرفوض' }[t]}
+                      {{ pending:'Pending', activated:'Active', rejected:'Rejected' }[t]}
                     </button>
                   ))}
                 </div>
               </div>
               {p.demoRequests.length === 0 ? (
-                <p className="text-gray-600 text-xs text-center py-3">لا توجد طلبات</p>
+                <p className="text-gray-600 text-xs text-center py-3">No requests</p>
               ) : (
                 <div className="space-y-2 max-h-36 overflow-y-auto">
                   {p.demoRequests.slice(0, 3).map((d: any) => (
@@ -111,7 +113,7 @@ export default function ThemeA(p: ThemeProps) {
                         <button onClick={() => p.onActivateDemo(d.id)} disabled={p.activatingDemo === d.id}
                           className="shrink-0 flex items-center gap-1 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-[10px] font-bold px-2 py-1 rounded-lg">
                           {p.activatingDemo === d.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle className="w-3 h-3" />}
-                          تفعيل
+                          Activate
                         </button>
                       )}
                     </div>
