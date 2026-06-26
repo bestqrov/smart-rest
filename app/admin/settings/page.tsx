@@ -36,7 +36,18 @@ type StaffMember = {
   shiftStatus: string
 }
 
-type Tab = 'profile' | 'branding' | 'password' | 'staff'
+type PaymentConfig = {
+  orangeMoneyNumber:     string
+  mtnMoMoNumber:         string
+  waveWallet:            string
+  moyasarPublishableKey: string
+  stripePublishableKey:  string
+  stripeAccountId:       string
+  whatsappNumber:        string
+  country:               string
+}
+
+type Tab = 'profile' | 'branding' | 'password' | 'staff' | 'payments'
 
 // ─── Font options ─────────────────────────────────────────────────────────────
 
@@ -82,6 +93,14 @@ export default function SettingsPage() {
   const t = A[lang]
 
   const [activeTab, setActiveTab] = useState<Tab>('profile')
+  const [payConfig,  setPayConfig]  = useState<PaymentConfig>({
+    orangeMoneyNumber: '', mtnMoMoNumber: '', waveWallet: '',
+    moyasarPublishableKey: '', stripePublishableKey: '', stripeAccountId: '',
+    whatsappNumber: '', country: 'MA',
+  })
+  const [payLoading, setPayLoading] = useState(false)
+  const [paySaving,  setPaySaving]  = useState(false)
+  const [payMsg,     setPayMsg]     = useState<'ok' | 'err' | null>(null)
   const [toast, setToast]         = useState<{ msg: string; type: 'success' | 'error' } | null>(null)
   const [saving, setSaving]       = useState(false)
 
@@ -126,6 +145,19 @@ export default function SettingsPage() {
         })
       })
   }, [router])
+
+  async function savePaymentConfig() {
+    setPaySaving(true); setPayMsg(null)
+    try {
+      const res = await fetch('/api/admin/cafe/payment-config', {
+        method:  'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('adminToken')}` },
+        body:    JSON.stringify(payConfig),
+      })
+      setPayMsg(res.ok ? 'ok' : 'err')
+    } catch { setPayMsg('err') }
+    finally { setPaySaving(false); setTimeout(() => setPayMsg(null), 3000) }
+  }
 
   async function saveProfile() {
     setSaving(true)
@@ -183,6 +215,17 @@ export default function SettingsPage() {
     fetch('/api/admin/staff', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } })
       .then(r => r.ok ? r.json() : [])
       .then(d => setStaff(Array.isArray(d) ? d : d.staff ?? []))
+  }, [activeTab])
+
+  useEffect(() => {
+    if (activeTab !== 'payments') return
+    setPayLoading(true)
+    fetch('/api/admin/cafe/payment-config', {
+      headers: { Authorization: `Bearer ${localStorage.getItem('adminToken')}` },
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setPayConfig(d) })
+      .finally(() => setPayLoading(false))
   }, [activeTab])
 
   async function updatePin(staffId: string) {
@@ -251,6 +294,12 @@ export default function SettingsPage() {
             {tab.label}
           </button>
         ))}
+              <button onClick={() => setActiveTab('payments')}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm transition-all ${
+                  activeTab === 'payments' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/30' : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                }`}>
+                💳 {lang === 'ar' ? 'الدفع' : lang === 'fr' ? 'Paiements' : 'Payments'}
+              </button>
       </div>
 
       {/* ── Profile tab ── */}
@@ -542,6 +591,94 @@ export default function SettingsPage() {
             {t.changePassword}
           </button>
         </section>
+      )}
+
+      {activeTab === 'payments' && (
+        <div className="space-y-6">
+          {payLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-6 h-6 animate-spin text-emerald-500" />
+            </div>
+          ) : (
+            <>
+              {/* Africa — Mobile Money */}
+              <div className="bg-gray-900 rounded-2xl p-5 space-y-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-xl">🌍</span>
+                  <h3 className="font-bold text-white">Africa — Mobile Money</h3>
+                </div>
+                {([
+                  { key: 'orangeMoneyNumber', label: '🟠 Orange Money', placeholder: '+212 6XX XXX XXX' },
+                  { key: 'mtnMoMoNumber',     label: '🟡 MTN MoMo',     placeholder: '+225 0X XX XX XX' },
+                  { key: 'waveWallet',         label: '🔵 Wave',          placeholder: 'Numéro Wave' },
+                ] as const).map(({ key, label, placeholder }) => (
+                  <div key={key}>
+                    <label className="text-xs text-gray-400 font-semibold block mb-1">{label}</label>
+                    <input
+                      type="text"
+                      value={payConfig[key]}
+                      onChange={e => setPayConfig(p => ({ ...p, [key]: e.target.value }))}
+                      placeholder={placeholder}
+                      className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono"
+                    />
+                  </div>
+                ))}
+              </div>
+
+              {/* Gulf — Moyasar */}
+              <div className="bg-gray-900 rounded-2xl p-5 space-y-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-xl">🇸🇦</span>
+                  <h3 className="font-bold text-white">Gulf — Moyasar</h3>
+                  <span className="text-xs text-gray-500">(Visa · Mada · Apple Pay · Google Pay)</span>
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 font-semibold block mb-1">Moyasar Publishable Key</label>
+                  <input
+                    type="text"
+                    value={payConfig.moyasarPublishableKey}
+                    onChange={e => setPayConfig(p => ({ ...p, moyasarPublishableKey: e.target.value }))}
+                    placeholder="pk_live_..."
+                    className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono"
+                  />
+                </div>
+              </div>
+
+              {/* Global — Stripe */}
+              <div className="bg-gray-900 rounded-2xl p-5 space-y-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-xl">💳</span>
+                  <h3 className="font-bold text-white">Global — Stripe</h3>
+                  <span className="text-xs text-gray-500">(Visa · Apple Pay · Google Pay)</span>
+                </div>
+                {([
+                  { key: 'stripePublishableKey', label: 'Publishable Key', placeholder: 'pk_live_...' },
+                  { key: 'stripeAccountId',      label: 'Account ID (Connect)', placeholder: 'acct_...' },
+                ] as const).map(({ key, label, placeholder }) => (
+                  <div key={key}>
+                    <label className="text-xs text-gray-400 font-semibold block mb-1">{label}</label>
+                    <input
+                      type="text"
+                      value={payConfig[key]}
+                      onChange={e => setPayConfig(p => ({ ...p, [key]: e.target.value }))}
+                      placeholder={placeholder}
+                      className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono"
+                    />
+                  </div>
+                ))}
+              </div>
+
+              {/* Save */}
+              {payMsg === 'ok'  && <p className="text-emerald-400 text-sm font-semibold">✅ {lang === 'ar' ? 'تم الحفظ' : lang === 'fr' ? 'Enregistré' : 'Saved'}</p>}
+              {payMsg === 'err' && <p className="text-red-400 text-sm font-semibold">❌ {lang === 'ar' ? 'حدث خطأ' : 'Error — try again'}</p>}
+              <button onClick={savePaymentConfig} disabled={paySaving}
+                className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-extrabold rounded-2xl transition-all active:scale-95 flex items-center justify-center gap-2">
+                {paySaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                {lang === 'ar' ? 'حفظ' : lang === 'fr' ? 'Enregistrer' : 'Save'}
+              </button>
+            </>
+          )}
+        </div>
       )}
 
       {/* ── Staff PINs tab ── */}
