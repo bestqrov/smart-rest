@@ -120,10 +120,11 @@ type PaymentConfig {
   orangeMoneyNumber String @default("")
   mtnMoMoNumber     String @default("")
   waveWallet        String @default("")
-  // Gulf (Moyasar) — public/secret kept in env; only publishable key stored here
+  // Gulf (Moyasar)
   moyasarPublishableKey String @default("")
-  // Stripe Connect (future direct charges to cafe's connected account)
-  stripeAccountId  String @default("")
+  // Stripe (cards + Apple Pay + Google Pay)
+  stripePublishableKey  String @default("")
+  stripeAccountId       String @default("")
   // WhatsApp zero-rating ingest
   whatsappNumber   String @default("")  // restaurant's WhatsApp number for *6 orders
 }
