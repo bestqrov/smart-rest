@@ -165,7 +165,7 @@ export default function LoginPage() {
     if (!forgotEmail.trim()) return
     setForgotLoading(true)
     try {
-      await fetch('/api/auth/magic-login', {
+      await fetch('/api/auth/magic-login-send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: forgotEmail.trim() }),
