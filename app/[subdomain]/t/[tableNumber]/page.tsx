@@ -382,7 +382,15 @@ function TablePageInner() {
     isDemo: boolean
     googleMapsUrl: string | null
     tripadvisorUrl: string | null
-  }>({ socialLinks: null, hasSocialShareAddon: false, isDemo: false, googleMapsUrl: null, tripadvisorUrl: null })
+    paymentGateway: {
+      hasOrangeMoney: boolean
+      hasMtnMomo: boolean
+      hasWave: boolean
+      moyasarPublishableKey: string | null
+      hasStripe: boolean
+      whatsappNumber: string | null
+    } | null
+  }>({ socialLinks: null, hasSocialShareAddon: false, isDemo: false, googleMapsUrl: null, tripadvisorUrl: null, paymentGateway: null })
 
   const socketRef       = useRef<Socket | null>(null)
   const heartbeatRef    = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -508,6 +516,7 @@ function TablePageInner() {
           isDemo:              data.isDemo ?? false,
           googleMapsUrl:       data.googleMapsUrl ?? null,
           tripadvisorUrl:      data.tripadvisorUrl ?? null,
+          paymentGateway:      data.paymentGateway ?? null,
         })
       }
     } catch {}
@@ -861,6 +870,55 @@ function TablePageInner() {
     reader.onload = ev => setUserPhoto(ev.target?.result as string)
     reader.readAsDataURL(file)
   }
+
+  // ── Dynamic payment options — built from paymentGateway config ───────────
+  const pg = cafeShare.paymentGateway
+  const paymentOptions: { emoji: string; label: string; sub: string; action: () => void }[] = [
+    {
+      emoji: '💵',
+      label: tr.payCash,
+      sub: isRTL ? 'سيأتي النادل إليك' : lang === 'fr' ? 'Le serveur viendra vous voir' : 'Waiter will come to you',
+      action: () => { callWaiter('pay_cash'); setShowPayment(false); setBillMsg(tr.billRequested); setTimeout(() => setBillMsg(''), 4000) },
+    },
+    {
+      emoji: '💳',
+      label: tr.payCard,
+      sub: isRTL ? 'TPE — سيحضر لك الجهاز' : lang === 'fr' ? 'Terminal TPE apporté à table' : 'TPE terminal brought to table',
+      action: () => { callWaiter('pay_tpe'); setShowPayment(false); setBillMsg(tr.billRequested); setTimeout(() => setBillMsg(''), 4000) },
+    },
+    ...(pg?.hasStripe ? [
+      {
+        emoji: '🍎',
+        label: 'Apple Pay',
+        sub: isRTL ? 'NFC · iPhone' : 'NFC · iPhone',
+        action: () => { callWaiter('pay_tpe'); setShowPayment(false); setBillMsg(tr.billRequested); setTimeout(() => setBillMsg(''), 4000) },
+      },
+      {
+        emoji: '🤖',
+        label: 'Google Pay',
+        sub: isRTL ? 'NFC · Android' : 'NFC · Android',
+        action: () => { callWaiter('pay_tpe'); setShowPayment(false); setBillMsg(tr.billRequested); setTimeout(() => setBillMsg(''), 4000) },
+      },
+    ] : []),
+    ...(pg?.hasOrangeMoney ? [{
+      emoji: '🟠',
+      label: 'Orange Money',
+      sub: isRTL ? 'دفع عبر Orange Money' : lang === 'fr' ? 'Paiement via Orange Money' : 'Pay via Orange Money',
+      action: () => { callWaiter('pay_tpe'); setShowPayment(false); setBillMsg(tr.billRequested); setTimeout(() => setBillMsg(''), 4000) },
+    }] : []),
+    ...(pg?.hasMtnMomo ? [{
+      emoji: '🟡',
+      label: 'MTN MoMo',
+      sub: isRTL ? 'دفع عبر MTN MoMo' : lang === 'fr' ? 'Paiement via MTN MoMo' : 'Pay via MTN MoMo',
+      action: () => { callWaiter('pay_tpe'); setShowPayment(false); setBillMsg(tr.billRequested); setTimeout(() => setBillMsg(''), 4000) },
+    }] : []),
+    ...(pg?.hasWave ? [{
+      emoji: '🔵',
+      label: 'Wave',
+      sub: isRTL ? 'دفع عبر Wave' : lang === 'fr' ? 'Paiement via Wave' : 'Pay via Wave',
+      action: () => { callWaiter('pay_tpe'); setShowPayment(false); setBillMsg(tr.billRequested); setTimeout(() => setBillMsg(''), 4000) },
+    }] : []),
+  ]
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
@@ -1452,13 +1510,7 @@ function TablePageInner() {
               </div>
               <p className="text-sm text-gray-400 mb-5">{tr.paymentSub}</p>
               <div className="space-y-2.5">
-                {([
-                  { emoji: '💵', label: tr.payCash,  sub: isRTL ? 'سيأتي النادل إليك' : lang === 'fr' ? 'Le serveur viendra vous voir' : 'Waiter will come to you', action: () => { callWaiter('pay_cash'); setShowPayment(false); setBillMsg(tr.billRequested); setTimeout(() => setBillMsg(''), 4000) } },
-                  { emoji: '💳', label: tr.payCard,  sub: isRTL ? 'TPE — سيحضر لك الجهاز' : lang === 'fr' ? 'Terminal TPE apporté à table' : 'TPE terminal will be brought', action: () => { callWaiter('pay_tpe'); setShowPayment(false); setBillMsg(tr.billRequested); setTimeout(() => setBillMsg(''), 4000) } },
-                  { emoji: '🍎', label: 'Apple Pay', sub: isRTL ? 'NFC — قرّب هاتفك للجهاز' : lang === 'fr' ? 'NFC — approchez votre iPhone' : 'NFC — tap your iPhone on terminal', action: () => { callWaiter('pay_tpe'); setShowPayment(false); setBillMsg(tr.billRequested); setTimeout(() => setBillMsg(''), 4000) } },
-                  { emoji: '🤖', label: 'Google Pay', sub: isRTL ? 'NFC — قرّب هاتفك للجهاز' : lang === 'fr' ? 'NFC — approchez votre Android' : 'NFC — tap your Android on terminal', action: () => { callWaiter('pay_tpe'); setShowPayment(false); setBillMsg(tr.billRequested); setTimeout(() => setBillMsg(''), 4000) } },
-                  { emoji: '🟠', label: 'Orange Money', sub: isRTL ? 'الدفع عبر Orange Money' : lang === 'fr' ? 'Paiement via Orange Money' : 'Pay via Orange Money', action: () => { callWaiter('pay_tpe'); setShowPayment(false); setBillMsg(tr.billRequested); setTimeout(() => setBillMsg(''), 4000) } },
-                ] as const).map((opt, i) => (
+                {paymentOptions.map((opt, i) => (
                   <button key={i} onClick={opt.action}
                     className="w-full bg-gray-800 hover:bg-gray-700 active:scale-95 rounded-2xl p-4 flex items-center gap-4 transition-all">
                     <span className="text-2xl shrink-0">{opt.emoji}</span>
