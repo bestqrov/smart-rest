@@ -274,6 +274,79 @@ const T = {
   },
 } as const
 
+// ─── Share message templates per dialect/region ───────────────────────────────
+
+const SHARE_TEMPLATES: Record<string, string[]> = {
+  ma: [ // Moroccan Darija
+    '🔥 واو! {dish} فـ {cafe} — ما تصدقيش كيفاش كانت مزيانة! ولا فـ حياتي 🍽️\n\n{items}',
+    '🤤 {cafe} ما خيّبوش — {dish} كانت خرافة! كلشي يجربها 🍽️\n\n{items}',
+    '✨ هذ النهار كليت {dish} فـ {cafe} وما بقيتش نتكلم — تجربة من أروع ما كليت 🔥\n\n{items}',
+    '🍽️ {cafe} عندهم {dish} تهبل — ماشي كلام، جربوها وغادي تفهمو 🤤\n\n{items}',
+  ],
+  dz: [ // Algerian Darija
+    '🔥 واش! {dish} عند {cafe} — مكنتش نحسبش تكون هكاك! 🍽️\n\n{items}',
+    '✨ جربت {dish} عند {cafe} وربي كانت قمة — نوصي بيها كاملين 🤤\n\n{items}',
+    '🤤 {cafe} فاقت التوقعات — {dish} جاءت على قد الوصف وأكثر 🔥\n\n{items}',
+  ],
+  tn: [ // Tunisian
+    '🔥 سحر! {dish} في {cafe} — مانجيمش نتخيل أحلى منها! 🍽️\n\n{items}',
+    '✨ جربت {dish} في {cafe} وبصراحة كانت قمة — كل واحد يجربها 🤤\n\n{items}',
+    '🤤 {cafe} ما تخيبش — {dish} جاءت تحفة 🔥\n\n{items}',
+  ],
+  eg: [ // Egyptian Arabic
+    '🔥 يا ساتر! {dish} من {cafe} دي كانت تحفة يا جماعة 🍽️\n\n{items}',
+    '🤤 جربتوا {dish} من {cafe}؟ والنبي ده تحفة الدنيا — اجربوه 🔥\n\n{items}',
+    '✨ اللي ماجربش {dish} من {cafe} فاته حاجة في الدنيا 🍽️\n\n{items}',
+  ],
+  gulf: [ // Khaleeji Gulf Arabic
+    '🔥 والله {dish} من {cafe} ما شفت أحلى منها بحياتي — جربوها 🍽️\n\n{items}',
+    '🤤 جربت {dish} من {cafe} وهييت — أنصح فيها الكل بجد 🔥\n\n{items}',
+    '✨ {cafe} فاقت التوقعات — {dish} كانت خيال ما يوصف 🍽️\n\n{items}',
+  ],
+  fr: [ // French
+    '🔥 Franchement, le {dish} chez {cafe} était incroyable ! À tester absolument 🍽️\n\n{items}',
+    '🤤 J\'ai testé {dish} chez {cafe} — honnêtement c\'est de loin le meilleur que j\'ai mangé ✨\n\n{items}',
+    '✨ {cafe} m\'a bluffé — {dish} était parfait, je recommande les yeux fermés 🔥\n\n{items}',
+    '🍽️ Coup de cœur pour le {dish} chez {cafe} — une valeur sûre à ne pas manquer 🤤\n\n{items}',
+  ],
+  en: [ // English
+    '🔥 Just had {dish} at {cafe} and honestly it was next level 🍽️\n\n{items}',
+    '🤤 If you haven\'t tried {dish} at {cafe} yet, you\'re seriously missing out ✨\n\n{items}',
+    '✨ {cafe} exceeded all expectations — {dish} was absolutely incredible 🔥\n\n{items}',
+    '🍽️ Best {dish} I\'ve had in a long time — {cafe} never disappoints 🤤\n\n{items}',
+  ],
+  es: [ // Spanish
+    '🔥 ¡Acabo de probar {dish} en {cafe} y ha sido increíble! 🍽️\n\n{items}',
+    '🤤 ¿Ya probaste {dish} en {cafe}? En serio, te lo estás perdiendo ✨\n\n{items}',
+    '✨ {cafe} superó todas mis expectativas — {dish} estaba de otro nivel 🔥\n\n{items}',
+  ],
+}
+
+function detectRegion(): string {
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
+    if (/Casablanca|Ceuta/.test(tz))                                                  return 'ma'
+    if (/Algiers/.test(tz))                                                            return 'dz'
+    if (/Tunis/.test(tz))                                                              return 'tn'
+    if (/Cairo|Alexandria/.test(tz))                                                   return 'eg'
+    if (/Dubai|Riyadh|Kuwait|Bahrain|Qatar|Muscat|Aden/.test(tz))                     return 'gulf'
+    if (/Paris|Brussels|Geneva|Luxembourg|Monaco|Andorra|Lisbon|Madrid|Rome/.test(tz)) return 'fr'
+    if (/Buenos_Aires|Mexico|Bogota|Lima|Santiago|Caracas/.test(tz))                   return 'es'
+    return 'en'
+  } catch { return 'en' }
+}
+
+function pickShareTemplate(lang: string, cafe: string, dish: string, items: string): string {
+  let region = lang === 'ar' ? detectRegion() : lang
+  if (!SHARE_TEMPLATES[region]) region = 'en'
+  const pool = SHARE_TEMPLATES[region]
+  const tpl = pool[Math.floor(Math.random() * pool.length)]
+  return tpl
+    .replace('{dish}', dish)
+    .replace('{cafe}', cafe)
+    .replace('{items}', items)
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type ScanResult = {
@@ -776,14 +849,8 @@ function TablePageInner() {
           .map(v => v.trim().startsWith('http') ? v.trim() : `https://${v.trim()}`)
           .join('\n')
       : ''
-
-    const copies: Record<Lang, string> = {
-      ar: `🍽️ ${firstName}${cafe ? ` · ${cafe}` : ''}\n\n${allNames}${social}\n\nsmartrestau.com\n#SmartRestau @smartrestau.app`,
-      fr: `🍽️ ${firstName}${cafe ? ` · ${cafe}` : ''}\n\n${allNames}${social}\n\nsmartrestau.com\n#SmartRestau @smartrestau.app`,
-      en: `🍽️ ${firstName}${cafe ? ` · ${cafe}` : ''}\n\n${allNames}${social}\n\nsmartrestau.com\n#SmartRestau @smartrestau.app`,
-      es: `🍽️ ${firstName}${cafe ? ` · ${cafe}` : ''}\n\n${allNames}${social}\n\nsmartrestau.com\n#SmartRestau @smartrestau.app`,
-    }
-    return copies[lang]
+    const body = pickShareTemplate(lang, cafe, firstName, allNames)
+    return `${body}${social}\n\nsmartrestau.com\n#SmartRestau @smartrestau.app`
   }
   const shareText = buildShareText()
 
