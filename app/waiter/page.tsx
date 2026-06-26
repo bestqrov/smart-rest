@@ -1,11 +1,11 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import Image from 'next/image'
 import { io as socketIO, Socket } from 'socket.io-client'
 import {
-  Bell, CheckCircle2, Clock, DollarSign, CreditCard,
-  Utensils, BellRing, Users, LogOut, Wifi, WifiOff,
-  ShoppingCart, Plus, Minus, Trash2, Send, ChefHat,
+  Bell, CheckCircle2, Clock, Users, LogOut, WifiOff,
+  ShoppingCart, Plus, Minus, Trash2, Send, ChefHat, Utensils,
 } from 'lucide-react'
 import { tr, getLang, setLang as saveLang, POS_LANGS, type Lang } from '../../src/lib/posI18n'
 
@@ -152,6 +152,7 @@ export default function WaiterPage() {
   const [staffName, setStaffName] = useState('')
   const [staffRole, setStaffRole] = useState('WAITER')
   const [connected, setConnected] = useState(false)
+  const [cafeInfo,  setCafeInfo]  = useState<{ name: string; logoUrl: string | null }>({ name: '', logoUrl: null })
 
   const [waiters,       setWaiters]       = useState<WaiterStatus[]>([])
   const [notifications, setNotifications] = useState<WaiterNotif[]>([])
@@ -192,6 +193,21 @@ export default function WaiterPage() {
     setAuthed(true)
     setStaffName(localStorage.getItem('staffName') ?? '')
     setStaffRole(p.staffRole ?? 'WAITER')
+
+    // Fetch cafe name + logo via public menu API
+    const subdomain = localStorage.getItem('subdomain') || localStorage.getItem('posLastSubdomain')
+    if (subdomain) {
+      fetch(`/api/menu/public?sub=${subdomain}`)
+        .then(r => r.ok ? r.json() : null)
+        .then(d => {
+          if (!d) return
+          setCafeInfo({
+            name:    d.cafeName || d.name || '',
+            logoUrl: d.logoSquareUrl || d.logoUrl || null,
+          })
+        })
+        .catch(() => {})
+    }
   }, [])
 
   useEffect(() => {
@@ -377,6 +393,16 @@ export default function WaiterPage() {
   const cartTotal     = orderCart.reduce((s, c) => s + c.price * c.qty, 0)
   const cartQty       = orderCart.reduce((s, c) => s + c.qty, 0)
 
+  // Shift clock
+  const clockInIso   = selfWaiter?.clockInTime ?? null
+  const shiftMinutes = clockInIso
+    ? Math.floor((Date.now() - new Date(clockInIso).getTime()) / 60000)
+    : 0
+  const clockInStr   = clockInIso
+    ? new Date(clockInIso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+    : null
+  const passation    = shiftMinutes >= 450  // warn after 7h 30m
+
   // ── render ─────────────────────────────────────────────────────────────────
   return (
     <>
@@ -388,42 +414,67 @@ export default function WaiterPage() {
       <div className="h-screen bg-[#0a0a0f] flex flex-col overflow-hidden text-white">
 
         {/* ── Header ─────────────────────────────────────────────────────── */}
-        <header className="shrink-0 bg-[#111118] border-b border-white/5 px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
-              <Utensils className="w-4 h-4 text-emerald-400" />
-            </div>
-            <div>
-              <p className="font-bold text-sm text-white leading-none">
-                {staffName || 'Waiter'}
-                <span className="ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-white/10 text-gray-400">
-                  {staffRole}
-                </span>
-              </p>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                {connected
-                  ? <><div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /><span className="text-[11px] text-gray-500">Live</span></>
-                  : <><WifiOff className="w-3 h-3 text-red-400" /><span className="text-[11px] text-red-400">Disconnected</span></>
+        <header className="shrink-0 bg-[#111118] border-b border-white/5">
+          <div className="px-4 py-3 flex items-center justify-between">
+            {/* Left: cafe logo + name + waiter */}
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0 overflow-hidden">
+                {cafeInfo.logoUrl
+                  ? <Image src={cafeInfo.logoUrl} alt="logo" width={40} height={40} className="w-full h-full object-cover" />
+                  : <Utensils className="w-4 h-4 text-emerald-400" />
                 }
               </div>
+              <div className="min-w-0">
+                {cafeInfo.name && (
+                  <p className="text-[11px] text-gray-500 font-medium truncate leading-none mb-0.5">{cafeInfo.name}</p>
+                )}
+                <p className="font-bold text-sm text-white leading-none truncate">
+                  {staffName || 'Waiter'}
+                  <span className="ml-1.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-white/10 text-gray-400">
+                    {staffRole}
+                  </span>
+                </p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  {clockInStr && (
+                    <span className="text-[11px] text-gray-600 flex items-center gap-1">
+                      <Clock className="w-2.5 h-2.5" />
+                      {clockInStr} · {shiftDuration(clockInIso)}
+                    </span>
+                  )}
+                  {connected
+                    ? <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    : <WifiOff className="w-3 h-3 text-red-400" />
+                  }
+                </div>
+              </div>
+            </div>
+
+            {/* Right: lang + logout */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              <div className="flex gap-0.5">
+                {POS_LANGS.map(l => (
+                  <button key={l.code} onClick={() => { saveLang(l.code); setLangState(l.code) }}
+                    className={`w-7 h-7 rounded-lg text-sm transition-all ${lang === l.code ? 'bg-white/15' : 'text-gray-600 hover:text-gray-400'}`}>
+                    {l.flag}
+                  </button>
+                ))}
+              </div>
+              <button onClick={logout}
+                className="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center transition-all text-gray-400">
+                <LogOut className="w-4 h-4" />
+              </button>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            {/* Lang */}
-            <div className="flex gap-0.5">
-              {POS_LANGS.map(l => (
-                <button key={l.code} onClick={() => { saveLang(l.code); setLangState(l.code) }}
-                  className={`w-7 h-7 rounded-lg text-sm transition-all ${lang === l.code ? 'bg-white/15' : 'text-gray-600 hover:text-gray-400'}`}>
-                  {l.flag}
-                </button>
-              ))}
+          {/* Passation banner — shown after 7h30m on shift */}
+          {passation && (
+            <div className="px-4 py-2 bg-amber-500/10 border-t border-amber-500/20 flex items-center gap-2">
+              <span className="text-base shrink-0">⚑</span>
+              <p className="text-xs text-amber-300 font-medium">
+                Passation recommandée — {shiftDuration(clockInIso)} de service · Briefer votre collègue avant de partir
+              </p>
             </div>
-            <button onClick={logout}
-              className="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center transition-all text-gray-400">
-              <LogOut className="w-4 h-4" />
-            </button>
-          </div>
+          )}
         </header>
 
         {/* ── Body ───────────────────────────────────────────────────────── */}
@@ -581,7 +632,7 @@ export default function WaiterPage() {
                 {activeWaiters.length > 0 && (
                   <div className="space-y-2">
                     <Label text="On Duty" count={activeWaiters.length} />
-                    {activeWaiters.map((w, idx) => {
+                    {activeWaiters.map(w => {
                       const p    = PALETTES[waiters.indexOf(w) % PALETTES.length]
                       const myA  = activeNotifs.filter(n => n.tableId && w.assignedTables.some(t => t.id === n.tableId))
                       const dur  = shiftDuration(w.clockInTime)
@@ -795,7 +846,11 @@ export default function WaiterPage() {
         </main>
 
         {/* ── Bottom nav ─────────────────────────────────────────────────── */}
-        <nav className="shrink-0 fixed bottom-0 left-0 right-0 bg-[#0f0f18]/95 backdrop-blur border-t border-white/8 flex safe-bottom">
+        <nav className="shrink-0 fixed bottom-0 left-0 right-0 bg-[#0f0f18]/95 backdrop-blur border-t border-white/8 flex flex-col safe-bottom">
+          <p className="text-center text-[9px] text-gray-800 font-medium pt-1.5 select-none tracking-wide">
+            Powered by <span className="text-gray-700">SmartRestau</span>
+          </p>
+          <div className="flex">
           {([
             {
               id: 'alerts' as const,
@@ -839,6 +894,7 @@ export default function WaiterPage() {
               )}
             </button>
           ))}
+          </div>
         </nav>
 
       </div>
