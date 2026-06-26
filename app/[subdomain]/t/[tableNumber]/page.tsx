@@ -75,6 +75,13 @@ const T = {
     thankBye: 'Goodbye 👋',
     paymentTitle: 'Ready to pay?',
     paymentSub: 'Choose how you would like to settle your bill.',
+    optInTitle: '🎁 Get exclusive offers!',
+    optInSub: 'Leave your WhatsApp to be the first to know about special deals.',
+    optInPhone: 'WhatsApp number (+212…)',
+    optInName: 'Your name (optional)',
+    optInConfirm: 'Yes, subscribe',
+    optInSkip: 'No thanks',
+    optInDone: '✅ Subscribed!',
   },
   ar: {
     scanningTitle: 'جارٍ تجهيز طاولتك…',
@@ -131,6 +138,13 @@ const T = {
     thankBye: 'مع السلامة 👋',
     paymentTitle: 'جاهز للدفع؟',
     paymentSub: 'اختر طريقة الدفع المناسبة لك.',
+    optInTitle: '🎁 احصل على عروض حصرية!',
+    optInSub: 'خليّ رقم واتساب باش تكون أول من يعرف بالعروض الخاصة.',
+    optInPhone: 'رقم واتساب (+212…)',
+    optInName: 'اسمك (اختياري)',
+    optInConfirm: 'نعم، اشترك',
+    optInSkip: 'لا شكراً',
+    optInDone: '✅ تم الاشتراك!',
   },
   fr: {
     scanningTitle: 'Préparation de votre table…',
@@ -187,6 +201,13 @@ const T = {
     thankBye: 'Au revoir 👋',
     paymentTitle: 'Prêt à payer ?',
     paymentSub: 'Choisissez votre mode de paiement.',
+    optInTitle: '🎁 Recevez des offres exclusives !',
+    optInSub: 'Laissez votre WhatsApp pour être le premier informé des promotions.',
+    optInPhone: 'Numéro WhatsApp (+212…)',
+    optInName: 'Votre prénom (optionnel)',
+    optInConfirm: 'Oui, s\'abonner',
+    optInSkip: 'Non merci',
+    optInDone: '✅ Abonné !',
   },
   es: {
     scanningTitle: 'Preparando tu mesa…',
@@ -243,6 +264,13 @@ const T = {
     thankBye: 'Adiós 👋',
     paymentTitle: '¿Listo para pagar?',
     paymentSub: 'Elige cómo quieres pagar.',
+    optInTitle: '🎁 ¡Recibe ofertas exclusivas!',
+    optInSub: 'Deja tu WhatsApp para ser el primero en saber de las promociones.',
+    optInPhone: 'Número WhatsApp (+212…)',
+    optInName: 'Tu nombre (opcional)',
+    optInConfirm: 'Sí, suscribirme',
+    optInSkip: 'No gracias',
+    optInDone: '✅ ¡Suscrito!',
   },
 } as const
 
@@ -341,6 +369,11 @@ function TablePageInner() {
   const [billSending, setBillSending] = useState(false)
   const [activeCat,   setActiveCat]   = useState('')
   const [showShare,   setShowShare]   = useState(false)
+  const [showOptIn,   setShowOptIn]   = useState(false)
+  const [optInPhone,  setOptInPhone]  = useState('')
+  const [optInName,   setOptInName]   = useState('')
+  const [optInSending, setOptInSending] = useState(false)
+  const [optInDone,   setOptInDone]   = useState(false)
   const [userPhoto,   setUserPhoto]   = useState<string | null>(null)
   const [cafeShare,   setCafeShare]   = useState<{
     socialLinks: Record<string, string> | null
@@ -579,11 +612,42 @@ function TablePageInner() {
       setCartOpen(false)
       setOrderMsg(tr.orderPlaced)
       setTimeout(() => setOrderMsg(''), 4000)
+
+      // Show opt-in popup once per device (3s after order confirmation)
+      const alreadyAsked = localStorage.getItem('sm_optin_asked')
+      if (!alreadyAsked) {
+        setTimeout(() => setShowOptIn(true), 3000)
+      }
     } catch {
       setOrderMsg(tr.failedOrder)
     } finally {
       setPlacing(false)
     }
+  }
+
+  // ── Opt-in submit ─────────────────────────────────────────────────────────
+  async function submitOptIn() {
+    if (!optInPhone.trim() || optInSending) return
+    setOptInSending(true)
+    try {
+      await fetch('/api/customers/optin', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ tableToken, phone: optInPhone.trim(), name: optInName.trim() || undefined }),
+      })
+      setOptInDone(true)
+      localStorage.setItem('sm_optin_asked', '1')
+      setTimeout(() => setShowOptIn(false), 2000)
+    } catch {
+      setShowOptIn(false)
+    } finally {
+      setOptInSending(false)
+    }
+  }
+
+  function dismissOptIn() {
+    localStorage.setItem('sm_optin_asked', '1')
+    setShowOptIn(false)
   }
 
   // ── Waiter call ───────────────────────────────────────────────────────────
@@ -1351,6 +1415,66 @@ function TablePageInner() {
               </div>
             </motion.div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── WhatsApp Opt-in popup — shown once after first order ── */}
+      <AnimatePresence>
+        {showOptIn && (
+          <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 bg-black/60" onClick={dismissOptIn} />
+            <motion.div
+              initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 28, stiffness: 260 }}
+              className="fixed bottom-0 left-0 right-0 z-50 bg-gray-900 rounded-t-3xl p-6"
+              dir={isRTL ? 'rtl' : 'ltr'}
+            >
+              <div className="w-10 h-1 bg-gray-700 rounded-full mx-auto mb-5" />
+
+              {optInDone ? (
+                <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+                  className="flex flex-col items-center gap-3 py-4">
+                  <span className="text-5xl">✅</span>
+                  <p className="text-white font-black text-lg">{tr.optInDone}</p>
+                </motion.div>
+              ) : (
+                <>
+                  <div className="mb-5">
+                    <p className="font-black text-white text-lg">{tr.optInTitle}</p>
+                    <p className="text-sm text-gray-400 mt-1">{tr.optInSub}</p>
+                  </div>
+                  <div className="space-y-3 mb-5">
+                    <input
+                      type="tel"
+                      value={optInPhone}
+                      onChange={e => setOptInPhone(e.target.value)}
+                      placeholder={tr.optInPhone}
+                      inputMode="tel"
+                      className="w-full bg-gray-800 text-white placeholder-gray-500 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500 font-mono"
+                    />
+                    <input
+                      type="text"
+                      value={optInName}
+                      onChange={e => setOptInName(e.target.value)}
+                      placeholder={tr.optInName}
+                      className="w-full bg-gray-800 text-white placeholder-gray-500 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+                  <div className="flex gap-3">
+                    <button onClick={dismissOptIn}
+                      className="flex-1 py-3 rounded-xl bg-gray-800 text-gray-400 font-bold text-sm active:scale-95 transition-all">
+                      {tr.optInSkip}
+                    </button>
+                    <button onClick={submitOptIn} disabled={!optInPhone.trim() || optInSending}
+                      className="flex-[2] py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-white font-black text-sm active:scale-95 transition-all">
+                      {optInSending ? '…' : tr.optInConfirm}
+                    </button>
+                  </div>
+                </>
+              )}
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
 

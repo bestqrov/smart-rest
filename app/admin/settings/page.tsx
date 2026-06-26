@@ -13,17 +13,19 @@ import { A } from '../../../lib/adminI18n'
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Profile = {
-  businessName:        string
-  name:                string
-  country:             string
-  currency:            string
-  logoUrl:             string
-  accentColor:         string
-  primaryFont:         string
-  localIp:             string
-  reservationsEnabled: boolean
-  googleMapsUrl:       string
-  tripadvisorUrl:      string
+  businessName:           string
+  name:                   string
+  country:                string
+  currency:               string
+  logoUrl:                string
+  accentColor:            string
+  primaryFont:            string
+  localIp:                string
+  reservationsEnabled:    boolean
+  googleMapsUrl:          string
+  tripadvisorUrl:         string
+  reEngagementMessage:    string
+  reEngagementDays:       number
 }
 
 type StaffMember = {
@@ -98,6 +100,7 @@ export default function SettingsPage() {
     businessName: '', name: '', country: '', currency: '',
     logoUrl: '', accentColor: '#059669', primaryFont: 'Cairo', localIp: '',
     reservationsEnabled: true, googleMapsUrl: '', tripadvisorUrl: '',
+    reEngagementMessage: '', reEngagementDays: 7,
   })
 
   useEffect(() => {
@@ -107,17 +110,19 @@ export default function SettingsPage() {
       .then(r => r.ok ? r.json() : null)
       .then(d => {
         if (d) setProfile({
-          businessName:        d.businessName ?? '',
-          name:                d.name ?? '',
-          country:             d.country ?? '',
-          currency:            d.currency ?? '',
-          logoUrl:             d.logoUrl ?? '',
-          accentColor:         d.accentColor ?? '#059669',
-          primaryFont:         d.primaryFont ?? 'Cairo',
-          localIp:             d.localIp ?? '',
-          reservationsEnabled: d.reservationsEnabled ?? true,
-          googleMapsUrl:       d.googleMapsUrl ?? '',
-          tripadvisorUrl:      d.tripadvisorUrl ?? '',
+          businessName:           d.businessName ?? '',
+          name:                   d.name ?? '',
+          country:                d.country ?? '',
+          currency:               d.currency ?? '',
+          logoUrl:                d.logoUrl ?? '',
+          accentColor:            d.accentColor ?? '#059669',
+          primaryFont:            d.primaryFont ?? 'Cairo',
+          localIp:                d.localIp ?? '',
+          reservationsEnabled:    d.reservationsEnabled ?? true,
+          googleMapsUrl:          d.googleMapsUrl ?? '',
+          tripadvisorUrl:         d.tripadvisorUrl ?? '',
+          reEngagementMessage:    d.reEngagementMessage ?? '',
+          reEngagementDays:       d.reEngagementDays ?? 7,
         })
       })
   }, [router])
@@ -129,14 +134,16 @@ export default function SettingsPage() {
         method: 'PUT',
         headers: authHeader(),
         body: JSON.stringify({
-          businessName:        profile.businessName,
-          logoUrl:             profile.logoUrl || null,
-          accentColor:         profile.accentColor,
-          primaryFont:         profile.primaryFont,
-          localIp:             profile.localIp || null,
-          reservationsEnabled: profile.reservationsEnabled,
-          googleMapsUrl:       profile.googleMapsUrl || null,
-          tripadvisorUrl:      profile.tripadvisorUrl || null,
+          businessName:           profile.businessName,
+          logoUrl:                profile.logoUrl || null,
+          accentColor:            profile.accentColor,
+          primaryFont:            profile.primaryFont,
+          localIp:                profile.localIp || null,
+          reservationsEnabled:    profile.reservationsEnabled,
+          googleMapsUrl:          profile.googleMapsUrl || null,
+          tripadvisorUrl:         profile.tripadvisorUrl || null,
+          reEngagementMessage:    profile.reEngagementMessage || null,
+          reEngagementDays:       profile.reEngagementDays,
         })
       })
       if (res.ok) showToast('تم الحفظ بنجاح ✓', 'success')
@@ -330,6 +337,52 @@ export default function SettingsPage() {
                 inputMode="url"
                 spellCheck={false}
               />
+            </div>
+          </div>
+
+          {/* WhatsApp Re-engagement */}
+          <div className="space-y-3 pt-2 border-t border-gray-100">
+            <p className="text-sm font-semibold text-gray-800">📱 {lang === 'ar' ? 'رسائل إعادة الاستهداف (واتساب)' : lang === 'fr' ? 'Relance WhatsApp automatique' : 'WhatsApp Re-engagement'}</p>
+            <p className="text-xs text-gray-400 -mt-1">
+              {lang === 'ar'
+                ? 'تُرسل تلقائياً للزبائن اللي ما رجعوش — استعمل {{name}} للاسم و {{cafe}} لاسم المطعم'
+                : lang === 'fr'
+                  ? 'Envoyée automatiquement aux clients inactifs — utilisez {{name}} et {{cafe}}'
+                  : 'Sent automatically to inactive customers — use {{name}} and {{cafe}} as placeholders'}
+            </p>
+            <div>
+              <label className="text-xs font-medium text-gray-500 mb-1 block">
+                {lang === 'ar' ? 'نص الرسالة' : lang === 'fr' ? 'Message' : 'Message template'}
+              </label>
+              <textarea
+                value={profile.reEngagementMessage}
+                onChange={e => setProfile(p => ({ ...p, reEngagementMessage: e.target.value }))}
+                placeholder={lang === 'ar'
+                  ? 'سلام {{name}} 👋، وحشتنا في {{cafe}}! عندنا عروض خاصة ليك اليوم 🎁'
+                  : lang === 'fr'
+                    ? 'Salut {{name}} 👋, {{cafe}} vous manque ! On a des offres spéciales pour vous 🎁'
+                    : 'Hey {{name}} 👋, we miss you at {{cafe}}! We have special offers for you today 🎁'}
+                rows={3}
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-gray-500 mb-1 block">
+                {lang === 'ar' ? 'عدد أيام الغياب قبل الإرسال' : lang === 'fr' ? 'Jours d\'inactivité avant envoi' : 'Days of inactivity before sending'}
+              </label>
+              <div className="flex gap-2">
+                {[7, 15, 30].map(d => (
+                  <button key={d}
+                    onClick={() => setProfile(p => ({ ...p, reEngagementDays: d }))}
+                    className={`flex-1 py-2 rounded-xl text-sm font-bold border-2 transition-all ${
+                      profile.reEngagementDays === d
+                        ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                        : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                    }`}>
+                    {d} {lang === 'ar' ? 'يوم' : lang === 'fr' ? 'j' : 'd'}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 

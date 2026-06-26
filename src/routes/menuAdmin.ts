@@ -176,7 +176,7 @@ router.delete('/api/admin/products/:id', authorizeAdmin, async (req: Request, re
 router.put('/api/admin/cafe/profile', authorizeAdmin, async (req: Request, res: Response) => {
   try {
     const cafeId = req.admin!.cafeId
-    const { businessName, logoUrl, socialLinks, hasSocialShareAddon, lat, lng, accentColor, primaryFont, localIp, reservationsEnabled, googleMapsUrl, tripadvisorUrl } = req.body
+    const { businessName, logoUrl, socialLinks, hasSocialShareAddon, lat, lng, accentColor, primaryFont, localIp, reservationsEnabled, googleMapsUrl, tripadvisorUrl, reEngagementMessage, reEngagementDays } = req.body
     const cafe = await prisma.cafe.update({
       where: { id: cafeId },
       data: {
@@ -192,6 +192,8 @@ router.put('/api/admin/cafe/profile', authorizeAdmin, async (req: Request, res: 
         ...(reservationsEnabled !== undefined && { reservationsEnabled: Boolean(reservationsEnabled) }),
         ...(googleMapsUrl !== undefined && { googleMapsUrl: googleMapsUrl || null }),
         ...(tripadvisorUrl !== undefined && { tripadvisorUrl: tripadvisorUrl || null }),
+        ...(reEngagementMessage !== undefined && { reEngagementMessage: reEngagementMessage || null }),
+        ...(reEngagementDays !== undefined && { reEngagementDays: Number(reEngagementDays) }),
       }
     })
     return res.json(cafe)
@@ -215,7 +217,8 @@ router.get('/api/admin/cafe/profile', authorizeAdmin, async (req: Request, res: 
         monthlyFee: true, subscriptionTier: true,
         accentColor: true, primaryFont: true, localIp: true,
         reservationsEnabled: true, isSmartInventoryEnabled: true,
-        googleMapsUrl: true, tripadvisorUrl: true
+        googleMapsUrl: true, tripadvisorUrl: true,
+        reEngagementMessage: true, reEngagementDays: true
       }
     })
     return res.json(cafe)

@@ -61,6 +61,7 @@ import zonesRouter from './routes/zones'
 import equipmentRouter from './routes/equipment'
 import supplierInvoicesRouter from './routes/supplierInvoices'
 import requisitionsRouter     from './routes/requisitions'
+import customersRouter        from './routes/customers'
 import { registerSocketHandlers } from './socket/handlers'
 import { startWeeklyBillingCron } from './cron/weeklyBilling'
 import { startNightlyCron } from './cron/nightly'
@@ -169,6 +170,7 @@ async function main() {
   app.use(reviewGalleryRouter)
   app.use(demoRequestsRouter)
   app.use(zonesRouter)
+  app.use(customersRouter)
 
   // health (both paths — /api/health used by SW offline detection)
   app.get(['/health', '/api/health'], (_req, res) => res.json({ ok: true }))

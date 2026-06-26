@@ -267,6 +267,10 @@ model Cafe {
   googleMapsUrl     String?  // e.g. https://g.page/r/xxx/review
   tripadvisorUrl    String?  // e.g. https://www.tripadvisor.com/Restaurant_Review-...
 
+  // ── WhatsApp re-engagement (sent to inactive customers via n8n cron) ──────
+  reEngagementMessage String?  // template — use {{name}} and {{cafe}} as placeholders
+  reEngagementDays    Int?     @default(7)  // days of inactivity before sending
+
   // ── Social media credentials (per-cafe, filled when owner connects accounts) ─
   fbPageId          String @default("")  // Facebook Page numeric ID
   fbAccessToken     String @default("")  // long-lived FB page token (~60 days)
@@ -322,6 +326,7 @@ model Cafe {
   equipment          Equipment[]
   supplierInvoices     SupplierInvoice[]
   purchaseRequisitions PurchaseRequisition[]
+  cafeCustomers        CafeCustomer[]
 
   // Indexes for geo-targeting, package segmentation, and n8n campaign queries
   @@index([country])
@@ -1501,4 +1506,23 @@ model PurchaseRequisition {
   @@index([cafeId])
   @@index([cafeId, status])
   @@index([cafeId, urgency])
+}
+
+// ─── WhatsApp Re-engagement Customers ────────────────────────────────────────
+
+model CafeCustomer {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId    String   @db.ObjectId
+  cafe      Cafe     @relation(fields: [cafeId], references: [id])
+
+  phone     String   // WhatsApp number (international format, e.g. +212612345678)
+  name      String?  // Optional — collected at opt-in
+  lastVisit DateTime @default(now())
+  optIn     Boolean  @default(true)
+  visits    Int      @default(1)
+  createdAt DateTime @default(now())
+
+  @@unique([cafeId, phone])
+  @@index([cafeId, lastVisit])
+  @@index([cafeId, optIn])
 }
