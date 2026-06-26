@@ -10,7 +10,7 @@ type Lang = 'en' | 'fr' | 'ar'
 
 const T: Record<Lang, Record<string, string>> = {
   en: {
-    tagline: 'The AI Operating System for Restaurants',
+    tagline: 'The Business OS for Food & Hospitality',
     demoTitle: 'Try a live demo',
     demoSub: 'One click · No signup needed',
     adminTitle: 'Sign in to your account',
@@ -25,10 +25,10 @@ const T: Record<Lang, Record<string, string>> = {
     forgotDone: 'Check your inbox — link sent!',
     noAccount: "No account yet?", signup: 'Sign up free',
     back: '← Back',
-    copyright: 'The smart restaurant platform',
+    copyright: 'Business OS · Food & Hospitality',
   },
   fr: {
-    tagline: "Le système d'exploitation IA pour restaurants",
+    tagline: 'The Business OS for Food & Hospitality',
     demoTitle: 'Essayer la démo en direct',
     demoSub: 'Un clic · Sans inscription',
     adminTitle: 'Connexion à votre compte',
@@ -43,10 +43,10 @@ const T: Record<Lang, Record<string, string>> = {
     forgotDone: 'Vérifiez votre boîte mail — lien envoyé !',
     noAccount: 'Pas encore de compte ?', signup: 'Inscription gratuite',
     back: '← Retour',
-    copyright: 'La plateforme intelligente pour restaurants',
+    copyright: 'Business OS · Food & Hospitality',
   },
   ar: {
-    tagline: 'نظام الذكاء الاصطناعي لإدارة المطاعم',
+    tagline: 'The Business OS for Food & Hospitality',
     demoTitle: 'جرّب الديمو مباشرة',
     demoSub: 'نقرة واحدة · بدون تسجيل',
     adminTitle: 'تسجيل الدخول إلى حسابك',
@@ -61,7 +61,7 @@ const T: Record<Lang, Record<string, string>> = {
     forgotDone: '✅ تم الإرسال — تحقق من بريدك',
     noAccount: 'ليس لديك حساب؟', signup: 'ابدأ مجاناً',
     back: 'رجوع ←',
-    copyright: 'منصة المطاعم الذكية',
+    copyright: 'Business OS · Food & Hospitality',
   },
 }
 
