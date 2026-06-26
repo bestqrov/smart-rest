@@ -283,7 +283,7 @@ export default function POSPage() {
     if (table.status === 'INACTIVE') return
     setSelTable(table); setTableOrders([]); setCheckoutErr(''); setCart([])
     setPayMethod('CASH'); setCashInput(''); setDoneTable(null)
-    setMobileTab('cart')
+    setMobileTab('menu')
     if (table.status === 'EMPTY') return
     setLoadOrder(true)
     try {
@@ -385,6 +385,18 @@ export default function POSPage() {
     }
     return Array.from(map.values())
   })()
+
+  const STATUS_PRIORITY: Record<TableColor, number> = {
+    BILL_REQUESTED: 0,
+    OPEN_QR:        1,
+    OPEN_MANUAL:    2,
+    EMPTY:          3,
+    INACTIVE:       4,
+  }
+  const sortedTables = [...tables].sort((a, b) => {
+    const pa = STATUS_PRIORITY[a.status], pb = STATUS_PRIORITY[b.status]
+    return pa !== pb ? pa - pb : a.tableNumber - b.tableNumber
+  })
 
   const cartTotal        = cart.reduce((s, c) => s + c.price * c.qty, 0)
   const tableOrdersTotal = tableOrders.reduce((s, o) => s + o.totalPrice, 0)
@@ -563,7 +575,7 @@ export default function POSPage() {
               <span className="flex items-center gap-1 text-[10px] text-gray-700"><span className="w-1.5 h-1.5 rounded-full bg-red-500"/>Bill</span>
             </div>
             <div className="flex gap-2 overflow-x-auto scrollbar-none" style={{touchAction:'pan-x'}}>
-              {tables.map(t => {
+              {sortedTables.map(t => {
                 const isAlert    = alertIds.has(t.id)
                 const isSelected = selTable?.id === t.id
                 const dotColor =
@@ -573,7 +585,7 @@ export default function POSPage() {
                 return (
                   <button
                     key={t.id}
-                    disabled={t.status === 'INACTIVE' || t.status === 'EMPTY'}
+                    disabled={t.status === 'INACTIVE'}
                     onClick={() => openTable(t)}
                     className={`relative shrink-0 w-14 h-14 rounded-2xl border-2 flex flex-col items-center justify-center gap-0.5 transition-all active:scale-90
                       ${TABLE_STYLE[t.status]}
