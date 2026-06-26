@@ -827,15 +827,6 @@ function TablePageInner() {
             ctx.fillText(opts.dishName, 48, bottomY - 8)
           }
 
-          // SmartRestau watermark — subtle, bottom center, barely visible
-          ctx.globalAlpha = 0.18
-          ctx.font = "20px -apple-system, BlinkMacSystemFont, Arial, sans-serif"
-          ctx.fillStyle = '#ffffff'
-          ctx.textAlign = 'center'
-          ctx.fillText('via SmartRestau', size / 2, size - 14)
-          ctx.textAlign = 'left'
-          ctx.globalAlpha = 1
-
           canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob')), 'image/jpeg', 0.93)
         }
 
