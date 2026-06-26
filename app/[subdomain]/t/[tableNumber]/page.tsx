@@ -370,6 +370,7 @@ function TablePageInner() {
   const [activeCat,   setActiveCat]   = useState('')
   const [showShare,   setShowShare]   = useState(false)
   const [showOptIn,   setShowOptIn]   = useState(false)
+  const [showReview,  setShowReview]  = useState(false)
   const [optInPhone,  setOptInPhone]  = useState('')
   const [optInName,   setOptInName]   = useState('')
   const [optInSending, setOptInSending] = useState(false)
@@ -661,9 +662,13 @@ function TablePageInner() {
       })
       setOptInDone(true)
       localStorage.setItem('sm_optin_asked', '1')
-      setTimeout(() => setShowOptIn(false), 2000)
+      setTimeout(() => {
+        setShowOptIn(false)
+        if (cafeShare.googleMapsUrl || cafeShare.tripadvisorUrl) setShowReview(true)
+      }, 1800)
     } catch {
       setShowOptIn(false)
+      if (cafeShare.googleMapsUrl || cafeShare.tripadvisorUrl) setShowReview(true)
     } finally {
       setOptInSending(false)
     }
@@ -672,6 +677,7 @@ function TablePageInner() {
   function dismissOptIn() {
     localStorage.setItem('sm_optin_asked', '1')
     setShowOptIn(false)
+    if (cafeShare.googleMapsUrl || cafeShare.tripadvisorUrl) setShowReview(true)
   }
 
   // ── Waiter call ───────────────────────────────────────────────────────────
@@ -1445,28 +1451,28 @@ function TablePageInner() {
                 <button onClick={() => setShowPayment(false)} className="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center text-gray-400">✕</button>
               </div>
               <p className="text-sm text-gray-400 mb-5">{tr.paymentSub}</p>
-              <div className="space-y-3">
-                <button onClick={() => { callWaiter('pay_cash'); setShowPayment(false); setBillMsg(tr.billRequested); setTimeout(() => setBillMsg(''), 4000) }}
-                  className="w-full bg-gray-800 hover:bg-gray-700 active:scale-95 rounded-2xl p-4 flex items-center gap-4 transition-all">
-                  <span className="text-3xl">💵</span>
-                  <div className={isRTL ? 'text-right' : 'text-left'}>
-                    <p className="font-bold text-white">{tr.payCash}</p>
-                    <p className="text-xs text-gray-400">{isRTL ? 'سيأتي النادل إليك' : lang === 'fr' ? 'Le serveur viendra vous voir' : 'Waiter will come to you'}</p>
-                  </div>
-                </button>
-                <button onClick={() => { callWaiter('pay_tpe'); setShowPayment(false); setBillMsg(tr.billRequested); setTimeout(() => setBillMsg(''), 4000) }}
-                  className="w-full bg-gray-800 hover:bg-gray-700 active:scale-95 rounded-2xl p-4 flex items-center gap-4 transition-all">
-                  <span className="text-3xl">💳</span>
-                  <div className={isRTL ? 'text-right' : 'text-left'}>
-                    <p className="font-bold text-white">{tr.payCard}</p>
-                    <p className="text-xs text-gray-400">{isRTL ? 'سيحضر لك جهاز الدفع' : lang === 'fr' ? 'Le terminal sera apporté' : 'TPE terminal will be brought'}</p>
-                  </div>
-                </button>
+              <div className="space-y-2.5">
+                {([
+                  { emoji: '💵', label: tr.payCash,  sub: isRTL ? 'سيأتي النادل إليك' : lang === 'fr' ? 'Le serveur viendra vous voir' : 'Waiter will come to you', action: () => { callWaiter('pay_cash'); setShowPayment(false); setBillMsg(tr.billRequested); setTimeout(() => setBillMsg(''), 4000) } },
+                  { emoji: '💳', label: tr.payCard,  sub: isRTL ? 'TPE — سيحضر لك الجهاز' : lang === 'fr' ? 'Terminal TPE apporté à table' : 'TPE terminal will be brought', action: () => { callWaiter('pay_tpe'); setShowPayment(false); setBillMsg(tr.billRequested); setTimeout(() => setBillMsg(''), 4000) } },
+                  { emoji: '🍎', label: 'Apple Pay', sub: isRTL ? 'NFC — قرّب هاتفك للجهاز' : lang === 'fr' ? 'NFC — approchez votre iPhone' : 'NFC — tap your iPhone on terminal', action: () => { callWaiter('pay_tpe'); setShowPayment(false); setBillMsg(tr.billRequested); setTimeout(() => setBillMsg(''), 4000) } },
+                  { emoji: '🤖', label: 'Google Pay', sub: isRTL ? 'NFC — قرّب هاتفك للجهاز' : lang === 'fr' ? 'NFC — approchez votre Android' : 'NFC — tap your Android on terminal', action: () => { callWaiter('pay_tpe'); setShowPayment(false); setBillMsg(tr.billRequested); setTimeout(() => setBillMsg(''), 4000) } },
+                  { emoji: '🟠', label: 'Orange Money', sub: isRTL ? 'الدفع عبر Orange Money' : lang === 'fr' ? 'Paiement via Orange Money' : 'Pay via Orange Money', action: () => { callWaiter('pay_tpe'); setShowPayment(false); setBillMsg(tr.billRequested); setTimeout(() => setBillMsg(''), 4000) } },
+                ] as const).map((opt, i) => (
+                  <button key={i} onClick={opt.action}
+                    className="w-full bg-gray-800 hover:bg-gray-700 active:scale-95 rounded-2xl p-4 flex items-center gap-4 transition-all">
+                    <span className="text-2xl shrink-0">{opt.emoji}</span>
+                    <div className={isRTL ? 'text-right' : 'text-left'}>
+                      <p className="font-bold text-white text-sm">{opt.label}</p>
+                      <p className="text-xs text-gray-400">{opt.sub}</p>
+                    </div>
+                  </button>
+                ))}
                 <button onClick={() => { setShowPayment(false); openBillModal() }}
                   className="w-full bg-blue-600/20 border border-blue-500/30 hover:bg-blue-600/30 active:scale-95 rounded-2xl p-4 flex items-center gap-4 transition-all">
-                  <span className="text-3xl">🧾</span>
+                  <span className="text-2xl shrink-0">🧾</span>
                   <div className={isRTL ? 'text-right' : 'text-left'}>
-                    <p className="font-bold text-blue-300">{tr.requestBill}</p>
+                    <p className="font-bold text-blue-300 text-sm">{tr.requestBill}</p>
                     <p className="text-xs text-gray-400">{isRTL ? 'اختر طريقة الدفع وشارك الفاتورة' : lang === 'fr' ? 'Partager ou payer séparément' : 'Split or share the bill'}</p>
                   </div>
                 </button>
@@ -1531,6 +1537,60 @@ function TablePageInner() {
                   </div>
                 </>
               )}
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* ── Review prompt — shown after WhatsApp opt-in ── */}
+      <AnimatePresence>
+        {showReview && (
+          <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 bg-black/60" onClick={() => setShowReview(false)} />
+            <motion.div
+              initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 28, stiffness: 260 }}
+              className="fixed bottom-0 left-0 right-0 z-50 bg-gray-900 rounded-t-3xl p-6"
+              dir={isRTL ? 'rtl' : 'ltr'}
+            >
+              <div className="w-10 h-1 bg-gray-700 rounded-full mx-auto mb-5" />
+              <div className="flex flex-col items-center text-center gap-2 mb-6">
+                <span className="text-4xl">⭐</span>
+                <p className="font-black text-white text-lg">
+                  {lang === 'ar' ? 'أعجبك المكان؟' : lang === 'fr' ? 'Vous avez aimé ?' : 'Did you enjoy your visit?'}
+                </p>
+                <p className="text-sm text-gray-400">
+                  {lang === 'ar' ? 'ساعدنا بتقييمك — يستغرق ثانية فقط 🙏' : lang === 'fr' ? 'Laissez-nous un avis — ça prend 10 secondes 🙏' : 'Leave a quick review — takes 10 seconds 🙏'}
+                </p>
+              </div>
+              <div className="space-y-3 mb-4">
+                {cafeShare.googleMapsUrl && (
+                  <a href={cafeShare.googleMapsUrl} target="_blank" rel="noopener noreferrer"
+                    onClick={() => setShowReview(false)}
+                    className="flex items-center justify-center gap-3 w-full py-4 rounded-2xl bg-white text-gray-800 font-bold text-sm active:scale-95 transition-all shadow-lg">
+                    <svg width="20" height="20" viewBox="0 0 48 48" fill="none">
+                      <path d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 7.9 2.9l5.7-5.7C34.5 6.5 29.5 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.2-.1-2.5-.4-3.5z" fill="#FFC107"/>
+                      <path d="M6.3 14.7l6.6 4.8C14.5 16 19 12 24 12c3.1 0 5.8 1.1 7.9 2.9l5.7-5.7C34.5 6.5 29.5 4 24 4 16.3 4 9.7 8.3 6.3 14.7z" fill="#FF3D00"/>
+                      <path d="M24 44c5.3 0 10.1-1.9 13.8-5.1l-6.4-5.4C29.4 35.1 26.8 36 24 36c-5.3 0-9.7-3.3-11.3-8H6.1C9.4 37 16.1 44 24 44z" fill="#4CAF50"/>
+                      <path d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.4 5.4C37.4 38.6 44 33 44 24c0-1.2-.1-2.5-.4-3.5z" fill="#1976D2"/>
+                    </svg>
+                    {lang === 'ar' ? 'قيّمنا على Google Maps' : lang === 'fr' ? 'Nous noter sur Google Maps' : 'Rate us on Google Maps'}
+                  </a>
+                )}
+                {cafeShare.tripadvisorUrl && (
+                  <a href={cafeShare.tripadvisorUrl} target="_blank" rel="noopener noreferrer"
+                    onClick={() => setShowReview(false)}
+                    className="flex items-center justify-center gap-3 w-full py-4 rounded-2xl bg-[#34e0a1] text-gray-900 font-bold text-sm active:scale-95 transition-all shadow-lg">
+                    <span className="text-xl">🦉</span>
+                    {lang === 'ar' ? 'قيّمنا على Tripadvisor' : lang === 'fr' ? 'Nous noter sur Tripadvisor' : 'Rate us on Tripadvisor'}
+                  </a>
+                )}
+              </div>
+              <button onClick={() => setShowReview(false)}
+                className="w-full py-3 rounded-xl bg-gray-800 text-gray-400 font-bold text-sm active:scale-95 transition-all">
+                {lang === 'ar' ? 'لاحقاً' : lang === 'fr' ? 'Plus tard' : 'Maybe later'}
+              </button>
             </motion.div>
           </>
         )}
