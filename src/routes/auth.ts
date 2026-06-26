@@ -336,7 +336,7 @@ router.post('/api/auth/magic-login-send', async (req: Request, res: Response) =>
         { expiresIn: '15m' }
       )
       const base      = process.env.FRONTEND_URL ?? 'https://smartrestau.com'
-      const magicLink = `${base}/api/auth/magic?token=${loginToken}`
+      const magicLink = `${base}/admin/magic?token=${loginToken}`
 
       await sendMagicLink({ to: cleanEmail, magicLink, lang, cafeName: '' }).catch(e =>
         logger.warn({ msg: 'magic-login-send: email failed', err: e.message })
