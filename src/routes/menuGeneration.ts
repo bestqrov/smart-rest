@@ -95,8 +95,31 @@ function fetchUrl(url: string): Promise<string> {
 interface RawItem { nameAr: string; nameEn: string; nameFr: string; nameEs: string; price: number; category: string; description?: string }
 
 function parseAiJson(text: string): any {
-  const match = text.match(/```json\s*([\s\S]*?)```/) || text.match(/(\[[\s\S]*\]|\{[\s\S]*\})/)
-  try { return JSON.parse(match ? match[1] ?? match[0] : text.trim()) } catch { return null }
+  // 1. Try ```json ... ``` block
+  const block = text.match(/```(?:json)?\s*([\s\S]*?)```/)
+  if (block?.[1]) { try { return JSON.parse(block[1].trim()) } catch {} }
+
+  // 2. Bracket-counting extract — correctly handles nested arrays/objects
+  function extractBracketed(open: string, close: string): any {
+    const start = text.indexOf(open)
+    if (start === -1) return null
+    let depth = 0
+    for (let i = start; i < text.length; i++) {
+      if (text[i] === open)  depth++
+      if (text[i] === close) { depth--; if (depth === 0) { try { return JSON.parse(text.slice(start, i + 1)) } catch { return null } } }
+    }
+    return null
+  }
+
+  const arrStart = text.indexOf('[')
+  const objStart = text.indexOf('{')
+  if (arrStart !== -1 && (objStart === -1 || arrStart < objStart)) {
+    const r = extractBracketed('[', ']'); if (r) return r
+  }
+  const r = extractBracketed('{', '}'); if (r) return r
+
+  // 3. Raw parse fallback
+  try { return JSON.parse(text.trim()) } catch { return null }
 }
 
 // ── POST /api/admin/menu-gen/from-url ────────────────────────────────────────
@@ -152,24 +175,40 @@ router.post('/api/admin/menu-gen/from-images', authorizeAdmin, async (req: Reque
 
     const res2 = await groq.chat.completions.create({
       model: 'meta-llama/llama-4-scout-17b-16e-instruct',
-      messages: [{
-        role: 'user',
-        content: [
-          { type: 'text', text: `You are a menu OCR AI. Extract ALL menu items from these menu images.
-Return ONLY a valid JSON array. Each item: {"nameAr":"","nameEn":"","nameFr":"","nameEs":"","price":0,"category":"","description":""}
-- Translate names to all 4 languages
-- price is numeric (0 if unreadable)
-- Group by category (Drinks, Starters, Main Dishes, Desserts…)
-JSON array only, no extra text:` },
-          ...imageContent
-        ]
-      }],
-      temperature: 0.3,
+      messages: [
+        {
+          role: 'system',
+          content: 'You are a menu OCR AI. You ONLY output raw valid JSON arrays. Never add any explanation, markdown, or text outside the JSON.',
+        },
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: `Extract ALL menu items visible in this image.
+Output format — a JSON array where every element has exactly these fields:
+[{"nameAr":"...","nameEn":"...","nameFr":"...","nameEs":"...","price":0,"category":"...","description":""}]
+
+Rules:
+- Translate names to Arabic, English, French and Spanish
+- price is a number (use 0 if not readable)
+- category groups items (Drinks, Main Dishes, Starters, Desserts, Sandwiches, etc.)
+- description: 1 sentence max
+- Output the JSON array ONLY — absolutely no text before or after it`,
+            },
+            ...imageContent,
+          ],
+        },
+      ],
+      temperature: 0.1,
     })
 
     const text2  = res2.choices[0]?.message?.content ?? ''
     const parsed = parseAiJson(text2)
-    if (!parsed) return res.status(422).json({ error: 'Could not extract menu from images', raw: text2.slice(0, 500) })
+    if (!parsed) {
+      logger.warn({ msg: 'menu-gen from-images: model returned non-JSON', raw: text2.slice(0, 800) })
+      return res.status(422).json({ error: 'Could not extract menu from images', raw: text2.slice(0, 500) })
+    }
     return res.json({ items: Array.isArray(parsed) ? parsed : parsed.items ?? [] })
   } catch (err: any) {
     logger.error({ msg: 'menu-gen from-images error', err })
