@@ -534,6 +534,10 @@ export default function SuperAdminPage() {
     onSetMrrOpen:       setMrrOpen,
     onSetTheme:         handleSetTheme,
     onLoadMore:         () => { const n = page + 1; setPage(n); loadAll(n, true) },
+    premiumPlans,
+    editingPlan,
+    onSavePlan:         savePlan,
+    onSetEditingPlan:   setEditingPlan,
   }
 
   return (
@@ -541,80 +545,6 @@ export default function SuperAdminPage() {
       {theme === 'A' && <ThemeA {...themeProps} />}
       {theme === 'B' && <ThemeB {...themeProps} />}
       {theme === 'C' && <ThemeC {...themeProps} />}
-
-      {/* ── Premium Plans ──────────────────────────────────────────────────── */}
-      <section className="mt-10 px-4 max-w-6xl mx-auto">
-        <h2 className="text-xl font-bold text-white mb-4">💎 Premium Plans</h2>
-        <div className="overflow-x-auto rounded-xl border border-white/10">
-          <table className="w-full text-sm text-white">
-            <thead className="bg-white/5 text-gray-400">
-              <tr>
-                <th className="px-4 py-3 text-left">Country</th>
-                <th className="px-4 py-3 text-left">Price / Month</th>
-                <th className="px-4 py-3 text-center">No Commission</th>
-                <th className="px-4 py-3 text-center">Marketing</th>
-                <th className="px-4 py-3 text-center">Certification</th>
-                <th className="px-4 py-3 text-center">Analytics</th>
-                <th className="px-4 py-3 text-center">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {premiumPlans.map((plan) => (
-                <tr key={plan.country} className="border-t border-white/5 hover:bg-white/5">
-                  <td className="px-4 py-3 font-mono font-bold">{plan.country}</td>
-                  <td className="px-4 py-3">
-                    {editingPlan?.country === plan.country ? (
-                      <input
-                        type="number"
-                        defaultValue={plan.monthlyPrice}
-                        className="bg-white/10 rounded px-2 py-1 w-28 text-white"
-                        onChange={e => setEditingPlan({ ...editingPlan, monthlyPrice: Number(e.target.value) })}
-                      />
-                    ) : (
-                      <span className="font-bold text-green-400">{plan.monthlyPrice} {plan.currency}</span>
-                    )}
-                  </td>
-                  {(['hasNoCommission', 'hasMarketing', 'hasCertification', 'hasAnalytics'] as const).map(key => (
-                    <td key={key} className="px-4 py-3 text-center">
-                      <input
-                        type="checkbox"
-                        checked={editingPlan?.country === plan.country ? editingPlan[key] : plan[key]}
-                        onChange={e => {
-                          if (editingPlan?.country === plan.country) {
-                            setEditingPlan({ ...editingPlan, [key]: e.target.checked })
-                          } else {
-                            savePlan(plan.country, { [key]: e.target.checked })
-                          }
-                        }}
-                        className="w-4 h-4 accent-green-400"
-                      />
-                    </td>
-                  ))}
-                  <td className="px-4 py-3 text-center">
-                    {editingPlan?.country === plan.country ? (
-                      <div className="flex gap-2 justify-center">
-                        <button
-                          onClick={() => savePlan(plan.country, { monthlyPrice: editingPlan.monthlyPrice })}
-                          className="bg-green-600 hover:bg-green-500 text-white px-3 py-1 rounded text-xs"
-                        >Save</button>
-                        <button
-                          onClick={() => setEditingPlan(null)}
-                          className="bg-white/10 hover:bg-white/20 text-white px-3 py-1 rounded text-xs"
-                        >Cancel</button>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => setEditingPlan({ ...plan })}
-                        className="bg-white/10 hover:bg-white/20 text-white px-3 py-1 rounded text-xs"
-                      >Edit</button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
 
       {modal && (
         <TenantModalInline

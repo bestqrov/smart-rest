@@ -4,7 +4,7 @@ import {
   Loader2, RefreshCw, Filter, Ban, CheckCircle, Edit3, Trash2,
   ChevronDown, Play, CalendarPlus, Package, Globe, TrendingUp,
   Flame, LayoutDashboard, Store, BarChart3, Map, AlertTriangle,
-  Activity, ChevronRight, Wallet,
+  Activity, ChevronRight, Wallet, Gem,
 } from 'lucide-react'
 import type { ThemeProps } from '../types'
 import KpiCards from '../analytics/KpiCards'
@@ -41,6 +41,7 @@ const NAV = [
   { icon: Map,             label: 'Client Map',     href: '#map' },
   { icon: Store,           label: 'Restaurants',    href: '#restaurants' },
   { icon: CalendarPlus,    label: 'Demo Requests',  href: '#demo' },
+  { icon: Gem,             label: 'Premium Plans',  href: '#plans' },
   { icon: AlertTriangle,   label: 'Danger Zone',    href: '#danger' },
   { icon: Activity,        label: 'Activity Log',   href: '#log' },
 ]
@@ -395,7 +396,91 @@ export default function ThemeA(p: ThemeProps) {
             </div>
           </section>
 
-          {/* ── Section 5: Danger Zone ── */}
+          {/* ── Section 5: Premium Plans ── */}
+          <section id="plans">
+            <SectionHeading
+              icon={<Gem className="w-4 h-4 text-amber-500" />}
+              title="Premium Plans"
+              subtitle="Pricing and feature flags per country"
+            />
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-50 border-b border-slate-200">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Country</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Price / Month</th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">No Commission</th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">Marketing</th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">Certification</th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">Analytics</th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {p.premiumPlans.map(plan => (
+                      <tr key={plan.country} className="hover:bg-slate-50 transition-colors">
+                        <td className="px-4 py-3">
+                          <span className="font-mono font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded-md text-xs">{plan.country}</span>
+                        </td>
+                        <td className="px-4 py-3">
+                          {p.editingPlan?.country === plan.country ? (
+                            <input
+                              type="number"
+                              value={p.editingPlan.monthlyPrice}
+                              onChange={e => p.onSetEditingPlan({ ...p.editingPlan!, monthlyPrice: Number(e.target.value) })}
+                              className="border border-slate-300 rounded-lg px-2 py-1 w-28 text-slate-800 text-sm focus:outline-none focus:border-amber-400"
+                            />
+                          ) : (
+                            <span className="font-bold text-emerald-600">{plan.monthlyPrice} <span className="text-slate-400 font-normal text-xs">{plan.currency}</span></span>
+                          )}
+                        </td>
+                        {(['hasNoCommission', 'hasMarketing', 'hasCertification', 'hasAnalytics'] as const).map(key => (
+                          <td key={key} className="px-4 py-3 text-center">
+                            <input
+                              type="checkbox"
+                              checked={p.editingPlan?.country === plan.country ? p.editingPlan[key] : plan[key]}
+                              onChange={e => {
+                                if (p.editingPlan?.country === plan.country) {
+                                  p.onSetEditingPlan({ ...p.editingPlan!, [key]: e.target.checked })
+                                } else {
+                                  p.onSavePlan(plan.country, { [key]: e.target.checked })
+                                }
+                              }}
+                              className="w-4 h-4 accent-emerald-500 cursor-pointer"
+                            />
+                          </td>
+                        ))}
+                        <td className="px-4 py-3 text-center">
+                          {p.editingPlan?.country === plan.country ? (
+                            <div className="flex gap-1.5 justify-center">
+                              <button
+                                onClick={() => p.onSavePlan(plan.country, { monthlyPrice: p.editingPlan!.monthlyPrice })}
+                                className="bg-emerald-500 hover:bg-emerald-600 text-white px-2.5 py-1 rounded-lg text-xs font-medium transition-colors"
+                              >Save</button>
+                              <button
+                                onClick={() => p.onSetEditingPlan(null)}
+                                className="bg-slate-100 hover:bg-slate-200 text-slate-600 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors"
+                              >Cancel</button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => p.onSetEditingPlan({ ...plan })}
+                              className="flex items-center gap-1 mx-auto bg-slate-100 hover:bg-slate-200 text-slate-600 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors"
+                            >
+                              <Edit3 className="w-3 h-3" /> Edit
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+
+          {/* ── Section 6: Danger Zone ── */}
           <section id="danger">
             <SectionHeading
               icon={<AlertTriangle className="w-4 h-4 text-red-500" />}

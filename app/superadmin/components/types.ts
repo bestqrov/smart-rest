@@ -76,6 +76,16 @@ export interface ModalState {
 
 export type Theme = 'A' | 'B' | 'C'
 
+export interface PremiumPlan {
+  country:          string
+  currency:         string
+  monthlyPrice:     number
+  hasNoCommission:  boolean
+  hasMarketing:     boolean
+  hasCertification: boolean
+  hasAnalytics:     boolean
+}
+
 export interface ThemeProps {
   // ── Data ────────────────────────────────────────────────────────
   overview:      Overview | null
@@ -132,4 +142,10 @@ export interface ThemeProps {
   onSetTheme:          (t: Theme) => void
   onLoadMore:          () => void
   onOpenPurge?:        () => void
+
+  // ── Premium Plans ────────────────────────────────────────────────
+  premiumPlans:        PremiumPlan[]
+  editingPlan:         PremiumPlan | null
+  onSavePlan:          (country: string, patch: Record<string, unknown>) => void
+  onSetEditingPlan:    (plan: PremiumPlan | null) => void
 }
