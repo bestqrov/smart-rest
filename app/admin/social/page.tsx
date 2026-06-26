@@ -4,12 +4,30 @@ import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import {
   Share2, Loader2, RefreshCw, ExternalLink, CheckCircle2,
   Clock, Inbox, Link2, BarChart3, XCircle, X, Play,
-  Star, Image, Video, Instagram, Facebook, Search,
+  Star, Image, Video, Search,
   SlidersHorizontal, ThumbsUp, ThumbsDown, AlertTriangle,
   Save, CheckCircle, Upload, Info, ToggleLeft, ToggleRight,
   TrendingUp, Users, Zap, Globe,
 } from 'lucide-react'
 import { useLang } from '../lang-context'
+
+function IgIcon({ size = 14, className = '' }: { size?: number; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
+      <circle cx="12" cy="12" r="4"/>
+      <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/>
+    </svg>
+  )
+}
+
+function FbIcon({ size = 14, className = '' }: { size?: number; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>
+    </svg>
+  )
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -359,8 +377,8 @@ function authHeader() {
 }
 
 function platformIcon(p: string, size = 12) {
-  if (p === 'instagram') return <Instagram size={size} className="text-pink-400" />
-  if (p === 'facebook')  return <Facebook  size={size} className="text-blue-400" />
+  if (p === 'instagram') return <IgIcon size={size} className="text-pink-400" />
+  if (p === 'facebook')  return <FbIcon size={size} className="text-blue-400" />
   if (p === 'snapchat')  return <span className="text-yellow-400 font-bold leading-none" style={{ fontSize: size }}>👻</span>
   if (p === 'tiktok')    return <span className="text-white font-bold leading-none"      style={{ fontSize: size }}>♪</span>
   return <Globe size={size} className="text-slate-400" />
@@ -679,7 +697,7 @@ function DetailModal({ item, type, t, lang, isRTL, onClose, onApprove, onReject,
               </div>
               {r.reviewText && (
                 <div>
-                  <p className="text-slate-500 text-xs font-medium mb-1.5">Avis</p>
+                  <p className="text-slate-500 text-xs font-medium mb-1.5">{t.review}</p>
                   <p className="text-slate-300 text-sm leading-relaxed bg-slate-800/60 rounded-xl px-3 py-2.5">{r.reviewText}</p>
                 </div>
               )}
@@ -790,9 +808,9 @@ function AccountsTab({ t, isRTL }: { t: Strings; isRTL: boolean }) {
         <h2 className="font-bold text-white text-sm">{t.socialHandles}</h2>
 
         {([
-          { key: 'instagram', label: t.instagram, icon: <Instagram size={15} className="text-pink-400" />, prefix: '@' },
+          { key: 'instagram', label: t.instagram, icon: <IgIcon size={15} className="text-pink-400" />, prefix: '@' },
           { key: 'snapchat',  label: t.snapchat,  icon: <span className="text-yellow-400 text-sm">👻</span>,   prefix: '@' },
-          { key: 'facebook',  label: t.facebook,  icon: <Facebook  size={15} className="text-blue-400" />,  prefix: 'facebook.com/' },
+          { key: 'facebook',  label: t.facebook,  icon: <FbIcon size={15} className="text-blue-400" />,  prefix: 'facebook.com/' },
         ] as const).map(({ key, label, icon, prefix }) => (
           <div key={key}>
             <label className="text-xs text-slate-400 font-medium mb-1.5 flex items-center gap-1.5">{icon} {label}</label>
@@ -1239,7 +1257,7 @@ export default function SocialPage() {
                         <p className="text-slate-300 text-xs font-medium truncate">{item.label}</p>
                         {item.platforms.length > 0 && (
                           <div className="flex gap-1 mt-0.5">
-                            {item.platforms.map(p => <span key={p}>{platformIcon(p, 10)}</span>)}
+                            {item.platforms.map((p: string) => <span key={p}>{platformIcon(p, 10)}</span>)}
                           </div>
                         )}
                       </div>
