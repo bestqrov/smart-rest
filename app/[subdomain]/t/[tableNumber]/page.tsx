@@ -778,10 +778,10 @@ function TablePageInner() {
       : ''
 
     const copies: Record<Lang, string> = {
-      ar: `🍽️ ${firstName}${cafe ? ` · ${cafe}` : ''}\n\n${allNames}${social}\n\nsmartrestau.com\n#SmartMenu`,
-      fr: `🍽️ ${firstName}${cafe ? ` · ${cafe}` : ''}\n\n${allNames}${social}\n\nsmartrestau.com\n#SmartMenu`,
-      en: `🍽️ ${firstName}${cafe ? ` · ${cafe}` : ''}\n\n${allNames}${social}\n\nsmartrestau.com\n#SmartMenu`,
-      es: `🍽️ ${firstName}${cafe ? ` · ${cafe}` : ''}\n\n${allNames}${social}\n\nsmartrestau.com\n#SmartMenu`,
+      ar: `🍽️ ${firstName}${cafe ? ` · ${cafe}` : ''}\n\n${allNames}${social}\n\nsmartrestau.com\n#SmartRestau @smartrestau.app`,
+      fr: `🍽️ ${firstName}${cafe ? ` · ${cafe}` : ''}\n\n${allNames}${social}\n\nsmartrestau.com\n#SmartRestau @smartrestau.app`,
+      en: `🍽️ ${firstName}${cafe ? ` · ${cafe}` : ''}\n\n${allNames}${social}\n\nsmartrestau.com\n#SmartRestau @smartrestau.app`,
+      es: `🍽️ ${firstName}${cafe ? ` · ${cafe}` : ''}\n\n${allNames}${social}\n\nsmartrestau.com\n#SmartRestau @smartrestau.app`,
     }
     return copies[lang]
   }
