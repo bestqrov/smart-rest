@@ -160,51 +160,51 @@ export default function RequisitionsPage() {
   return (
     <div className={`max-w-5xl mx-auto px-4 py-8 space-y-6 ${isRTL ? 'text-right' : 'text-left'}`}>
 
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-xl bg-teal-500/10">
-            <ShoppingCart className="text-teal-400" size={28} />
+      {/* ── Hero Header ── */}
+      <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-teal-600 via-teal-700 to-cyan-800 p-6 shadow-xl shadow-teal-900/40">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(255,255,255,0.10),transparent_65%)]" />
+        <div className="relative flex items-center justify-between flex-wrap gap-4">
+          <div className="flex items-center gap-4">
+            <div className="p-3 rounded-2xl bg-white/15 ring-1 ring-white/25">
+              <ShoppingCart className="text-white" size={28} />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-white">
+                {isRTL ? 'طلبات الشراء' : 'Demandes d\'achat'}
+              </h1>
+              <p className="text-sm text-teal-100/70 mt-0.5">
+                {isRTL ? 'تتبع احتياجاتك وطلبات التوريد' : 'Gérez vos besoins et commandes fournisseurs'}
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-white">I7tiyajat — Besoins</h1>
-            <p className="text-sm text-slate-400 mt-0.5">Gérez vos demandes d&apos;achat.</p>
+          <div className="flex items-center gap-2">
+            <button onClick={load} className="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-colors">
+              <RefreshCw size={15} />
+            </button>
+            <button
+              onClick={() => { setShowForm(true); setEditItem(null); setForm({ ...EMPTY_FORM }) }}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-teal-700 text-sm font-bold hover:bg-teal-50 shadow-lg transition-colors"
+            >
+              <Plus size={15} /> {isRTL ? 'إضافة' : 'Ajouter'}
+            </button>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button onClick={load} className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors">
-            <RefreshCw size={16} />
-          </button>
-          <button
-            onClick={() => { setShowForm(true); setEditItem(null); setForm({ ...EMPTY_FORM }) }}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-teal-500 hover:bg-teal-400 text-white text-sm font-semibold transition-colors"
-          >
-            <Plus size={16} /> Ajouter
-          </button>
-        </div>
+        {summary && (
+          <div className="relative mt-5 grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {[
+              { label: isRTL ? 'في الانتظار' : 'En attente',      value: summary.pending,           color: 'text-amber-300'   },
+              { label: isRTL ? 'عاجلة'       : 'Urgent',          value: summary.urgentPending,     color: 'text-rose-300'    },
+              { label: isRTL ? 'في الطريق'   : 'En transit',      value: summary.ordered,           color: 'text-violet-300'  },
+              { label: isRTL ? 'مستلمة'      : 'Reçus ce mois',   value: summary.receivedThisMonth, color: 'text-emerald-300' },
+            ].map(c => (
+              <div key={c.label} className="bg-white/10 rounded-xl p-3 ring-1 ring-white/10">
+                <p className="text-xs text-white/55 truncate">{c.label}</p>
+                <p className={`text-2xl font-bold mt-0.5 ${c.color}`}>{c.value}</p>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
-
-      {/* Summary cards */}
-      {summary && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4">
-            <p className="text-xs text-slate-400">En attente</p>
-            <p className="text-2xl font-bold text-amber-400 mt-1">{summary.pending}</p>
-          </div>
-          <div className="rounded-2xl border border-rose-500/20 bg-rose-500/10 p-4">
-            <p className="text-xs text-slate-400">Urgent en attente</p>
-            <p className="text-2xl font-bold text-rose-400 mt-1">{summary.urgentPending}</p>
-          </div>
-          <div className="rounded-2xl border border-violet-500/20 bg-violet-500/10 p-4">
-            <p className="text-xs text-slate-400">En transit</p>
-            <p className="text-2xl font-bold text-violet-400 mt-1">{summary.ordered}</p>
-          </div>
-          <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4">
-            <p className="text-xs text-slate-400">Reçus ce mois</p>
-            <p className="text-2xl font-bold text-emerald-400 mt-1">{summary.receivedThisMonth}</p>
-          </div>
-        </div>
-      )}
 
       {/* Filter tabs */}
       <div className="flex gap-2 flex-wrap">

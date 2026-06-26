@@ -100,32 +100,50 @@ router.post('/generate-video', authorizeAdmin, async (req: Request, res: Respons
       },
     })
 
-    // ── 5. Fire n8n webhook (non-blocking — respond to client immediately) ─────
+    // ── 5. Fire n8n webhook — await with 12 s timeout, fail fast on error ────
     const n8nWebhookUrl = process.env.N8N_MARKETING_WEBHOOK_URL
     if (!n8nWebhookUrl) {
       logger.warn({ msg: 'N8N_MARKETING_WEBHOOK_URL not set — skipping webhook trigger' })
-      return res.status(202).json({ campaign, warning: 'n8n webhook not configured' })
+      await prisma.marketingCampaign.update({ where: { id: campaign.id }, data: { status: 'failed' } })
+      return res.status(400).json({ error: 'n8n webhook not configured — contact support.' })
     }
 
-    // We intentionally do NOT await this — the n8n workflow is async and will
-    // call back via PATCH /api/marketing/campaigns/:id/status when done.
-    fetch(n8nWebhookUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        campaignId:   campaign.id,
-        cafeName:     cafe.name,
-        country:      cafe.country,
-        logoUrl:      cafe.logoUrl ?? null,
-        productName:  campaign.productName,
-        productPrice: campaign.productPrice,
-        imageUrl:     campaign.imageUrl,
-        hasWatermark,
-        platforms,
-        // n8n will use this URL to call back when the video is ready
-        callbackUrl: `${process.env.NEXT_PUBLIC_SOCKET_URL || ''}/api/marketing/campaigns/${campaign.id}/status`,
-      }),
-    }).catch(err => logger.error({ msg: 'n8n webhook fire failed', err, campaignId: campaign.id }))
+    const webhookPayload = {
+      campaignId:   campaign.id,
+      cafeName:     cafe.name,
+      country:      cafe.country,
+      logoUrl:      cafe.logoUrl ?? null,
+      productName:  campaign.productName,
+      productPrice: campaign.productPrice,
+      imageUrl:     campaign.imageUrl,
+      hasWatermark,
+      platforms,
+      callbackUrl: `${process.env.NEXT_PUBLIC_SOCKET_URL || ''}/api/marketing/campaigns/${campaign.id}/status`,
+    }
+
+    try {
+      const controller = new AbortController()
+      const timeout    = setTimeout(() => controller.abort(), 12_000)
+      const n8nRes = await fetch(n8nWebhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(webhookPayload),
+        signal: controller.signal,
+      })
+      clearTimeout(timeout)
+
+      if (!n8nRes.ok) {
+        const body = await n8nRes.text().catch(() => '')
+        logger.error({ msg: 'n8n webhook returned error', status: n8nRes.status, body, campaignId: campaign.id })
+        await prisma.marketingCampaign.update({ where: { id: campaign.id }, data: { status: 'failed' } })
+        return res.status(502).json({ error: `Video engine error (${n8nRes.status}). Try again later.` })
+      }
+    } catch (err: any) {
+      const isTimeout = err?.name === 'AbortError'
+      logger.error({ msg: isTimeout ? 'n8n webhook timed out' : 'n8n webhook unreachable', err, campaignId: campaign.id })
+      await prisma.marketingCampaign.update({ where: { id: campaign.id }, data: { status: 'failed' } })
+      return res.status(502).json({ error: isTimeout ? 'Video engine timed out. Try again in a moment.' : 'Video engine unreachable. Check your n8n setup.' })
+    }
 
     return res.status(202).json({ campaign })
   } catch (err) {
@@ -203,6 +221,24 @@ router.get('/subscription-status', authorizeAdmin, async (req: Request, res: Res
     })
   } catch (err) {
     logger.error({ msg: 'subscription-status error', err })
+    return res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
+// ─── DELETE /api/marketing/campaigns/:id ─────────────────────────────────────
+// Admin cancels / deletes a stuck or unwanted campaign.
+
+router.delete('/campaigns/:id', authorizeAdmin, async (req: Request, res: Response) => {
+  const { cafeId } = req.admin!
+  const id = req.params.id as string
+  try {
+    const campaign = await prisma.marketingCampaign.findUnique({ where: { id }, select: { cafeId: true } })
+    if (!campaign)               return res.status(404).json({ error: 'Not found' })
+    if (campaign.cafeId !== cafeId) return res.status(403).json({ error: 'Forbidden' })
+    await prisma.marketingCampaign.delete({ where: { id } })
+    return res.json({ ok: true })
+  } catch (err) {
+    logger.error({ msg: 'delete campaign error', err, id })
     return res.status(500).json({ error: 'Internal server error' })
   }
 })
