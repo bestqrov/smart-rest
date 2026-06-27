@@ -155,6 +155,51 @@ export {
   buildOrThrow,
 } from './prompt-builder'
 
+// ── Generation Pipeline (Sprint 6) ───────────────────────────────────────────
+// runPipeline(ctx) → GenerationResult  (pre-flight: safety + compliance + brand)
+// processOutput(pipeline, rawOutput) → GenerationResult  (output validation)
+// Neither function makes AI calls. Both are pure TypeScript orchestration layers.
+
+export { runPipeline, processOutput } from './generation'
+
+export type {
+  PipelineContext,
+  PipelineOptions,
+  GenerationResult,
+  PipelineStatus,
+  PipelineStage,
+  ComplianceResult,
+  ComplianceCheck,
+  ComplianceCode,
+  BrandResult,
+  BrandCheck,
+  BrandCode,
+  SafetyResult,
+  SafetyCheck,
+  SafetyCode,
+  ValidatedOutput,
+  OutputCheck,
+  OutputCheckCode,
+  RetryPolicy,
+  RetryReason,
+  RetryRecord,
+} from './generation'
+
+export {
+  validateCompliance,
+  validateBrand,
+  runSafetyChecks,
+  validateOutput,
+  buildRetryPolicy,
+  shouldRetry,
+  nextDelayMs,
+  buildRetryRecord,
+  DEFAULT_RETRY_POLICY,
+  AGGRESSIVE_RETRY_POLICY,
+  NO_RETRY_POLICY,
+  RATE_LIMIT_RETRY_POLICY,
+} from './generation'
+
 export type {
   PromptContext,
   PromptResult,
