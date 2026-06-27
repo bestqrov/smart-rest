@@ -98,7 +98,7 @@ const T: Record<Lang, Record<string, string>> = {
   },
 }
 
-const DEMO_CAFE = { subdomain: 'plage', email: 'plage@demo.com', password: 'demo1234' }
+const DEMO_CAFE = { subdomain: 'welcome', email: 'plage@demo.com', password: 'demo1234' }
 
 const DEMO_ROLES = [
   { role: 'BOSS',       icon: Crown,   color: 'amber',   label: { en: 'Admin',       fr: 'Gérant',    ar: 'المدير'  }, sub: { en: 'Full dashboard', fr: 'Tableau de bord',  ar: 'لوحة التحكم' }, pin: null,   dest: '/admin/dashboard' },
@@ -224,7 +224,8 @@ export default function LoginPage() {
         const h = { 'Content-Type': 'application/json', Authorization: `Bearer ${data.token}` }
         const staffRes = await fetch('/api/admin/staff', { headers: h })
         if (staffRes.ok) {
-          const list: { name: string }[] = await staffRes.json()
+          const body = await staffRes.json()
+          const list: { name: string }[] = Array.isArray(body) ? body : (body.staff ?? [])
           const names = list.map((s: any) => s.name)
           await Promise.all(
             [{ name: 'Demo Cashier', role: 'CASHIER', pinCode: '1234' }, { name: 'Demo Supervisor', role: 'SUPERVISOR', pinCode: '3333' }, { name: 'Demo Waiter', role: 'WAITER', pinCode: '2222' }]

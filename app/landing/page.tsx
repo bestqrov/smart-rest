@@ -781,7 +781,7 @@ export default function LandingPage() {
   const [demoRoleError,   setDemoRoleError]   = useState('')
   const [theme, setTheme] = useState<LandingTheme>('dark-green')
 
-  const LANDING_DEMO_CAFE = { subdomain: 'plage' }
+  const LANDING_DEMO_CAFE = { subdomain: 'welcome' }
   const LANDING_DEMO_ROLES = [
     { role: 'BOSS',       icon: Crown,   color: 'amber',   label: { en: 'Admin',       fr: 'Gérant',    ar: 'المدير'  }, sub: { en: 'Full dashboard', fr: 'Tableau de bord',  ar: 'لوحة التحكم' }, pin: null,   dest: '/admin/dashboard' },
     { role: 'CASHIER',    icon: Monitor, color: 'sky',     label: { en: 'Cashier/POS', fr: 'Caisse POS', ar: 'الكاشير' }, sub: { en: 'Point of sale',  fr: 'Terminal de vente', ar: 'نقطة البيع'  }, pin: '1234', dest: '/pos'             },
