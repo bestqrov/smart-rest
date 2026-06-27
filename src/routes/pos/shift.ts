@@ -92,6 +92,25 @@ router.post('/api/pos/shift', async (req: Request, res: Response) => {
       return res.json({ shift: shift ?? null })
     }
 
+    // ── Demo mode: bypass PIN if subdomain is DEMO_SUBDOMAIN and demoStaffId provided ──
+    const DEMO_SUB = (process.env.DEMO_SUBDOMAIN ?? 'welcome').toLowerCase()
+    if (subdomain?.trim().toLowerCase() === DEMO_SUB && req.body.demoStaffId) {
+      const demoStaff = await prisma.staff.findFirst({
+        where: { id: req.body.demoStaffId, cafeId, isActive: true },
+        select: { id: true, name: true, role: true },
+      })
+      if (!demoStaff) return res.status(404).json({ error: 'Staff not found' })
+      const existingShift = await prisma.cashierShift.findFirst({
+        where: { staffId: demoStaff.id, cafeId, status: 'OPEN' }
+      })
+      const token = issueStaffToken(demoStaff.id, cafeId, demoStaff.role as StaffRole, existingShift?.id)
+      return res.json({
+        token,
+        staff: { id: demoStaff.id, name: demoStaff.name, role: demoStaff.role },
+        shift: existingShift ?? null
+      })
+    }
+
     // ── PIN is required for login / open / close ──────────────────────────────
     if (!pinCode) return res.status(400).json({ error: 'pinCode is required' })
 

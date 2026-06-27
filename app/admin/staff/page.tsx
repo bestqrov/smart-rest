@@ -39,11 +39,30 @@ type Lang = 'ar' | 'fr' | 'en' | 'es'
 // ── Extra role definitions ────────────────────────────────────────────────────
 
 const EXTRA_ROLES: { value: string; ar: string; fr: string; en: string; es: string; icon: string }[] = [
-  { value: 'BARISTA',    ar: 'صانع قهوة',  fr: 'Barista',           en: 'Barista',    es: 'Barista',    icon: '☕' },
-  { value: 'COOK',       ar: 'طباخ',        fr: 'Cuisinier',         en: 'Cook',       es: 'Cocinero',   icon: '👨‍🍳' },
-  { value: 'CLEANER',    ar: 'نظافة',       fr: "Agent d'entretien", en: 'Cleaner',    es: 'Limpieza',   icon: '🧹' },
-  { value: 'DISHWASHER', ar: 'غسيل أواني', fr: 'Plongeur',          en: 'Dishwasher', es: 'Fregador',   icon: '🍽️' },
-  { value: 'RUNNER',     ar: 'رانر',         fr: 'Runner',            en: 'Runner',     es: 'Runner',     icon: '🏃' },
+  // ── Cuisine / Kitchen ─────────────────────────────────────────────────────
+  { value: 'HEAD_CHEF',    ar: 'رئيس الطهاة',     fr: 'Chef cuisinier',    en: 'Head Chef',      es: 'Chef principal',  icon: '👨‍🍳' },
+  { value: 'SOUS_CHEF',    ar: 'نائب الطاهي',     fr: 'Sous-chef',         en: 'Sous Chef',      es: 'Subcochero',      icon: '🍳' },
+  { value: 'COOK',         ar: 'طباخ',             fr: 'Cuisinier',         en: 'Cook',           es: 'Cocinero',        icon: '🥘' },
+  { value: 'COMMIS',       ar: 'مساعد طباخ',      fr: 'Commis de cuisine', en: 'Commis Cook',    es: 'Commis',          icon: '🫕' },
+  { value: 'PASTRY',       ar: 'حلواني',           fr: 'Pâtissier',         en: 'Pastry Chef',    es: 'Pastelero',       icon: '🧁' },
+  { value: 'DISHWASHER',   ar: 'غسيل أواني',      fr: 'Plongeur',          en: 'Dishwasher',     es: 'Fregador',        icon: '🍽️' },
+  // ── Salle / Floor ─────────────────────────────────────────────────────────
+  { value: 'BARISTA',      ar: 'باريستا',          fr: 'Barista',           en: 'Barista',        es: 'Barista',         icon: '☕' },
+  { value: 'BARTENDER',    ar: 'نادل بار',         fr: 'Barman',            en: 'Bartender',      es: 'Bartender',       icon: '🍹' },
+  { value: 'RUNNER',       ar: 'رانر',             fr: 'Runner',            en: 'Runner',         es: 'Runner',          icon: '🏃' },
+  { value: 'HOST',         ar: 'موظف استقبال',     fr: 'Hôte / Hôtesse',    en: 'Host / Hostess', es: 'Anfitrión',       icon: '🤝' },
+  { value: 'SOMMELIER',    ar: 'سومولييه',         fr: 'Sommelier',         en: 'Sommelier',      es: 'Sumiller',        icon: '🍷' },
+  // ── Livraison & Sécurité ──────────────────────────────────────────────────
+  { value: 'DELIVERY',     ar: 'عامل توصيل',      fr: 'Livreur',           en: 'Delivery',       es: 'Repartidor',      icon: '🛵' },
+  { value: 'SECURITY',     ar: 'حارس أمن',         fr: 'Agent de sécurité', en: 'Security',       es: 'Seguridad',       icon: '🛡️' },
+  // ── Entretien ─────────────────────────────────────────────────────────────
+  { value: 'CLEANER',      ar: 'نظافة',            fr: "Agent d'entretien", en: 'Cleaner',        es: 'Limpieza',        icon: '🧹' },
+  // ── Hôtel ─────────────────────────────────────────────────────────────────
+  { value: 'RECEPTIONIST', ar: 'موظف استقبال فندق', fr: 'Réceptionniste',   en: 'Receptionist',   es: 'Recepcionista',   icon: '🏨' },
+  { value: 'HOUSEKEEPING', ar: 'تنظيف غرف',        fr: 'Femme de chambre',  en: 'Housekeeping',   es: 'Mucama',          icon: '🛏️' },
+  { value: 'PORTER',       ar: 'حمّال أمتعة',      fr: 'Bagagiste',         en: 'Porter',         es: 'Maletero',        icon: '🧳' },
+  { value: 'ROOM_SERVICE', ar: 'خدمة الغرف',       fr: 'Room service',      en: 'Room Service',   es: 'Servicio cuarto', icon: '🍱' },
+  { value: 'CONCIERGE',    ar: 'كونسيرج',          fr: 'Concierge',         en: 'Concierge',      es: 'Conserje',        icon: '🗝️' },
 ]
 
 // ── i18n ──────────────────────────────────────────────────────────────────────

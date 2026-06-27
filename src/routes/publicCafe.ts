@@ -81,4 +81,29 @@ router.get('/api/public/reservation/:reservationId', async (req: Request, res: R
   }
 })
 
+// Public demo staff list — only works for the configured DEMO_SUBDOMAIN
+// Returns id, name, role for demo login (no PIN needed in demo mode)
+router.get('/api/public/demo-staff', async (req: Request, res: Response) => {
+  try {
+    const subdomain = ((req.query.subdomain as string) ?? '').trim().toLowerCase()
+    const DEMO_SUB  = (process.env.DEMO_SUBDOMAIN ?? 'welcome').toLowerCase()
+    if (!subdomain || subdomain !== DEMO_SUB) {
+      return res.status(403).json({ error: 'Not a demo cafe' })
+    }
+    const cafe = await prisma.cafe.findUnique({
+      where:  { subdomain },
+      select: { id: true, isActive: true }
+    })
+    if (!cafe || !cafe.isActive) return res.status(404).json({ error: 'Cafe not found' })
+    const staff = await prisma.staff.findMany({
+      where:  { cafeId: cafe.id, isActive: true },
+      select: { id: true, name: true, role: true, roles: true },
+      orderBy: { createdAt: 'asc' },
+    })
+    return res.json({ staff })
+  } catch {
+    return res.status(500).json({ error: 'Server error' })
+  }
+})
+
 export default router

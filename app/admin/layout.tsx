@@ -10,7 +10,7 @@ import {
   AlertTriangle, Loader2, Gift, Zap, ChefHat, Bell, Monitor,
   Users, BarChart3, Copy, Check, ExternalLink, Building2,
   Banknote, Wallet, CalendarClock, Sparkles, Settings, Languages, TrendingUp, Film,
-  Package, Lock, LayoutGrid, Wrench, Receipt, ShoppingCart, CalendarDays
+  Package, Lock, LayoutGrid, Wrench, Receipt, ShoppingCart, CalendarDays, Radio
 } from 'lucide-react'
 import { AdminLangProvider, useLang, type AdminLang } from './lang-context'
 import { A, type AdminT } from '@/lib/adminI18n'
@@ -24,6 +24,7 @@ const NAV = [
   { href: '/admin/tables',     icon: QrCode,          key: 'tables'     },
   { href: '/admin/zones',      icon: LayoutGrid,      key: 'zones'      },
   { href: '/admin/staff',      icon: Users,           key: 'staff'      },
+  { href: '/admin/control',    icon: Radio,           key: 'control'    },
   { href: '/admin/attendance', icon: CalendarClock,   key: 'attendance' },
   { href: '/admin/financials', icon: BarChart3,       key: 'financials' },
   { href: '/admin/margins',   icon: TrendingUp,      key: 'margins'    },

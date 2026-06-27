@@ -109,6 +109,9 @@ export default function POSPage() {
   const [loginErr,    setLoginErr]    = useState('')
   const [logging,     setLogging]     = useState(false)
   const [loadingCafe, setLoadingCafe] = useState(false)
+  // demo mode
+  const [isDemoMode,  setIsDemoMode]  = useState(false)
+  const [demoStaff,   setDemoStaff]   = useState<{ id: string; name: string; role: string }[]>([])
   // tables
   const [tables,      setTables]      = useState<PosTable[]>([])
   const [loadTables,  setLoadTables]  = useState(false)
@@ -165,7 +168,7 @@ export default function POSPage() {
     } catch { localStorage.removeItem('posToken') }
   }, [])
 
-  // Auto-detect subdomain + fetch cafe branding
+  // Auto-detect subdomain + fetch cafe branding + detect demo mode
   useEffect(() => {
     const parts = window.location.hostname.split('.')
     const det   = parts.length >= 3 && parts[0] !== 'www' ? parts[0] : ''
@@ -177,6 +180,10 @@ export default function POSPage() {
     fetch(`/api/public/cafe/${sub}`).then(r => r.ok ? r.json() : null).then(d => {
       if (d) { setCafeName(d.name); setCafeLogoUrl(d.logoUrl ?? null) }
     }).finally(() => setLoadingCafe(false))
+    // Check demo mode
+    fetch(`/api/public/demo-staff?subdomain=${sub}`).then(r => r.ok ? r.json() : null).then(d => {
+      if (d?.staff?.length) { setIsDemoMode(true); setDemoStaff(d.staff) }
+    }).catch(() => {})
   }, [])
 
   // Audio
@@ -204,6 +211,25 @@ export default function POSPage() {
       localStorage.setItem('posLastSubdomain', subdomain.trim())
       localStorage.setItem('staffName', data.staff?.name ?? '')
       setPin('')
+      if (data.staff?.role === 'WAITER') { window.location.href = '/waiter'; return }
+      setPosToken(data.token); setCafeId(payload.cafeId); setStaff(data.staff)
+    } catch { setLoginErr('Network error') }
+    finally   { setLogging(false) }
+  }
+
+  // Demo login — no PIN required
+  async function handleDemoLogin(staffId: string) {
+    setLoginErr(''); setLogging(true)
+    try {
+      const res  = await fetch('/api/pos/shift', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subdomain: subdomain.trim(), demoStaffId: staffId, action: 'login' }) })
+      const data = await res.json()
+      if (!res.ok) { setLoginErr(data.error ?? 'Login failed'); return }
+      const payload = JSON.parse(atob(data.token.split('.')[1]))
+      localStorage.setItem('posToken', data.token)
+      localStorage.setItem('cafeId', payload.cafeId)
+      localStorage.setItem('posLastSubdomain', subdomain.trim())
+      localStorage.setItem('staffName', data.staff?.name ?? '')
       if (data.staff?.role === 'WAITER') { window.location.href = '/waiter'; return }
       setPosToken(data.token); setCafeId(payload.cafeId); setStaff(data.staff)
     } catch { setLoginErr('Network error') }
@@ -448,6 +474,34 @@ export default function POSPage() {
             )}
           </div>
 
+          {/* Demo mode — tap to login, no PIN */}
+          {isDemoMode ? (
+            <div className="space-y-3">
+              <p className="text-center text-xs text-emerald-400 font-semibold uppercase tracking-widest mb-1">
+                🧪 Demo — اختر موظفاً للدخول
+              </p>
+              {demoStaff.map(s => (
+                <button key={s.id} onClick={() => handleDemoLogin(s.id)} disabled={logging}
+                  className="w-full flex items-center gap-3 px-4 py-3.5 bg-gray-800 hover:bg-gray-700 border border-gray-700 hover:border-emerald-500 rounded-2xl transition-all active:scale-95 disabled:opacity-50">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-600/20 border border-emerald-500/30 flex items-center justify-center text-lg shrink-0">
+                    {s.role === 'CASHIER' ? '💳' : s.role === 'SUPERVISOR' ? '👔' : '🛎️'}
+                  </div>
+                  <div className="text-left">
+                    <p className="text-white font-bold text-sm">{s.name}</p>
+                    <p className="text-gray-500 text-xs">{s.role}</p>
+                  </div>
+                  {logging ? <Loader2 className="w-4 h-4 animate-spin text-emerald-400 ml-auto" /> : (
+                    <ChevronLeft className="w-4 h-4 text-gray-600 ml-auto rotate-180" />
+                  )}
+                </button>
+              ))}
+              {loginErr && (
+                <div className="flex items-center gap-2 bg-red-950/60 border border-red-800 text-red-400 text-sm rounded-xl px-4 py-3">
+                  <AlertTriangle className="w-4 h-4 shrink-0" /> {loginErr}
+                </div>
+              )}
+            </div>
+          ) : (
           <form onSubmit={handleLogin} className="space-y-4">
             {/* Subdomain (if not detected) */}
             {!subdomain && (
@@ -493,6 +547,7 @@ export default function POSPage() {
               {logging ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'LOGIN'}
             </button>
           </form>
+          )}
         </div>
       </div>
     )
