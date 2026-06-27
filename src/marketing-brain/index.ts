@@ -3,7 +3,8 @@
  *
  * Sprint 1 + 2:   database layer (Mongoose models + seed).
  * Sprint 2.5:     knowledge layer (cultural + strategy enrichment).
- * Sprint 3:       decision engine service layer (no AI calls).
+ * Sprint 3:       decision engine — deterministic, confidence-scored,
+ *                 with full reasoning trail. No AI calls.
  */
 
 export { connect, disconnect } from './connection'
@@ -81,3 +82,43 @@ export type {
 
 export { createCache, withCache } from './knowledge/cache'
 export type { KnowledgeCache }    from './knowledge/cache'
+
+// ── Decision Engine (Sprint 3 — new structured layer) ────────────────────────
+// Primary entry point: decide(context) → DecisionResult with confidence + reasoning
+
+export { decide as decideV2 } from './decision-engine/DecisionEngine'
+
+export type {
+  DecisionContext,
+  ResolvedDecisionContext,
+  CampaignGoal,
+} from './decision-engine/DecisionContext'
+
+export type {
+  DecisionResult   as DecisionResultV2,
+  ReasoningTrail,
+  DecisionStep,
+  ScoreBreakdown,
+  DecisionDimension,
+} from './decision-engine/DecisionResult'
+
+export {
+  evaluateRule,
+  filterApplicableRules,
+  mergeRuleConstraints,
+} from './decision-engine/RuleEvaluator'
+
+export type { MergedConstraints } from './decision-engine/RuleEvaluator'
+
+export {
+  scoreTemplate, scoreVariables, scoreRules, scoreScenario,
+  buildScoreBreakdown, buildReasoningTrail,
+} from './decision-engine/ConfidenceScore'
+
+export { validateDecisionContext, assertDecisionContext } from './validators/DecisionValidator'
+export { validateVariables, requiredKeysFromDefs }        from './validators/VariableValidator'
+
+export {
+  selectScenario, selectTemplate, selectRules,
+  selectFollowup, selectVariables, renderTemplate, extractKeys as extractTemplateKeys,
+} from './selectors'
