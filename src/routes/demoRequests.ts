@@ -2,6 +2,11 @@ import { Router, Request, Response } from 'express'
 import { NextFunction } from 'express'
 import prisma from '../prisma'
 import logger from '../logger'
+import {
+  generate as marketingGenerate,
+  mapBusinessType,
+  inferLanguage,
+} from '../marketing-brain/MarketingGenerationService'
 
 function requireSuperAdmin(req: Request, res: Response, next: NextFunction) {
   const secret         = req.header('x-superadmin-secret')
@@ -56,6 +61,22 @@ router.post('/api/public/demo-request', async (req: Request, res: Response) => {
     })
 
     logger.info({ msg: '[demo-request] New lead', businessName, phone, email })
+
+    // Fire-and-forget: never awaited, never crashes the response
+    const countryCode = (country as string).toUpperCase()
+    marketingGenerate({
+      leadId:       demo.id,
+      ownerName:    demo.ownerName,
+      cafeName:     demo.businessName,
+      cafeCity:     demo.city,
+      language:     inferLanguage(countryCode),
+      country:      countryCode,
+      businessType: mapBusinessType(demo.businessType),
+      scenario:     'demo_request_submitted',
+      ownerPhone:   demo.phone,
+    }).catch((err: unknown) => {
+      logger.error({ msg: '[MarketingBrain] unexpected uncaught error in generate()', err })
+    })
 
     return res.json({ success: true, id: demo.id })
   } catch (err: any) {

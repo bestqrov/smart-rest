@@ -9,6 +9,7 @@ export { FollowupSequence }    from './FollowupSequence'
 export { AIRule }              from './AIRule'
 export { Variable }            from './Variable'
 export { TemplatePerformance } from './TemplatePerformance'
+export { MarketingGeneration } from './MarketingGeneration'
 
 export type { ILanguage }         from './Language'
 export type { ICountry, Region }  from './Country'
@@ -21,3 +22,4 @@ export type { IFollowupSequence, ISequenceStep, StepCondition } from './Followup
 export type { IAIRule, RuleType, IAppliesTo, IRuleBody } from './AIRule'
 export type { IVariable, VariableDataType, VariableSource } from './Variable'
 export type { ITemplatePerformance, PerformancePeriod } from './TemplatePerformance'
+export type { IMarketingGeneration } from './MarketingGeneration'

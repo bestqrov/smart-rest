@@ -205,6 +205,21 @@ export {
 // Active: Gemini only.  Disabled placeholders: Claude, OpenAI, Groq, OpenRouter.
 // getDefaultManager() → lazy singleton using GEMINI_API_KEY env var.
 
+// ── Production Integration (Phase B) ──────────────────────────────────────────
+// MarketingGenerationService: orchestrates the complete pipeline for one lead.
+// Call generate(input) from any Lead creation flow — fire-and-forget safe.
+
+export {
+  generate as marketingGenerate,
+  mapBusinessType,
+  inferLanguage,
+} from './MarketingGenerationService'
+
+export type { GenerationInput, GenerationSummary } from './MarketingGenerationService'
+
+export { MarketingGeneration } from './models/MarketingGeneration'
+export type { IMarketingGeneration } from './models/MarketingGeneration'
+
 export {
   createAIProviderManager,
   getDefaultManager,

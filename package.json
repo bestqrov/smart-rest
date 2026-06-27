@@ -8,6 +8,7 @@
     "dev": "ts-node --transpile-only src/server.ts",
     "smoke": "ts-node scripts/smoke.ts",
     "e2e:brain": "ts-node --transpile-only scripts/marketing-brain-e2e.ts",
+    "integration:brain": "ts-node --transpile-only scripts/marketing-brain-integration.ts",
     "seed": "ts-node prisma/seed.ts",
     "prisma:generate": "prisma generate"
   },
