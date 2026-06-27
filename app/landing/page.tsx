@@ -784,9 +784,9 @@ export default function LandingPage() {
   const LANDING_DEMO_CAFE = { subdomain: 'welcome' }
   const LANDING_DEMO_ROLES = [
     { role: 'BOSS',       icon: Crown,   color: 'amber',   label: { en: 'Admin',       fr: 'Gérant',    ar: 'المدير'  }, sub: { en: 'Full dashboard', fr: 'Tableau de bord',  ar: 'لوحة التحكم' }, pin: null,   dest: '/admin/dashboard' },
-    { role: 'CASHIER',    icon: Monitor, color: 'sky',     label: { en: 'Cashier/POS', fr: 'Caisse POS', ar: 'الكاشير' }, sub: { en: 'Point of sale',  fr: 'Terminal de vente', ar: 'نقطة البيع'  }, pin: '1234', dest: '/pos'             },
-    { role: 'SUPERVISOR', icon: ChefHat, color: 'emerald', label: { en: 'Kitchen',     fr: 'Cuisine',    ar: 'المطبخ'  }, sub: { en: 'Live orders',    fr: 'Écran commandes',   ar: 'شاشة الطلبات'}, pin: '3333', dest: '/kitchen'          },
-    { role: 'WAITER',     icon: Bell,    color: 'violet',  label: { en: 'Waiter',      fr: 'Serveur',    ar: 'النادل'  }, sub: { en: 'Table service',  fr: 'Service tables',    ar: 'خدمة الطاولات'}, pin: '2222', dest: '/waiter'           },
+    { role: 'CASHIER',    icon: Monitor, color: 'sky',     label: { en: 'Cashier/POS', fr: 'Caisse POS', ar: 'الكاشير' }, sub: { en: 'Point of sale',  fr: 'Terminal de vente', ar: 'نقطة البيع'  }, dest: '/pos'             },
+    { role: 'SUPERVISOR', icon: ChefHat, color: 'emerald', label: { en: 'Kitchen',     fr: 'Cuisine',    ar: 'المطبخ'  }, sub: { en: 'Live orders',    fr: 'Écran commandes',   ar: 'شاشة الطلبات'}, dest: '/kitchen'          },
+    { role: 'WAITER',     icon: Bell,    color: 'violet',  label: { en: 'Waiter',      fr: 'Serveur',    ar: 'النادل'  }, sub: { en: 'Table service',  fr: 'Service tables',    ar: 'خدمة الطاولات'}, dest: '/waiter'           },
   ] as const
 
   async function loginAsRoleLanding(r: typeof LANDING_DEMO_ROLES[number]) {
@@ -802,15 +802,24 @@ export default function LandingPage() {
         localStorage.setItem('sm_admin_lang', lang)
         router.push(r.dest)
       } else {
-        const res  = await fetch('/api/pos/shift', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ subdomain: LANDING_DEMO_CAFE.subdomain, pinCode: r.pin, action: 'login' }) })
+        // Fetch demo staff list to get the matching staff ID (no PIN needed)
+        const staffRes = await fetch(`/api/public/demo-staff?subdomain=${LANDING_DEMO_CAFE.subdomain}`)
+        if (!staffRes.ok) { setDemoRoleError('Demo unavailable'); setDemoRoleLoading(null); return }
+        const staffData = await staffRes.json()
+        const allStaff: { id: string; name: string; role: string }[] = staffData.staff ?? []
+        const matched = allStaff.find(s => s.role === r.role)
+        if (!matched) { setDemoRoleError('Demo staff not found'); setDemoRoleLoading(null); return }
+
+        const res = await fetch('/api/pos/shift', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ subdomain: LANDING_DEMO_CAFE.subdomain, demoStaffId: matched.id, action: 'login' }) })
         const data = await res.json()
-        if (!res.ok) { setDemoRoleError('Demo unavailable'); setDemoRoleLoading(null); return }
+        if (!res.ok) { setDemoRoleError(data.error ?? 'Demo unavailable'); setDemoRoleLoading(null); return }
         localStorage.setItem('posToken', data.token)
         localStorage.setItem('cafeId', JSON.parse(atob(data.token.split('.')[1])).cafeId)
         localStorage.setItem('posLastSubdomain', LANDING_DEMO_CAFE.subdomain)
         localStorage.setItem('staffName', data.staff?.name ?? '')
         localStorage.setItem('kitchenToken', data.token)
+        localStorage.setItem('sm_lang', lang)
         window.location.href = r.dest
       }
     } catch {
