@@ -200,6 +200,75 @@ export {
   RATE_LIMIT_RETRY_POLICY,
 } from './generation'
 
+// ── AI Provider Manager (Phase A) ─────────────────────────────────────────────
+// createAIProviderManager(config) → AIProviderManager
+// Active: Gemini only.  Disabled placeholders: Claude, OpenAI, Groq, OpenRouter.
+// getDefaultManager() → lazy singleton using GEMINI_API_KEY env var.
+
+export {
+  createAIProviderManager,
+  getDefaultManager,
+  resetDefaultManager,
+  // Errors
+  ProviderError,
+  DisabledProviderError,
+  ProviderAuthError,
+  ProviderRateLimitError,
+  ProviderTimeoutError,
+  ProviderServerError,
+  ProviderSafetyError,
+  ProviderResponseError,
+  ProviderNetworkError,
+  ProviderContextTooLongError,
+  isRetryable,
+  shouldFallback,
+  // Usage tracking
+  addUsageHook,
+  clearHooks,
+  hookCount,
+  emitUsageEvent,
+  calculateCostUsd,
+  estimateInputTokens,
+  // Registry
+  registerProvider,
+  registerProviders,
+  getProvider,
+  listProviders,
+  listActiveProviders,
+  hasActiveProvider,
+  registryStatus,
+  // Selector
+  selectProvider,
+  buildFallbackChain,
+  // Adapters
+  GeminiAdapter,
+  ClaudeAdapter,
+  OpenAIAdapter,
+  GroqAdapter,
+  OpenRouterAdapter,
+} from './providers'
+
+export type {
+  AIProviderManager,
+  GenerateOptions,
+  ManagerResult,
+  ManagerStatus,
+  AIProvider,
+  AIProviderRequest,
+  AIProviderResponse,
+  TokenUsage,
+  ProviderHealth,
+  ProviderStatus,
+  ProviderConfigMap,
+  GeminiConfig,
+  UsageEvent,
+  UsageHook,
+  ProviderErrorCode,
+  SelectionOptions,
+  ProviderAttempt,
+  FallbackChain,
+} from './providers'
+
 export type {
   PromptContext,
   PromptResult,
