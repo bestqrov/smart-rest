@@ -6,7 +6,7 @@ import { useState, useEffect, type ElementType } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   QrCode, Zap, BarChart3, Star, CheckCircle, Menu, X,
-  MessageCircle, ArrowRight, Loader2, ChefHat,
+  MessageCircle, ArrowRight, Loader2, ChefHat, Crown, Monitor,
   CreditCard, Bell, Languages, Layers, TrendingUp,
   Shield, Phone, Mail, MapPin, ChevronDown, ChevronUp,
   Utensils, Coffee, Building2, ShoppingBag, Package,
@@ -777,7 +777,47 @@ export default function LandingPage() {
   const [ctaLoading, setCtaLoading] = useState(false)
   const [ctaError, setCtaError] = useState('')
   const [demoLoading, setDemoLoading] = useState(false)
+  const [demoRoleLoading, setDemoRoleLoading] = useState<string | null>(null)
+  const [demoRoleError,   setDemoRoleError]   = useState('')
   const [theme, setTheme] = useState<LandingTheme>('dark-green')
+
+  const LANDING_DEMO_CAFE = { subdomain: 'plage' }
+  const LANDING_DEMO_ROLES = [
+    { role: 'BOSS',       icon: Crown,   color: 'amber',   label: { en: 'Admin',       fr: 'Gérant',    ar: 'المدير'  }, sub: { en: 'Full dashboard', fr: 'Tableau de bord',  ar: 'لوحة التحكم' }, pin: null,   dest: '/admin/dashboard' },
+    { role: 'CASHIER',    icon: Monitor, color: 'sky',     label: { en: 'Cashier/POS', fr: 'Caisse POS', ar: 'الكاشير' }, sub: { en: 'Point of sale',  fr: 'Terminal de vente', ar: 'نقطة البيع'  }, pin: '1234', dest: '/pos'             },
+    { role: 'SUPERVISOR', icon: ChefHat, color: 'emerald', label: { en: 'Kitchen',     fr: 'Cuisine',    ar: 'المطبخ'  }, sub: { en: 'Live orders',    fr: 'Écran commandes',   ar: 'شاشة الطلبات'}, pin: '3333', dest: '/kitchen'          },
+    { role: 'WAITER',     icon: Bell,    color: 'violet',  label: { en: 'Waiter',      fr: 'Serveur',    ar: 'النادل'  }, sub: { en: 'Table service',  fr: 'Service tables',    ar: 'خدمة الطاولات'}, pin: '2222', dest: '/waiter'           },
+  ] as const
+
+  async function loginAsRoleLanding(r: typeof LANDING_DEMO_ROLES[number]) {
+    setDemoRoleLoading(r.role); setDemoRoleError('')
+    try {
+      if (r.role === 'BOSS') {
+        const res  = await fetch('/api/demo-login', { method: 'POST' })
+        const data = await res.json()
+        if (!res.ok) { setDemoRoleError('Demo unavailable'); setDemoRoleLoading(null); return }
+        localStorage.setItem('token', data.token)
+        localStorage.setItem('cafeId', data.cafeId)
+        localStorage.setItem('isDemo', '1')
+        localStorage.setItem('sm_admin_lang', lang)
+        router.push(r.dest)
+      } else {
+        const res  = await fetch('/api/pos/shift', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ subdomain: LANDING_DEMO_CAFE.subdomain, pinCode: r.pin, action: 'login' }) })
+        const data = await res.json()
+        if (!res.ok) { setDemoRoleError('Demo unavailable'); setDemoRoleLoading(null); return }
+        localStorage.setItem('posToken', data.token)
+        localStorage.setItem('cafeId', JSON.parse(atob(data.token.split('.')[1])).cafeId)
+        localStorage.setItem('posLastSubdomain', LANDING_DEMO_CAFE.subdomain)
+        localStorage.setItem('staffName', data.staff?.name ?? '')
+        localStorage.setItem('kitchenToken', data.token)
+        window.location.href = r.dest
+      }
+    } catch {
+      setDemoRoleError('Network error')
+      setDemoRoleLoading(null)
+    }
+  }
 
   useEffect(() => {
     const saved = localStorage.getItem('landing-theme') as LandingTheme | null
@@ -1036,14 +1076,37 @@ export default function LandingPage() {
               <Link href="/signup" className="flex items-center justify-center gap-2 text-white font-bold px-7 py-3.5 rounded-xl shadow-xl transition-all text-base" style={{ background: 'var(--cp)' }}>
                 {t('cta1')} <ArrowRight className="w-4 h-4" />
               </Link>
-              <button
-                onClick={startDemo}
-                disabled={demoLoading}
-                className="flex items-center justify-center gap-2 bg-violet-500/20 hover:bg-violet-500/30 border border-violet-500/40 text-violet-200 font-semibold px-7 py-3.5 rounded-xl transition-all text-base disabled:opacity-60"
-              >
-                {demoLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                {t('ctaDemo')}
-              </button>
+            </div>
+
+            {/* Live demo role cards */}
+            <div className={`mt-6 ${isRtl ? 'text-right' : 'text-left'}`}>
+              <p className="text-xs font-black text-gray-500 uppercase tracking-widest mb-1">
+                {lang === 'ar' ? 'جرّب الديمو مباشرة' : lang === 'fr' ? 'Essayer la démo en direct' : 'Try the live demo'}
+              </p>
+              <p className="text-xs text-gray-600 mb-3">
+                {lang === 'ar' ? 'بدون تسجيل · مطعم تجريبي' : lang === 'fr' ? 'Sans inscription · 🇲🇦 Café de la Plage' : 'No login required · 🇲🇦 Café de la Plage'}
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                {LANDING_DEMO_ROLES.map(r => {
+                  const Icon = r.icon
+                  const isLoading = demoRoleLoading === r.role
+                  const bg: Record<string,string> = { amber:'bg-amber-500', sky:'bg-sky-500', emerald:'bg-emerald-500', violet:'bg-violet-500' }
+                  const ring: Record<string,string> = { amber:'ring-amber-500/20 hover:ring-amber-500/40', sky:'ring-sky-500/20 hover:ring-sky-500/40', emerald:'ring-emerald-500/20 hover:ring-emerald-500/40', violet:'ring-violet-500/20 hover:ring-violet-500/40' }
+                  return (
+                    <button key={r.role} onClick={() => loginAsRoleLanding(r)} disabled={demoRoleLoading !== null}
+                      className={`group bg-white/4 hover:bg-white/7 ring-1 ${ring[r.color]} rounded-2xl p-3.5 text-left transition-all active:scale-[0.98] disabled:opacity-60`}>
+                      <div className={`w-8 h-8 rounded-xl ${bg[r.color]} flex items-center justify-center mb-2.5 shadow-lg`}>
+                        {isLoading ? <Loader2 className="w-3.5 h-3.5 text-white animate-spin" /> : <Icon className="w-3.5 h-3.5 text-white" />}
+                      </div>
+                      <p className="font-bold text-white text-xs leading-snug">{r.label[lang as 'en'|'fr'|'ar']}</p>
+                      <p className="text-gray-600 text-[10px] mt-0.5">{r.sub[lang as 'en'|'fr'|'ar']}</p>
+                    </button>
+                  )
+                })}
+              </div>
+              {demoRoleError && (
+                <p className="mt-2 text-xs text-red-400">{demoRoleError}</p>
+              )}
             </div>
 
             {/* Trust bar */}

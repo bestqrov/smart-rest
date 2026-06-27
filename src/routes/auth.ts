@@ -734,21 +734,26 @@ async function seedDemoMenu(cafeId: string): Promise<void> {
 // Requires: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_CALLBACK_URL in .env
 // Set GOOGLE_CALLBACK_URL to https://yourdomain.com/api/auth/google/callback
 
-const GOOGLE_CLIENT_ID     = process.env.GOOGLE_CLIENT_ID     ?? ''
-const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET ?? ''
-const GOOGLE_CALLBACK_URL  = process.env.GOOGLE_CALLBACK_URL  ?? ''
-const GOOGLE_SCOPES        = 'openid email profile'
+// Read at request time (not module init) so Coolify env vars are always current
+function googleCreds() {
+  return {
+    clientId:    process.env.GOOGLE_CLIENT_ID     ?? '',
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? '',
+    callbackUrl:  process.env.GOOGLE_CALLBACK_URL  ?? '',
+  }
+}
 
 // GET /api/auth/google — Redirect user to Google consent screen
 router.get('/api/auth/google', (req: Request, res: Response) => {
-  if (!GOOGLE_CLIENT_ID || !GOOGLE_CALLBACK_URL) {
+  const { clientId, callbackUrl } = googleCreds()
+  if (!clientId || !callbackUrl) {
     return res.status(503).json({ error: 'Google OAuth not configured' })
   }
   const params = new URLSearchParams({
-    client_id:     GOOGLE_CLIENT_ID,
-    redirect_uri:  GOOGLE_CALLBACK_URL,
+    client_id:     clientId,
+    redirect_uri:  callbackUrl,
     response_type: 'code',
-    scope:         GOOGLE_SCOPES,
+    scope:         'openid email profile',
     access_type:   'online',
     prompt:        'select_account',
   })
@@ -757,6 +762,7 @@ router.get('/api/auth/google', (req: Request, res: Response) => {
 
 // GET /api/auth/google/callback — Exchange code → user info → JWT
 router.get('/api/auth/google/callback', async (req: Request, res: Response) => {
+  const { clientId, clientSecret, callbackUrl } = googleCreds()
   const frontendUrl = process.env.FRONTEND_URL ?? 'http://localhost:3000'
   const errorRedirect = (msg: string) => res.redirect(`${frontendUrl}/login?oauth_error=${encodeURIComponent(msg)}`)
 
@@ -770,9 +776,9 @@ router.get('/api/auth/google/callback', async (req: Request, res: Response) => {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
         code,
-        client_id:     GOOGLE_CLIENT_ID,
-        client_secret: GOOGLE_CLIENT_SECRET,
-        redirect_uri:  GOOGLE_CALLBACK_URL,
+        client_id:     clientId,
+        client_secret: clientSecret,
+        redirect_uri:  callbackUrl,
         grant_type:    'authorization_code',
       }),
     })
