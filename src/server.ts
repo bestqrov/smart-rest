@@ -5,6 +5,7 @@ import express from 'express'
 import http from 'http'
 import path from 'path'
 import cors from 'cors'
+import helmet from 'helmet'
 import bodyParser from 'body-parser'
 import { Server as SocketIOServer } from 'socket.io'
 import next from 'next'
@@ -90,37 +91,81 @@ async function main() {
   const app = express()
   app.set('trust proxy', 1)
 
-  const allowedOrigin =
-    process.env.FRONTEND_URL || process.env.NEXT_PUBLIC_SOCKET_URL || (dev ? 'http://localhost:3000' : '*')
+  // ── Security headers (Helmet) ────────────────────────────────────────────────
+  app.use(helmet({
+    // HSTS: force HTTPS for 1 year, including subdomains, eligible for preload
+    hsts: {
+      maxAge:            31536000,
+      includeSubDomains: true,
+      preload:           true,
+    },
+    // CSP: Next.js requires unsafe-inline for its runtime scripts/styles
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc:              ["'self'"],
+        scriptSrc:               ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+        styleSrc:                ["'self'", "'unsafe-inline'"],
+        imgSrc:                  ["'self'", 'data:', 'https:'],
+        connectSrc:              ["'self'", 'wss:', 'ws:', 'https:'],
+        fontSrc:                 ["'self'", 'https:', 'data:'],
+        frameSrc:                ["'none'"],
+        objectSrc:               ["'none'"],
+        upgradeInsecureRequests: dev ? null : [],
+      },
+    },
+    referrerPolicy:          { policy: 'strict-origin-when-cross-origin' },
+    xContentTypeOptions:     true,
+    xFrameOptions:           { action: 'deny' },
+    crossOriginEmbedderPolicy: false, // disabled — Cloudinary images would fail
+  }))
 
-  // configure CORS for API routes
-  app.use(
-    cors({ origin: allowedOrigin === '*' ? true : allowedOrigin, credentials: true })
-  )
+  // ── CORS ─────────────────────────────────────────────────────────────────────
+  // Production: FRONTEND_URL required — never allow wildcard with credentials
+  const allowedOrigin =
+    process.env.FRONTEND_URL ||
+    process.env.NEXT_PUBLIC_SOCKET_URL ||
+    (dev ? 'http://localhost:3000' : null)
+
+  if (!allowedOrigin) {
+    throw new Error('FRONTEND_URL must be set in production (CORS wildcard is not allowed)')
+  }
+
+  app.use(cors({ origin: allowedOrigin, credentials: true }))
   logger.info({ msg: 'CORS/socket origin', allowedOrigin })
 
+  // ── Body parsing ─────────────────────────────────────────────────────────────
   // Stripe webhook needs raw body — mount BEFORE bodyParser.json()
   app.use('/api/payment/gulf/stripe-webhook', express.raw({ type: 'application/json' }))
 
   app.use(bodyParser.json({ limit: '10mb' }))
 
-  // Rate limiting — protects against brute force and volumetric attacks
-  const apiLimiter = rateLimit({
-    windowMs: 60 * 1000, // 1 minute
-    max: 60,             // 60 requests per minute per IP
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: { error: 'Too many requests, please try again later.' }
-  })
+  // ── Rate limiting ─────────────────────────────────────────────────────────────
   const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 10,                   // 10 login attempts per 15 min per IP
+    max: 10,
     standardHeaders: true,
-    legacyHeaders: false,
-    message: { error: 'Too many login attempts, please try again in 15 minutes.' }
+    legacyHeaders:   false,
+    message: { error: 'Too many login attempts, please try again in 15 minutes.' },
   })
-  app.use('/api/auth', authLimiter)
-  app.use('/api', apiLimiter)
+  const apiLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 minute
+    max: 60,
+    standardHeaders: true,
+    legacyHeaders:   false,
+    message: { error: 'Too many requests, please try again later.' },
+  })
+  const optInLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000, // 1 hour
+    max: 5,                    // 5 opt-in attempts per IP per hour
+    standardHeaders: true,
+    legacyHeaders:   false,
+    message: { error: 'Too many opt-in attempts, please try again later.' },
+  })
+
+  // More specific limiters must come BEFORE the general /api limiter
+  app.use('/api/auth',                    authLimiter)
+  app.use('/api/customers/optin',         optInLimiter)
+  app.use('/api',                         apiLimiter)
 
   // Serve uploaded hero images directly — must come before Next.js catch-all
   const uploadsDir = path.join(process.cwd(), 'public', 'uploads')

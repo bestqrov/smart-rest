@@ -21,7 +21,26 @@ import logger from '../logger'
 import prisma from '../prisma'
 
 const router = express.Router()
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } })
+const ALLOWED_MENU_MIMES = new Set([
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // xlsx
+  'application/vnd.ms-excel',                                           // xls
+  'application/pdf',                                                    // pdf
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // docx
+  'text/csv',
+  'text/plain',
+])
+const ALLOWED_MENU_EXTS = /\.(xlsx|xls|pdf|docx|csv|txt)$/i
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const extOk  = ALLOWED_MENU_EXTS.test(file.originalname)
+    const mimeOk = ALLOWED_MENU_MIMES.has(file.mimetype)
+    if (extOk && mimeOk) return cb(null, true)
+    cb(new Error('Only xlsx, xls, pdf, docx, csv or txt files are allowed'))
+  },
+})
 
 function getGroq() {
   const key = process.env.GROQ_API_KEY
