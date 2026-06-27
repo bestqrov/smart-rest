@@ -52,15 +52,18 @@ function hashToken(raw: string): string {
 async function issueTokenPair(
   userId: string,
   cafeId: string,
-  extra: Record<string, unknown> = {}
+  extra: Record<string, unknown> = {},
+  req?: Request
 ): Promise<{ accessToken: string; refreshToken: string }> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const accessToken  = jwt.sign({ userId, cafeId, ...extra } as object, JWT_SECRET, { expiresIn: ACCESS_TOKEN_EXPIRY } as any)
   const rawRefresh   = generateSecureToken()
   const tokenHash    = hashToken(rawRefresh)
   const expiresAt    = new Date(Date.now() + REFRESH_TOKEN_DAYS * 24 * 60 * 60 * 1000)
+  const ip           = req?.ip ?? null
+  const userAgent    = (req?.headers['user-agent'] as string | undefined) ?? null
 
-  await prisma.refreshToken.create({ data: { tokenHash, userId, cafeId, expiresAt } })
+  await prisma.refreshToken.create({ data: { tokenHash, userId, cafeId, expiresAt, ip, userAgent } })
 
   return { accessToken, refreshToken: rawRefresh }
 }
@@ -102,7 +105,7 @@ router.post('/api/auth/login', async (req: Request, res: Response) => {
     if (!ok) return res.status(401).json({ error: 'Invalid credentials' })
 
     const subdomain = user.cafe?.subdomain ?? ''
-    const { accessToken, refreshToken } = await issueTokenPair(user.id, user.cafeId, { subdomain })
+    const { accessToken, refreshToken } = await issueTokenPair(user.id, user.cafeId, { subdomain }, req)
     return res.json({ token: accessToken, refreshToken, userId: user.id, cafeId: user.cafeId, subdomain })
   } catch (err) {
     logger.error({ msg: 'Login error', err })
@@ -220,7 +223,7 @@ router.post('/api/auth/register', async (req: Request, res: Response) => {
       return { user, cafe }
     })
 
-    const { accessToken, refreshToken } = await issueTokenPair(user.id, cafe.id)
+    const { accessToken, refreshToken } = await issueTokenPair(user.id, cafe.id, {}, req)
 
     // Seed demo menu in background — gives new accounts a working menu on first QR scan
     seedDemoMenu(cafe.id).catch((e) => logger.warn({ msg: 'Demo menu seed failed', cafeId: cafe.id, err: e.message }))
@@ -341,7 +344,7 @@ router.get('/api/auth/magic', async (req: Request, res: Response) => {
 
     if (!payload.magic) return res.status(401).json({ error: 'Not a magic link token' })
 
-    const { accessToken, refreshToken } = await issueTokenPair(payload.userId, payload.cafeId)
+    const { accessToken, refreshToken } = await issueTokenPair(payload.userId, payload.cafeId, {}, req)
     return res.json({ token: accessToken, refreshToken, userId: payload.userId, cafeId: payload.cafeId })
   } catch (err) {
     return res.status(500).json({ error: 'Magic link exchange failed' })
@@ -613,7 +616,7 @@ router.get('/api/auth/magic-verify', async (req: Request, res: Response) => {
     logger.info({ msg: 'magic-verify: account created', email: record.email, cafeId: cafe.id })
 
     if (wantsJson) {
-      const { accessToken, refreshToken } = await issueTokenPair(user.id, cafe.id, { subdomain: cafe.subdomain })
+      const { accessToken, refreshToken } = await issueTokenPair(user.id, cafe.id, { subdomain: cafe.subdomain }, req)
       return res.json({
         token:        accessToken,
         refreshToken,
@@ -661,7 +664,7 @@ router.post('/api/auth/refresh', async (req: Request, res: Response) => {
 
     // Rotate: delete old token before issuing new pair (prevents replay)
     await prisma.refreshToken.delete({ where: { tokenHash: hash } })
-    const { accessToken, refreshToken: newRefresh } = await issueTokenPair(stored.userId, stored.cafeId)
+    const { accessToken, refreshToken: newRefresh } = await issueTokenPair(stored.userId, stored.cafeId, {}, req)
 
     return res.json({ accessToken, refreshToken: newRefresh })
   } catch (err) {

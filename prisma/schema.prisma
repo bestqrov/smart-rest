@@ -1535,8 +1535,10 @@ model RefreshToken {
   tokenHash String   @unique         // SHA-256(rawToken) — raw token never stored
   userId    String   @db.ObjectId
   cafeId    String   @db.ObjectId
-  expiresAt DateTime
+  ip        String?                  // issuing client IP (for future session management)
+  userAgent String?                  // issuing User-Agent (for future session management)
   createdAt DateTime @default(now())
+  expiresAt DateTime
 
   @@index([userId])
   @@index([expiresAt])

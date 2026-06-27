@@ -94,13 +94,19 @@ async function runNightlyJobs(): Promise<void> {
     data:  { status: 'expired' }
   })
 
+  // 5. Purge expired refresh tokens
+  const { count: refreshTokensPurged } = await prisma.refreshToken.deleteMany({
+    where: { expiresAt: { lt: new Date() } }
+  })
+
   logger.info({
-    msg:             '[CRON] Nightly jobs completed',
-    cafes:           cafes.length,
+    msg:                 '[CRON] Nightly jobs completed',
+    cafes:               cafes.length,
     totalAlerts,
     reportsSent,
     qrScansCleared,
     sessionsExpired,
+    refreshTokensPurged,
   })
 }
 
