@@ -8,6 +8,8 @@
  * Order matters — later collections reference earlier ones:
  *   Language → Country → BusinessType → Persona → Scenario → Objection
  *   → MessageTemplate → FollowupSequence
+ *   → Variable (no deps) → AIRule (deps: Persona, Scenario, Country, Language, BusinessType)
+ *   TemplatePerformance has no seed data (populated by send pipeline at runtime)
  *
  * Usage:
  *   ts-node src/marketing-brain/seed/index.ts
@@ -18,6 +20,7 @@ import { connect, disconnect } from '../connection'
 import {
   Language, Country, BusinessType, Persona,
   Scenario, Objection, MessageTemplate, FollowupSequence,
+  AIRule, Variable,
 } from '../models'
 
 import { LANGUAGES }           from './languages'
@@ -28,6 +31,8 @@ import { SCENARIOS }           from './scenarios'
 import { OBJECTIONS }          from './objections'
 import { MESSAGE_TEMPLATES }   from './messageTemplates'
 import { FOLLOWUP_SEQUENCES }  from './followupSequences'
+import { AI_RULES }            from './aiRules'
+import { VARIABLES }           from './variables'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -56,6 +61,13 @@ async function btIds(slugs: string[]) {
 async function personaIds(slugs: string[]) {
   if (!slugs.length) return []
   const docs = await Persona.find({ slug: { $in: slugs } }).select('_id slug').lean()
+  return docs.map(d => d._id)
+}
+
+/** Resolve an array of scenario slugs to ObjectIds. */
+async function scenarioIds(slugs: string[]) {
+  if (!slugs.length) return []
+  const docs = await Scenario.find({ slug: { $in: slugs } }).select('_id slug').lean()
   return docs.map(d => d._id)
 }
 
@@ -256,9 +268,66 @@ async function seedFollowupSequences() {
   console.log(`[MB Seed] FollowupSequences: ${count} upserted`)
 }
 
+// ─── Sprint 2 seed steps ──────────────────────────────────────────────────────
+
+async function seedVariables() {
+  let count = 0
+  for (const item of VARIABLES) {
+    await Variable.updateOne({ key: item.key }, { $set: item }, { upsert: true })
+    count++
+  }
+  console.log(`[MB Seed] Variables: ${count} upserted`)
+}
+
+async function seedAIRules() {
+  let count = 0
+  for (const item of AI_RULES) {
+    const {
+      appliesTo: {
+        personaSlugs     = [],
+        scenarioSlugs    = [],
+        countryCodes     = [],
+        languageCodes    = [],
+        businessTypeSlugs = [],
+        channels         = [],
+      },
+      ...rest
+    } = item as any
+
+    const [pIds, sIds, cIds, lIds, btObjectIds] = await Promise.all([
+      personaIds(personaSlugs),
+      scenarioIds(scenarioSlugs),
+      countryIds(countryCodes),
+      langIds(languageCodes),
+      btIds(businessTypeSlugs),
+    ])
+
+    await AIRule.updateOne(
+      { slug: rest.slug },
+      {
+        $set: {
+          ...rest,
+          appliesTo: {
+            personas:      pIds,
+            scenarios:     sIds,
+            countries:     cIds,
+            languages:     lIds,
+            businessTypes: btObjectIds,
+            channels,
+          },
+        },
+      },
+      { upsert: true },
+    )
+    count++
+  }
+  console.log(`[MB Seed] AIRules: ${count} upserted`)
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export async function seedMarketingBrain(): Promise<void> {
+  // Sprint 1: reference collections (dependency order)
   await seedLanguages()
   await seedCountries()
   await seedBusinessTypes()
@@ -267,6 +336,9 @@ export async function seedMarketingBrain(): Promise<void> {
   await seedObjections()
   await seedMessageTemplates()
   await seedFollowupSequences()
+  // Sprint 2: extended architecture
+  await seedVariables()
+  await seedAIRules()
 }
 
 // Allow direct execution: ts-node src/marketing-brain/seed/index.ts
