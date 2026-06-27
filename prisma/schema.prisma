@@ -130,9 +130,10 @@ type PaymentConfig {
 }
 
 enum BillingStatus {
-  GRACE_PERIOD
-  COLLECTING_DEBT
-  SUSPENDED
+  GRACE_PERIOD      // Trial window — commission-free
+  COLLECTING_DEBT   // Active billing — commissions accumulate
+  PAST_DUE          // Balance negative; 7-day grace period before suspension
+  SUSPENDED         // Grace period elapsed without payment; service halted
 }
 
 // ─── Online Payment ───────────────────────────────────────────────────────────
@@ -200,6 +201,8 @@ model Cafe {
   trialEndsAt         DateTime?
   hasExtendedTrial    Boolean       @default(false)
   billingStatus       BillingStatus @default(GRACE_PERIOD)
+  gracePeriodEndsAt   DateTime?     // Set when status transitions to PAST_DUE; null otherwise
+  suspendedAt         DateTime?     // Set when status transitions to SUSPENDED; null otherwise
   isPremium           Boolean       @default(false)
   hasSocialShareAddon Boolean       @default(false)
   // 'CAFE' = simple cafe (drinks + light snacks), 'RESTAURANT' = full meals + kitchen
@@ -328,6 +331,7 @@ model Cafe {
   supplierInvoices     SupplierInvoice[]
   purchaseRequisitions PurchaseRequisition[]
   cafeCustomers        CafeCustomer[]
+  billingInvoices      BillingInvoice[]
 
   // Indexes for geo-targeting, package segmentation, and n8n campaign queries
   @@index([country])
@@ -1007,6 +1011,7 @@ model OnlinePayment {
   @@index([stripePaymentIntent])
   @@index([moyasarPaymentId])
   @@index([createdAt])
+  @@index([expiresAt])
 }
 
 // ─── Site Config (editable landing page content) ─────────────────────────────
@@ -1037,6 +1042,44 @@ model PaymentRequest {
   @@index([cafeId])
   @@index([status])
   @@index([createdAt])
+}
+
+// ─── Processed Webhooks (idempotency guard for Stripe / Moyasar) ─────────────
+
+model ProcessedWebhook {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  provider    String   // stripe | moyasar
+  eventId     String
+  processedAt DateTime @default(now())
+
+  @@unique([provider, eventId])
+  @@index([processedAt])
+}
+
+// ─── Billing Invoices (generated on every confirmed payment) ─────────────────
+
+model BillingInvoice {
+  id               String    @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId           String    @db.ObjectId
+  cafe             Cafe      @relation(fields: [cafeId], references: [id])
+
+  invoiceNumber    String    @unique              // INV-YYYY-NNNNN
+  amount           Float
+  currency         String
+  method           String?                        // BANK_TRANSFER | WESTERN_UNION | PAYPAL
+  periodStart      DateTime?
+  periodEnd        DateTime?
+
+  paymentRequestId String?   @db.ObjectId        // linked PaymentRequest
+
+  status           String    @default("ISSUED")  // ISSUED | PAID | VOID
+
+  issuedAt         DateTime  @default(now())
+  paidAt           DateTime?
+
+  @@index([cafeId])
+  @@index([status])
+  @@index([issuedAt])
 }
 
 // ─── Dynamic QR — Client Sessions (one QR per table, seats assigned at scan) ──

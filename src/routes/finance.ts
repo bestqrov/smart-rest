@@ -104,15 +104,41 @@ router.post('/api/finance/settle-debt', authorizeAdmin, async (req: Request, res
     const cafe = await prisma.cafe.findUnique({ where: { id: cafeId }, select: { walletBalance: true, billingStatus: true } })
     if (!cafe) return res.status(404).json({ error: 'Cafe not found' })
 
+    if (cafe.walletBalance >= 0 && cafe.billingStatus !== 'SUSPENDED' && cafe.billingStatus !== 'PAST_DUE') {
+      return res.json({ message: 'No outstanding debt.', walletBalance: cafe.walletBalance })
+    }
+
+    // Server-side payment validation: a SuperAdmin must have confirmed a PaymentRequest
+    // before this endpoint will clear the debt.  Self-service debt forgiveness is not allowed.
+    const confirmed = await prisma.paymentRequest.findFirst({
+      where: {
+        cafeId,
+        status:     'CONFIRMED',
+        reviewedAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }
+      }
+    })
+    if (!confirmed) {
+      return res.status(402).json({
+        error:   'Payment not verified',
+        message: 'Submit your payment proof via the payment form. Your account will be reactivated within 24 hours of SuperAdmin confirmation.',
+        walletBalance: cafe.walletBalance,
+        billingStatus: cafe.billingStatus,
+      })
+    }
+
+    // Payment was confirmed by SuperAdmin — sync the wallet (idempotent)
     const prevBalance = cafe.walletBalance
-    if (prevBalance >= 0 && cafe.billingStatus !== 'SUSPENDED') {
-      return res.json({ message: 'No outstanding debt.', walletBalance: prevBalance })
+    if (prevBalance >= 0) {
+      return res.json({ message: 'Account already active.', walletBalance: prevBalance })
     }
 
     const settled = await prisma.$transaction(async (tx) => {
       const updated = await tx.cafe.update({
         where: { id: cafeId },
-        data: { walletBalance: 0, isActive: true, billingStatus: 'COLLECTING_DEBT' },
+        data: {
+          walletBalance: 0, isActive: true, billingStatus: 'COLLECTING_DEBT',
+          gracePeriodEndsAt: null, suspendedAt: null
+        },
         select: { walletBalance: true, billingStatus: true, isActive: true }
       })
       await tx.walletLog.create({
@@ -207,6 +233,33 @@ router.get('/api/finance/subscription-invoice', authorizeAdmin, async (req: Requ
   } catch (err) {
     logger.error({ msg: 'GET /api/finance/subscription-invoice error', err })
     return res.status(500).json({ error: 'Failed' })
+  }
+})
+
+// ─── GET /api/finance/invoices ────────────────────────────────────────────────
+// Returns billing invoice history for the authenticated admin's cafe.
+
+router.get('/api/finance/invoices', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const cafeId = req.admin!.cafeId
+    const page   = Math.max(1, Number(req.query.page)  || 1)
+    const limit  = Math.min(50, Number(req.query.limit) || 20)
+
+    const [total, invoices] = await Promise.all([
+      prisma.billingInvoice.count({ where: { cafeId } }),
+      prisma.billingInvoice.findMany({
+        where:   { cafeId },
+        orderBy: { issuedAt: 'desc' },
+        skip:    (page - 1) * limit,
+        take:    limit,
+        select:  { id: true, invoiceNumber: true, amount: true, currency: true, method: true, status: true, issuedAt: true, paidAt: true }
+      })
+    ])
+
+    return res.json({ total, page, pages: Math.ceil(total / limit), hasMore: (page - 1) * limit + invoices.length < total, invoices })
+  } catch (err) {
+    logger.error({ msg: 'GET /api/finance/invoices error', err })
+    return res.status(500).json({ error: 'Failed to fetch invoices' })
   }
 })
 

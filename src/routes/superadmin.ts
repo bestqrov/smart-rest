@@ -167,8 +167,12 @@ router.get('/api/superadmin/tenants', requireSuperAdmin, async (req: Request, re
 
 router.post('/api/superadmin/tenants/:id/suspend', requireSuperAdmin, async (req: Request, res: Response) => {
   try {
-    const id = req.params.id as string
-    await prisma.cafe.update({ where: { id }, data: { isActive: false, billingStatus: 'SUSPENDED' } })
+    const id  = req.params.id as string
+    const now = new Date()
+    await prisma.cafe.update({
+      where: { id },
+      data:  { isActive: false, billingStatus: 'SUSPENDED', suspendedAt: now, gracePeriodEndsAt: null }
+    })
     logger.warn({ msg: 'SuperAdmin force-suspended cafe', cafeId: id })
     return res.json({ ok: true })
   } catch (err) {
@@ -182,14 +186,38 @@ router.post('/api/superadmin/tenants/:id/reactivate', requireSuperAdmin, async (
   try {
     const id = req.params.id as string
     const { clearDebt } = req.body as { clearDebt?: boolean }
-    await prisma.cafe.update({
-      where: { id },
-      data: {
-        isActive: true,
-        billingStatus: 'COLLECTING_DEBT',
-        ...(clearDebt ? { walletBalance: 0 } : {})
+
+    await prisma.$transaction(async (tx) => {
+      const cafe = await tx.cafe.findUnique({
+        where:  { id },
+        select: { walletBalance: true }
+      })
+      const prevBalance = cafe?.walletBalance ?? 0
+
+      await tx.cafe.update({
+        where: { id },
+        data: {
+          isActive:          true,
+          billingStatus:     'COLLECTING_DEBT',
+          gracePeriodEndsAt: null,
+          suspendedAt:       null,
+          ...(clearDebt ? { walletBalance: 0 } : {})
+        }
+      })
+
+      if (clearDebt && prevBalance < 0) {
+        await tx.walletLog.create({
+          data: {
+            cafeId:          id,
+            amount:          Math.abs(prevBalance),
+            type:            'PAYMENT_SETTLEMENT',
+            previousBalance: prevBalance,
+            newBalance:      0
+          }
+        })
       }
     })
+
     logger.info({ msg: 'SuperAdmin reactivated cafe', cafeId: id, clearDebt })
     return res.json({ ok: true })
   } catch (err) {
@@ -594,7 +622,13 @@ router.patch('/api/superadmin/payment-requests/:id/confirm', requireSuperAdmin, 
       })
       await tx.cafe.update({
         where: { id: payReq.cafeId },
-        data:  { isActive: true, billingStatus: 'COLLECTING_DEBT', walletBalance: 0 }
+        data:  {
+          isActive:          true,
+          billingStatus:     'COLLECTING_DEBT',
+          walletBalance:     0,
+          gracePeriodEndsAt: null,
+          suspendedAt:       null,
+        }
       })
       await tx.walletLog.create({
         data: {
@@ -605,12 +639,55 @@ router.patch('/api/superadmin/payment-requests/:id/confirm', requireSuperAdmin, 
           newBalance:      0,
         }
       })
+
+      // Generate a unique billing invoice for audit trail
+      const year     = new Date().getFullYear()
+      const yearCount = await tx.billingInvoice.count({ where: { issuedAt: { gte: new Date(`${year}-01-01`) } } })
+      const invoiceNumber = `INV-${year}-${String(yearCount + 1).padStart(5, '0')}`
+      await tx.billingInvoice.create({
+        data: {
+          cafeId:          payReq.cafeId,
+          invoiceNumber,
+          amount:          payReq.amount,
+          currency:        payReq.currency,
+          method:          payReq.method,
+          paymentRequestId: id,
+          status:          'PAID',
+          paidAt:          new Date(),
+        }
+      })
     })
 
     logger.info({ msg: 'Payment confirmed — cafe reactivated', id, cafeId: payReq.cafeId })
     return res.json({ ok: true })
   } catch (err) {
     logger.error({ msg: 'PATCH payment-requests/:id/confirm error', err })
+    return res.status(500).json({ error: 'Failed' })
+  }
+})
+
+// ─── GET /api/superadmin/tenants/:id/invoices ─────────────────────────────────
+// Billing invoice history — unique invoice numbers, amounts, statuses.
+
+router.get('/api/superadmin/tenants/:id/invoices', requireSuperAdmin, async (req: Request, res: Response) => {
+  try {
+    const id    = req.params['id'] as string
+    const page  = Math.max(1, Number(req.query['page'])  || 1)
+    const limit = Math.min(50, Number(req.query['limit']) || 20)
+
+    const [total, invoices] = await Promise.all([
+      prisma.billingInvoice.count({ where: { cafeId: id } }),
+      prisma.billingInvoice.findMany({
+        where:   { cafeId: id },
+        orderBy: { issuedAt: 'desc' },
+        skip:    (page - 1) * limit,
+        take:    limit,
+      })
+    ])
+
+    return res.json({ total, page, pages: Math.ceil(total / limit), invoices })
+  } catch (err) {
+    logger.error({ msg: 'GET invoices error', err })
     return res.status(500).json({ error: 'Failed' })
   }
 })

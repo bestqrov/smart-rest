@@ -326,6 +326,16 @@ router.post(
       return res.status(400).send('Webhook signature verification failed')
     }
 
+    // Idempotency guard — if Stripe retries the webhook we skip already-processed events
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    const stripeEventId = event.id as string
+    try {
+      await prisma.processedWebhook.create({ data: { provider: 'stripe', eventId: stripeEventId } })
+    } catch {
+      // Unique constraint violation → already processed; acknowledge and return
+      return res.status(200).send('ok')
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     if (event.type === 'checkout.session.completed') {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
@@ -392,24 +402,45 @@ router.post(
 router.post('/api/payment/moyasar/webhook', async (req: Request, res: Response) => {
   try {
     const secret    = process.env.MOYASAR_SECRET_KEY
-    const signature = req.headers['x-moyasar-signature'] as string
+    const signature = req.headers['x-moyasar-signature'] as string | undefined
 
-    if (secret && signature) {
+    // Signature verification is REQUIRED when MOYASAR_SECRET_KEY is configured.
+    // Reject ALL requests when the key is set but signature is absent or invalid.
+    if (secret) {
+      if (!signature) return res.status(401).json({ error: 'Missing Moyasar signature' })
       const expected = crypto
         .createHmac('sha256', secret)
         .update(JSON.stringify(req.body))
         .digest('hex')
-      if (expected !== signature) return res.status(400).json({ error: 'Invalid signature' })
+      if (expected !== signature) {
+        logger.warn({ msg: 'Moyasar webhook signature mismatch' })
+        return res.status(400).json({ error: 'Invalid signature' })
+      }
+    } else {
+      // Key not configured — block in production, log warning
+      if (process.env.NODE_ENV === 'production') {
+        logger.error({ msg: 'Moyasar webhook received but MOYASAR_SECRET_KEY not set — rejecting' })
+        return res.status(500).json({ error: 'Webhook not configured' })
+      }
     }
 
     const { type, data } = req.body as { type: string; data: Record<string, unknown> }
+    const moyasarId = data?.id as string | undefined
+
+    // Idempotency guard — deduplicate Moyasar event replays
+    if (moyasarId) {
+      try {
+        await prisma.processedWebhook.create({ data: { provider: 'moyasar', eventId: moyasarId } })
+      } catch {
+        return res.status(200).json({ ok: true })
+      }
+    }
 
     if (type === 'payment_paid') {
-      const moyasarId = data.id as string
-      const pay = await prisma.onlinePayment.findFirst({
+      const pay = moyasarId ? await prisma.onlinePayment.findFirst({
         where:  { moyasarPaymentId: moyasarId, status: 'PENDING' },
         select: { id: true, cafeId: true, tableToken: true, seatToken: true, customerPhone: true, itemsSnapshot: true }
-      })
+      }) : null
       if (!pay) return res.status(200).json({ ok: true })
 
       const ctx   = await resolveTableContext(pay.tableToken ?? undefined, pay.seatToken ?? undefined)
@@ -531,11 +562,15 @@ router.post('/api/payment/mobilemoney/confirm', authorizeAdmin, async (req: Requ
 
     const pay = await prisma.onlinePayment.findUnique({
       where:  { id: paySessionId },
-      select: { id: true, cafeId: true, status: true, amount: true, tableToken: true, seatToken: true, customerPhone: true, itemsSnapshot: true }
+      select: { id: true, cafeId: true, status: true, amount: true, tableToken: true, seatToken: true, customerPhone: true, itemsSnapshot: true, expiresAt: true }
     })
     if (!pay)                             return res.status(404).json({ error: 'Payment session not found' })
     if (pay.cafeId !== req.admin!.cafeId) return res.status(403).json({ error: 'Forbidden' })
     if (pay.status !== 'PENDING')         return res.status(409).json({ error: 'Payment already processed' })
+    if (new Date() > pay.expiresAt) {
+      await prisma.onlinePayment.updateMany({ where: { id: paySessionId, status: 'PENDING' }, data: { status: 'EXPIRED' } })
+      return res.status(410).json({ error: 'Payment session expired — please start a new payment' })
+    }
 
     const methodMap: Record<string, OnlinePaymentMethod> = {
       orange: OnlinePaymentMethod.ORANGE_MONEY,
