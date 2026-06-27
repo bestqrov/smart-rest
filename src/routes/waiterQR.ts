@@ -63,16 +63,49 @@ router.get('/api/admin/waiter-qr-token', authorizeAdmin, async (req: Request, re
 // Called when the waiter submits their PIN on the /w/login page.
 // Body: { token: string, pinCode: string }
 
+// ─── GET /api/public/qr-token-info ───────────────────────────────────────────
+// Returns whether a QR token belongs to the demo cafe (for bypassing PIN in demo)
+
+router.get('/api/public/qr-token-info', async (req: Request, res: Response) => {
+  try {
+    const token = (req.query.token as string ?? '').trim()
+    if (!token) return res.status(400).json({ error: 'token required' })
+
+    const qrRecord = await prisma.waiterQRToken.findUnique({
+      where: { token },
+      select: { cafeId: true, expiresAt: true, usedAt: true },
+    })
+    if (!qrRecord || qrRecord.usedAt || qrRecord.expiresAt < new Date()) {
+      return res.json({ isDemo: false, valid: false })
+    }
+
+    const DEMO_SUB = (process.env.DEMO_SUBDOMAIN ?? 'welcome').toLowerCase()
+    const cafe = await prisma.cafe.findUnique({
+      where: { id: qrRecord.cafeId },
+      select: { subdomain: true },
+    })
+    const isDemo = cafe?.subdomain?.toLowerCase() === DEMO_SUB
+
+    if (isDemo) {
+      const staff = await prisma.staff.findMany({
+        where: { cafeId: qrRecord.cafeId, isActive: true },
+        select: { id: true, name: true, role: true },
+        orderBy: { createdAt: 'asc' },
+      })
+      return res.json({ isDemo: true, valid: true, staff })
+    }
+
+    return res.json({ isDemo: false, valid: true })
+  } catch {
+    return res.status(500).json({ error: 'Server error' })
+  }
+})
+
 router.post('/api/waiters/qr-login', async (req: Request, res: Response) => {
   try {
-    const { token, pinCode } = req.body as { token?: string; pinCode?: string }
+    const { token, pinCode, demoStaffId } = req.body as { token?: string; pinCode?: string; demoStaffId?: string }
 
-    if (!token || !pinCode) {
-      return res.status(400).json({ error: 'token and pinCode are required' })
-    }
-    if (!/^\d{4}$/.test(pinCode)) {
-      return res.status(400).json({ error: 'pinCode must be exactly 4 digits' })
-    }
+    if (!token) return res.status(400).json({ error: 'token is required' })
 
     // ── Validate QR token ─────────────────────────────────────────────────────
     const qrRecord = await prisma.waiterQRToken.findUnique({
@@ -91,6 +124,36 @@ router.post('/api/waiters/qr-login', async (req: Request, res: Response) => {
     }
 
     const { cafeId } = qrRecord
+
+    // ── Demo bypass: skip PIN if demo cafe + demoStaffId provided ─────────────
+    const DEMO_SUB = (process.env.DEMO_SUBDOMAIN ?? 'welcome').toLowerCase()
+    const cafe = await prisma.cafe.findUnique({ where: { id: cafeId }, select: { subdomain: true } })
+    if (cafe?.subdomain?.toLowerCase() === DEMO_SUB && demoStaffId) {
+      const demoStaff = await prisma.staff.findFirst({
+        where: { id: demoStaffId, cafeId, isActive: true },
+        select: { id: true, name: true, role: true, shiftStatus: true },
+      })
+      if (demoStaff) {
+        const now = new Date()
+        if ((demoStaff.role === 'WAITER' || demoStaff.role === 'SUPERVISOR') && demoStaff.shiftStatus !== 'ACTIVE') {
+          await prisma.$transaction([
+            prisma.staff.update({ where: { id: demoStaff.id }, data: { shiftStatus: 'ACTIVE', clockInTime: now } }),
+            prisma.waiterShift.create({ data: { cafeId, staffId: demoStaff.id, clockIn: now } }),
+          ])
+        }
+        await prisma.waiterQRToken.update({ where: { id: qrRecord.id }, data: { usedAt: now } })
+        const waiterToken = jwt.sign(
+          { staffId: demoStaff.id, cafeId, staffRole: demoStaff.role as StaffRole },
+          JWT_SECRET,
+          { expiresIn: WAITER_JWT_EXPIRY },
+        )
+        return res.json({ token: waiterToken, staff: { id: demoStaff.id, name: demoStaff.name, role: demoStaff.role }, cafeId })
+      }
+    }
+
+    if (!pinCode || !/^\d{4}$/.test(pinCode)) {
+      return res.status(400).json({ error: 'pinCode must be exactly 4 digits' })
+    }
 
     // ── Match PIN against active staff in this cafe ───────────────────────────
     const allStaff = await prisma.staff.findMany({
