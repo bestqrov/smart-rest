@@ -46,19 +46,24 @@ interface GeminiResponse {
 // ─── Pricing table (USD per 1M tokens) ───────────────────────────────────────
 
 const PRICING: Record<string, { inputPerM: number; outputPerM: number }> = {
-  'gemini-1.5-flash':       { inputPerM: 0.075,  outputPerM: 0.30  },
-  'gemini-1.5-flash-001':   { inputPerM: 0.075,  outputPerM: 0.30  },
-  'gemini-1.5-flash-002':   { inputPerM: 0.075,  outputPerM: 0.30  },
-  'gemini-1.5-pro':         { inputPerM: 1.25,   outputPerM: 5.00  },
-  'gemini-1.5-pro-001':     { inputPerM: 1.25,   outputPerM: 5.00  },
-  'gemini-1.5-pro-002':     { inputPerM: 1.25,   outputPerM: 5.00  },
+  // Gemini 2.5 (current generation)
+  'gemini-2.5-flash':       { inputPerM: 0.15,   outputPerM: 0.60  },
+  'gemini-2.5-flash-lite':  { inputPerM: 0.075,  outputPerM: 0.30  },
+  'gemini-2.5-pro':         { inputPerM: 1.25,   outputPerM: 10.00 },
+  'gemini-flash-latest':    { inputPerM: 0.15,   outputPerM: 0.60  },
+  'gemini-flash-lite-latest': { inputPerM: 0.075, outputPerM: 0.30 },
+  'gemini-pro-latest':      { inputPerM: 1.25,   outputPerM: 10.00 },
+  // Gemini 2.0
   'gemini-2.0-flash':       { inputPerM: 0.10,   outputPerM: 0.40  },
-  'gemini-2.0-flash-exp':   { inputPerM: 0.00,   outputPerM: 0.00  }, // free preview
   'gemini-2.0-flash-001':   { inputPerM: 0.10,   outputPerM: 0.40  },
+  'gemini-2.0-flash-lite':  { inputPerM: 0.075,  outputPerM: 0.30  },
+  // Gemini 1.5 (legacy)
+  'gemini-1.5-flash':       { inputPerM: 0.075,  outputPerM: 0.30  },
+  'gemini-1.5-pro':         { inputPerM: 1.25,   outputPerM: 5.00  },
 }
 
-const DEFAULT_PRICING   = { inputPerM: 0.075,  outputPerM: 0.30 }
-const DEFAULT_MODEL     = 'gemini-1.5-flash'
+const DEFAULT_PRICING   = { inputPerM: 0.15,   outputPerM: 0.60 }
+const DEFAULT_MODEL     = 'gemini-2.5-flash'
 const DEFAULT_MAX_TOKENS = 1024
 const DEFAULT_TEMP       = 0.7
 const DEFAULT_TIMEOUT_MS = 30_000
@@ -149,11 +154,12 @@ export class GeminiAdapter implements AIProvider {
       const latencyMs = Date.now() - started
       const errMsg    = error instanceof Error ? error.message : String(error)
 
-      if (error instanceof ProviderRateLimitError  ||
-          error instanceof ProviderAuthError        ||
-          error instanceof ProviderServerError      ||
-          error instanceof ProviderTimeoutError     ||
-          error instanceof ProviderContextTooLongError) {
+      if (error instanceof ProviderRateLimitError     ||
+          error instanceof ProviderAuthError           ||
+          error instanceof ProviderServerError         ||
+          error instanceof ProviderTimeoutError        ||
+          error instanceof ProviderContextTooLongError ||
+          error instanceof ProviderResponseError) {
         this.emitFailure(model, errMsg, latencyMs, request.metadata)
         throw error
       }

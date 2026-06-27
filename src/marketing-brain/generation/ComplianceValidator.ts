@@ -75,12 +75,13 @@ export function validateCompliance(promptResult: PromptResult): ComplianceResult
   const templateBody   = extractTemplateBody(promptResult.userPrompt)
   const { metadata }   = promptResult
 
-  // Rebuild constraints from the rules metadata — the rule slugs aren't stored in
-  // PromptResult but we can derive constraint signal from the variables used.
-  // Note: constraints come from the system prompt text (we scan for what was included).
-  const constraints    = extractConstraintsFromPrompt(fullPrompt)
+  // Rebuild constraints from the rules metadata — extract from the system prompt
+  // only (not fullPrompt), so we read the Hard Constraints section cleanly.
+  const constraints    = extractConstraintsFromPrompt(promptResult.systemPrompt)
 
-  run(checkForbiddenPatterns(fullPrompt, constraints.forbidden), true)
+  // Check template body only: the system prompt intentionally lists forbidden
+  // words as examples of what NOT to do — scanning it would always self-trigger.
+  run(checkForbiddenPatterns(templateBody, constraints.forbidden), true)
   run(checkRequiredTokens(fullPrompt, constraints.required), false)
   run(checkSpamTriggers(templateBody), false)
   run(checkExcessiveExclamation(templateBody), false)
