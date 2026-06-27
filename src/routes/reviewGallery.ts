@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express'
 import prisma from '../prisma'
+import logger from '../logger'
 import { authorizeAdmin } from '../middleware/authorizeAdmin'
 import { requireInternal } from '../middleware/requireInternal'
 
@@ -63,7 +64,7 @@ router.post('/api/v1/review-gallery', requireInternal, async (req: Request, res:
 
     res.json({ reviewGalleryId: review.id })
   } catch (err: any) {
-    console.error('[reviewGallery] POST error:', err)
+    logger.error({ msg: '[reviewGallery] POST error', err })
     res.status(500).json({ error: err.message })
   }
 })
@@ -176,7 +177,7 @@ router.patch('/api/admin/review-gallery/:id/moderate', authorizeAdmin, async (re
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ reviewGalleryId: id, cafeId }),
-        }).catch((e) => console.error('[n8n W3 trigger]', e))
+        }).catch((e) => logger.warn({ msg: '[n8n W3 trigger] failed', err: e }))
       }
     }
 

@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express'
-import prisma from '../prisma'
 import { NextFunction } from 'express'
+import prisma from '../prisma'
+import logger from '../logger'
 
 function requireSuperAdmin(req: Request, res: Response, next: NextFunction) {
   const secret         = req.header('x-superadmin-secret')
@@ -54,12 +55,11 @@ router.post('/api/public/demo-request', async (req: Request, res: Response) => {
       },
     })
 
-    // Notify superadmin via n8n or simple console log (add Slack/email hook here)
-    console.info(`[DemoRequest] New lead: ${businessName} — ${phone} — ${email}`)
+    logger.info({ msg: '[demo-request] New lead', businessName, phone, email })
 
     return res.json({ success: true, id: demo.id })
   } catch (err: any) {
-    console.error('[demo-request]', err)
+    logger.error({ msg: '[demo-request] failed', err })
     return res.status(500).json({ error: 'Server error' })
   }
 })
@@ -137,8 +137,6 @@ router.post('/api/superadmin/demo-requests/:id/activate', requireSuperAdmin, asy
     try {
       const { sendMagicLink } = await import('../services/email')
       const crypto = await import('crypto')
-      const { hashPassword } = await import('../auth/hash')
-
       const rawToken  = crypto.randomBytes(32).toString('hex')
       const expiresAt = new Date(Date.now() + 30 * 60 * 1000) // 30 min
 
@@ -163,13 +161,13 @@ router.post('/api/superadmin/demo-requests/:id/activate', requireSuperAdmin, asy
       const magicLink = `${base}/api/auth/magic-verify?token=${rawToken}&lang=ar`
       await sendMagicLink({ to: demo.email, magicLink, lang: 'ar', cafeName: demo.businessName })
     } catch (emailErr) {
-      console.error('[demo-activate] email send failed:', emailErr)
+      logger.warn({ msg: '[demo-activate] email send failed', emailErr })
       // Don't fail the whole activation if email fails
     }
 
     return res.json({ success: true, cafeId: cafe.id, subdomain })
   } catch (err: any) {
-    console.error('[demo-activate]', err)
+    logger.error({ msg: '[demo-activate] failed', err })
     return res.status(500).json({ error: err.message })
   }
 })
