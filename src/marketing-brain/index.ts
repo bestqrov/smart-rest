@@ -231,6 +231,30 @@ export type {
 export { CampaignExecution }  from './models/CampaignExecution'
 export type { ICampaignExecution, CampaignStatus, ExecutionType } from './models/CampaignExecution'
 
+// ── Automation Engine (Phase D) ───────────────────────────────────────────────
+// AutomationEngineService polls READY executions, dispatches to providers,
+// writes DeliveryAuditLog, and marks SENT | FAILED with retries.
+
+export { AutomationEngineService, createDefaultEngine } from './automation/AutomationEngineService'
+export type {
+  AutomationEngineConfig,
+  RunOnceResult,
+  DeliveryAttemptResult,
+} from './automation/AutomationEngineService'
+
+export { N8nAdapter }  from './automation/providers/N8nAdapter'
+export type { N8nConfig } from './automation/providers/N8nAdapter'
+
+export type {
+  DeliveryProvider,
+  DeliveryResult,
+  DeliveryPayload,
+} from './automation/providers/DeliveryProvider'
+export { buildPayload, isRetryableStatus } from './automation/providers/DeliveryProvider'
+
+export { DeliveryAuditLog } from './automation/models/DeliveryAuditLog'
+export type { IDeliveryAuditLog } from './automation/models/DeliveryAuditLog'
+
 export {
   generate as marketingGenerate,
   mapBusinessType,
