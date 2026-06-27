@@ -138,6 +138,7 @@ export default function LoginPage() {
   const searchParams  = useSearchParams()
 
   const [lang, setLang]         = useState<Lang>('fr')
+  const [langPicked, setLangPicked] = useState(false)
   const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
   const [showPw, setShowPw]     = useState(false)
@@ -155,13 +156,27 @@ export default function LoginPage() {
   const isRtl = lang === 'ar'
   const t = (k: string) => T[lang][k] ?? k
 
+  // Restore saved language — if already picked, skip picker
+  useEffect(() => {
+    const saved = localStorage.getItem('login_lang') as Lang | null
+    if (saved && ['fr', 'en', 'ar'].includes(saved)) {
+      setLang(saved)
+      setLangPicked(true)
+    }
+  }, [])
+
   // Handle OAuth redirect back to /login?oauth_error=...
-  // And OAuth success redirect to /admin/dashboard?oauth=...
   useEffect(() => {
     const oauthError = searchParams.get('oauth_error')
     if (oauthError === 'no_account') setError(T[lang].errGoogleNoAccount)
     else if (oauthError) setError(T[lang].errGoogleFailed)
   }, [searchParams, lang])
+
+  function pickLang(l: Lang) {
+    setLang(l)
+    setLangPicked(true)
+    localStorage.setItem('login_lang', l)
+  }
 
   function friendlyError(code: string): string {
     if (code === 'Invalid credentials') return t('errInvalid')
@@ -249,6 +264,45 @@ export default function LoginPage() {
       setDemoError(t('demoErrNetwork'))
       setDemoLoading(null)
     }
+  }
+
+  // ── Language picker screen ────────────────────────────────────────────────
+  if (!langPicked) {
+    return (
+      <div className="min-h-screen bg-[#0a0a0f] flex flex-col items-center justify-center p-6">
+        {/* Logo */}
+        <div className="flex items-center gap-3 mb-10">
+          <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden">
+            <Image src="/assets/logo.png" alt="SmartRestau" width={40} height={40} className="object-contain" />
+          </div>
+          <p className="font-black text-white text-xl">Smart<span className="text-emerald-400">Restau</span></p>
+        </div>
+
+        {/* Prompt */}
+        <p className="text-gray-400 text-sm mb-8 text-center">
+          Choisissez votre langue · Choose your language · اختر لغتك
+        </p>
+
+        {/* Language cards */}
+        <div className="flex flex-col gap-3 w-full max-w-xs">
+          {[
+            { code: 'fr' as Lang, flag: '🇫🇷', label: 'Français',  sub: 'Continuer en français' },
+            { code: 'en' as Lang, flag: '🇬🇧', label: 'English',   sub: 'Continue in English'   },
+            { code: 'ar' as Lang, flag: '🇸🇦', label: 'العربية',   sub: 'المتابعة بالعربية'      },
+          ].map(l => (
+            <button key={l.code} onClick={() => pickLang(l.code)}
+              className="flex items-center gap-4 px-5 py-4 bg-white/4 hover:bg-white/8 border border-white/8 hover:border-emerald-500/40 rounded-2xl transition-all active:scale-[0.98] group text-left">
+              <span className="text-3xl">{l.flag}</span>
+              <div>
+                <p className="text-white font-bold text-base leading-none">{l.label}</p>
+                <p className="text-gray-500 text-xs mt-1">{l.sub}</p>
+              </div>
+              <span className="ml-auto text-gray-700 group-hover:text-emerald-400 transition-colors text-lg">→</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    )
   }
 
   return (
