@@ -65,6 +65,9 @@ import equipmentRouter from './routes/equipment'
 import supplierInvoicesRouter from './routes/supplierInvoices'
 import requisitionsRouter     from './routes/requisitions'
 import customersRouter        from './routes/customers'
+import aiCenterRouter         from './routes/aiCenter'
+import { addUsageHook }       from './marketing-brain/providers/UsageTracker'
+import { recordUsageEvent }   from './services/aiCenterStats'
 import { registerSocketHandlers } from './socket/handlers'
 import { startWeeklyBillingCron } from './cron/weeklyBilling'
 import { startDailyDebtDetectionCron } from './cron/dailyDebtDetection'
@@ -227,6 +230,7 @@ async function main() {
   app.use(demoRequestsRouter)
   app.use(zonesRouter)
   app.use(customersRouter)
+  app.use(aiCenterRouter)
 
   // ── Liveness probe (/health) ─────────────────────────────────────────────────
   // Fast check — process is alive. Used by SW offline detection and load balancers.
@@ -261,6 +265,9 @@ async function main() {
   })
   app.set('io', io)
   registerSocketHandlers(io)
+
+  // Register AI Center usage hook — feeds in-memory stats accumulator
+  addUsageHook(recordUsageEvent)
 
   // Collect cron task handles for graceful shutdown
   const cronTasks = [

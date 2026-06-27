@@ -1575,6 +1575,26 @@ model CafeCustomer {
   @@index([cafeId, optIn])
 }
 
+// ─── AI Center ────────────────────────────────────────────────────────────────
+
+// SuperAdmin-managed settings for each AI provider.
+// The ProviderManager reads from env vars — these settings are advisory config
+// displayed and edited via the AI Center dashboard.
+model AIProviderSettings {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  providerId    String   @unique   // 'gemini' | 'claude' | 'openai' | 'groq' | 'openrouter'
+  isEnabled     Boolean  @default(true)
+  priority      Int      @default(1)
+  isDefault     Boolean  @default(false)
+  fallbackChain String[] @default([])
+  notes         String   @default("")
+  updatedAt     DateTime @updatedAt
+  updatedBy     String?
+
+  @@index([isEnabled])
+  @@index([priority])
+}
+
 // ─── Refresh Tokens ───────────────────────────────────────────────────────────
 
 model RefreshToken {
