@@ -144,3 +144,36 @@ export type {
 } from './strategy'
 
 export { planChannels, planTiming, planSequence, planEscalation, buildStopConditions } from './strategy'
+
+// ── Prompt Builder (Sprint 5) ─────────────────────────────────────────────────
+// buildPrompt(ctx) → PromptBuildResult  (ok:true → PromptResult, ok:false → errors[])
+// Input: DecisionResult + StrategyResult + knowledge objects
+// Output: systemPrompt, userPrompt, variables, metadata, version, estimatedTokens
+
+export {
+  buildPrompt as buildPromptV2,
+  buildOrThrow,
+} from './prompt-builder'
+
+export type {
+  PromptContext,
+  PromptResult,
+  PromptBuildResult,
+  PromptMetadata,
+  PromptTokenEstimate,
+  ValidationResult as PromptValidationResult,
+} from './prompt-builder'
+
+export {
+  validatePromptContext,
+  validateResolvedVariables as validatePromptVariables,
+  validateAssembledPrompt,
+  interpolate               as interpolatePrompt,
+  extractPromptKeys,
+  findUnresolved,
+  formatVariableList,
+  generateVersion           as generatePromptVersion,
+  isSameSchema,
+  buildSystemPrompt,
+  buildUserPrompt,
+} from './prompt-builder'
