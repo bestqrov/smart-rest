@@ -1,6 +1,6 @@
 # SmartRestau — Production Deployment Guide
 
-> **Sprint reference:** SR-LR-002 (Launch Readiness — Production Stability)
+> **Sprint reference:** SR-LR-002 / SR-LR-003 (Production Stability + Billing Audit)
 > Last updated: 2026-06-27
 
 ---
@@ -179,14 +179,56 @@ mongorestore \
 
 ---
 
-## 6. First-Deploy Checklist
+## 6. Cron Job Schedule
+
+| Cron | Schedule | Responsibility |
+|---|---|---|
+| `dailyDebtDetection` | Daily **02:00 AM** | Detect negative-balance cafes → `PAST_DUE`; check elapsed grace periods → `SUSPENDED` |
+| `nightly` | Daily **23:00** | Anti-fraud, session expiry, refresh-token purge, QR scan cleanup |
+| `weeklyBilling` | **Monday 23:59** | Trial-expiry analysis — pre-generate AI billing package for cafes whose trial ends within 7 days |
+| `certificationEval` | Weekly | Certification badge evaluation |
+
+### Billing lifecycle triggered by `dailyDebtDetection`
+
+```
+Day 1  — cron detects walletBalance < 0 (trial ended)
+         status → PAST_DUE
+         gracePeriodEndsAt = now + 7 days
+         webhook → CAFE_PAST_DUE (WhatsApp/n8n alert sent)
+
+Days 2–7 — cron runs daily, no action (grace period still active)
+           Admin can pay at any time → SuperAdmin confirms → status back to COLLECTING_DEBT
+
+Day 8  — cron detects PAST_DUE + gracePeriodEndsAt in the past
+         status → SUSPENDED  (isActive = false)
+         suspendedAt = now
+         webhook → CAFE_SUSPENDED
+```
+
+### Environment variables required for billing notifications
+
+```bash
+# n8n webhook that receives CAFE_PAST_DUE and CAFE_SUSPENDED events
+N8N_BILLING_WEBHOOK=https://your-n8n.example.com/webhook/billing
+```
+
+If `N8N_BILLING_WEBHOOK` is not set, the cron still runs and transitions state correctly — only the WhatsApp notification is skipped.
+
+---
+
+## 7. First-Deploy Checklist
 
 - [ ] Atlas cluster deployed in the correct region (see section 1)
 - [ ] All required env vars set (see section 2)
+- [ ] `MOYASAR_SECRET_KEY` set if Moyasar is enabled (webhook signature required)
+- [ ] `STRIPE_WEBHOOK_SECRET` set if Stripe is enabled
+- [ ] `N8N_BILLING_WEBHOOK` set for debt/suspension WhatsApp alerts (see section 6)
 - [ ] `npm run build` completes without errors
+- [ ] `npx prisma generate` run on the production server after deploy
 - [ ] Server starts: `npm start` — look for `Server started` in logs
 - [ ] `GET /ready` returns `{ "ok": true, "db": true }` within 5 seconds
 - [ ] `GET /health` returns `{ "ok": true }` immediately
 - [ ] Health check configured in load balancer / platform (see section 3)
 - [ ] Atlas backup enabled (see section 5)
 - [ ] Demo seed ran: `DEMO_SEED=true npm start` on first boot
+- [ ] Verify cron fires: `dailyDebtDetection` at 02:00, `weeklyBilling` Monday 23:59

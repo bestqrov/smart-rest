@@ -67,6 +67,7 @@ import requisitionsRouter     from './routes/requisitions'
 import customersRouter        from './routes/customers'
 import { registerSocketHandlers } from './socket/handlers'
 import { startWeeklyBillingCron } from './cron/weeklyBilling'
+import { startDailyDebtDetectionCron } from './cron/dailyDebtDetection'
 import { startNightlyCron } from './cron/nightly'
 import { startCertificationCron } from './cron/certificationEval'
 import { initChangeStreams, closeChangeStreams } from './services/changeStreams'
@@ -263,6 +264,7 @@ async function main() {
 
   // Collect cron task handles for graceful shutdown
   const cronTasks = [
+    startDailyDebtDetectionCron(),
     startWeeklyBillingCron(),
     startNightlyCron(),
     startCertificationCron(),
