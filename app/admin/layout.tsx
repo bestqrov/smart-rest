@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import {
   LayoutDashboard, UtensilsCrossed, QrCode, Share2,
   CreditCard, LogOut, ChevronRight, Menu, X,
@@ -354,6 +354,30 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
       })
     }
   }
+
+  // Handle Google OAuth redirect: /admin/dashboard?oauth=token%3D...
+  const searchParams = useSearchParams()
+  useEffect(() => {
+    const oauthParam = searchParams.get('oauth')
+    if (!oauthParam) return
+    try {
+      const p = new URLSearchParams(oauthParam)
+      const token        = p.get('token')
+      const refreshToken = p.get('refreshToken')
+      const cafeId       = p.get('cafeId')
+      const subdomain    = p.get('subdomain')
+      if (token && cafeId) {
+        localStorage.setItem('token', token)
+        if (refreshToken) localStorage.setItem('refreshToken', refreshToken)
+        localStorage.setItem('cafeId', cafeId)
+        localStorage.setItem('subdomain', subdomain ?? '')
+        // Remove oauth param from URL without reload
+        const url = new URL(window.location.href)
+        url.searchParams.delete('oauth')
+        window.history.replaceState({}, '', url.toString())
+      }
+    } catch { /* malformed param — ignore */ }
+  }, [searchParams])
 
   useEffect(() => {
     setIsDemo(localStorage.getItem('isDemo') === '1')
@@ -709,6 +733,9 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
           actionInFlight={gateAction}
         />
       )}
+      {/* ── Demo onboarding assistant ─────────────────────────────── */}
+      {isDemo && <DemoAssistant lang={lang as DemoLang} />}
+
       </div>
     </div>
   )
@@ -1094,6 +1121,155 @@ function PaymentGate({
           )}
         </div>
       </div>
+
+    </div>
+  )
+}
+
+// ─── Demo Onboarding Assistant ────────────────────────────────────────────────
+
+const STEPS_DATA = [
+  {
+    icon: '🗂️',
+    title: { ar: 'أضف قائمة مطعمك', fr: 'Créez votre menu', en: 'Add your menu' },
+    body:  { ar: 'أضف أصنافك وأطباقك مع الأسعار والصور من قسم Menu.', fr: 'Ajoutez vos catégories, plats, prix et photos depuis la section Menu.', en: 'Add your categories, dishes, prices and photos from the Menu section.' },
+    href:  '/admin/menu',
+  },
+  {
+    icon: '🪑',
+    title: { ar: 'أنشئ طاولاتك وكود QR', fr: 'Créez vos tables & QR codes', en: 'Create tables & QR codes' },
+    body:  { ar: 'من قسم الطاولات، أضف طاولاتك واطبع QR لكل طاولة.', fr: 'Dans Tables, ajoutez vos tables et imprimez les QR codes.', en: 'In Tables, add your tables and print QR codes for each one.' },
+    href:  '/admin/tables',
+  },
+  {
+    icon: '👨‍🍳',
+    title: { ar: 'أضف موظفيك', fr: 'Ajoutez votre équipe', en: 'Add your staff' },
+    body:  { ar: 'أضف النادلين والكاشير والمطبخ مع رقم PIN للدخول السريع.', fr: 'Ajoutez vos serveurs, caissiers et cuisiniers avec un PIN de connexion rapide.', en: 'Add waiters, cashiers and kitchen staff with a quick-login PIN.' },
+    href:  '/admin/staff',
+  },
+  {
+    icon: '💳',
+    title: { ar: 'فعّل الاشتراك', fr: 'Activez votre abonnement', en: 'Activate your subscription' },
+    body:  { ar: 'فعّل اشتراكك من قسم الفاتورة لتشغيل كل الميزات.', fr: 'Activez votre abonnement depuis la section Facturation pour débloquer toutes les fonctionnalités.', en: 'Activate your subscription from Billing to unlock all features.' },
+    href:  '/admin/billing',
+  },
+  {
+    icon: '⚙️',
+    title: { ar: 'اضبط إعدادات المطعم', fr: 'Paramétrez votre restaurant', en: 'Configure your restaurant' },
+    body:  { ar: 'من الإعدادات، أضف اسم مطعمك وشعارك ومعلوماتك.', fr: 'Dans Paramètres, renseignez le nom, le logo et les informations de votre restaurant.', en: 'In Settings, add your restaurant name, logo and contact details.' },
+    href:  '/admin/settings',
+  },
+]
+
+type DemoLang = 'ar' | 'fr' | 'en' | 'es'
+
+function DemoAssistant({ lang }: { lang: DemoLang }) {
+  const STORAGE_KEY = 'demo_assistant_step'
+  const [open, setOpen] = useState(false)
+  const [step, setStep] = useState(0)
+  const [done, setDone] = useState(false)
+
+  useEffect(() => {
+    const saved = parseInt(localStorage.getItem(STORAGE_KEY) ?? '0', 10)
+    if (saved >= STEPS_DATA.length) setDone(true)
+    else setStep(saved)
+    // Auto-open on first demo visit
+    if (!localStorage.getItem('demo_assistant_opened')) {
+      setOpen(true)
+      localStorage.setItem('demo_assistant_opened', '1')
+    }
+  }, [])
+
+  function advance() {
+    const next = step + 1
+    localStorage.setItem(STORAGE_KEY, String(next))
+    if (next >= STEPS_DATA.length) setDone(true)
+    else setStep(next)
+  }
+
+  function reset() {
+    setStep(0); setDone(false)
+    localStorage.removeItem(STORAGE_KEY)
+  }
+
+  const isRtl = lang === 'ar'
+  // 'es' falls back to 'en' for step text (steps don't have es translations)
+  const stepLang = (lang === 'es' ? 'en' : lang) as 'ar' | 'fr' | 'en'
+  const current = STEPS_DATA[step]
+
+  const labels: Record<DemoLang, { title: string; next: string; skip: string; done: string; reset: string; step: string }> = {
+    ar: { title: 'مساعد البداية',           next: 'التالي ←',    skip: 'تخطي',   done: '🎉 رائع! كل شيء جاهز للانطلاق.',       reset: 'إعادة',        step: 'خطوة' },
+    fr: { title: 'Assistant de démarrage',  next: 'Suivant →',   skip: 'Passer', done: '🎉 Terminé ! Vous êtes prêt à lancer.', reset: 'Recommencer', step: 'étape' },
+    en: { title: 'Getting started',         next: 'Next →',      skip: 'Skip',   done: '🎉 All done! Ready to go live.',         reset: 'Restart',     step: 'step' },
+    es: { title: 'Primeros pasos',          next: 'Siguiente →', skip: 'Omitir', done: '🎉 ¡Listo! Todo preparado para empezar.', reset: 'Reiniciar',   step: 'paso' },
+  }
+  const l = labels[lang]
+
+  return (
+    <div dir={isRtl ? 'rtl' : 'ltr'} className="fixed bottom-5 right-5 z-50 flex flex-col items-end gap-2">
+      {open && (
+        <div className="w-80 bg-[#0f1117] border border-white/10 rounded-2xl shadow-2xl shadow-black/60 overflow-hidden">
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 py-3 bg-emerald-900/30 border-b border-white/5">
+            <span className="flex items-center gap-2 text-sm font-bold text-white">
+              <span>🚀</span> {l.title}
+            </span>
+            <button onClick={() => setOpen(false)} className="text-gray-500 hover:text-gray-300 transition-colors">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Body */}
+          <div className="p-4">
+            {done ? (
+              <div className="text-center py-2 space-y-3">
+                <p className="text-sm text-emerald-300 font-semibold">{l.done}</p>
+                <button onClick={reset} className="text-xs text-gray-600 hover:text-gray-400 underline">
+                  {l.reset}
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-start gap-3 mb-3">
+                  <span className="text-2xl leading-none mt-0.5">{current.icon}</span>
+                  <div>
+                    <p className="text-sm font-bold text-white leading-snug">{current.title[stepLang]}</p>
+                    <p className="text-xs text-gray-500 mt-1 leading-relaxed">{current.body[stepLang]}</p>
+                  </div>
+                </div>
+
+                {/* Progress */}
+                <div className="flex items-center gap-1.5 mb-4">
+                  {STEPS_DATA.map((_, i) => (
+                    <div key={i} className={`h-1.5 rounded-full transition-all ${i === step ? 'w-4 bg-emerald-400' : i < step ? 'w-1.5 bg-emerald-800' : 'w-1.5 bg-white/10'}`} />
+                  ))}
+                  <span className="text-[10px] text-gray-700 ml-1">{step + 1}/{STEPS_DATA.length} {l.step}</span>
+                </div>
+
+                {/* Actions */}
+                <div className="flex items-center gap-2">
+                  <Link href={current.href} onClick={advance}
+                    className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-2 px-3 rounded-xl text-center transition-all">
+                    {l.next}
+                  </Link>
+                  <button onClick={advance} className="text-xs text-gray-600 hover:text-gray-400 px-2 py-2 transition-colors">
+                    {l.skip}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* FAB */}
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-12 h-12 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-900/50 flex items-center justify-center transition-all active:scale-95"
+        title={l.title}
+      >
+        {open ? <X className="w-5 h-5" /> : <span className="text-xl">🚀</span>}
+      </button>
     </div>
   )
 }

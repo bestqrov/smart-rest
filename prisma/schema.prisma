@@ -603,11 +603,14 @@ model WaiterCall {
 }
 
 model User {
-  id           String @id @default(auto()) @map("_id") @db.ObjectId
-  email        String @unique
-  passwordHash String
-  cafeId       String @db.ObjectId
-  cafe         Cafe   @relation(fields: [cafeId], references: [id])
+  id           String  @id @default(auto()) @map("_id") @db.ObjectId
+  email        String  @unique
+  passwordHash String?                // null for OAuth-only accounts
+  googleId     String? @unique        // Google sub claim
+  googleName   String?
+  googleAvatar String?
+  cafeId       String  @db.ObjectId
+  cafe         Cafe    @relation(fields: [cafeId], references: [id])
 
   @@index([cafeId])
 }

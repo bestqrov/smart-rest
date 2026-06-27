@@ -101,6 +101,9 @@ router.post('/api/auth/login', async (req: Request, res: Response) => {
     })
     if (!user) return res.status(401).json({ error: 'Invalid credentials' })
 
+    // Google-only account — no password set
+    if (!user.passwordHash) return res.status(401).json({ error: 'google_account' })
+
     const ok = await verifyPassword(password, user.passwordHash)
     if (!ok) return res.status(401).json({ error: 'Invalid credentials' })
 
@@ -726,5 +729,99 @@ async function seedDemoMenu(cafeId: string): Promise<void> {
     })
   }
 }
+
+// ─── Google OAuth ─────────────────────────────────────────────────────────────
+// Requires: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_CALLBACK_URL in .env
+// Set GOOGLE_CALLBACK_URL to https://yourdomain.com/api/auth/google/callback
+
+const GOOGLE_CLIENT_ID     = process.env.GOOGLE_CLIENT_ID     ?? ''
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET ?? ''
+const GOOGLE_CALLBACK_URL  = process.env.GOOGLE_CALLBACK_URL  ?? ''
+const GOOGLE_SCOPES        = 'openid email profile'
+
+// GET /api/auth/google — Redirect user to Google consent screen
+router.get('/api/auth/google', (req: Request, res: Response) => {
+  if (!GOOGLE_CLIENT_ID || !GOOGLE_CALLBACK_URL) {
+    return res.status(503).json({ error: 'Google OAuth not configured' })
+  }
+  const params = new URLSearchParams({
+    client_id:     GOOGLE_CLIENT_ID,
+    redirect_uri:  GOOGLE_CALLBACK_URL,
+    response_type: 'code',
+    scope:         GOOGLE_SCOPES,
+    access_type:   'online',
+    prompt:        'select_account',
+  })
+  return res.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params}`)
+})
+
+// GET /api/auth/google/callback — Exchange code → user info → JWT
+router.get('/api/auth/google/callback', async (req: Request, res: Response) => {
+  const frontendUrl = process.env.FRONTEND_URL ?? 'http://localhost:3000'
+  const errorRedirect = (msg: string) => res.redirect(`${frontendUrl}/login?oauth_error=${encodeURIComponent(msg)}`)
+
+  try {
+    const { code } = req.query as { code?: string }
+    if (!code) return errorRedirect('No code returned from Google')
+
+    // Exchange code for tokens
+    const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        code,
+        client_id:     GOOGLE_CLIENT_ID,
+        client_secret: GOOGLE_CLIENT_SECRET,
+        redirect_uri:  GOOGLE_CALLBACK_URL,
+        grant_type:    'authorization_code',
+      }),
+    })
+    const tokenData = await tokenRes.json() as { access_token?: string; error?: string }
+    if (!tokenData.access_token) return errorRedirect('Token exchange failed')
+
+    // Get user info
+    const infoRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: { Authorization: `Bearer ${tokenData.access_token}` },
+    })
+    const info = await infoRes.json() as {
+      id: string; email: string; name?: string; picture?: string; verified_email?: boolean
+    }
+    if (!info.email) return errorRedirect('Could not retrieve email from Google')
+
+    // Find existing user by googleId or email
+    let user = await prisma.user.findFirst({
+      where: { OR: [{ googleId: info.id }, { email: info.email }] },
+      include: { cafe: { select: { subdomain: true } } },
+    })
+
+    if (!user) {
+      // No existing account — cannot auto-create (cafeId required)
+      return errorRedirect('no_account')
+    }
+
+    // Link Google account if not yet linked
+    if (!user.googleId) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { googleId: info.id, googleName: info.name, googleAvatar: info.picture },
+      })
+    }
+
+    const subdomain = user.cafe?.subdomain ?? ''
+    const { accessToken, refreshToken } = await issueTokenPair(user.id, user.cafeId, { subdomain }, req)
+
+    // Redirect to dashboard with tokens in query (frontend stores them)
+    const params = new URLSearchParams({
+      token:        accessToken,
+      refreshToken,
+      cafeId:       user.cafeId,
+      subdomain,
+    })
+    return res.redirect(`${frontendUrl}/admin/dashboard?oauth=${params}`)
+  } catch (err) {
+    logger.error({ msg: 'Google OAuth callback error', err })
+    return errorRedirect('Server error')
+  }
+})
 
 export default router
