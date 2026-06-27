@@ -235,15 +235,14 @@ async function dispatchN8nWebhook(metrics: CafeMetrics): Promise<void> {
 
 // ─── Cron registration ────────────────────────────────────────────────────────
 
-export function startCertificationCron(): void {
-  // Runs at 02:00 on the 1st of every month
-  cron.schedule('0 2 1 * *', async () => {
+export function startCertificationCron(): ReturnType<typeof cron.schedule> {
+  const task = cron.schedule('0 2 1 * *', async () => {
     try {
       await evaluateCertifications()
     } catch (err) {
       logger.error({ msg: '[CertCron] Unhandled error in certification eval', err })
     }
   })
-
   logger.info({ msg: '[CertCron] Certification cron registered (runs 02:00 on 1st of each month)' })
+  return task
 }

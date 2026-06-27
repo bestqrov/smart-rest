@@ -3,8 +3,8 @@ import prisma from '../prisma'
 import logger from '../logger'
 import { computeCafeAOV, suggestBillingTiers } from '../services/billing'
 
-export function startWeeklyBillingCron(): void {
-  cron.schedule('59 23 * * 1', async () => {
+export function startWeeklyBillingCron(): ReturnType<typeof cron.schedule> {
+  const task = cron.schedule('59 23 * * 1', async () => {
     logger.info({ msg: '[CRON] Weekly billing job started' })
     try {
       await runWeeklyBilling()
@@ -14,6 +14,7 @@ export function startWeeklyBillingCron(): void {
     }
   })
   logger.info({ msg: '[CRON] Weekly billing cron registered (Mon 23:59)' })
+  return task
 }
 
 // Exported so it can be triggered manually (e.g., from superadmin route or tests)

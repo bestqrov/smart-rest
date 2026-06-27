@@ -89,63 +89,64 @@ async function createWhatsAppOrder(
   if (products.length !== productIds.length) throw new Error('Product mismatch')
 
   const priceMap = new Map(products.map(p => [p.id, p]))
-  let   total    = 0
-  let   totalComm = 0
 
-  const order = await prisma.order.create({
-    data: {
-      cafe:          { connect: { id: cafeId } },
-      table:         { connect: { id: tableId } },
-      originalTable: { connect: { id: table.id } },
-      status:        'PENDING',
-      paymentMethod: 'ONLINE',
-      isPaid:        false,
-      totalPrice:    0,
-      customerPhone: parsed.customerPhone || fromPhone,
-      orderSource:   'QR_CODE',
-      billStatus:    'OPENED',
-      waiterNotification: { type: 'none', isActive: false },
-      totalCommission: 0,
-      items: {
-        create: parsed.items.map(it => {
-          const prod           = priceMap.get(it.productId)!
-          const unitPrice      = prod.price
-          const commissionRate = prod.commissionRate
-          total               += unitPrice * it.quantity
-          totalComm           += unitPrice * commissionRate * it.quantity
-          return {
-            product:      { connect: { id: it.productId } },
-            quantity:     it.quantity,
-            notes:        null,
-            unitPrice,
-            commissionRate,
-          }
-        })
-      },
+  // Pre-compute totals and item rows before entering the transaction
+  let total     = 0
+  let totalComm = 0
+  const itemsData = parsed.items.map(it => {
+    const prod           = priceMap.get(it.productId)!
+    const unitPrice      = prod.price
+    const commissionRate = prod.commissionRate
+    total               += unitPrice * it.quantity
+    totalComm           += unitPrice * commissionRate * it.quantity
+    return {
+      product:      { connect: { id: it.productId } },
+      quantity:     it.quantity,
+      notes:        null,
+      unitPrice,
+      commissionRate,
     }
   })
+  total     = parseFloat(total.toFixed(2))
+  totalComm = parseFloat(totalComm.toFixed(2))
 
-  await prisma.order.update({
-    where: { id: order.id },
-    data:  { totalPrice: total, totalCommission: totalComm }
-  })
-
-  await prisma.onlinePayment.create({
-    data: {
-      cafe:               { connect: { id: cafeId } },
-      orderId:            order.id,
-      amount:             total,
-      currency:           cafe.currency,
-      method:             OnlinePaymentMethod.WHATSAPP_ORDER,
-      status:             OnlinePaymentStatus.PAID,
-      tableToken:         parsed.tableToken,
-      customerPhone:      parsed.customerPhone || fromPhone,
-      itemsSnapshot:      parsed.items,
-      whatsappMessageId:  messageId,
-      rawWhatsappText:    rawText,
-      expiresAt:          new Date(Date.now() + 24 * 60 * 60 * 1000),
-      confirmedAt:        new Date(),
-    }
+  // Atomic: create order + payment record together
+  const order = await prisma.$transaction(async (tx) => {
+    const order = await tx.order.create({
+      data: {
+        cafe:          { connect: { id: cafeId } },
+        table:         { connect: { id: tableId } },
+        originalTable: { connect: { id: table.id } },
+        status:        'PENDING',
+        paymentMethod: 'ONLINE',
+        isPaid:        false,
+        totalPrice:    total,
+        totalCommission: totalComm,
+        customerPhone: parsed.customerPhone || fromPhone,
+        orderSource:   'QR_CODE',
+        billStatus:    'OPENED',
+        waiterNotification: { type: 'none', isActive: false },
+        items: { create: itemsData },
+      }
+    })
+    await tx.onlinePayment.create({
+      data: {
+        cafe:               { connect: { id: cafeId } },
+        orderId:            order.id,
+        amount:             total,
+        currency:           cafe.currency,
+        method:             OnlinePaymentMethod.WHATSAPP_ORDER,
+        status:             OnlinePaymentStatus.PAID,
+        tableToken:         parsed.tableToken,
+        customerPhone:      parsed.customerPhone || fromPhone,
+        itemsSnapshot:      parsed.items,
+        whatsappMessageId:  messageId,
+        rawWhatsappText:    rawText,
+        expiresAt:          new Date(Date.now() + 24 * 60 * 60 * 1000),
+        confirmedAt:        new Date(),
+      }
+    })
+    return order
   })
 
   await applyOrderFee(

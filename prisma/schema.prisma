@@ -505,6 +505,10 @@ model Order {
   @@index([orderSource])
   @@index([billStatus])
   @@index([activeSessionId])
+  // Compound indexes for the most frequent multi-field queries
+  @@index([cafeId, status])     // kitchen view: pending/preparing orders per cafe
+  @@index([cafeId, createdAt])  // stats: date-range revenue queries per cafe
+  @@index([cafeId, isPaid])     // billing/POS: unpaid orders per cafe
 }
 
 model OrderItem {

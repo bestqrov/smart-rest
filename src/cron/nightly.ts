@@ -112,9 +112,8 @@ async function runNightlyJobs(): Promise<void> {
 
 // ─── Scheduler ────────────────────────────────────────────────────────────────
 
-export function startNightlyCron(): void {
-  // Every day at 23:00 (server local time)
-  cron.schedule('0 23 * * *', async () => {
+export function startNightlyCron(): ReturnType<typeof cron.schedule> {
+  const task = cron.schedule('0 23 * * *', async () => {
     try {
       await runNightlyJobs()
     } catch (err) {
@@ -122,4 +121,5 @@ export function startNightlyCron(): void {
     }
   })
   logger.info({ msg: '[CRON] Nightly cron registered (daily 23:00)' })
+  return task
 }

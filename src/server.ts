@@ -13,6 +13,8 @@ import rateLimit from 'express-rate-limit'
 
 import logger from './logger'
 import errorHandler from './middleware/errorHandler'
+import { requestId } from './middleware/requestId'
+import prisma from './prisma'
 
 // routers
 import authRouter from './routes/auth'
@@ -133,6 +135,10 @@ async function main() {
   app.use(cors({ origin: allowedOrigin, credentials: true }))
   logger.info({ msg: 'CORS/socket origin', allowedOrigin })
 
+  // ── Request ID ───────────────────────────────────────────────────────────────
+  // Must come before all route handlers so req.id is available everywhere
+  app.use(requestId)
+
   // ── Body parsing ─────────────────────────────────────────────────────────────
   // Stripe webhook needs raw body — mount BEFORE bodyParser.json()
   app.use('/api/payment/gulf/stripe-webhook', express.raw({ type: 'application/json' }))
@@ -221,8 +227,22 @@ async function main() {
   app.use(zonesRouter)
   app.use(customersRouter)
 
-  // health (both paths — /api/health used by SW offline detection)
+  // ── Liveness probe (/health) ─────────────────────────────────────────────────
+  // Fast check — process is alive. Used by SW offline detection and load balancers.
   app.get(['/health', '/api/health'], (_req, res) => res.json({ ok: true }))
+
+  // ── Readiness probe (/ready) ──────────────────────────────────────────────────
+  // Confirms the process can serve traffic: DB reachable + no startup errors.
+  // Use this for Kubernetes/Docker readinessProbe, not livenessProbe.
+  app.get('/ready', async (_req, res) => {
+    try {
+      await prisma.$runCommandRaw({ ping: 1 })
+      res.json({ ok: true, db: true })
+    } catch (err) {
+      logger.error({ msg: '/ready: db check failed', err })
+      res.status(503).json({ ok: false, db: false })
+    }
+  })
 
   // Next.js handles all non-API routes (pages, assets, etc.)
   app.use((req, res) => {
@@ -238,35 +258,67 @@ async function main() {
   const io = new SocketIOServer(httpServer, {
     cors: { origin: allowedOrigin === '*' ? '*' : allowedOrigin, methods: ['GET', 'POST'] },
   })
-  // attach io instance to app so routes can use it
   app.set('io', io)
   registerSocketHandlers(io)
 
-  // Start automated billing governance cron
-  startWeeklyBillingCron()
-  // Start nightly anti-fraud + EOD WhatsApp report cron
-  startNightlyCron()
-  // Start monthly Smart Resto Certified evaluation cron
-  startCertificationCron()
+  // Collect cron task handles for graceful shutdown
+  const cronTasks = [
+    startWeeklyBillingCron(),
+    startNightlyCron(),
+    startCertificationCron(),
+  ]
 
   httpServer.listen(port, '0.0.0.0', () => {
     logger.info({ msg: 'Server started', port, host: '0.0.0.0' })
     console.log(`Server listening on http://0.0.0.0:${port}`)
-    // Start change streams after server is listening
     initChangeStreams(io).catch((err) => {
       logger.warn({ msg: 'initChangeStreams failed at boot', err: err?.message })
     })
   })
 
-  process.on('SIGTERM', async () => {
+  // ── Graceful shutdown ─────────────────────────────────────────────────────────
+  async function shutdown(signal: string) {
+    logger.info({ msg: `Graceful shutdown initiated (${signal})` })
+
+    // 1. Stop cron jobs — no new scheduled runs
+    cronTasks.forEach(t => t.stop())
+
+    // 2. Stop accepting new HTTP connections; wait for in-flight requests to finish
+    await new Promise<void>(resolve => httpServer.close(() => resolve()))
+    logger.info({ msg: 'HTTP server closed' })
+
+    // 3. Close WebSocket connections
+    await new Promise<void>(resolve => io.close(() => resolve()))
+    logger.info({ msg: 'Socket.io closed' })
+
+    // 4. Close change streams before disconnecting DB
     await closeChangeStreams()
+
+    // 5. Disconnect from database
+    await prisma.$disconnect()
+    logger.info({ msg: 'Database disconnected' })
+
     process.exit(0)
-  })
-  process.on('SIGINT', async () => {
-    await closeChangeStreams()
-    process.exit(0)
-  })
+  }
+
+  process.on('SIGTERM', () => shutdown('SIGTERM').catch(err => {
+    logger.error({ msg: 'Shutdown error', err })
+    process.exit(1)
+  }))
+  process.on('SIGINT',  () => shutdown('SIGINT').catch(err => {
+    logger.error({ msg: 'Shutdown error', err })
+    process.exit(1)
+  }))
 }
+
+// ── Process-level safety nets ───────────────────────────────────────────────
+process.on('unhandledRejection', (reason) => {
+  logger.error({ msg: 'Unhandled promise rejection', reason })
+})
+process.on('uncaughtException', (err) => {
+  logger.error({ msg: 'Uncaught exception', err })
+  process.exit(1)
+})
 
 main().catch((err) => {
   console.error('Server failed to start', err)

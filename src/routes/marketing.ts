@@ -157,8 +157,12 @@ router.post('/generate-video', authorizeAdmin, async (req: Request, res: Respons
 
 router.get('/campaigns', authorizeAdmin, async (req: Request, res: Response) => {
   const { cafeId } = req.admin!
-  const limit  = Math.min(Number(req.query.limit  ?? 20), 50)
-  const cursor = req.query.cursor as string | undefined
+  const limit  = Math.min(Math.max(1, Number(req.query.limit ?? 20)), 50)
+  const cursor = typeof req.query.cursor === 'string' ? req.query.cursor : undefined
+
+  if (cursor && !/^[0-9a-f]{24}$/.test(cursor)) {
+    return res.status(400).json({ error: 'Invalid cursor' })
+  }
 
   try {
     const campaigns = await prisma.marketingCampaign.findMany({

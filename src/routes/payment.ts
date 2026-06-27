@@ -129,7 +129,6 @@ async function confirmAndCreateOrder(opts: {
 
   const priceMap = new Map(products.map(p => [p.id, p.price]))
   const commMap  = new Map(products.map(p => [p.id, p.commissionRate]))
-  let   totalComm = 0
 
   // Recompute total from DB prices — reject if client-sent total doesn't match
   const computedTotal = parseFloat(
@@ -140,43 +139,46 @@ async function confirmAndCreateOrder(opts: {
     throw new Error(`Price mismatch: client sent ${clientTotal}, server computed ${computedTotal}`)
   }
 
-  const order = await prisma.order.create({
-    data: {
-      cafe:          { connect: { id: cafeId } },
-      table:         { connect: { id: tableId } },
-      originalTable: { connect: { id: physicalTableId } },
-      ...(seatId ? { seat: { connect: { id: seatId } }, seatNumber } : {}),
-      status:        'PENDING',
-      paymentMethod: 'ONLINE',
-      isPaid:        true,
-      totalPrice:    computedTotal,
-      customerPhone: customerPhone ?? null,
-      orderSource:   'QR_CODE',
-      billStatus:    'OPENED',
-      waiterNotification: { type: 'none', isActive: false },
-      totalCommission: 0,
-      items: {
-        create: items.map(it => {
-          const unitPrice      = priceMap.get(it.productId) ?? 0
-          const commissionRate = commMap.get(it.productId)  ?? 0
-          totalComm           += unitPrice * commissionRate * it.quantity
-          return {
-            product:      { connect: { id: it.productId } },
-            quantity:     it.quantity,
-            notes:        it.notes ?? null,
-            unitPrice,
-            commissionRate,
-          }
-        })
-      },
+  // Pre-compute per-item data and commission total before entering the transaction
+  let totalComm = 0
+  const itemsData = items.map(it => {
+    const unitPrice      = priceMap.get(it.productId) ?? 0
+    const commissionRate = commMap.get(it.productId)  ?? 0
+    totalComm           += unitPrice * commissionRate * it.quantity
+    return {
+      product:      { connect: { id: it.productId } },
+      quantity:     it.quantity,
+      notes:        it.notes ?? null,
+      unitPrice,
+      commissionRate,
     }
   })
 
-  await prisma.order.update({ where: { id: order.id }, data: { totalCommission: totalComm } })
-
-  await prisma.onlinePayment.update({
-    where: { id: paymentSessionId },
-    data:  { orderId: order.id, status: 'PAID', confirmedAt: new Date() }
+  // Atomic: create order + confirm payment session in a single transaction
+  const order = await prisma.$transaction(async (tx) => {
+    const order = await tx.order.create({
+      data: {
+        cafe:          { connect: { id: cafeId } },
+        table:         { connect: { id: tableId } },
+        originalTable: { connect: { id: physicalTableId } },
+        ...(seatId ? { seat: { connect: { id: seatId } }, seatNumber } : {}),
+        status:        'PENDING',
+        paymentMethod: 'ONLINE',
+        isPaid:        true,
+        totalPrice:    computedTotal,
+        totalCommission: totalComm,
+        customerPhone: customerPhone ?? null,
+        orderSource:   'QR_CODE',
+        billStatus:    'OPENED',
+        waiterNotification: { type: 'none', isActive: false },
+        items: { create: itemsData },
+      }
+    })
+    await tx.onlinePayment.update({
+      where: { id: paymentSessionId },
+      data:  { orderId: order.id, status: 'PAID', confirmedAt: new Date() }
+    })
+    return order
   })
 
   const cafe = await prisma.cafe.findUnique({ where: { id: cafeId }, select: { country: true } })
