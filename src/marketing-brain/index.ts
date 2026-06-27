@@ -1,8 +1,8 @@
 /**
  * Marketing Brain — public API surface
  *
- * Sprint 1 + 2: database layer only.
- * No routes, no business logic, no AI.
+ * Sprint 1 + 2: database layer (Mongoose models + seed).
+ * Sprint 3:     service layer (decision engine, no AI calls).
  */
 
 export { connect, disconnect } from './connection'
@@ -28,3 +28,33 @@ export type {
 } from './models'
 
 export { seedMarketingBrain } from './seed'
+
+// ── Service layer (Sprint 3) ──────────────────────────────────────────────────
+
+export {
+  decide,
+  select,
+  resolveAIRules,
+  resolveVariables,
+  render,
+  extractKeys,
+  planFollowup,
+  buildPrompt,
+  validateLeadProfile,
+  validateResolvedVariables,
+  validateBuiltPrompt,
+  assertLeadProfile,
+  mergeConstraints,
+} from './services'
+
+export type {
+  LeadProfile,
+  ResolvedContext,
+  TemplateMatch,
+  SequenceMatch,
+  VariableResolution,
+  BuiltPrompt,
+  DecisionResult,
+} from './types'
+
+export type { PromptBuildArgs } from './services'
