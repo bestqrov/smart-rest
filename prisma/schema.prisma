@@ -1527,3 +1527,17 @@ model CafeCustomer {
   @@index([cafeId, lastVisit])
   @@index([cafeId, optIn])
 }
+
+// ─── Refresh Tokens ───────────────────────────────────────────────────────────
+
+model RefreshToken {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  tokenHash String   @unique         // SHA-256(rawToken) — raw token never stored
+  userId    String   @db.ObjectId
+  cafeId    String   @db.ObjectId
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}

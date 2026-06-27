@@ -113,6 +113,7 @@ export default function LoginPage() {
       const data = await res.json()
       if (!res.ok) { setError(data.error || 'Erreur'); return }
       localStorage.setItem('token', data.token)
+      if (data.refreshToken) localStorage.setItem('refreshToken', data.refreshToken)
       localStorage.setItem('cafeId', data.cafeId)
       localStorage.setItem('subdomain', data.subdomain ?? '')
       router.push('/admin/dashboard')

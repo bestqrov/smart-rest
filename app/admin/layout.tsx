@@ -293,9 +293,43 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
 
   function authHeader() { return { Authorization: `Bearer ${localStorage.getItem('token')}` } }
 
+  function decodeTokenExpiry(token: string): number | null {
+    try {
+      const b64     = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
+      const payload = JSON.parse(atob(b64))
+      return typeof payload.exp === 'number' ? payload.exp : null
+    } catch { return null }
+  }
+
+  async function tryRefresh(): Promise<boolean> {
+    const rt = localStorage.getItem('refreshToken')
+    if (!rt) return false
+    try {
+      const res = await fetch('/api/auth/refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken: rt }),
+      })
+      if (!res.ok) { localStorage.removeItem('token'); localStorage.removeItem('refreshToken'); return false }
+      const data = await res.json()
+      localStorage.setItem('token', data.accessToken)
+      localStorage.setItem('refreshToken', data.refreshToken)
+      return true
+    } catch { return false }
+  }
+
   async function loadCafe() {
-    const token = localStorage.getItem('token')
+    let token = localStorage.getItem('token')
     if (!token) { router.push('/login'); return }
+
+    // Proactively refresh if token expires within 5 minutes
+    const exp = decodeTokenExpiry(token)
+    if (exp !== null && (exp * 1000) - Date.now() < 5 * 60 * 1000) {
+      const refreshed = await tryRefresh()
+      if (!refreshed && Date.now() > (exp * 1000)) { router.push('/login'); return }
+      token = localStorage.getItem('token') ?? token
+    }
+
     const [profile, finance] = await Promise.all([
       fetch('/api/admin/cafe/profile', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.ok ? r.json() : null),
       fetch('/api/finance/status',     { headers: { Authorization: `Bearer ${token}` } }).then(r => r.ok ? r.json() : null),
@@ -344,9 +378,18 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
     await loadCafe()
   }
 
-  function logout() {
+  async function logout() {
     if (isDemo) { setShowDemoExit(true); return }
+    const rt = localStorage.getItem('refreshToken')
+    if (rt) {
+      fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken: rt }),
+      }).catch(() => {})
+    }
     localStorage.removeItem('token')
+    localStorage.removeItem('refreshToken')
     localStorage.removeItem('cafeId')
     localStorage.removeItem('isDemo')
     router.push('/landing')
@@ -354,6 +397,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
 
   function exitDemo() {
     localStorage.removeItem('token')
+    localStorage.removeItem('refreshToken')
     localStorage.removeItem('cafeId')
     localStorage.removeItem('isDemo')
     router.push('/landing')
@@ -361,6 +405,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
 
   function signupFromDemo() {
     localStorage.removeItem('token')
+    localStorage.removeItem('refreshToken')
     localStorage.removeItem('cafeId')
     localStorage.removeItem('isDemo')
     router.push('/signup')

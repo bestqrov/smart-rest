@@ -9,8 +9,9 @@ import { sendMagicLink } from '../services/email'
 import { t, resolveLang, type Lang } from '../lib/i18n'
 
 const router = express.Router()
-const TOKEN_EXPIRY       = '8h'
-const MAGIC_EXPIRES_MS   = 15 * 60 * 1000          // 15 minutes
+const ACCESS_TOKEN_EXPIRY = process.env.ACCESS_TOKEN_EXPIRY ?? '30m'
+const REFRESH_TOKEN_DAYS  = parseInt(process.env.REFRESH_TOKEN_DAYS ?? '30', 10)
+const MAGIC_EXPIRES_MS    = 15 * 60 * 1000         // 15 minutes
 const EMAIL_WHITELIST    = ['gmail.com', 'outlook.com', 'hotmail.com', 'yahoo.com', 'yahoo.fr', 'hotmail.fr', 'live.com', 'icloud.com']
 // Resend test address allowed in all environments for QA
 const EMAIL_EXCEPTIONS   = ['onboarding@resend.dev']
@@ -40,6 +41,28 @@ function isValidEmail(email: string): boolean {
 /** Generate a cryptographically secure URL-safe token (32 bytes → 64 hex chars). */
 function generateSecureToken(): string {
   return crypto.randomBytes(32).toString('hex')
+}
+
+/** SHA-256 hash of a raw token — only the hash is stored in DB. */
+function hashToken(raw: string): string {
+  return crypto.createHash('sha256').update(raw).digest('hex')
+}
+
+/** Issue an access token + refresh token pair; stores refresh token hash in DB. */
+async function issueTokenPair(
+  userId: string,
+  cafeId: string,
+  extra: Record<string, unknown> = {}
+): Promise<{ accessToken: string; refreshToken: string }> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const accessToken  = jwt.sign({ userId, cafeId, ...extra } as object, JWT_SECRET, { expiresIn: ACCESS_TOKEN_EXPIRY } as any)
+  const rawRefresh   = generateSecureToken()
+  const tokenHash    = hashToken(rawRefresh)
+  const expiresAt    = new Date(Date.now() + REFRESH_TOKEN_DAYS * 24 * 60 * 60 * 1000)
+
+  await prisma.refreshToken.create({ data: { tokenHash, userId, cafeId, expiresAt } })
+
+  return { accessToken, refreshToken: rawRefresh }
 }
 
 /** Build a currency string from country. */
@@ -79,8 +102,8 @@ router.post('/api/auth/login', async (req: Request, res: Response) => {
     if (!ok) return res.status(401).json({ error: 'Invalid credentials' })
 
     const subdomain = user.cafe?.subdomain ?? ''
-    const token = jwt.sign({ userId: user.id, cafeId: user.cafeId, subdomain }, JWT_SECRET, { expiresIn: TOKEN_EXPIRY })
-    return res.json({ token, userId: user.id, cafeId: user.cafeId, subdomain })
+    const { accessToken, refreshToken } = await issueTokenPair(user.id, user.cafeId, { subdomain })
+    return res.json({ token: accessToken, refreshToken, userId: user.id, cafeId: user.cafeId, subdomain })
   } catch (err) {
     logger.error({ msg: 'Login error', err })
     return res.status(500).json({ error: 'Login failed' })
@@ -197,13 +220,14 @@ router.post('/api/auth/register', async (req: Request, res: Response) => {
       return { user, cafe }
     })
 
-    const token = jwt.sign({ userId: user.id, cafeId: cafe.id }, JWT_SECRET, { expiresIn: TOKEN_EXPIRY })
+    const { accessToken, refreshToken } = await issueTokenPair(user.id, cafe.id)
 
     // Seed demo menu in background — gives new accounts a working menu on first QR scan
     seedDemoMenu(cafe.id).catch((e) => logger.warn({ msg: 'Demo menu seed failed', cafeId: cafe.id, err: e.message }))
 
     return res.status(201).json({
-      token,
+      token: accessToken,
+      refreshToken,
       userId: user.id,
       cafeId: cafe.id,
       trialEndsAt,
@@ -284,7 +308,7 @@ router.post('/api/auth/quick-register', async (req: Request, res: Response) => {
         body: JSON.stringify({ phone: normalised, magicLink, cafeId: cafe.id, subdomain, country: resolvedCountry })
       }).catch((e) => logger.warn({ msg: 'n8n webhook failed', err: e.message }))
     } else {
-      logger.info({ msg: 'Magic link (n8n not configured)', magicLink, phone: normalised })
+      logger.info({ msg: 'Magic link (n8n not configured — dev only)', phone: normalised })
     }
 
     // Seed demo menu in background
@@ -317,9 +341,8 @@ router.get('/api/auth/magic', async (req: Request, res: Response) => {
 
     if (!payload.magic) return res.status(401).json({ error: 'Not a magic link token' })
 
-    // Issue a full 8-hour session token
-    const sessionToken = jwt.sign({ userId: payload.userId, cafeId: payload.cafeId }, JWT_SECRET, { expiresIn: '8h' })
-    return res.json({ token: sessionToken, userId: payload.userId, cafeId: payload.cafeId })
+    const { accessToken, refreshToken } = await issueTokenPair(payload.userId, payload.cafeId)
+    return res.json({ token: accessToken, refreshToken, userId: payload.userId, cafeId: payload.cafeId })
   } catch (err) {
     return res.status(500).json({ error: 'Magic link exchange failed' })
   }
@@ -587,27 +610,28 @@ router.get('/api/auth/magic-verify', async (req: Request, res: Response) => {
       logger.warn({ msg: 'Demo menu seed failed (magic-verify)', cafeId: cafe.id, err: e.message })
     )
 
-    // ── Issue 8h session token ─────────────────────────────────────────────────
-    const sessionToken = jwt.sign(
-      { userId: user.id, cafeId: cafe.id, subdomain: cafe.subdomain },
-      JWT_SECRET,
-      { expiresIn: TOKEN_EXPIRY }
-    )
-
     logger.info({ msg: 'magic-verify: account created', email: record.email, cafeId: cafe.id })
 
     if (wantsJson) {
+      const { accessToken, refreshToken } = await issueTokenPair(user.id, cafe.id, { subdomain: cafe.subdomain })
       return res.json({
-        token:       sessionToken,
-        userId:      user.id,
-        cafeId:      cafe.id,
-        subdomain:   cafe.subdomain,
+        token:        accessToken,
+        refreshToken,
+        userId:       user.id,
+        cafeId:       cafe.id,
+        subdomain:    cafe.subdomain,
         trialEndsAt,
         lang
       })
     }
 
-    // Browser redirect — embed token in query so the dashboard page picks it up
+    // Browser redirect — short-lived access token only (no refresh token in URL)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sessionToken = jwt.sign(
+      { userId: user.id, cafeId: cafe.id, subdomain: cafe.subdomain },
+      JWT_SECRET,
+      { expiresIn: ACCESS_TOKEN_EXPIRY } as any
+    )
     const base = process.env.FRONTEND_URL ?? 'https://smartrestau.com'
     return res.redirect(
       `${base}/verify-success?token=${sessionToken}&cafeId=${cafe.id}&subdomain=${cafe.subdomain}&lang=${lang}`
@@ -616,6 +640,45 @@ router.get('/api/auth/magic-verify', async (req: Request, res: Response) => {
     logger.error({ msg: 'magic-verify error', err })
     return fail(500, t('error_server', lang))
   }
+})
+
+// ─── POST /api/auth/refresh — rotate refresh token, issue new access token ────
+
+router.post('/api/auth/refresh', async (req: Request, res: Response) => {
+  const { refreshToken } = req.body as { refreshToken?: string }
+  if (!refreshToken) return res.status(401).json({ error: 'Refresh token required' })
+
+  try {
+    const hash   = hashToken(refreshToken)
+    const stored = await prisma.refreshToken.findUnique({ where: { tokenHash: hash } })
+
+    if (!stored) return res.status(401).json({ error: 'Invalid refresh token' })
+
+    if (new Date() > stored.expiresAt) {
+      await prisma.refreshToken.delete({ where: { tokenHash: hash } })
+      return res.status(401).json({ error: 'Refresh token expired' })
+    }
+
+    // Rotate: delete old token before issuing new pair (prevents replay)
+    await prisma.refreshToken.delete({ where: { tokenHash: hash } })
+    const { accessToken, refreshToken: newRefresh } = await issueTokenPair(stored.userId, stored.cafeId)
+
+    return res.json({ accessToken, refreshToken: newRefresh })
+  } catch (err) {
+    logger.error({ msg: 'refresh error', err })
+    return res.status(500).json({ error: 'Token refresh failed' })
+  }
+})
+
+// ─── POST /api/auth/logout — revoke refresh token server-side ─────────────────
+
+router.post('/api/auth/logout', async (req: Request, res: Response) => {
+  const { refreshToken } = req.body as { refreshToken?: string }
+  if (refreshToken) {
+    const hash = hashToken(refreshToken)
+    await prisma.refreshToken.deleteMany({ where: { tokenHash: hash } }).catch(() => {})
+  }
+  return res.json({ ok: true })
 })
 
 // ─── seedDemoMenu — called after every new cafe creation ─────────────────────

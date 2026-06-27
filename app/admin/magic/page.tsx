@@ -19,6 +19,7 @@ export default function MagicLoginPage() {
       .then((data) => {
         if (data.token) {
           localStorage.setItem('token', data.token)
+          if (data.refreshToken) localStorage.setItem('refreshToken', data.refreshToken)
           localStorage.setItem('cafeId', String(data.cafeId))
           setStatus('success')
           setTimeout(() => router.push('/admin/dashboard'), 1200)
