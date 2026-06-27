@@ -209,6 +209,28 @@ export {
 // MarketingGenerationService: orchestrates the complete pipeline for one lead.
 // Call generate(input) from any Lead creation flow — fire-and-forget safe.
 
+// ── Campaign Orchestrator (Phase C) ───────────────────────────────────────────
+// orchestrate(input) → CampaignExecution records (QUEUED/READY).
+// cancelCampaign(id), cancelExecution(id), getExecutions(id), tickReady(), getReadyExecutions().
+
+export {
+  orchestrate,
+  cancelCampaign,
+  cancelExecution,
+  getExecutions   as getCampaignExecutions,
+  tickReady,
+  getReadyExecutions,
+} from './CampaignOrchestratorService'
+
+export type {
+  OrchestrationInput,
+  OrchestrationResult,
+  CancelResult,
+} from './CampaignOrchestratorService'
+
+export { CampaignExecution }  from './models/CampaignExecution'
+export type { ICampaignExecution, CampaignStatus, ExecutionType } from './models/CampaignExecution'
+
 export {
   generate as marketingGenerate,
   mapBusinessType,
