@@ -122,3 +122,25 @@ export {
   selectScenario, selectTemplate, selectRules,
   selectFollowup, selectVariables, renderTemplate, extractKeys as extractTemplateKeys,
 } from './selectors'
+
+// ── Strategy Layer (Sprint 4) ─────────────────────────────────────────────────
+// plan(decisionResult, decisionContext) → StrategyResult
+
+export { plan as planStrategy, planFromContext } from './strategy/StrategyEngine'
+
+export type {
+  StrategyContext,
+  StrategyResult,
+  StrategyReasoning,
+  ChannelPlan,
+  RecommendedSendTime,
+  FollowupPlan,
+  FollowupTouchpoint,
+  EscalationPlan,
+  EscalationTrigger,
+  EscalationAction,
+  StopCondition,
+  StopCode,
+} from './strategy'
+
+export { planChannels, planTiming, planSequence, planEscalation, buildStopConditions } from './strategy'
