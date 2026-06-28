@@ -252,12 +252,13 @@ export default function LoginPage() {
       if (r.role === 'BOSS') {
         router.push(r.dest)
       } else {
-        const res  = await fetch('/api/pos/shift', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subdomain: DEMO_CAFE.subdomain, pinCode: r.pin, action: 'login' }) })
+        const demoSub = adminData.subdomain ?? DEMO_CAFE.subdomain
+        const res  = await fetch('/api/pos/shift', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subdomain: demoSub, pinCode: r.pin, action: 'login' }) })
         const data = await res.json()
         if (!res.ok) { setDemoError(t('demoErrPin')); setDemoLoading(null); return }
         localStorage.setItem('posToken', data.token)
         localStorage.setItem('cafeId', JSON.parse(atob(data.token.split('.')[1])).cafeId)
-        localStorage.setItem('posLastSubdomain', DEMO_CAFE.subdomain)
+        localStorage.setItem('posLastSubdomain', demoSub)
         localStorage.setItem('staffName', data.staff.name)
         localStorage.setItem('kitchenToken', data.token)
         window.location.href = r.dest
