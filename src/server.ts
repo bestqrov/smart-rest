@@ -68,8 +68,13 @@ import opsLogsRouter                 from './routes/opsLogs'
 import opsBackupRouter               from './routes/opsBackup'
 import opsRuntimeRouter              from './routes/opsRuntime'
 import opsSecurityRouter             from './routes/opsSecurity'
-import marketplaceOrdersSARouter     from './routes/marketplaceOrdersSA'
+import marketplaceOrdersSARouter         from './routes/marketplaceOrdersSA'
 import marketplaceOrdersRestaurantRouter from './routes/marketplaceOrdersRestaurant'
+import marketplaceDashboardSARouter      from './routes/marketplaceDashboardSA'
+import marketplaceCategoriesSARouter     from './routes/marketplaceCategoriesSA'
+import marketplaceProductsSARouter       from './routes/marketplaceProductsSA'
+import marketplaceSuppliersSARouter      from './routes/marketplaceSuppliersSA'
+import marketplaceInventorySARouter      from './routes/marketplaceInventorySA'
 import inventoryAdminRouter from './routes/inventoryAdmin'
 import reviewGalleryRouter from './routes/reviewGallery'
 import demoRequestsRouter from './routes/demoRequests'
@@ -247,6 +252,11 @@ async function main() {
   app.use(opsSecurityRouter)
   app.use(marketplaceOrdersSARouter)
   app.use(marketplaceOrdersRestaurantRouter)
+  app.use(marketplaceDashboardSARouter)
+  app.use(marketplaceCategoriesSARouter)
+  app.use(marketplaceProductsSARouter)
+  app.use(marketplaceSuppliersSARouter)
+  app.use(marketplaceInventorySARouter)
   app.use(inventoryAdminRouter)
   app.use(reviewGalleryRouter)
   app.use(demoRequestsRouter)

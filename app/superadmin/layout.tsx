@@ -8,6 +8,7 @@ import {
   Brain, Zap, Workflow, ShieldCheck, BarChart3, Map,
   Users, Activity, Settings, AlertTriangle, LogOut,
   ChevronDown, Menu, X, KeyRound, HeartPulse,
+  ShoppingBag, Tag, Package, Truck, ClipboardList, Warehouse,
 } from 'lucide-react'
 import { SAAuthProvider, useSAAuth } from './context'
 
@@ -47,6 +48,17 @@ const NAV = [
     items: [
       { href: '/superadmin/analytics',   icon: BarChart3,  label: 'Analytics' },
       { href: '/superadmin/client-map',  icon: Map,        label: 'Client Map' },
+    ],
+  },
+  {
+    section: 'Marketplace',
+    items: [
+      { href: '/superadmin/marketplace',            icon: ShoppingBag,   label: 'Dashboard' },
+      { href: '/superadmin/marketplace/categories', icon: Tag,           label: 'Categories' },
+      { href: '/superadmin/marketplace/products',   icon: Package,       label: 'Products' },
+      { href: '/superadmin/marketplace/suppliers',  icon: Truck,         label: 'Suppliers' },
+      { href: '/superadmin/marketplace/orders',     icon: ClipboardList, label: 'Orders' },
+      { href: '/superadmin/marketplace/inventory',  icon: Warehouse,     label: 'Inventory' },
     ],
   },
   {
