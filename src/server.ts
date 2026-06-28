@@ -59,7 +59,8 @@ import landingConfigRouter from './routes/landingConfig'
 import marketingRouter from './routes/marketing'
 import traiteurRouter from './routes/traiteur'
 import loyaltyRouter from './routes/loyalty'
-import adminCertificationRouter from './routes/adminCertification'
+import adminCertificationRouter      from './routes/adminCertification'
+import superadminCertificationRouter from './routes/superadminCertification'
 import inventoryAdminRouter from './routes/inventoryAdmin'
 import reviewGalleryRouter from './routes/reviewGallery'
 import demoRequestsRouter from './routes/demoRequests'
@@ -229,6 +230,7 @@ async function main() {
   app.use(traiteurRouter)
   app.use(loyaltyRouter)
   app.use(adminCertificationRouter)
+  app.use(superadminCertificationRouter)
   app.use(inventoryAdminRouter)
   app.use(reviewGalleryRouter)
   app.use(demoRequestsRouter)
