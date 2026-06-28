@@ -243,7 +243,7 @@ export default function LoginPage() {
         const list: { name: string }[] = Array.isArray(body) ? body : (body.staff ?? [])
         const names = list.map((s: any) => s.name)
         await Promise.all(
-          [{ name: 'Demo Cashier', role: 'CASHIER', pinCode: '1234' }, { name: 'Demo Supervisor', role: 'SUPERVISOR', pinCode: '3333' }, { name: 'Demo Waiter', role: 'WAITER', pinCode: '2222' }]
+          [{ name: 'Yassine', role: 'CASHIER', pinCode: '1234' }, { name: 'Khalid', role: 'SUPERVISOR', pinCode: '3333' }, { name: 'Nadia', role: 'WAITER', pinCode: '2222' }]
             .filter(s => !names.includes(s.name))
             .map(s => fetch('/api/admin/staff', { method: 'POST', headers: h, body: JSON.stringify(s) }))
         )
