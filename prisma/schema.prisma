@@ -1800,3 +1800,23 @@ model CertificationEvidence {
   @@index([ruleId])
   @@map("cert_evidence")
 }
+
+// ─── Analytics Engine ─────────────────────────────────────────────────────────
+
+model MetricSnapshot {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  metricId    String                          // e.g. 'billing.mrr'
+  period      String                          // 'today' | '7d' | '30d' | 'month' | 'year' | 'custom'
+  periodStart DateTime
+  periodEnd   DateTime
+  value       Float
+  trend       Float?                          // % change vs previous period
+  tenantId    String?                         // null = platform-wide
+  metadata    String?                         // JSON blob for future BI use
+  createdAt   DateTime @default(now())
+
+  @@index([metricId, period])
+  @@index([metricId, createdAt])
+  @@index([tenantId, metricId])
+  @@map("analytics_snapshots")
+}

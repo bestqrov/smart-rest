@@ -3,6 +3,7 @@ dotenv.config()
 
 import { FeatureFlagService }      from './core'
 import { registerBuiltinProfiles } from './certification'
+import { initAnalyticsEngine }     from './analytics'
 
 import express from 'express'
 import http from 'http'
@@ -283,6 +284,9 @@ async function main() {
 
   // Register certification profiles + rules
   registerBuiltinProfiles()
+
+  // Bootstrap analytics engine (metrics, collectors, reports, event subscriptions)
+  initAnalyticsEngine()
 
   // Collect cron task handles for graceful shutdown
   const cronTasks = [
