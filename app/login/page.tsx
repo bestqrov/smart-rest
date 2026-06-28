@@ -23,6 +23,7 @@ const T: Record<Lang, Record<string, string>> = {
     forgotSub: 'Enter your email — our team will send you a temporary password valid for 10 minutes.',
     forgotSend: 'Send request', forgotSending: 'Sending…',
     forgotDone: '✅ Request sent! Check your inbox shortly.',
+    forgotNotFound: '❌ No account found with this email.',
     noAccount: "No account yet?", signup: 'Sign up free',
     back: '← Back',
     copyright: 'Business OS · Food & Hospitality',
@@ -52,6 +53,7 @@ const T: Record<Lang, Record<string, string>> = {
     forgotSub: 'Entrez votre email — notre équipe vous enverra un mot de passe valable 10 minutes.',
     forgotSend: 'Envoyer la demande', forgotSending: 'Envoi…',
     forgotDone: '✅ Demande envoyée ! Vérifiez votre boîte mail sous peu.',
+    forgotNotFound: '❌ Aucun compte trouvé avec cet email.',
     noAccount: 'Pas encore de compte ?', signup: 'Inscription gratuite',
     back: '← Retour',
     copyright: 'Business OS · Food & Hospitality',
@@ -81,6 +83,7 @@ const T: Record<Lang, Record<string, string>> = {
     forgotSub: 'أدخل بريدك — سيرسل لك فريقنا كلمة مرور مؤقتة صالحة 10 دقائق.',
     forgotSend: 'إرسال الطلب', forgotSending: 'جاري الإرسال…',
     forgotDone: '✅ تم إرسال الطلب! تحقق من بريدك قريباً.',
+    forgotNotFound: '❌ لا يوجد حساب بهذا البريد.',
     noAccount: 'ليس لديك حساب؟', signup: 'ابدأ مجاناً',
     back: 'رجوع ←',
     copyright: 'Business OS · Food & Hospitality',
@@ -151,6 +154,7 @@ export default function LoginPage() {
   const [forgotEmail,   setForgotEmail]   = useState('')
   const [forgotLoading, setForgotLoading] = useState(false)
   const [forgotDone,    setForgotDone]    = useState(false)
+  const [forgotError,   setForgotError]   = useState('')
   const [googleLoading, setGoogleLoading] = useState(false)
 
   const isRtl = lang === 'ar'
@@ -221,11 +225,12 @@ export default function LoginPage() {
   async function handleForgot(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     if (!forgotEmail.trim()) return
-    setForgotLoading(true)
+    setForgotLoading(true); setForgotError('')
     try {
-      await fetch('/api/auth/request-password-reset', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: forgotEmail.trim() }) })
+      const res = await fetch('/api/auth/request-password-reset', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: forgotEmail.trim() }) })
+      if (res.status === 404) { setForgotError(t('forgotNotFound')); return }
       setForgotDone(true)
-    } catch {}
+    } catch { setForgotError(t('errNetwork')) }
     finally { setForgotLoading(false) }
   }
 
@@ -406,6 +411,10 @@ export default function LoginPage() {
                 <div className="flex items-center gap-3 bg-emerald-950/50 border border-emerald-800/50 rounded-2xl px-5 py-4">
                   <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0" />
                   <p className="text-emerald-300 text-sm font-medium">{t('forgotDone')}</p>
+                </div>
+              ) : forgotError ? (
+                <div className="flex items-center gap-3 bg-red-950/50 border border-red-800/50 rounded-2xl px-5 py-4">
+                  <p className="text-red-300 text-sm font-medium">{forgotError}</p>
                 </div>
               ) : (
                 <form onSubmit={handleForgot} className="space-y-3">

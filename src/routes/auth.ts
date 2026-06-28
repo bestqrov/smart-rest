@@ -820,8 +820,7 @@ router.post('/api/auth/request-password-reset', async (req: Request, res: Respon
       where: { email: email.toLowerCase().trim() },
       include: { cafe: { select: { name: true } } },
     })
-    // Always return ok to avoid email enumeration
-    if (!user) return res.json({ ok: true })
+    if (!user) return res.status(404).json({ error: 'email_not_found' })
 
     // Check no pending request already exists
     const existing = await (prisma as any).passwordResetRequest.findFirst({
