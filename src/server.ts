@@ -62,6 +62,11 @@ import traiteurRouter from './routes/traiteur'
 import loyaltyRouter from './routes/loyalty'
 import adminCertificationRouter      from './routes/adminCertification'
 import superadminCertificationRouter from './routes/superadminCertification'
+import opsSystemRouter               from './routes/opsSystem'
+import opsLogsRouter                 from './routes/opsLogs'
+import opsBackupRouter               from './routes/opsBackup'
+import opsRuntimeRouter              from './routes/opsRuntime'
+import opsSecurityRouter             from './routes/opsSecurity'
 import inventoryAdminRouter from './routes/inventoryAdmin'
 import reviewGalleryRouter from './routes/reviewGallery'
 import demoRequestsRouter from './routes/demoRequests'
@@ -232,6 +237,11 @@ async function main() {
   app.use(loyaltyRouter)
   app.use(adminCertificationRouter)
   app.use(superadminCertificationRouter)
+  app.use(opsSystemRouter)
+  app.use(opsLogsRouter)
+  app.use(opsBackupRouter)
+  app.use(opsRuntimeRouter)
+  app.use(opsSecurityRouter)
   app.use(inventoryAdminRouter)
   app.use(reviewGalleryRouter)
   app.use(demoRequestsRouter)

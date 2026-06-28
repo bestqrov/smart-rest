@@ -1803,6 +1803,35 @@ model CertificationEvidence {
 
 // ─── Analytics Engine ─────────────────────────────────────────────────────────
 
+// ─── Operations Layer ─────────────────────────────────────────────────────────
+
+model RuntimeSetting {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  key       String   @unique
+  value     String                    // JSON-serialized
+  updatedBy String?
+  updatedAt DateTime @updatedAt
+
+  @@map("runtime_settings")
+}
+
+model PlatformBackup {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  label       String
+  status      String    @default("pending")  // pending | running | completed | failed
+  sizeBytes   Int?
+  entities    String    // JSON: { cafes: N, orders: N, ... }
+  triggeredBy String
+  error       String?
+  metadata    String?
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("platform_backups")
+}
+
 model MetricSnapshot {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
   metricId    String                          // e.g. 'billing.mrr'
