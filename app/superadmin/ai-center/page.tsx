@@ -22,6 +22,7 @@ import {
   Loader2,
   ArrowLeft,
 } from 'lucide-react'
+import { useSAAuth } from '../context'
 
 // ─── i18n ─────────────────────────────────────────────────────────────────────
 
@@ -852,26 +853,14 @@ function AnalyticsPage({
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function AICenterPage() {
+  const { header: ctxHeader } = useSAAuth()
   const [lang, setLang] = useState<Lang>('ar')
-  const [secret, setSecret] = useState('')
-  const [email,  setEmail]  = useState('')
-  const [authed, setAuthed] = useState(false)
-  const [loginErr, setLoginErr] = useState('')
-  const [loginLoading, setLoginLoading] = useState(false)
   const [tab, setTab] = useState<'providers' | 'analytics' | 'health' | 'jobs'>('providers')
 
   const [providers, setProviders] = useState<Provider[]>([])
   const [loading,   setLoading]   = useState(false)
 
-  const secretRef = useRef(secret)
-  const emailRef  = useRef(email)
-  useEffect(() => { secretRef.current = secret }, [secret])
-  useEffect(() => { emailRef.current  = email  }, [email])
-
-  const superHeader = useCallback((): Record<string, string> => ({
-    'x-superadmin-secret': secretRef.current,
-    'x-superadmin-email':  emailRef.current,
-  }), [])
+  const superHeader = useCallback((): Record<string, string> => ctxHeader(), [ctxHeader])
 
   // ── AI Jobs state ──────────────────────────────────────────────────────────
   const [jobs,        setJobs]        = useState<any[]>([])
@@ -925,24 +914,6 @@ export default function AICenterPage() {
     loadJobs()
   }
 
-  async function login() {
-    setLoginLoading(true)
-    setLoginErr('')
-    try {
-      const r = await fetch('/api/superadmin/ai-center/providers', {
-        headers: { 'x-superadmin-secret': secret, 'x-superadmin-email': email },
-      })
-      if (r.status === 401) { setLoginErr('كلمة سر خاطئة'); return }
-      const data = await r.json()
-      setProviders(data.providers ?? [])
-      setAuthed(true)
-    } catch {
-      setLoginErr('خطأ في الشبكة')
-    } finally {
-      setLoginLoading(false)
-    }
-  }
-
   const loadProviders = useCallback(async () => {
     setLoading(true)
     try {
@@ -954,62 +925,9 @@ export default function AICenterPage() {
     }
   }, [superHeader])
 
-  useEffect(() => {
-    if (authed) loadProviders()
-  }, [authed, loadProviders])
+  useEffect(() => { loadProviders() }, [loadProviders])
 
   const t = T[lang]
-
-  // ── Login screen ──────────────────────────────────────────────────────────
-
-  if (!authed) {
-    return (
-      <div className="min-h-screen bg-zinc-950 text-white flex flex-col items-center justify-center p-4">
-        <div className="flex gap-2 mb-8">
-          {(['ar', 'fr', 'en'] as Lang[]).map(l => (
-            <button key={l} onClick={() => setLang(l)}
-              className={`px-3 py-1 text-xs rounded-full border transition-all ${lang === l ? 'bg-purple-600 border-purple-500 text-white' : 'border-zinc-700 text-zinc-400 hover:border-zinc-500'}`}>
-              {l === 'ar' ? 'ع' : l === 'fr' ? 'FR' : 'EN'}
-            </button>
-          ))}
-        </div>
-
-        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-8 w-full max-w-sm">
-          <div className="flex items-center justify-center gap-2 mb-6">
-            <Brain className="w-6 h-6 text-purple-400" />
-            <h1 className="text-lg font-bold">{t.title}</h1>
-          </div>
-
-          <div className="space-y-3">
-            <input
-              type="email"
-              placeholder={t.email}
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && login()}
-              className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500"
-            />
-            <input
-              type="password"
-              placeholder={t.secret}
-              value={secret}
-              onChange={e => setSecret(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && login()}
-              className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500"
-            />
-            {loginErr && <p className="text-red-400 text-xs text-center">{loginErr}</p>}
-            <button
-              onClick={login}
-              disabled={loginLoading}
-              className="w-full bg-purple-600 hover:bg-purple-500 text-white py-2.5 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 disabled:opacity-60"
-            >
-              {loginLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : t.login}
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  }
 
   // ── Main dashboard ────────────────────────────────────────────────────────
 
