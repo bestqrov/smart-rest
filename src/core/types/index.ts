@@ -1,0 +1,184 @@
+// ─── Shared SmartSuite Core Types ─────────────────────────────────────────────
+
+// ── Result monad ──────────────────────────────────────────────────────────────
+
+export type Result<T> =
+  | { ok: true;  data: T }
+  | { ok: false; error: string; code?: string }
+
+export function ok<T>(data: T): Result<T>        { return { ok: true,  data } }
+export function err(error: string, code?: string): Result<never> { return { ok: false, error, code } }
+
+// ── Pagination ────────────────────────────────────────────────────────────────
+
+export interface PageOptions {
+  page?:  number
+  limit?: number
+}
+
+export interface PagedResult<T> {
+  items:  T[]
+  total:  number
+  page:   number
+  pages:  number
+  limit:  number
+}
+
+// ── Timestamped ───────────────────────────────────────────────────────────────
+
+export interface TimestampedEntity {
+  createdAt:  Date
+  updatedAt?: Date
+}
+
+// ── Audit ─────────────────────────────────────────────────────────────────────
+
+export interface AuditEntry extends TimestampedEntity {
+  id:          string
+  module:      string
+  entity:      string
+  entityId:    string
+  action:      string
+  performedBy: string
+  timestamp:   Date
+  metadata?:   Record<string, unknown>
+}
+
+export interface CreateAuditInput {
+  module:      string
+  entity:      string
+  entityId:    string
+  action:      string
+  performedBy: string
+  metadata?:   Record<string, unknown>
+}
+
+export interface AuditFilter extends PageOptions {
+  module?:      string
+  entity?:      string
+  entityId?:    string
+  performedBy?: string
+  from?:        Date
+  to?:          Date
+}
+
+// ── Notification ──────────────────────────────────────────────────────────────
+
+export type NotificationLevel = 'INFO' | 'SUCCESS' | 'WARNING' | 'ERROR' | 'SYSTEM'
+
+export interface Notification extends TimestampedEntity {
+  id:        string
+  level:     NotificationLevel
+  title:     string
+  message:   string
+  module?:   string
+  entityId?: string
+  targetId?: string
+  read:      boolean
+  metadata?: Record<string, unknown>
+  createdAt: Date
+}
+
+export interface CreateNotificationInput {
+  level:     NotificationLevel
+  title:     string
+  message:   string
+  module?:   string
+  entityId?: string
+  targetId?: string
+  metadata?: Record<string, unknown>
+}
+
+export interface NotificationFilter extends PageOptions {
+  level?:    NotificationLevel
+  module?:   string
+  read?:     boolean
+  from?:     Date
+  to?:       Date
+}
+
+// ── File ──────────────────────────────────────────────────────────────────────
+
+export type FileProviderType = 'local' | 's3' | 'r2' | 'supabase'
+
+export interface StoredFile extends TimestampedEntity {
+  id:           string
+  key:          string
+  originalName: string
+  mimeType:     string
+  sizeBytes:    number
+  provider:     FileProviderType
+  bucket?:      string
+  path:         string
+  url?:         string
+  module?:      string
+  entityId?:    string
+  uploadedBy?:  string
+  metadata?:    Record<string, unknown>
+  createdAt:    Date
+}
+
+export interface StoreFileInput {
+  key:          string
+  originalName: string
+  mimeType:     string
+  sizeBytes:    number
+  buffer:       Buffer
+  module?:      string
+  entityId?:    string
+  uploadedBy?:  string
+  metadata?:    Record<string, unknown>
+}
+
+// ── Feature Flag ──────────────────────────────────────────────────────────────
+
+export type FlagStatus = 'enabled' | 'disabled' | 'beta' | 'comingSoon'
+export type FlagScope  = 'global'  | 'tenant'   | 'role'
+
+export interface FeatureFlag extends TimestampedEntity {
+  id:          string
+  key:         string
+  name:        string
+  description?: string
+  status:      FlagStatus
+  scope:       FlagScope
+  targetIds:   string[]
+  metadata?:   Record<string, unknown>
+  updatedAt:   Date
+  createdAt:   Date
+}
+
+export interface FlagContext {
+  tenantId?: string
+  role?:     string
+}
+
+// ── Platform Events ───────────────────────────────────────────────────────────
+
+export type PlatformEventName =
+  | 'RestaurantCreated'
+  | 'RestaurantActivated'
+  | 'RestaurantSuspended'
+  | 'BillingPaid'
+  | 'BillingOverdue'
+  | 'TrialExpired'
+  | 'TrialExtended'
+  | 'CertificateIssued'
+  | 'CertificateExpired'
+  | 'CampaignCompleted'
+  | 'CampaignFailed'
+  | 'AIGenerationCompleted'
+  | 'AIGenerationFailed'
+  | 'AutomationExecuted'
+  | 'AutomationFailed'
+  | 'DemoRequestSubmitted'
+  | 'DemoActivated'
+  | 'UserPasswordReset'
+
+export interface PlatformEvent<T = unknown> {
+  name:      PlatformEventName
+  payload:   T
+  source:    string
+  timestamp: Date
+  traceId?:  string
+}

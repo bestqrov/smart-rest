@@ -1,6 +1,8 @@
 import dotenv from 'dotenv'
 dotenv.config()
 
+import { FeatureFlagService } from './core'
+
 import express from 'express'
 import http from 'http'
 import path from 'path'
@@ -270,6 +272,11 @@ async function main() {
 
   // Register AI Center usage hook — feeds in-memory stats accumulator
   addUsageHook(recordUsageEvent)
+
+  // Seed Core feature flags (idempotent)
+  FeatureFlagService.seedDefaultFlags().catch(err =>
+    logger.warn({ msg: 'seedDefaultFlags failed', err }),
+  )
 
   // Collect cron task handles for graceful shutdown
   const cronTasks = [

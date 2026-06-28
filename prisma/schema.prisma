@@ -1679,3 +1679,82 @@ model RefreshToken {
   @@index([userId])
   @@index([expiresAt])
 }
+
+// ─── SmartSuite Core — Audit ──────────────────────────────────────────────────
+
+model AuditEntry {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  module      String
+  entity      String
+  entityId    String
+  action      String
+  performedBy String
+  timestamp   DateTime @default(now())
+  metadata    String?
+
+  @@index([module])
+  @@index([entityId])
+  @@index([performedBy])
+  @@index([timestamp])
+  @@map("core_audit_entries")
+}
+
+// ─── SmartSuite Core — Notifications ─────────────────────────────────────────
+
+model CoreNotification {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  level     String   // INFO | SUCCESS | WARNING | ERROR | SYSTEM
+  title     String
+  message   String
+  module    String?
+  entityId  String?
+  targetId  String?
+  read      Boolean  @default(false)
+  metadata  String?
+  createdAt DateTime @default(now())
+
+  @@index([targetId])
+  @@index([read])
+  @@index([createdAt])
+  @@map("core_notifications")
+}
+
+// ─── SmartSuite Core — Files ──────────────────────────────────────────────────
+
+model StoredFile {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  key          String   @unique
+  originalName String
+  mimeType     String
+  sizeBytes    Int
+  provider     String
+  bucket       String?
+  path         String
+  url          String?
+  module       String?
+  entityId     String?
+  uploadedBy   String?
+  metadata     String?
+  createdAt    DateTime @default(now())
+
+  @@index([module, entityId])
+  @@map("core_stored_files")
+}
+
+// ─── SmartSuite Core — Feature Flags ─────────────────────────────────────────
+
+model FeatureFlag {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  key         String   @unique
+  name        String
+  description String?
+  status      String   @default("disabled") // enabled | disabled | beta | comingSoon
+  scope       String   @default("global")   // global | tenant | role
+  targetIds   String[]
+  metadata    String?
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
+
+  @@index([status])
+  @@map("core_feature_flags")
+}
