@@ -71,6 +71,29 @@ const T = {
     drag:           'اسحب لإعادة الترتيب',
     notes:          'ملاحظات',
     save:           'حفظ',
+    jobs:           'المهام',
+    jobsRunning:    'قيد التشغيل',
+    jobsQueued:     'في الانتظار',
+    jobsCompletedToday: 'مكتملة اليوم',
+    jobsFailedToday:'فشلت اليوم',
+    jobsAvgDuration:'متوسط المدة',
+    jobsAvgCost:    'متوسط التكلفة',
+    jobsAvgTokens:  'متوسط الرموز',
+    jobsCancel:     'إلغاء',
+    jobsRetry:      'إعادة',
+    jobsAll:        'الكل',
+    jobsModule:     'الوحدة',
+    jobsProvider:   'المزوّد',
+    jobsType:       'النوع',
+    jobsSearch:     'بحث…',
+    jobsEmpty:      'لا توجد مهام',
+    jobsLogs:       'السجلات',
+    jobsOutput:     'المخرجات',
+    jobsError:      'الخطأ',
+    jobsDuration:   'المدة',
+    jobsTokens:     'الرموز',
+    jobsCost:       'التكلفة',
+    jobsRetries:    'المحاولات',
   },
   fr: {
     title:          'Centre IA',
@@ -117,6 +140,29 @@ const T = {
     drag:           'Glisser pour réorganiser',
     notes:          'Notes',
     save:           'Enregistrer',
+    jobs:           'Jobs IA',
+    jobsRunning:    'En cours',
+    jobsQueued:     'En attente',
+    jobsCompletedToday: 'Terminés aujourd\'hui',
+    jobsFailedToday:'Échoués aujourd\'hui',
+    jobsAvgDuration:'Durée moyenne',
+    jobsAvgCost:    'Coût moyen',
+    jobsAvgTokens:  'Tokens moyens',
+    jobsCancel:     'Annuler',
+    jobsRetry:      'Relancer',
+    jobsAll:        'Tous',
+    jobsModule:     'Module',
+    jobsProvider:   'Fournisseur',
+    jobsType:       'Type',
+    jobsSearch:     'Rechercher…',
+    jobsEmpty:      'Aucun job',
+    jobsLogs:       'Logs',
+    jobsOutput:     'Résultat',
+    jobsError:      'Erreur',
+    jobsDuration:   'Durée',
+    jobsTokens:     'Tokens',
+    jobsCost:       'Coût',
+    jobsRetries:    'Tentatives',
   },
   en: {
     title:          'AI Center',
@@ -163,6 +209,29 @@ const T = {
     drag:           'Drag to reorder',
     notes:          'Notes',
     save:           'Save',
+    jobs:           'AI Jobs',
+    jobsRunning:    'Running',
+    jobsQueued:     'Queued',
+    jobsCompletedToday: 'Completed today',
+    jobsFailedToday:'Failed today',
+    jobsAvgDuration:'Avg duration',
+    jobsAvgCost:    'Avg cost',
+    jobsAvgTokens:  'Avg tokens',
+    jobsCancel:     'Cancel',
+    jobsRetry:      'Retry',
+    jobsAll:        'All',
+    jobsModule:     'Module',
+    jobsProvider:   'Provider',
+    jobsType:       'Type',
+    jobsSearch:     'Search…',
+    jobsEmpty:      'No jobs found',
+    jobsLogs:       'Logs',
+    jobsOutput:     'Output',
+    jobsError:      'Error',
+    jobsDuration:   'Duration',
+    jobsTokens:     'Tokens',
+    jobsCost:       'Cost',
+    jobsRetries:    'Retries',
   },
 }
 
@@ -789,7 +858,7 @@ export default function AICenterPage() {
   const [authed, setAuthed] = useState(false)
   const [loginErr, setLoginErr] = useState('')
   const [loginLoading, setLoginLoading] = useState(false)
-  const [tab, setTab] = useState<'providers' | 'analytics' | 'health'>('providers')
+  const [tab, setTab] = useState<'providers' | 'analytics' | 'health' | 'jobs'>('providers')
 
   const [providers, setProviders] = useState<Provider[]>([])
   const [loading,   setLoading]   = useState(false)
@@ -803,6 +872,58 @@ export default function AICenterPage() {
     'x-superadmin-secret': secretRef.current,
     'x-superadmin-email':  emailRef.current,
   }), [])
+
+  // ── AI Jobs state ──────────────────────────────────────────────────────────
+  const [jobs,        setJobs]        = useState<any[]>([])
+  const [jobsStats,   setJobsStats]   = useState<any>(null)
+  const [jobsLoading, setJobsLoading] = useState(false)
+  const [jobDetail,   setJobDetail]   = useState<any>(null)
+  const [jobFilter,   setJobFilter]   = useState({ status: '', module: '', provider: '', jobType: '', search: '' })
+  const jobsIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const loadJobs = useCallback(async () => {
+    setJobsLoading(true)
+    try {
+      const params = new URLSearchParams()
+      if (jobFilter.status)   params.set('status',   jobFilter.status)
+      if (jobFilter.module)   params.set('module',   jobFilter.module)
+      if (jobFilter.provider) params.set('provider', jobFilter.provider)
+      if (jobFilter.jobType)  params.set('jobType',  jobFilter.jobType)
+      if (jobFilter.search)   params.set('search',   jobFilter.search)
+      const [jr, sr] = await Promise.all([
+        fetch(`/api/superadmin/ai-jobs?${params}&limit=100`, { headers: superHeader() }),
+        fetch('/api/superadmin/ai-jobs/stats', { headers: superHeader() }),
+      ])
+      if (jr.ok) { const d = await jr.json(); setJobs(d.jobs ?? []) }
+      if (sr.ok) setJobsStats(await sr.json())
+    } finally { setJobsLoading(false) }
+  }, [jobFilter, superHeader])
+
+  useEffect(() => {
+    if (tab !== 'jobs') {
+      if (jobsIntervalRef.current) { clearInterval(jobsIntervalRef.current); jobsIntervalRef.current = null }
+      return
+    }
+    loadJobs()
+    jobsIntervalRef.current = setInterval(loadJobs, 5000)
+    return () => { if (jobsIntervalRef.current) clearInterval(jobsIntervalRef.current) }
+  }, [tab, loadJobs])
+
+  async function loadJobDetail(id: string) {
+    const r = await fetch(`/api/superadmin/ai-jobs/${id}`, { headers: superHeader() })
+    if (r.ok) setJobDetail(await r.json())
+  }
+
+  async function cancelAIJob(id: string) {
+    await fetch(`/api/superadmin/ai-jobs/${id}/cancel`, { method: 'POST', headers: superHeader() })
+    loadJobs()
+    if (jobDetail?.id === id) setJobDetail((p: any) => ({ ...p, status: 'CANCELLED' }))
+  }
+
+  async function retryAIJob(id: string) {
+    await fetch(`/api/superadmin/ai-jobs/${id}/retry`, { method: 'POST', headers: superHeader() })
+    loadJobs()
+  }
 
   async function login() {
     setLoginLoading(true)
@@ -932,6 +1053,7 @@ export default function AICenterPage() {
             { key: 'providers', label: t.providers, icon: <Brain className="w-3.5 h-3.5" /> },
             { key: 'analytics', label: t.analytics, icon: <BarChart3 className="w-3.5 h-3.5" /> },
             { key: 'health',    label: t.health,    icon: <Activity className="w-3.5 h-3.5" /> },
+            { key: 'jobs',      label: t.jobs,      icon: <Zap className="w-3.5 h-3.5" /> },
           ].map(({ key, label, icon }) => (
             <button
               key={key}
@@ -986,6 +1108,166 @@ export default function AICenterPage() {
 
         {tab === 'health' && (
           <HealthPage lang={lang} superHeader={superHeader} />
+        )}
+
+        {tab === 'jobs' && (
+          <div className="space-y-4">
+            {/* Stats pills */}
+            {jobsStats && (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {[
+                  { label: t.jobsRunning,        val: jobsStats.running,        color: 'text-blue-400',    bg: 'bg-blue-950/40 border-blue-800/40' },
+                  { label: t.jobsQueued,         val: jobsStats.queued,         color: 'text-amber-400',   bg: 'bg-amber-950/40 border-amber-800/40' },
+                  { label: t.jobsCompletedToday, val: jobsStats.completedToday, color: 'text-emerald-400', bg: 'bg-emerald-950/40 border-emerald-800/40' },
+                  { label: t.jobsFailedToday,    val: jobsStats.failedToday,    color: 'text-red-400',     bg: 'bg-red-950/40 border-red-800/40' },
+                ].map(s => (
+                  <div key={s.label} className={`rounded-xl border p-3 ${s.bg}`}>
+                    <p className={`text-2xl font-black ${s.color}`}>{s.val ?? 0}</p>
+                    <p className="text-xs text-zinc-500 mt-0.5">{s.label}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Secondary stats */}
+            {jobsStats && (
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { label: t.jobsAvgDuration, val: jobsStats.avgDurationMs ? `${(jobsStats.avgDurationMs/1000).toFixed(1)}s` : '—' },
+                  { label: t.jobsAvgTokens,   val: jobsStats.avgTokens ? jobsStats.avgTokens.toLocaleString() : '—' },
+                  { label: t.jobsAvgCost,     val: jobsStats.avgCost ? `$${jobsStats.avgCost.toFixed(4)}` : '—' },
+                ].map(s => (
+                  <div key={s.label} className="bg-zinc-900 border border-zinc-800 rounded-xl p-3 text-center">
+                    <p className="text-lg font-bold text-white">{s.val}</p>
+                    <p className="text-xs text-zinc-500 mt-0.5">{s.label}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Filters */}
+            <div className="flex flex-wrap gap-2">
+              {['', 'QUEUED', 'RUNNING', 'COMPLETED', 'FAILED', 'CANCELLED'].map(s => (
+                <button key={s} onClick={() => setJobFilter(f => ({ ...f, status: s }))}
+                  className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all ${
+                    jobFilter.status === s ? 'bg-purple-600 border-purple-500 text-white' : 'bg-zinc-900 border-zinc-700 text-zinc-400 hover:border-zinc-500'
+                  }`}>
+                  {s || t.jobsAll}
+                </button>
+              ))}
+              <input value={jobFilter.search} onChange={e => setJobFilter(f => ({ ...f, search: e.target.value }))}
+                placeholder={t.jobsSearch}
+                className="flex-1 min-w-[140px] bg-zinc-900 border border-zinc-700 rounded-xl px-3 py-1 text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-purple-500" />
+            </div>
+
+            {/* Job list + detail panel */}
+            <div className="flex gap-4">
+              {/* List */}
+              <div className="flex-1 space-y-2 min-w-0">
+                {jobsLoading && jobs.length === 0 && (
+                  <div className="text-center py-8 text-zinc-600 text-sm"><Loader2 className="w-5 h-5 animate-spin inline mr-2" />{t.loading}</div>
+                )}
+                {!jobsLoading && jobs.length === 0 && (
+                  <div className="text-center py-8 text-zinc-600 text-sm">{t.jobsEmpty}</div>
+                )}
+                {jobs.map((job: any) => {
+                  const STATUS_COLOR: Record<string, string> = {
+                    QUEUED: 'bg-amber-900 text-amber-300', RUNNING: 'bg-blue-900 text-blue-300',
+                    COMPLETED: 'bg-emerald-900 text-emerald-300', FAILED: 'bg-red-900 text-red-300',
+                    CANCELLED: 'bg-zinc-800 text-zinc-400',
+                  }
+                  return (
+                    <div key={job.id} onClick={() => loadJobDetail(job.id)}
+                      className={`bg-zinc-900 border rounded-xl p-3 cursor-pointer transition-all hover:border-purple-700 ${jobDetail?.id === job.id ? 'border-purple-600' : 'border-zinc-800'}`}>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${STATUS_COLOR[job.status] ?? 'bg-zinc-800 text-zinc-400'}`}>{job.status}</span>
+                        <span className="text-xs font-semibold text-white truncate">{job.module} / {job.jobType}</span>
+                        {job.provider && <span className="text-[10px] text-zinc-500 bg-zinc-800 px-2 py-0.5 rounded-full">{job.provider}</span>}
+                        <span className="ml-auto text-[10px] text-zinc-600">{new Date(job.queuedAt).toLocaleTimeString()}</span>
+                      </div>
+                      {job.status === 'RUNNING' && (
+                        <div className="mt-2 h-1 bg-zinc-800 rounded-full overflow-hidden">
+                          <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${job.progress}%` }} />
+                        </div>
+                      )}
+                      {job.errorMessage && <p className="text-[10px] text-red-400 mt-1 truncate">{job.errorMessage}</p>}
+                      <div className="flex gap-3 mt-1 text-[10px] text-zinc-600">
+                        {job.durationMs && <span>{(job.durationMs/1000).toFixed(1)}s</span>}
+                        {job.totalTokens && <span>{job.totalTokens.toLocaleString()} tok</span>}
+                        {job.estimatedCost && <span>${job.estimatedCost.toFixed(4)}</span>}
+                        {job.retryCount > 0 && <span>{job.retryCount} retries</span>}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* Detail panel */}
+              {jobDetail && (
+                <div className="w-80 shrink-0 bg-zinc-900 border border-zinc-800 rounded-2xl p-4 space-y-3 self-start sticky top-4 max-h-[80vh] overflow-y-auto">
+                  <div className="flex items-center justify-between">
+                    <p className="font-bold text-white text-sm">{jobDetail.module} / {jobDetail.jobType}</p>
+                    <button onClick={() => setJobDetail(null)} className="text-zinc-600 hover:text-white text-xs">✕</button>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    {[
+                      ['Status',        jobDetail.status],
+                      ['Provider',      jobDetail.provider ?? '—'],
+                      ['Model',         jobDetail.model ?? '—'],
+                      [t.jobsDuration,  jobDetail.durationMs ? `${(jobDetail.durationMs/1000).toFixed(2)}s` : '—'],
+                      [t.jobsTokens,    jobDetail.totalTokens?.toLocaleString() ?? '—'],
+                      [t.jobsCost,      jobDetail.estimatedCost ? `$${jobDetail.estimatedCost.toFixed(5)}` : '—'],
+                      [t.jobsRetries,   String(jobDetail.retryCount ?? 0)],
+                      ['Input ref',     jobDetail.inputReference ?? '—'],
+                    ].map(([k, v]) => (
+                      <div key={k} className="bg-zinc-800 rounded-lg p-2">
+                        <p className="text-zinc-500 text-[10px]">{k}</p>
+                        <p className="text-white font-semibold truncate">{v}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {jobDetail.errorMessage && (
+                    <div className="bg-red-950/40 border border-red-800/40 rounded-xl p-3">
+                      <p className="text-xs font-semibold text-red-400 mb-1">{t.jobsError}</p>
+                      <p className="text-xs text-red-300">{jobDetail.errorMessage}</p>
+                    </div>
+                  )}
+
+                  {jobDetail.logs?.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold text-zinc-400 mb-2">{t.jobsLogs}</p>
+                      <div className="space-y-1 max-h-48 overflow-y-auto">
+                        {jobDetail.logs.map((log: any) => (
+                          <div key={log.id} className="flex gap-2 text-[10px]">
+                            <span className="text-zinc-600 shrink-0">{new Date(log.timestamp).toLocaleTimeString()}</span>
+                            <span className={`shrink-0 font-bold ${log.level === 'ERROR' ? 'text-red-400' : log.level === 'WARN' ? 'text-amber-400' : 'text-zinc-500'}`}>{log.level}</span>
+                            <span className="text-zinc-300">{log.message}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex gap-2">
+                    {['QUEUED', 'RUNNING'].includes(jobDetail.status) && (
+                      <button onClick={() => cancelAIJob(jobDetail.id)}
+                        className="flex-1 bg-red-900 hover:bg-red-800 text-red-300 text-xs font-semibold py-2 rounded-lg transition-all">
+                        {t.jobsCancel}
+                      </button>
+                    )}
+                    {jobDetail.status === 'FAILED' && (
+                      <button onClick={() => retryAIJob(jobDetail.id)}
+                        className="flex-1 bg-blue-900 hover:bg-blue-800 text-blue-300 text-xs font-semibold py-2 rounded-lg transition-all">
+                        {t.jobsRetry}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         )}
       </div>
     </div>

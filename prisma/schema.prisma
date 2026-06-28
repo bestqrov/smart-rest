@@ -636,6 +636,51 @@ model PasswordResetRequest {
   @@index([status])
 }
 
+// ─── AI Jobs Infrastructure ───────────────────────────────────────────────────
+
+model AIJob {
+  id              String    @id @default(auto()) @map("_id") @db.ObjectId
+  module          String    // 'marketing' | 'certification' | 'ocr' | 'translation' | ...
+  jobType         String    // 'campaign_generation' | 'menu_translation' | ...
+  provider        String?   // 'gemini' | 'claude' | 'openai' | 'groq' | 'openrouter'
+  model           String?   // 'gemini-1.5-flash' | 'claude-3-haiku' | ...
+  status          String    @default("QUEUED") // QUEUED | RUNNING | COMPLETED | FAILED | CANCELLED
+  priority        Int       @default(5)        // 1 (highest) → 10 (lowest)
+  progress        Int       @default(0)        // 0-100
+  queuedAt        DateTime  @default(now())
+  startedAt       DateTime?
+  completedAt     DateTime?
+  durationMs      Int?
+  retryCount      Int       @default(0)
+  estimatedCost   Float?
+  totalTokens     Int?
+  inputReference  String?   // e.g. DemoRequest ID, CafeId
+  outputReference String?   // e.g. MarketingGeneration ID
+  metadata        String?   // JSON string
+  errorMessage    String?
+
+  logs            AIJobLog[]
+
+  @@index([status])
+  @@index([module])
+  @@index([provider])
+  @@index([queuedAt])
+  @@index([jobType])
+}
+
+model AIJobLog {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  jobId     String   @db.ObjectId
+  job       AIJob    @relation(fields: [jobId], references: [id])
+  timestamp DateTime @default(now())
+  level     String   @default("INFO") // INFO | WARN | ERROR | DEBUG
+  message   String
+  metadata  String?  // JSON string
+
+  @@index([jobId])
+  @@index([timestamp])
+}
+
 // ─── Mini POS — Staff & Shifts ────────────────────────────────────────────────
 
 model Staff {

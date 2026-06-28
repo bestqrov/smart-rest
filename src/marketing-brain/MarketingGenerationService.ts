@@ -1,5 +1,6 @@
 import crypto from 'crypto'
 import logger  from '../logger'
+import * as AIJobService from '../services/aiJobService'
 
 import { connect }   from './connection'
 import { MarketingGeneration } from './models/MarketingGeneration'
@@ -102,12 +103,25 @@ export async function generate(input: GenerationInput): Promise<GenerationSummar
   const generationId = crypto.randomUUID()
   const startedAt    = Date.now()
 
+  // ── 0. Create AIJob record ─────────────────────────────────────────────────
+  let aiJobId: string | null = null
+  try {
+    aiJobId = await AIJobService.createJob({
+      module:         'marketing',
+      jobType:        'campaign_generation',
+      priority:       5,
+      inputReference: input.leadId,
+      metadata:       { scenario: input.scenario, channel: input.channel, country: input.country, language: input.language },
+    })
+  } catch { /* non-blocking */ }
+
   // ── 1. Ensure Marketing Brain MongoDB is connected ─────────────────────────
   try {
     await connect()
   } catch (connErr: unknown) {
     const error = connErr instanceof Error ? connErr.message : String(connErr)
     logger.error({ msg: '[MarketingBrain] DB connection failed — skipping generation', generationId, error })
+    if (aiJobId) await AIJobService.failJob(aiJobId, error).catch(() => undefined)
     return {
       generationId, status: 'FAILED', attempts: 0,
       latencyMs: Date.now() - startedAt, tokens: null,
@@ -115,6 +129,8 @@ export async function generate(input: GenerationInput): Promise<GenerationSummar
       error,
     }
   }
+
+  if (aiJobId) await AIJobService.startJob(aiJobId).catch(() => undefined)
 
   // ── 2. Create PENDING record ────────────────────────────────────────────────
   await MarketingGeneration.create({
@@ -157,6 +173,15 @@ export async function generate(input: GenerationInput): Promise<GenerationSummar
           error:            null,
         },
       )
+
+      if (aiJobId) {
+        await AIJobService.completeJob(aiJobId, {
+          outputReference: generationId,
+          totalTokens:     result.tokens,
+          estimatedCost:   result.estimatedCost,
+          metadata:        { provider: result.provider, model: result.promptVersion, attempt },
+        }).catch(() => undefined)
+      }
 
       logger.info({
         msg:           '[MarketingBrain] generation completed',
@@ -202,6 +227,10 @@ export async function generate(input: GenerationInput): Promise<GenerationSummar
     { generationId },
     { status: 'FAILED', attempts: attempt - 1, error: lastError, latencyMs },
   ).catch(() => undefined)
+
+  if (aiJobId) {
+    await AIJobService.failJob(aiJobId, lastError ?? 'All attempts exhausted', true).catch(() => undefined)
+  }
 
   logger.error({
     msg:         '[MarketingBrain] generation failed after all attempts',

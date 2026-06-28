@@ -66,6 +66,7 @@ import supplierInvoicesRouter from './routes/supplierInvoices'
 import requisitionsRouter     from './routes/requisitions'
 import customersRouter        from './routes/customers'
 import aiCenterRouter         from './routes/aiCenter'
+import aiJobsRouter           from './routes/aiJobs'
 import { addUsageHook }       from './marketing-brain/providers/UsageTracker'
 import { recordUsageEvent }   from './services/aiCenterStats'
 import { registerSocketHandlers } from './socket/handlers'
@@ -231,6 +232,7 @@ async function main() {
   app.use(zonesRouter)
   app.use(customersRouter)
   app.use(aiCenterRouter)
+  app.use(aiJobsRouter)
 
   // ── Liveness probe (/health) ─────────────────────────────────────────────────
   // Fast check — process is alive. Used by SW offline detection and load balancers.
