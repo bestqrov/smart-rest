@@ -228,26 +228,28 @@ export default function LoginPage() {
   async function loginAsRole(r: typeof DEMO_ROLES[number]) {
     setDemoLoading(r.role); setDemoError('')
     try {
+      // Always bootstrap demo admin session + ensure all staff exist
+      const adminRes = await fetch('/api/demo-login', { method: 'POST' })
+      const adminData = await adminRes.json()
+      if (!adminRes.ok) { setDemoError(t('demoErrUnavailable')); setDemoLoading(null); return }
+      localStorage.setItem('token', adminData.token)
+      localStorage.setItem('cafeId', adminData.cafeId)
+      localStorage.setItem('subdomain', adminData.subdomain ?? '')
+      localStorage.setItem('isDemo', '1')
+      const h = { 'Content-Type': 'application/json', Authorization: `Bearer ${adminData.token}` }
+      const staffRes = await fetch('/api/admin/staff', { headers: h })
+      if (staffRes.ok) {
+        const body = await staffRes.json()
+        const list: { name: string }[] = Array.isArray(body) ? body : (body.staff ?? [])
+        const names = list.map((s: any) => s.name)
+        await Promise.all(
+          [{ name: 'Demo Cashier', role: 'CASHIER', pinCode: '1234' }, { name: 'Demo Supervisor', role: 'SUPERVISOR', pinCode: '3333' }, { name: 'Demo Waiter', role: 'WAITER', pinCode: '2222' }]
+            .filter(s => !names.includes(s.name))
+            .map(s => fetch('/api/admin/staff', { method: 'POST', headers: h, body: JSON.stringify(s) }))
+        )
+      }
+
       if (r.role === 'BOSS') {
-        const res  = await fetch('/api/demo-login', { method: 'POST' })
-        const data = await res.json()
-        if (!res.ok) { setDemoError(t('demoErrUnavailable')); setDemoLoading(null); return }
-        localStorage.setItem('token', data.token)
-        localStorage.setItem('cafeId', data.cafeId)
-        localStorage.setItem('subdomain', data.subdomain ?? '')
-        localStorage.setItem('isDemo', '1')   // flag for demo banner + onboarding assistant
-        const h = { 'Content-Type': 'application/json', Authorization: `Bearer ${data.token}` }
-        const staffRes = await fetch('/api/admin/staff', { headers: h })
-        if (staffRes.ok) {
-          const body = await staffRes.json()
-          const list: { name: string }[] = Array.isArray(body) ? body : (body.staff ?? [])
-          const names = list.map((s: any) => s.name)
-          await Promise.all(
-            [{ name: 'Demo Cashier', role: 'CASHIER', pinCode: '1234' }, { name: 'Demo Supervisor', role: 'SUPERVISOR', pinCode: '3333' }, { name: 'Demo Waiter', role: 'WAITER', pinCode: '2222' }]
-              .filter(s => !names.includes(s.name))
-              .map(s => fetch('/api/admin/staff', { method: 'POST', headers: h, body: JSON.stringify(s) }))
-          )
-        }
         router.push(r.dest)
       } else {
         const res  = await fetch('/api/pos/shift', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subdomain: DEMO_CAFE.subdomain, pinCode: r.pin, action: 'login' }) })
