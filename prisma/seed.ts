@@ -466,9 +466,9 @@ async function upsertCafe(data: {
 
 // Demo staff: cashier PIN 1234 · waiter PIN 2222 · supervisor PIN 3333
 const DEMO_STAFF = [
-  { name: 'Yassine',  role: 'CASHIER'    as const, pin: '1234' },
-  { name: 'Nadia',    role: 'WAITER'     as const, pin: '2222' },
-  { name: 'Khalid',   role: 'SUPERVISOR' as const, pin: '3333' },
+  { name: 'Demo Cashier',    role: 'CASHIER'    as const, pin: '1234' },
+  { name: 'Demo Waiter',     role: 'WAITER'     as const, pin: '2222' },
+  { name: 'Demo Supervisor', role: 'SUPERVISOR' as const, pin: '3333' },
 ]
 
 async function upsertDemoStaff(cafeId: string) {
