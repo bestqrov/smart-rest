@@ -5,7 +5,29 @@ export { evaluate }                               from './engine/CertificationEn
 
 // ── Profile management ────────────────────────────────────────────────────────
 export { registerBuiltinProfiles }                from './profiles'
-export { registerProfile, getProfile, getAllProfiles, hasProfile } from './profiles/ProfileRegistry'
+export {
+  createProfile,
+  registerProfile,
+  getProfile,
+  getAllProfiles,
+  hasProfile,
+}                                                 from './profiles/ProfileRegistry'
+
+// ── Pack management ───────────────────────────────────────────────────────────
+export { registerBuiltinPacks }                   from './packs'
+export {
+  registerPack,
+  updatePack,
+  removePack,
+  getPack,
+  getAllPacks,
+  hasPack,
+  resolveDependencies,
+  getPackUsage,
+  getProfilesUsingPack,
+  getUnusedPacks,
+  getRuleCoverage,
+}                                                 from './packs/PackRegistry'
 
 // ── Rule management ───────────────────────────────────────────────────────────
 export { registerRule, registerRules, getRule, getRulesForProfile } from './rules/RuleRegistry'
@@ -26,6 +48,11 @@ export type {
   CertificationResult,
   EvaluateOptions,
   ProfileDefinition,
+  ProfileConfig,
+  RulePack,
+  PackRule,
+  PackUsageStat,
+  RuleCoverage,
   RuleDefinition,
   EvaluationType,
   Evidence,

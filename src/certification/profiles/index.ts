@@ -1,11 +1,11 @@
-// Auto-registers all built-in certification profiles on import.
-// Call this once at server startup.
-
+import { registerBuiltinPacks }      from '../packs'
 import { registerRestaurantProfile } from './restaurant'
 
 export function registerBuiltinProfiles(): void {
+  // Packs must be registered before profiles (profiles reference packs by ID)
+  registerBuiltinPacks()
   registerRestaurantProfile()
   // Future: registerHotelProfile(), registerClinicProfile(), etc.
 }
 
-export { registerProfile, getProfile, getAllProfiles, hasProfile } from './ProfileRegistry'
+export { createProfile, registerProfile, getProfile, getAllProfiles, hasProfile } from './ProfileRegistry'

@@ -31,6 +31,7 @@ export interface LevelThreshold {
 
 // ── Profile ───────────────────────────────────────────────────────────────────
 
+/** Resolved profile — stored in registry and consumed by the engine. */
 export interface ProfileDefinition {
   id:                string
   name:              string
@@ -40,7 +41,25 @@ export interface ProfileDefinition {
   certificateLevels: LevelThreshold[]
   validityDays:      number
   dataFetcher:       DataFetcher
-  ruleEvaluators:    RuleEvaluatorMap
+  ruleEvaluators:    RuleEvaluatorMap   // merged from packs
+  resolvedPacks?:    string[]          // topologically sorted pack IDs (set by createProfile)
+}
+
+/**
+ * Input type for pack-based profile creation.
+ * Pass to createProfile() — do NOT register directly.
+ */
+export interface ProfileConfig {
+  id:                string
+  name:              string
+  description:       string
+  version:           string
+  enabled:           boolean
+  packs:             string[]           // pack IDs (order matters for override priority)
+  certificateLevels: LevelThreshold[]
+  validityDays:      number
+  dataFetcher:       DataFetcher
+  evaluatorOverrides?: RuleEvaluatorMap // profile-specific rule overrides
 }
 
 export type DataFetcher = (tenantId: string) => Promise<Record<string, unknown>>
@@ -67,6 +86,42 @@ export interface RuleDefinition {
   evaluationType: EvaluationType
   expectedValue?: unknown
   metadata?:      Record<string, unknown>
+}
+
+// ── Rule Pack ─────────────────────────────────────────────────────────────────
+
+/**
+ * A pack rule doesn't yet know which profile it belongs to.
+ * The `profile` field is set during profile assembly.
+ */
+export type PackRule = Omit<RuleDefinition, 'profile'>
+
+export interface RulePack {
+  id:           string
+  name:         string
+  description:  string
+  version:      string
+  enabled:      boolean
+  rules:        PackRule[]
+  evaluators:   RuleEvaluatorMap
+  dependencies: string[]     // other pack IDs required by this pack
+  tags:         string[]
+}
+
+// ── Pack statistics ───────────────────────────────────────────────────────────
+
+export interface PackUsageStat {
+  packId:   string
+  packName: string
+  profiles: string[]
+  ruleCount: number
+}
+
+export interface RuleCoverage {
+  totalRules:  number
+  totalPacks:  number
+  byPack:      Record<string, number>
+  byCategory:  Record<string, number>
 }
 
 // ── Evidence ──────────────────────────────────────────────────────────────────
