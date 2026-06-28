@@ -1849,3 +1849,95 @@ model MetricSnapshot {
   @@index([tenantId, metricId])
   @@map("analytics_snapshots")
 }
+
+// ─── Marketplace Engine ───────────────────────────────────────────────────────
+
+model MarketplaceCategory {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  slug        String   @unique
+  parentId    String?
+  icon        String?
+  description String?
+  active      Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([parentId])
+  @@index([active, sortOrder])
+  @@map("marketplace_categories")
+}
+
+model MarketplaceProduct {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  sku              String   @unique
+  name             String
+  slug             String   @unique
+  description      String
+  type             String   // HARDWARE | SOFTWARE | DIGITAL | SERVICE | SUBSCRIPTION | LICENSE
+  categoryId       String
+  brand            String?
+  status           String   @default("DRAFT")   // DRAFT | ACTIVE | ARCHIVED | OUT_OF_STOCK
+  visibility       String   @default("PRIVATE")  // PUBLIC | PRIVATE | MODULE_ONLY
+  images           String[]
+  tags             String[]
+  metadata         String?  // JSON
+  supportedModules String[] // RESTAURANT | HOTEL | CLINIC | RETAIL | ALL
+  supplierId       String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([categoryId])
+  @@index([status, visibility])
+  @@index([supplierId])
+  @@index([type])
+  @@map("marketplace_products")
+}
+
+model ProductPricing {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  productId        String   @unique
+  basePrice        Float
+  currency         String   @default("MAD")
+  discount         Float?   // percentage 0–100
+  promotionalPrice Float?   // explicit price override
+  taxRate          Float    @default(0)
+  costPrice        Float?
+  isActive         Boolean  @default(true)
+  validFrom        DateTime?
+  validTo          DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@map("marketplace_pricing")
+}
+
+model MarketplaceSupplier {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  company   String
+  contact   String
+  email     String   @unique
+  phone     String?
+  country   String
+  rating    Float    @default(3.0)
+  notes     String?
+  status    String   @default("ACTIVE")  // ACTIVE | INACTIVE | BLOCKED
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([country])
+  @@map("marketplace_suppliers")
+}
+
+model ProductInventory {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  productId         String   @unique
+  stock             Int      @default(0)
+  reserved          Int      @default(0)
+  lowStockThreshold Int      @default(5)
+  lastUpdated       DateTime @updatedAt
+
+  @@map("marketplace_inventory")
+}

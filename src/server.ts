@@ -4,6 +4,7 @@ dotenv.config()
 import { FeatureFlagService }      from './core'
 import { registerBuiltinProfiles } from './certification'
 import { initAnalyticsEngine }     from './analytics'
+import { initMarketplaceEngine }   from './marketplace'
 
 import express from 'express'
 import http from 'http'
@@ -297,6 +298,9 @@ async function main() {
 
   // Bootstrap analytics engine (metrics, collectors, reports, event subscriptions)
   initAnalyticsEngine()
+
+  // Seed marketplace feature flags (idempotent)
+  initMarketplaceEngine().catch(() => undefined)
 
   // Collect cron task handles for graceful shutdown
   const cronTasks = [

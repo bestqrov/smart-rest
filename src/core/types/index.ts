@@ -174,6 +174,13 @@ export type PlatformEventName =
   | 'DemoRequestSubmitted'
   | 'DemoActivated'
   | 'UserPasswordReset'
+  // Marketplace Engine
+  | 'ProductCreated'
+  | 'ProductUpdated'
+  | 'ProductArchived'
+  | 'SupplierCreated'
+  | 'InventoryUpdated'
+  | 'CategoryCreated'
 
 export interface PlatformEvent<T = unknown> {
   name:      PlatformEventName
