@@ -2,7 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import QRCode from 'qrcode'
-import { Eye, EyeOff, RefreshCw, CalendarClock, Clock, ChevronLeft, ChevronRight, Download, TableProperties } from 'lucide-react'
+import {
+  Eye, EyeOff, RefreshCw, CalendarClock, Clock,
+  ChevronLeft, ChevronRight, Download, TableProperties, Users, Zap,
+} from 'lucide-react'
 import { useLang } from '../lang-context'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -14,117 +17,77 @@ interface PointageStaff {
   days:      Record<number, { in: string; out: string | null }>
   totalDays: number
 }
-
 interface PointageData {
-  year:        number
-  month:       number
-  daysInMonth: number
-  staff:       PointageStaff[]
+  year: number; month: number; daysInMonth: number; staff: PointageStaff[]
 }
-
 interface StaffMember {
-  id:          string
-  name:        string
-  role:        'WAITER' | 'CASHIER' | 'SUPERVISOR'
-  roles:       string[]
-  pinDisplay:  string | null
-  shiftStatus: 'ACTIVE' | 'OFF_DUTY'
-  clockInTime: string | null
-  isActive:    boolean
-  pendingAlerts: number
+  id:             string
+  name:           string
+  role:           'WAITER' | 'CASHIER' | 'SUPERVISOR'
+  roles:          string[]
+  pinDisplay:     string | null
+  shiftStatus:    'ACTIVE' | 'OFF_DUTY'
+  clockInTime:    string | null
+  isActive:       boolean
+  pendingAlerts:  number
   assignedTables: { id: string; tableNumber: number; zone: string | null }[]
 }
-
 type Lang = 'ar' | 'fr' | 'en' | 'es'
-
-// ── Extra role labels ─────────────────────────────────────────────────────────
-
-const EXTRA_LABELS: Record<string, Record<Lang, string>> = {
-  BARISTA:    { ar: '☕ صانع قهوة', fr: '☕ Barista',           en: '☕ Barista',    es: '☕ Barista'    },
-  COOK:       { ar: '👨‍🍳 طباخ',      fr: '👨‍🍳 Cuisinier',        en: '👨‍🍳 Cook',      es: '👨‍🍳 Cocinero'   },
-  CLEANER:    { ar: '🧹 نظافة',      fr: "🧹 Nettoyage",         en: '🧹 Cleaner',    es: '🧹 Limpieza'   },
-  DISHWASHER: { ar: '🍽️ غسيل أواني', fr: '🍽️ Plonge',           en: '🍽️ Dishwasher', es: '🍽️ Fregador'  },
-  RUNNER:     { ar: '🏃 رانر',        fr: '🏃 Runner',            en: '🏃 Runner',     es: '🏃 Runner'     },
-}
 
 // ── i18n ──────────────────────────────────────────────────────────────────────
 
 const T = {
   ar: {
-    title: 'الحضور والتسجيل السريع',
-    subtitle: 'بطاقة كل موظف تحتوي على رمز QR وPIN للدخول السريع إلى الشيفت',
-    total: 'الإجمالي', active: 'حاضر', offline: 'خارج الشيفت',
+    title: 'الحضور اللحظي', subtitle: 'من في الخدمة الآن', pointageTitle: 'جدول الحضور الشهري',
+    total: 'الإجمالي', active: 'في الخدمة', offline: 'خارج الخدمة',
     roles: { WAITER: 'نادل', CASHIER: 'كاشير', SUPERVISOR: 'مشرف' },
-    showPin: 'إظهار PIN', hidePin: 'إخفاء PIN',
-    pinLabel: 'الرمز السري',
-    pinNotSet: 'غير محدد',
-    onDuty: 'في الخدمة', offDuty: 'خارج الخدمة',
-    since: 'منذ', hours: 'ساعة', mins: 'د',
-    qrSub: 'يصلح دقيقتين · امسح ثم أدخل PIN',
-    qrRefresh: 'تجديد QR',
-    expiresIn: 'ينتهي خلال',
-    scanToLogin: 'امسح الـ QR للدخول',
-    lastSeen: 'آخر ظهور',
-    tables: 'الطاولات',
-    noTables: 'لا طاولات مخصصة',
+    showPin: 'عرض PIN', hidePin: 'إخفاء', pinLabel: 'PIN', pinNotSet: 'غير محدد',
+    onDuty: 'في الخدمة', offDuty: 'خارج الخدمة', since: 'منذ', hours: 'س', mins: 'د',
+    qrSub: 'امسح بالهاتف · ثم أدخل PIN',
+    qrRefresh: 'تجديد', expiresIn: 'ينتهي خلال', scanToLogin: 'QR دخول الكادر',
+    noActive: 'لا أحد في الخدمة حالياً', offDutySection: 'خارج الشيفت',
+    tables: 'طاولات', noTables: 'لا طاولات',
   },
   fr: {
-    title: 'Présence & Connexion Rapide',
-    subtitle: 'Chaque carte contient un QR et un PIN pour le pointage rapide',
+    title: 'Présence en direct', subtitle: 'Qui est en service maintenant', pointageTitle: 'Pointage mensuel',
     total: 'Total', active: 'En service', offline: 'Hors service',
     roles: { WAITER: 'Serveur', CASHIER: 'Caissier', SUPERVISOR: 'Superviseur' },
-    showPin: 'Voir PIN', hidePin: 'Masquer PIN',
-    pinLabel: 'Code PIN',
-    pinNotSet: 'Non défini',
-    onDuty: 'En service', offDuty: 'Hors service',
-    since: 'depuis', hours: 'h', mins: 'min',
-    qrSub: 'Valable 2 min · Scanner + saisir PIN',
-    qrRefresh: 'Nouveau QR',
-    expiresIn: 'Expire dans',
-    scanToLogin: 'Scanner le QR pour se connecter',
-    lastSeen: 'Vu la dernière fois',
-    tables: 'Tables',
-    noTables: 'Aucune table assignée',
+    showPin: 'Voir PIN', hidePin: 'Masquer', pinLabel: 'PIN', pinNotSet: 'Non défini',
+    onDuty: 'En service', offDuty: 'Hors service', since: 'depuis', hours: 'h', mins: 'min',
+    qrSub: 'Scanner avec le téléphone · puis saisir PIN',
+    qrRefresh: 'Nouveau QR', expiresIn: 'Expire dans', scanToLogin: 'QR de connexion staff',
+    noActive: 'Personne en service pour le moment', offDutySection: 'Hors service',
+    tables: 'Tables', noTables: 'Aucune table',
   },
   en: {
-    title: 'Attendance & Quick Login',
-    subtitle: 'Each card has a QR code + PIN for fast shift check-in',
+    title: 'Live Attendance', subtitle: "Who's on duty right now", pointageTitle: 'Monthly Grid',
     total: 'Total', active: 'On Duty', offline: 'Off Duty',
     roles: { WAITER: 'Waiter', CASHIER: 'Cashier', SUPERVISOR: 'Supervisor' },
-    showPin: 'Show PIN', hidePin: 'Hide PIN',
-    pinLabel: 'PIN Code',
-    pinNotSet: 'Not set',
-    onDuty: 'On Duty', offDuty: 'Off Duty',
-    since: 'since', hours: 'h', mins: 'min',
-    qrSub: 'Valid 2 min · Scan + enter PIN',
-    qrRefresh: 'Refresh QR',
-    expiresIn: 'Expires in',
-    scanToLogin: 'Scan QR to log in',
-    tables: 'Tables',
-    noTables: 'No tables assigned',
-    lastSeen: 'Last seen',
+    showPin: 'Show PIN', hidePin: 'Hide', pinLabel: 'PIN', pinNotSet: 'Not set',
+    onDuty: 'On Duty', offDuty: 'Off Duty', since: 'since', hours: 'h', mins: 'min',
+    qrSub: 'Scan with phone · then enter PIN',
+    qrRefresh: 'Refresh QR', expiresIn: 'Expires in', scanToLogin: 'Staff Login QR',
+    noActive: 'No one on duty right now', offDutySection: 'Off duty',
+    tables: 'Tables', noTables: 'No tables',
   },
   es: {
-    title: 'Asistencia y Acceso Rápido',
-    subtitle: 'Cada tarjeta contiene QR y PIN para el registro rápido de turno',
+    title: 'Asistencia en vivo', subtitle: 'Quién está en turno ahora', pointageTitle: 'Cuadro mensual',
     total: 'Total', active: 'En turno', offline: 'Fuera de turno',
     roles: { WAITER: 'Camarero', CASHIER: 'Cajero', SUPERVISOR: 'Supervisor' },
-    showPin: 'Ver PIN', hidePin: 'Ocultar PIN',
-    pinLabel: 'Código PIN',
-    pinNotSet: 'No definido',
-    onDuty: 'En turno', offDuty: 'Fuera de turno',
-    since: 'desde', hours: 'h', mins: 'min',
-    qrSub: 'Válido 2 min · Escanear + PIN',
-    qrRefresh: 'Nuevo QR',
-    expiresIn: 'Expira en',
-    scanToLogin: 'Escanear QR para entrar',
-    tables: 'Mesas',
-    noTables: 'Sin mesas asignadas',
-    lastSeen: 'Visto por última vez',
+    showPin: 'Ver PIN', hidePin: 'Ocultar', pinLabel: 'PIN', pinNotSet: 'No definido',
+    onDuty: 'En turno', offDuty: 'Fuera de turno', since: 'desde', hours: 'h', mins: 'min',
+    qrSub: 'Escanear con teléfono · luego PIN',
+    qrRefresh: 'Nuevo QR', expiresIn: 'Expira en', scanToLogin: 'QR acceso staff',
+    noActive: 'Nadie en turno ahora', offDutySection: 'Fuera de turno',
+    tables: 'Mesas', noTables: 'Sin mesas',
   },
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+const ROLE_STYLE: Record<string, { bg: string; badge: string; label: Record<Lang, string> }> = {
+  SUPERVISOR: { bg: 'from-violet-500 to-violet-700', badge: 'bg-violet-100 text-violet-700', label: { ar: 'مشرف', fr: 'Superviseur', en: 'Supervisor', es: 'Supervisor' } },
+  CASHIER:    { bg: 'from-sky-500 to-sky-700',    badge: 'bg-sky-100 text-sky-700',    label: { ar: 'كاشير',  fr: 'Caissier',    en: 'Cashier',    es: 'Cajero'      } },
+  WAITER:     { bg: 'from-emerald-500 to-emerald-700', badge: 'bg-emerald-100 text-emerald-700', label: { ar: 'نادل', fr: 'Serveur', en: 'Waiter', es: 'Camarero' } },
+}
 
 function authHeader() {
   const tk = typeof window !== 'undefined' ? localStorage.getItem('token') : null
@@ -149,7 +112,7 @@ export default function AttendancePage() {
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'cards' | 'pointage'>('cards')
 
-  // ── Pointage state ─────────────────────────────────────────────────────────
+  // ── Pointage ───────────────────────────────────────────────────────────────
   const [pointage,      setPointage]      = useState<PointageData | null>(null)
   const [pointageMonth, setPointageMonth] = useState<string>(() => {
     const now = new Date()
@@ -175,21 +138,16 @@ export default function AttendancePage() {
     setPointageMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
   }
 
-  function printPointage() {
-    window.print()
-  }
-
-  // Shared rotating QR state (single QR for all staff — each uses their PIN to identify)
+  // ── QR ────────────────────────────────────────────────────────────────────
   const [qrDataUrl,   setQrDataUrl]   = useState('')
   const [qrCountdown, setQrCountdown] = useState(0)
   const [qrLoading,   setQrLoading]   = useState(false)
   const qrRefreshRef   = useRef<ReturnType<typeof setTimeout> | null>(null)
   const qrCountdownRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  // Per-card PIN reveal state
   const [revealedPins, setRevealedPins] = useState<Set<string>>(new Set())
 
-  // ── Fetch staff ─────────────────────────────────────────────────────────────
+  // ── Fetch staff ────────────────────────────────────────────────────────────
   const fetchStaff = useCallback(async () => {
     const res = await fetch('/api/admin/staff', { headers: authHeader() })
     if (!res.ok) return
@@ -204,7 +162,6 @@ export default function AttendancePage() {
     return () => clearInterval(p)
   }, [fetchStaff])
 
-  // ── Rotating QR (single shared token) ─────────────────────────────────────
   const refreshQR = useCallback(async () => {
     setQrLoading(true)
     try {
@@ -212,21 +169,13 @@ export default function AttendancePage() {
       if (!res.ok) return
       const data = await res.json() as { token: string; ttlSeconds: number }
       const url  = `${window.location.origin}/w/login?token=${data.token}`
-      const img  = await QRCode.toDataURL(url, {
-        width: 200, margin: 1,
-        color: { dark: '#0f172a', light: '#f0fdf4' }
-      })
+      const img  = await QRCode.toDataURL(url, { width: 200, margin: 1, color: { dark: '#0f172a', light: '#ffffff' } })
       setQrDataUrl(img)
       setQrCountdown(data.ttlSeconds)
-
       if (qrCountdownRef.current) clearInterval(qrCountdownRef.current)
       qrCountdownRef.current = setInterval(() => {
-        setQrCountdown(p => {
-          if (p <= 1) { clearInterval(qrCountdownRef.current!); return 0 }
-          return p - 1
-        })
+        setQrCountdown(p => { if (p <= 1) { clearInterval(qrCountdownRef.current!); return 0 } return p - 1 })
       }, 1000)
-
       if (qrRefreshRef.current) clearTimeout(qrRefreshRef.current)
       qrRefreshRef.current = setTimeout(refreshQR, (data.ttlSeconds - 8) * 1000)
     } catch { /* silent */ }
@@ -241,73 +190,60 @@ export default function AttendancePage() {
     }
   }, [refreshQR])
 
-  // ── PIN reveal toggle ──────────────────────────────────────────────────────
   function togglePin(id: string) {
-    setRevealedPins(prev => {
-      const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
-      return next
-    })
+    setRevealedPins(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
   }
 
+  const activeStaff  = staff.filter(s => s.shiftStatus === 'ACTIVE')
+  const offDutyStaff = staff.filter(s => s.shiftStatus !== 'ACTIVE')
   const countdownPct = (qrCountdown / 120) * 100
-  const activeCount  = staff.filter(s => s.shiftStatus === 'ACTIVE').length
 
-  // ─────────────────────────────────────────────────────────────────────────
   return (
-    <div dir={isRTL ? 'rtl' : 'ltr'} className="p-4 md:p-6 max-w-6xl mx-auto space-y-6">
+    <div dir={isRTL ? 'rtl' : 'ltr'} className="p-4 md:p-6 max-w-5xl mx-auto space-y-6">
 
       {/* ── Header ── */}
       <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-            <CalendarClock className="w-6 h-6 text-emerald-600" />
+          <h1 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+            <CalendarClock className="w-5 h-5 text-emerald-600" />
             {t.title}
           </h1>
-          <p className="text-sm text-slate-500 mt-0.5">{t.subtitle}</p>
-          <div className="flex items-center gap-4 mt-2">
-            <span className="text-sm font-semibold text-slate-600">
-              {t.total}: <strong>{staff.length}</strong>
-            </span>
-            <span className="text-sm font-semibold text-emerald-600">
-              🟢 {t.active}: <strong>{activeCount}</strong>
-            </span>
-            <span className="text-sm font-semibold text-slate-400">
-              🔴 {t.offline}: <strong>{staff.length - activeCount}</strong>
-            </span>
-          </div>
+          <p className="text-sm text-slate-400 mt-0.5">{t.subtitle}</p>
         </div>
-
+        {/* Summary pills */}
+        <div className="flex items-center gap-2">
+          <span className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-xl text-sm font-semibold text-emerald-700">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            {activeStaff.length} {t.active}
+          </span>
+          <span className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-500">
+            <Users className="w-3.5 h-3.5" />
+            {staff.length} {t.total}
+          </span>
+        </div>
       </div>
 
       {/* ── Tab switcher ── */}
       <div className="flex gap-1 bg-slate-100 p-1 rounded-xl w-fit">
-        <button
-          onClick={() => setActiveTab('cards')}
-          className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === 'cards' ? 'bg-white shadow text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
-        >
-          <Clock className="w-4 h-4" />
-          {lang === 'ar' ? 'الحضور اللحظي' : lang === 'fr' ? 'Présence live' : 'Live Status'}
-        </button>
-        <button
-          onClick={() => setActiveTab('pointage')}
-          className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === 'pointage' ? 'bg-white shadow text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
-        >
-          <TableProperties className="w-4 h-4" />
-          {lang === 'ar' ? 'جدول الحضور الشهري' : lang === 'fr' ? 'Pointage mensuel' : 'Monthly Grid'}
-        </button>
+        {([['cards', Clock, lang === 'ar' ? 'الحضور اللحظي' : lang === 'fr' ? 'Présence live' : 'Live Status'],
+           ['pointage', TableProperties, lang === 'ar' ? 'جدول شهري' : lang === 'fr' ? 'Pointage mensuel' : 'Monthly Grid']] as const).map(([id, Icon, label]) => (
+          <button key={id} onClick={() => setActiveTab(id as any)}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === id ? 'bg-white shadow text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}>
+            <Icon className="w-4 h-4" />
+            {label}
+          </button>
+        ))}
       </div>
 
-      {/* ── Pointage mensuel grid ── */}
+      {/* ══════════════════ POINTAGE TAB ══════════════════ */}
       {activeTab === 'pointage' && (
         <div className="space-y-4">
-          {/* Month nav */}
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div className="flex items-center gap-2">
               <button onClick={() => shiftMonth(-1)} className="p-2 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors">
                 <ChevronLeft className="w-4 h-4 text-slate-600" />
               </button>
-              <span className="text-base font-bold text-slate-800 min-w-[120px] text-center">
+              <span className="text-base font-bold text-slate-800 min-w-[130px] text-center">
                 {new Date(`${pointageMonth}-01`).toLocaleDateString(
                   lang === 'ar' ? 'ar-MA' : lang === 'fr' ? 'fr-FR' : 'en-GB',
                   { month: 'long', year: 'numeric' }
@@ -317,16 +253,12 @@ export default function AttendancePage() {
                 <ChevronRight className="w-4 h-4 text-slate-600" />
               </button>
             </div>
-            <button
-              onClick={printPointage}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 text-sm font-semibold transition-colors print:hidden"
-            >
+            <button onClick={() => window.print()}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 text-sm font-semibold transition-colors print:hidden">
               <Download className="w-4 h-4" />
               {lang === 'ar' ? 'طباعة' : lang === 'fr' ? 'Imprimer' : 'Print'}
             </button>
           </div>
-
-          {/* Grid */}
           {pointageLoading ? (
             <div className="h-40 flex items-center justify-center">
               <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
@@ -334,7 +266,7 @@ export default function AttendancePage() {
           ) : !pointage || pointage.staff.length === 0 ? (
             <div className="py-16 text-center text-slate-400">
               <TableProperties className="w-12 h-12 mx-auto mb-3 opacity-30" />
-              <p className="text-sm">{lang === 'ar' ? 'لا يوجد موظفون' : lang === 'fr' ? 'Aucun employé' : 'No staff'}</p>
+              <p className="text-sm">{lang === 'fr' ? 'Aucun employé' : lang === 'ar' ? 'لا يوجد موظفون' : 'No staff'}</p>
             </div>
           ) : (
             <PointageGrid data={pointage} lang={lang} />
@@ -342,167 +274,177 @@ export default function AttendancePage() {
         </div>
       )}
 
-      {/* ── Live status tab ── */}
-      {activeTab === 'cards' && (<>
-        {/* Shared rotating QR banner */}
-        <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-5 flex flex-col sm:flex-row items-center gap-5 shadow-lg">
-          <div className="shrink-0">
-            {qrLoading || !qrDataUrl ? (
-              <div className="w-40 h-40 bg-slate-700 rounded-xl flex items-center justify-center">
-                <div className="w-8 h-8 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+      {/* ══════════════════ LIVE STATUS TAB ══════════════════ */}
+      {activeTab === 'cards' && (
+        <div className="space-y-6">
+
+          {/* QR Banner — compact and clean */}
+          <div className="bg-slate-900 rounded-2xl p-4 flex items-center gap-5">
+            <div className="shrink-0">
+              {qrLoading || !qrDataUrl ? (
+                <div className="w-28 h-28 bg-slate-800 rounded-xl flex items-center justify-center">
+                  <div className="w-6 h-6 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : (
+                <div className="rounded-xl overflow-hidden bg-white p-1.5">
+                  <img src={qrDataUrl} alt="Staff QR" width={112} height={112} />
+                </div>
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <Zap className="w-4 h-4 text-emerald-400 shrink-0" />
+                <p className="text-white font-bold text-sm">{t.scanToLogin}</p>
               </div>
-            ) : (
-              <div className="rounded-xl overflow-hidden ring-4 ring-amber-400/30 shadow">
-                <img src={qrDataUrl} alt="Staff Login QR" width={160} height={160} />
-              </div>
-            )}
-          </div>
-          <div className="flex-1 text-center sm:text-start">
-            <p className="text-white font-bold text-lg mb-1">{t.scanToLogin}</p>
-            <p className="text-slate-400 text-sm mb-3">{t.qrSub}</p>
-            <div className="mb-3">
-              <div className="flex justify-between text-xs text-slate-400 mb-1">
-                <span>{t.expiresIn}</span>
-                <span className={`font-bold ${qrCountdown < 30 ? 'text-red-400' : 'text-slate-300'}`}>{qrCountdown}s</span>
-              </div>
-              <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden">
-                <div className={`h-full rounded-full transition-all duration-1000 ${countdownPct > 50 ? 'bg-emerald-500' : countdownPct > 20 ? 'bg-amber-500' : 'bg-red-500'}`} style={{ width: `${countdownPct}%` }} />
+              <p className="text-slate-500 text-xs mb-3">{t.qrSub}</p>
+              {/* Countdown bar */}
+              <div className="flex items-center gap-2">
+                <div className="flex-1 h-1 bg-slate-700 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-1000 ${countdownPct > 50 ? 'bg-emerald-500' : countdownPct > 20 ? 'bg-amber-500' : 'bg-red-500'}`}
+                    style={{ width: `${countdownPct}%` }}
+                  />
+                </div>
+                <span className={`text-xs font-mono font-bold shrink-0 ${qrCountdown < 30 ? 'text-red-400' : 'text-slate-400'}`}>
+                  {qrCountdown}s
+                </span>
+                <button onClick={refreshQR}
+                  className="shrink-0 flex items-center gap-1 px-2.5 py-1 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg text-xs font-semibold transition-colors">
+                  <RefreshCw className="w-3 h-3" /> {t.qrRefresh}
+                </button>
               </div>
             </div>
-            <button onClick={refreshQR} className="flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-white rounded-xl text-sm font-semibold transition-colors">
-              <RefreshCw className="w-4 h-4" /> {t.qrRefresh}
-            </button>
           </div>
-        </div>
 
-        {/* Staff pass cards */}
-        {loading ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-            {[1,2,3,4].map(i => <div key={i} className="h-64 rounded-2xl bg-slate-100 animate-pulse" />)}
-          </div>
-        ) : staff.length === 0 ? (
-          <div className="py-16 text-center text-slate-400">
-            <CalendarClock className="w-12 h-12 mx-auto mb-3 opacity-30" />
-            <p className="text-sm">Aucun employé enregistré / لا يوجد موظفون</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-            {staff.map(member => (
-              <PassCard key={member.id} member={member} lang={lang} t={t}
-                pinRevealed={revealedPins.has(member.id)}
-                onTogglePin={() => togglePin(member.id)}
-                elapsed={elapsed}
-              />
-            ))}
-          </div>
-        )}
-      </>)}
+          {/* ── Active staff cards ── */}
+          {loading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[1,2,3].map(i => <div key={i} className="h-44 rounded-2xl bg-slate-100 animate-pulse" />)}
+            </div>
+          ) : activeStaff.length === 0 ? (
+            <div className="py-12 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+              <CalendarClock className="w-10 h-10 mx-auto mb-2 text-slate-300" />
+              <p className="text-sm text-slate-400">{t.noActive}</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {activeStaff.map(member => (
+                <ActiveCard
+                  key={member.id}
+                  member={member}
+                  lang={lang}
+                  t={t}
+                  pinRevealed={revealedPins.has(member.id)}
+                  onTogglePin={() => togglePin(member.id)}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* ── Off-duty staff — compact list ── */}
+          {!loading && offDutyStaff.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                {t.offDutySection} ({offDutyStaff.length})
+              </p>
+              <div className="bg-white rounded-xl border border-slate-100 divide-y divide-slate-50">
+                {offDutyStaff.map(member => {
+                  const rs = ROLE_STYLE[member.role] ?? ROLE_STYLE.WAITER
+                  const pinShown = revealedPins.has(member.id)
+                  return (
+                    <div key={member.id} className="flex items-center gap-3 px-4 py-3">
+                      {/* Avatar */}
+                      <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${rs.bg} flex items-center justify-center text-white text-sm font-bold shrink-0 opacity-50`}>
+                        {member.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-slate-600 truncate">{member.name}</p>
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${rs.badge} opacity-70`}>
+                          {rs.label[lang]}
+                        </span>
+                      </div>
+                      {/* PIN inline */}
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className={`text-xs font-mono font-bold ${pinShown ? 'text-slate-700' : 'text-slate-300'}`}>
+                          {pinShown ? (member.pinDisplay ?? '—') : '••••'}
+                        </span>
+                        <button onClick={() => togglePin(member.id)} className="text-slate-300 hover:text-slate-500 transition-colors">
+                          {pinShown ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PassCard — phone-shaped employee pass
+// ActiveCard — clean card only for on-duty staff
 // ─────────────────────────────────────────────────────────────────────────────
 
-function PassCard({
-  member, lang, t, pinRevealed, onTogglePin, elapsed,
-}: {
-  member:       StaffMember
-  lang:         Lang
-  t:            typeof T['en']
-  pinRevealed:  boolean
-  onTogglePin:  () => void
-  elapsed:      (iso: string, t: typeof T['en']) => string
+function ActiveCard({ member, lang, t, pinRevealed, onTogglePin }: {
+  member:      StaffMember
+  lang:        Lang
+  t:           typeof T['en']
+  pinRevealed: boolean
+  onTogglePin: () => void
 }) {
-  const isActive = member.shiftStatus === 'ACTIVE'
-
-  // Primary role color
-  const roleBg =
-    member.role === 'SUPERVISOR' ? 'from-purple-500 to-purple-700' :
-    member.role === 'CASHIER'    ? 'from-blue-500 to-blue-700' :
-    'from-emerald-500 to-emerald-700'
-
-  const roleLabel =
-    member.role === 'SUPERVISOR' ? t.roles.SUPERVISOR :
-    member.role === 'CASHIER'    ? t.roles.CASHIER :
-    t.roles.WAITER
+  const rs = ROLE_STYLE[member.role] ?? ROLE_STYLE.WAITER
 
   return (
-    <div className={`relative rounded-2xl overflow-hidden border-2 shadow-sm transition-all ${
-      isActive
-        ? 'border-emerald-400 shadow-emerald-100'
-        : 'border-slate-200 opacity-80 grayscale-[30%]'
-    }`}>
-
-      {/* Card header gradient */}
-      <div className={`bg-gradient-to-br ${roleBg} px-4 py-4 text-white`}>
-        {/* Status badge */}
-        <div className="flex justify-between items-start mb-3">
-          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-            isActive ? 'bg-white/30 text-white' : 'bg-black/20 text-white/70'
-          }`}>
-            {isActive ? `🟢 ${t.onDuty}` : `⚫ ${t.offDuty}`}
+    <div className="bg-white rounded-2xl border border-emerald-200 shadow-sm shadow-emerald-50 overflow-hidden">
+      {/* Top gradient strip */}
+      <div className={`bg-gradient-to-r ${rs.bg} px-4 py-4`}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white font-bold text-lg">
+              {member.name.charAt(0).toUpperCase()}
+            </div>
+            <div>
+              <p className="text-white font-bold text-sm leading-tight">{member.name}</p>
+              <span className="text-white/70 text-[11px]">{rs.label[lang]}</span>
+            </div>
+          </div>
+          <span className="flex items-center gap-1 text-[10px] font-bold bg-white/20 text-white px-2 py-1 rounded-full">
+            <span className="w-1.5 h-1.5 rounded-full bg-green-300 animate-pulse" />
+            {t.onDuty}
           </span>
         </div>
-
-        {/* Avatar initial */}
-        <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center text-2xl font-bold mx-auto mb-1">
-          {member.name.charAt(0).toUpperCase()}
-        </div>
-
-        <p className="text-center font-bold text-sm truncate">{member.name}</p>
-        <p className="text-center text-white/70 text-[11px]">{roleLabel}</p>
       </div>
 
-      {/* Card body */}
-      <div className="bg-white px-3 py-3 space-y-2">
-
-        {/* Extra roles */}
-        {member.roles.length > 0 && (
-          <div className="flex flex-wrap gap-1">
-            {member.roles.map(r => (
-              <span key={r} className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-full">
-                {EXTRA_LABELS[r]?.[lang] ?? r}
-              </span>
-            ))}
-          </div>
-        )}
-
-        {/* Shift duration */}
-        {isActive && member.clockInTime && (
-          <div className="flex items-center gap-1 text-[11px] text-emerald-600 font-semibold">
-            <Clock className="w-3 h-3" />
+      {/* Body */}
+      <div className="px-4 py-3 space-y-3">
+        {/* Duration */}
+        {member.clockInTime && (
+          <div className="flex items-center gap-1.5 text-sm text-emerald-600 font-semibold">
+            <Clock className="w-3.5 h-3.5" />
             {t.since} {elapsed(member.clockInTime, t)}
           </div>
         )}
 
-        {/* Assigned tables */}
+        {/* Tables */}
         {member.assignedTables.length > 0 && (
-          <p className="text-[11px] text-slate-400">
-            🪑 {member.assignedTables.map(tb => `#${tb.tableNumber}`).join(', ')}
+          <p className="text-xs text-slate-400">
+            🪑 {t.tables} : {member.assignedTables.map(tb => `#${tb.tableNumber}`).join(', ')}
           </p>
         )}
 
         {/* PIN reveal */}
-        <div className="pt-2 border-t border-slate-100">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] text-slate-500 font-semibold">{t.pinLabel}</span>
-            <button
-              onClick={onTogglePin}
-              className="flex items-center gap-1 text-[11px] text-slate-400 hover:text-slate-600 transition-colors"
-            >
-              {pinRevealed ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-              {pinRevealed ? t.hidePin : t.showPin}
+        <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+          <span className="text-xs font-bold text-slate-500">{t.pinLabel}</span>
+          <div className="flex items-center gap-2">
+            <span className={`text-sm font-mono font-bold tracking-widest ${pinRevealed ? 'text-slate-800' : 'text-slate-300'}`}>
+              {pinRevealed ? (member.pinDisplay ?? t.pinNotSet) : '••••'}
+            </span>
+            <button onClick={onTogglePin} className="text-slate-400 hover:text-slate-600 transition-colors">
+              {pinRevealed ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
-          </div>
-          <div className={`mt-1 text-center py-1.5 rounded-lg text-sm font-mono font-bold tracking-widest ${
-            pinRevealed ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-slate-50 text-slate-300'
-          }`}>
-            {pinRevealed
-              ? (member.pinDisplay ?? t.pinNotSet)
-              : '••••'
-            }
           </div>
         </div>
       </div>
@@ -511,64 +453,51 @@ function PassCard({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PointageGrid — monthly attendance table (like the Excel pointage sheet)
+// PointageGrid
 // ─────────────────────────────────────────────────────────────────────────────
 
 const ROLE_COLOR: Record<string, string> = {
-  SUPERVISOR: 'bg-purple-100 text-purple-700',
-  CASHIER:    'bg-blue-100 text-blue-700',
+  SUPERVISOR: 'bg-violet-100 text-violet-700',
+  CASHIER:    'bg-sky-100 text-sky-700',
   WAITER:     'bg-emerald-100 text-emerald-700',
 }
 
 function PointageGrid({ data, lang }: { data: PointageData; lang: Lang }) {
   const days = Array.from({ length: data.daysInMonth }, (_, i) => i + 1)
 
-  // Detect weekend (Fri=5/Sat=6 for Morocco, or Sat=6/Sun=0)
   function isWeekend(day: number) {
     const d = new Date(data.year, data.month - 1, day).getDay()
     return d === 5 || d === 6
   }
 
-  const labelTotal = lang === 'ar' ? 'المجموع' : lang === 'fr' ? 'Total' : 'Total'
+  const labelTotal = lang === 'ar' ? 'المجموع' : 'Total'
   const labelObs   = lang === 'ar' ? 'ملاحظة' : lang === 'fr' ? 'Observation' : 'Note'
-  const labelName  = lang === 'ar' ? 'الاسم' : lang === 'fr' ? 'Noms / Jours' : 'Name / Days'
+  const labelName  = lang === 'ar' ? 'الاسم / الأيام' : lang === 'fr' ? 'Noms / Jours' : 'Name / Days'
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden print:shadow-none print:border-0">
-      {/* print title */}
       <div className="hidden print:block text-center py-3 font-bold text-lg border-b border-slate-200">
         Pointage — {String(data.month).padStart(2,'0')}/{data.year}
       </div>
-
       <div className="overflow-x-auto">
         <table className="w-full text-xs border-collapse" style={{ minWidth: `${60 + data.daysInMonth * 28 + 60 + 80}px` }}>
           <thead>
             <tr className="bg-slate-800 text-white">
-              {/* Name column */}
               <th className="sticky left-0 z-10 bg-slate-800 text-left px-3 py-2.5 font-bold text-[11px] min-w-[140px] border-r border-slate-700">
                 {labelName}
               </th>
-              {/* Day columns */}
               {days.map(d => (
                 <th key={d} className={`text-center py-2.5 w-7 font-bold border-r border-slate-700 ${isWeekend(d) ? 'bg-slate-600' : ''}`}>
                   {d}
                 </th>
               ))}
-              {/* Total */}
-              <th className="text-center px-2 py-2.5 font-bold border-r border-slate-700 min-w-[44px]">
-                {labelTotal}
-              </th>
-              {/* Observation */}
-              <th className="text-left px-3 py-2.5 font-bold min-w-[80px]">
-                {labelObs}
-              </th>
+              <th className="text-center px-2 py-2.5 font-bold border-r border-slate-700 min-w-[44px]">{labelTotal}</th>
+              <th className="text-left px-3 py-2.5 font-bold min-w-[80px]">{labelObs}</th>
             </tr>
           </thead>
-
           <tbody>
             {data.staff.map((member, idx) => (
               <tr key={member.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
-                {/* Name + role */}
                 <td className={`sticky left-0 z-10 px-3 py-2 border-r border-slate-200 font-semibold text-slate-800 ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}>
                   <div className="flex items-center gap-1.5">
                     <span>{member.name}</span>
@@ -579,8 +508,6 @@ function PointageGrid({ data, lang }: { data: PointageData; lang: Lang }) {
                     </span>
                   </div>
                 </td>
-
-                {/* Day cells */}
                 {days.map(d => {
                   const entry = member.days[d]
                   return (
@@ -596,21 +523,13 @@ function PointageGrid({ data, lang }: { data: PointageData; lang: Lang }) {
                     </td>
                   )
                 })}
-
-                {/* Total */}
-                <td className="text-center border-r border-slate-100 font-black text-emerald-600 py-2">
-                  {member.totalDays}
-                </td>
-
-                {/* Observation — blank, for manual notes when printed */}
+                <td className="text-center border-r border-slate-100 font-black text-emerald-600 py-2">{member.totalDays}</td>
                 <td className="px-3 py-2 text-slate-300 text-[10px] border-b border-slate-100" />
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-
-      {/* Legend */}
       <div className="px-4 py-2.5 border-t border-slate-100 flex items-center gap-4 text-[11px] text-slate-500 print:hidden">
         <span className="flex items-center gap-1"><span className="text-emerald-600 font-black">✓</span> {lang === 'fr' ? 'Présent' : lang === 'ar' ? 'حاضر' : 'Present'}</span>
         <span className="flex items-center gap-1"><span className="text-slate-300">—</span> {lang === 'fr' ? 'Absent' : lang === 'ar' ? 'غائب' : 'Absent'}</span>
