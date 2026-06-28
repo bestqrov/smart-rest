@@ -357,10 +357,10 @@ export default function AdminStaffPage() {
       <div className="flex items-center gap-2 flex-wrap">
         {/* Search */}
         <div className="relative flex-1 min-w-[160px] max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+          <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
           <input value={search} onChange={e => setSearch(e.target.value)}
             placeholder={t.search}
-            className="w-full pl-8 pr-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+            className="w-full ps-8 pe-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400" />
         </div>
         {/* Role filter pills */}
         <div className="flex gap-1 bg-slate-100 p-1 rounded-xl">
