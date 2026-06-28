@@ -1758,3 +1758,45 @@ model FeatureFlag {
   @@index([status])
   @@map("core_feature_flags")
 }
+
+// ─── SmartSuite Certification ─────────────────────────────────────────────────
+
+model CertificationResult {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId        String
+  profile         String
+  version         String
+  score           Float
+  maxScore        Float
+  percentage      Float
+  level           String   // NONE | BRONZE | SILVER | GOLD | PLATINUM | DIAMOND
+  status          String   // PENDING | COMPLETED | FAILED | EXPIRED | CANCELLED
+  evaluatedAt     DateTime @default(now())
+  expiresAt       DateTime
+  ruleResults     String   // JSON[]
+  evidenceIds     String[]
+  summary         String
+  recommendations String   // JSON[]
+  metadata        String?
+
+  @@index([tenantId])
+  @@index([profile, status])
+  @@index([evaluatedAt])
+  @@map("cert_results")
+}
+
+model CertificationEvidence {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  resultId      String
+  ruleId        String
+  passed        Boolean
+  score         Float
+  rawValue      String
+  expectedValue String?
+  metadata      String?
+  timestamp     DateTime @default(now())
+
+  @@index([resultId])
+  @@index([ruleId])
+  @@map("cert_evidence")
+}

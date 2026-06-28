@@ -1,7 +1,8 @@
 import dotenv from 'dotenv'
 dotenv.config()
 
-import { FeatureFlagService } from './core'
+import { FeatureFlagService }      from './core'
+import { registerBuiltinProfiles } from './certification'
 
 import express from 'express'
 import http from 'http'
@@ -277,6 +278,9 @@ async function main() {
   FeatureFlagService.seedDefaultFlags().catch(err =>
     logger.warn({ msg: 'seedDefaultFlags failed', err }),
   )
+
+  // Register certification profiles + rules
+  registerBuiltinProfiles()
 
   // Collect cron task handles for graceful shutdown
   const cronTasks = [
