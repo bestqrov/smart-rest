@@ -730,6 +730,69 @@ async function seedDemoMenu(cafeId: string): Promise<void> {
   }
 }
 
+// ─── POST /api/admin/auth/send-magic-link — send recovery link to logged-in user ──
+
+router.post('/api/admin/auth/send-magic-link', async (req: Request, res: Response) => {
+  try {
+    const auth = req.header('authorization')
+    if (!auth?.startsWith('Bearer ')) return res.status(401).json({ error: 'Token required' })
+    let payload: any
+    try { payload = jwt.verify(auth.split(' ')[1], JWT_SECRET) } catch {
+      return res.status(401).json({ error: 'Invalid token' })
+    }
+    const user = await prisma.user.findUnique({ where: { id: payload.userId }, select: { id: true, email: true, cafeId: true } })
+    if (!user) return res.status(404).json({ error: 'User not found' })
+
+    const loginToken = jwt.sign({ userId: user.id, cafeId: user.cafeId, magic: true }, JWT_SECRET, { expiresIn: '15m' })
+    const base      = process.env.FRONTEND_URL ?? 'https://smartrestau.com'
+    const magicLink = `${base}/admin/magic?token=${loginToken}`
+    const lang: Lang = resolveLang(req.body?.lang ?? 'fr')
+
+    await sendMagicLink({ to: user.email, magicLink, lang, cafeName: '' }).catch(e =>
+      logger.warn({ msg: 'send-magic-link: email failed', err: e.message })
+    )
+    logger.info({ msg: 'magic link sent to current user', userId: user.id })
+    return res.json({ sent: true })
+  } catch (err) {
+    logger.error({ msg: 'send-magic-link error', err })
+    return res.status(500).json({ error: 'Server error' })
+  }
+})
+
+// ─── POST /api/admin/auth/change-password ─────────────────────────────────────
+
+router.post('/api/admin/auth/change-password', async (req: Request, res: Response) => {
+  try {
+    const auth = req.header('authorization')
+    if (!auth?.startsWith('Bearer ')) return res.status(401).json({ error: 'Token required' })
+    let payload: any
+    try { payload = jwt.verify(auth.split(' ')[1], JWT_SECRET) } catch {
+      return res.status(401).json({ error: 'Invalid token' })
+    }
+    const { currentPassword, newPassword } = req.body as { currentPassword?: string; newPassword?: string }
+    if (!newPassword || newPassword.length < 8) {
+      return res.status(400).json({ error: 'New password must be at least 8 characters' })
+    }
+    const user = await prisma.user.findUnique({ where: { id: payload.userId }, select: { id: true, passwordHash: true } })
+    if (!user) return res.status(404).json({ error: 'User not found' })
+
+    // If account has a password, require current password verification
+    if (user.passwordHash) {
+      if (!currentPassword) return res.status(400).json({ error: 'Current password required' })
+      const ok = await verifyPassword(currentPassword, user.passwordHash)
+      if (!ok) return res.status(401).json({ error: 'Current password is incorrect' })
+    }
+
+    const hashed = await hashPassword(newPassword)
+    await prisma.user.update({ where: { id: user.id }, data: { passwordHash: hashed } })
+    logger.info({ msg: 'password changed', userId: user.id })
+    return res.json({ ok: true })
+  } catch (err) {
+    logger.error({ msg: 'change-password error', err })
+    return res.status(500).json({ error: 'Server error' })
+  }
+})
+
 // ─── Google OAuth ─────────────────────────────────────────────────────────────
 // Requires: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_CALLBACK_URL in .env
 // Set GOOGLE_CALLBACK_URL to https://yourdomain.com/api/auth/google/callback

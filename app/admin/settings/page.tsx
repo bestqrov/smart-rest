@@ -187,10 +187,12 @@ export default function SettingsPage() {
 
   const [pwForm, setPwForm]   = useState({ current: '', newPw: '', confirm: '' })
   const [showPw, setShowPw]   = useState({ current: false, newPw: false, confirm: false })
+  const [magicSent, setMagicSent] = useState(false)
+  const [magicLoading, setMagicLoading] = useState(false)
 
   async function changePassword() {
-    if (pwForm.newPw !== pwForm.confirm) { showToast('كلمات المرور غير متطابقة', 'error'); return }
-    if (pwForm.newPw.length < 8)         { showToast('كلمة المرور يجب أن تكون 8 أحرف على الأقل', 'error'); return }
+    if (pwForm.newPw !== pwForm.confirm) { showToast(t.changePassword + ' — ' + t.confirmPw, 'error'); return }
+    if (pwForm.newPw.length < 8)         { showToast('8 chars min', 'error'); return }
     setSaving(true)
     try {
       const res = await fetch('/api/admin/auth/change-password', {
@@ -199,9 +201,18 @@ export default function SettingsPage() {
         body: JSON.stringify({ currentPassword: pwForm.current, newPassword: pwForm.newPw })
       })
       const d = await res.json()
-      if (res.ok) { showToast('تم تغيير كلمة المرور ✓', 'success'); setPwForm({ current: '', newPw: '', confirm: '' }) }
-      else         showToast(d.error ?? 'فشل التغيير', 'error')
+      if (res.ok) { showToast(t.changePassword + ' ✓', 'success'); setPwForm({ current: '', newPw: '', confirm: '' }) }
+      else         showToast(d.error ?? 'Error', 'error')
     } finally { setSaving(false) }
+  }
+
+  async function sendMagicLink() {
+    setMagicLoading(true)
+    try {
+      await fetch('/api/admin/auth/send-magic-link', { method: 'POST', headers: authHeader() })
+      setMagicSent(true)
+    } catch { showToast('Error', 'error') }
+    finally { setMagicLoading(false) }
   }
 
   // ── Staff PINs ────────────────────────────────────────────────────────────
@@ -543,54 +554,79 @@ export default function SettingsPage() {
 
       {/* ── Password tab ── */}
       {activeTab === 'password' && (
-        <section className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-5">
-          <h2 className="font-bold text-gray-800 flex items-center gap-2"><Lock className="w-5 h-5 text-red-500" /> {t.changePassword}</h2>
+        <div className="space-y-4">
+          <section className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-5">
+            <h2 className="font-bold text-gray-800 flex items-center gap-2"><Lock className="w-5 h-5 text-red-500" /> {t.changePassword}</h2>
 
-          <Field label={t.currentPw}>
-            <PasswordInput
-              value={pwForm.current}
-              onChange={v => setPwForm(p => ({ ...p, current: v }))}
-              show={showPw.current}
-              onToggle={() => setShowPw(p => ({ ...p, current: !p.current }))}
-              placeholder="••••••••"
-            />
-          </Field>
+            <Field label={t.currentPw}>
+              <PasswordInput
+                value={pwForm.current}
+                onChange={v => setPwForm(p => ({ ...p, current: v }))}
+                show={showPw.current}
+                onToggle={() => setShowPw(p => ({ ...p, current: !p.current }))}
+                placeholder="••••••••"
+              />
+            </Field>
 
-          <Field label={t.newPw}>
-            <PasswordInput
-              value={pwForm.newPw}
-              onChange={v => setPwForm(p => ({ ...p, newPw: v }))}
-              show={showPw.newPw}
-              onToggle={() => setShowPw(p => ({ ...p, newPw: !p.newPw }))}
-              placeholder="8+"
-            />
-          </Field>
+            <Field label={t.newPw}>
+              <PasswordInput
+                value={pwForm.newPw}
+                onChange={v => setPwForm(p => ({ ...p, newPw: v }))}
+                show={showPw.newPw}
+                onToggle={() => setShowPw(p => ({ ...p, newPw: !p.newPw }))}
+                placeholder="8+"
+              />
+            </Field>
 
-          <Field label={t.confirmPw}>
-            <PasswordInput
-              value={pwForm.confirm}
-              onChange={v => setPwForm(p => ({ ...p, confirm: v }))}
-              show={showPw.confirm}
-              onToggle={() => setShowPw(p => ({ ...p, confirm: !p.confirm }))}
-              placeholder="••••••••"
-            />
-          </Field>
+            <Field label={t.confirmPw}>
+              <PasswordInput
+                value={pwForm.confirm}
+                onChange={v => setPwForm(p => ({ ...p, confirm: v }))}
+                show={showPw.confirm}
+                onToggle={() => setShowPw(p => ({ ...p, confirm: !p.confirm }))}
+                placeholder="••••••••"
+              />
+            </Field>
 
-          {pwForm.newPw && pwForm.confirm && pwForm.newPw !== pwForm.confirm && (
-            <p className="text-red-500 text-sm flex items-center gap-1">
-              <AlertCircle className="w-4 h-4" /> كلمات المرور غير متطابقة
-            </p>
-          )}
+            {pwForm.newPw && pwForm.confirm && pwForm.newPw !== pwForm.confirm && (
+              <p className="text-red-500 text-sm flex items-center gap-1">
+                <AlertCircle className="w-4 h-4" /> {t.confirmPw}
+              </p>
+            )}
 
-          <button
-            onClick={changePassword}
-            disabled={saving || !pwForm.current || !pwForm.newPw || !pwForm.confirm}
-            className="flex items-center gap-2 px-5 py-2.5 bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all active:scale-95"
-          >
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
-            {t.changePassword}
-          </button>
-        </section>
+            <button
+              onClick={changePassword}
+              disabled={saving || !pwForm.newPw || !pwForm.confirm}
+              className="flex items-center gap-2 px-5 py-2.5 bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all active:scale-95"
+            >
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
+              {t.changePassword}
+            </button>
+          </section>
+
+          {/* Magic link recovery */}
+          <section className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-3">
+            <h2 className="font-bold text-gray-800 flex items-center gap-2">
+              <RefreshCw className="w-5 h-5 text-emerald-500" />
+              {t.sendMagicLink}
+            </h2>
+            <p className="text-sm text-gray-500">{t.magicLinkHint}</p>
+            {magicSent ? (
+              <div className="flex items-center gap-2 text-emerald-600 font-semibold text-sm">
+                <CheckCircle2 className="w-4 h-4" /> {t.magicLinkSent}
+              </div>
+            ) : (
+              <button
+                onClick={sendMagicLink}
+                disabled={magicLoading}
+                className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-semibold rounded-xl transition-all active:scale-95"
+              >
+                {magicLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                {t.sendMagicLink}
+              </button>
+            )}
+          </section>
+        </div>
       )}
 
       {activeTab === 'payments' && (
