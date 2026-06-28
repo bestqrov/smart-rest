@@ -1,6 +1,7 @@
 import { eventBus, AuditService } from '../../core'
 
 // ─── Publish marketplace events to platform EventBus ─────────────────────────
+// Product events
 
 export function emitProductCreated(productId: string, sku: string, type: string, modules: string[]): void {
   eventBus.publish('ProductCreated', { productId, sku, type, supportedModules: modules }, 'marketplace')
@@ -76,4 +77,30 @@ export function emitCategoryCreated(categoryId: string, name: string, parentId?:
     performedBy: 'system',
     metadata:    { name, parentId },
   }).catch(() => undefined)
+}
+
+// ─── Order events ─────────────────────────────────────────────────────────────
+
+export function emitOrderCreated(orderId: string, orderNumber: string, tenantId: string, module: string): void {
+  eventBus.publish('MarketplaceOrderCreated', { orderId, orderNumber, tenantId, module }, 'marketplace')
+}
+
+export function emitOrderSubmitted(orderId: string, orderNumber: string, tenantId: string): void {
+  eventBus.publish('MarketplaceOrderSubmitted', { orderId, orderNumber, tenantId }, 'marketplace')
+}
+
+export function emitOrderApproved(orderId: string, orderNumber: string, tenantId: string, approvedBy: string): void {
+  eventBus.publish('MarketplaceOrderApproved', { orderId, orderNumber, tenantId, approvedBy }, 'marketplace')
+}
+
+export function emitOrderRejected(orderId: string, orderNumber: string, tenantId: string, rejectedBy: string, reason?: string): void {
+  eventBus.publish('MarketplaceOrderRejected', { orderId, orderNumber, tenantId, rejectedBy, reason }, 'marketplace')
+}
+
+export function emitOrderCancelled(orderId: string, orderNumber: string, tenantId: string, cancelledBy: string): void {
+  eventBus.publish('MarketplaceOrderCancelled', { orderId, orderNumber, tenantId, cancelledBy }, 'marketplace')
+}
+
+export function emitOrderFulfilled(orderId: string, orderNumber: string, tenantId: string, fulfilledBy: string): void {
+  eventBus.publish('MarketplaceOrderFulfilled', { orderId, orderNumber, tenantId, fulfilledBy }, 'marketplace')
 }

@@ -221,3 +221,91 @@ export const MARKETPLACE_FLAGS = {
   CLINIC:     'marketplace.clinic',
   RETAIL:     'marketplace.retail',
 } as const
+
+// ── Orders ────────────────────────────────────────────────────────────────────
+
+export type OrderStatus =
+  | 'DRAFT'
+  | 'SUBMITTED'
+  | 'UNDER_REVIEW'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'CANCELLED'
+  | 'FULFILLED'
+
+export type OrderModule = 'RESTAURANT' | 'HOTEL' | 'CLINIC' | 'RETAIL'
+
+export interface MarketplaceOrder {
+  id:          string
+  orderNumber: string
+  tenantId:    string
+  module:      OrderModule
+  status:      OrderStatus
+  requestedBy: string        // userId or cafeId
+  approvedBy?: string        // superadmin email
+  supplierId?: string
+  currency:    string
+  subtotal:    number
+  discount:    number
+  tax:         number
+  total:       number
+  notes?:      string
+  createdAt:   Date
+  updatedAt:   Date
+}
+
+export interface OrderItem {
+  id:        string
+  orderId:   string
+  productId: string
+  sku:       string
+  name:      string          // snapshot — immutable after creation
+  quantity:  number
+  unitPrice: number
+  discount:  number          // percentage 0–100
+  tax:       number          // percentage 0–100
+  total:     number
+  metadata?: Record<string, unknown>
+  createdAt: Date
+}
+
+export interface OrderTotals {
+  subtotal: number
+  discount: number
+  tax:      number
+  total:    number
+}
+
+export interface CreateOrderInput {
+  tenantId:    string
+  module:      OrderModule
+  requestedBy: string
+  supplierId?: string
+  currency?:   string
+  notes?:      string
+}
+
+export interface AddItemInput {
+  productId: string
+  quantity:  number
+  unitPrice: number
+  discount?: number          // percentage; default 0
+  tax?:      number          // percentage; default 0
+  metadata?: Record<string, unknown>
+}
+
+export interface OrderFilter {
+  tenantId?:  string
+  module?:    OrderModule
+  status?:    OrderStatus
+  supplierId?: string
+  page?:      number
+  limit?:     number
+}
+
+export interface OrderPage {
+  orders: MarketplaceOrder[]
+  total:  number
+  page:   number
+  pages:  number
+}

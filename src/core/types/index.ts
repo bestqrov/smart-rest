@@ -181,6 +181,13 @@ export type PlatformEventName =
   | 'SupplierCreated'
   | 'InventoryUpdated'
   | 'CategoryCreated'
+  // Marketplace Orders
+  | 'MarketplaceOrderCreated'
+  | 'MarketplaceOrderSubmitted'
+  | 'MarketplaceOrderApproved'
+  | 'MarketplaceOrderRejected'
+  | 'MarketplaceOrderCancelled'
+  | 'MarketplaceOrderFulfilled'
 
 export interface PlatformEvent<T = unknown> {
   name:      PlatformEventName

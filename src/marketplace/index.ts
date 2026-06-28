@@ -74,6 +74,41 @@ export {
   getProductWithDetails,
 } from './catalog/CatalogService'
 
+// Orders
+export {
+  createOrder,
+  addItemToOrder,
+  removeItemFromOrder,
+  submitOrder,
+  cancelOrder,
+  getOrder,
+  getOrders,
+  calculateTotals,
+} from './orders/OrderService'
+
+export {
+  getOrderItems,
+} from './order-items/OrderItemService'
+
+export {
+  markUnderReview,
+  approveOrder,
+  rejectOrder,
+  fulfillOrder,
+} from './approval/ApprovalService'
+
+export {
+  calculateOrderTotals,
+  calculateItemTotal,
+} from './services/OrderTotalsService'
+
+export {
+  canTransition,
+  assertTransition,
+  isFinalStatus,
+  isEditableStatus,
+} from './workflow/OrderWorkflow'
+
 // Feature flag keys
 export const MARKETPLACE_FLAGS = {
   ENABLED:    'marketplace.enabled',

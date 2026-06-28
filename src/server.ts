@@ -68,6 +68,8 @@ import opsLogsRouter                 from './routes/opsLogs'
 import opsBackupRouter               from './routes/opsBackup'
 import opsRuntimeRouter              from './routes/opsRuntime'
 import opsSecurityRouter             from './routes/opsSecurity'
+import marketplaceOrdersSARouter     from './routes/marketplaceOrdersSA'
+import marketplaceOrdersRestaurantRouter from './routes/marketplaceOrdersRestaurant'
 import inventoryAdminRouter from './routes/inventoryAdmin'
 import reviewGalleryRouter from './routes/reviewGallery'
 import demoRequestsRouter from './routes/demoRequests'
@@ -243,6 +245,8 @@ async function main() {
   app.use(opsBackupRouter)
   app.use(opsRuntimeRouter)
   app.use(opsSecurityRouter)
+  app.use(marketplaceOrdersSARouter)
+  app.use(marketplaceOrdersRestaurantRouter)
   app.use(inventoryAdminRouter)
   app.use(reviewGalleryRouter)
   app.use(demoRequestsRouter)

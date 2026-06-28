@@ -1941,3 +1941,49 @@ model ProductInventory {
 
   @@map("marketplace_inventory")
 }
+
+// ─── Marketplace Orders ───────────────────────────────────────────────────────
+
+model MarketplaceOrder {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  orderNumber String   @unique
+  tenantId    String
+  module      String   // RESTAURANT | HOTEL | CLINIC | RETAIL
+  status      String   @default("DRAFT")
+  requestedBy String
+  approvedBy  String?
+  supplierId  String?
+  currency    String   @default("MAD")
+  subtotal    Float    @default(0)
+  discount    Float    @default(0)
+  tax         Float    @default(0)
+  total       Float    @default(0)
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tenantId, status])
+  @@index([supplierId])
+  @@index([status])
+  @@index([module])
+  @@map("marketplace_orders")
+}
+
+model MarketplaceOrderItem {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  orderId   String
+  productId String
+  sku       String
+  name      String
+  quantity  Int
+  unitPrice Float
+  discount  Float    @default(0)
+  tax       Float    @default(0)
+  total     Float
+  metadata  String?
+  createdAt DateTime @default(now())
+
+  @@index([orderId])
+  @@index([productId])
+  @@map("marketplace_order_items")
+}
