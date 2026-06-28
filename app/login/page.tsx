@@ -441,10 +441,6 @@ export default function LoginPage() {
           ) : (
             /* ── Normal login ── */
             <div className="space-y-6">
-              <div>
-                <p className="text-2xl font-black text-white">{t('adminTitle')}</p>
-                <p className="text-sm text-gray-500 mt-1">{t('adminSub')}</p>
-              </div>
 
               {/* Error banner */}
               {error && (
