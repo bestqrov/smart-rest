@@ -605,15 +605,35 @@ model WaiterCall {
 model User {
   id           String  @id @default(auto()) @map("_id") @db.ObjectId
   email        String  @unique
-  passwordHash String?         // null for OAuth-only accounts
-  googleId     String?         // Google sub claim — uniqueness enforced in app layer
+  passwordHash String?
+  googleId     String?
   googleName   String?
   googleAvatar String?
   cafeId       String  @db.ObjectId
   cafe         Cafe    @relation(fields: [cafeId], references: [id])
 
+  tempPasswordHash    String?
+  tempPasswordExpiry  DateTime?
+  forcePasswordChange Boolean   @default(false)
+
+  passwordResetRequests PasswordResetRequest[]
+
   @@index([cafeId])
   @@index([googleId])
+}
+
+model PasswordResetRequest {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  user      User     @relation(fields: [userId], references: [id])
+  cafeName  String
+  email     String
+  status    String   @default("PENDING")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
 }
 
 // ─── Mini POS — Staff & Shifts ────────────────────────────────────────────────

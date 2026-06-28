@@ -1,9 +1,12 @@
 import express, { Request, Response, NextFunction } from 'express'
 import jwt from 'jsonwebtoken'
+import crypto from 'crypto'
+import bcrypt from 'bcrypt'
 
 import logger from '../logger'
 import prisma from '../prisma'
 import { JWT_SECRET } from '../config'
+import { sendEmail } from '../services/email'
 import {
   applySmartSubscription,
   computeSmartSubscription,
@@ -1142,6 +1145,94 @@ router.post('/api/superadmin/tenants/purge-test', requireSuperAdmin, async (req:
   } catch (err) {
     logger.error({ msg: 'purge-test error', err })
     return res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
+// ─── GET /api/superadmin/password-reset-requests ──────────────────────────────
+
+router.get('/api/superadmin/password-reset-requests', requireSuperAdmin, async (_req: Request, res: Response) => {
+  try {
+    const requests = await (prisma as any).passwordResetRequest.findMany({
+      where: { status: { in: ['PENDING', 'SENT'] } },
+      orderBy: { createdAt: 'desc' },
+    })
+    return res.json(requests)
+  } catch (err) {
+    logger.error({ msg: 'get reset requests error', err })
+    return res.status(500).json({ error: 'Server error' })
+  }
+})
+
+// ─── POST /api/superadmin/password-reset-requests/:id/approve ─────────────────
+
+router.post('/api/superadmin/password-reset-requests/:id/approve', requireSuperAdmin, async (req: Request, res: Response) => {
+  try {
+    const request = await (prisma as any).passwordResetRequest.findUnique({
+      where: { id: req.params.id },
+    })
+    if (!request) return res.status(404).json({ error: 'Request not found' })
+    if (!['PENDING', 'SENT'].includes(request.status)) {
+      return res.status(400).json({ error: 'Request already resolved' })
+    }
+
+    // Generate 8-char readable temp password
+    const tempPassword = crypto.randomBytes(4).toString('hex').toUpperCase()
+    const tempHash = await bcrypt.hash(tempPassword, 10)
+    const expiry = new Date(Date.now() + 10 * 60 * 1000) // 10 minutes
+
+    await prisma.user.update({
+      where: { id: request.userId },
+      data: {
+        tempPasswordHash:   tempHash,
+        tempPasswordExpiry: expiry,
+        forcePasswordChange: true,
+      },
+    })
+
+    await (prisma as any).passwordResetRequest.update({
+      where: { id: request.id },
+      data: { status: 'SENT' },
+    })
+
+    // Send email to restaurant owner
+    const html = `
+      <div style="font-family:sans-serif;max-width:480px;margin:auto">
+        <h2 style="color:#1e293b">SmartRestau — Mot de passe temporaire</h2>
+        <p>Bonjour,</p>
+        <p>Votre demande de réinitialisation a été approuvée.<br>
+        Utilisez ce mot de passe temporaire pour vous connecter :</p>
+        <div style="font-size:28px;font-weight:bold;letter-spacing:4px;color:#7c3aed;
+          background:#f5f3ff;padding:16px 24px;border-radius:8px;text-align:center;margin:20px 0">
+          ${tempPassword}
+        </div>
+        <p style="color:#ef4444;font-weight:600">⚠️ Valable 10 minutes uniquement.</p>
+        <p>Après connexion, vous serez invité à définir un nouveau mot de passe.</p>
+        <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0">
+        <p style="font-size:12px;color:#94a3b8">SmartRestau SaaS</p>
+      </div>`
+
+    await sendEmail(request.email, 'Votre mot de passe temporaire — SmartRestau', html)
+
+    logger.info({ msg: 'temp password sent', email: request.email, expiry })
+    return res.json({ ok: true, expiry })
+  } catch (err) {
+    logger.error({ msg: 'approve reset request error', err })
+    return res.status(500).json({ error: 'Server error' })
+  }
+})
+
+// ─── POST /api/superadmin/password-reset-requests/:id/reject ──────────────────
+
+router.post('/api/superadmin/password-reset-requests/:id/reject', requireSuperAdmin, async (req: Request, res: Response) => {
+  try {
+    await (prisma as any).passwordResetRequest.update({
+      where: { id: req.params.id },
+      data: { status: 'EXPIRED' },
+    })
+    return res.json({ ok: true })
+  } catch (err) {
+    logger.error({ msg: 'reject reset request error', err })
+    return res.status(500).json({ error: 'Server error' })
   }
 })
 

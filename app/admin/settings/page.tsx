@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useState, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import {
   User, Palette, Lock, Users,
   Save, Eye, EyeOff, CheckCircle2, AlertCircle, Loader2,
@@ -87,12 +87,21 @@ function Toast({ msg, type }: { msg: string; type: 'success' | 'error' }) {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default function SettingsPage() {
+function SettingsInner() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { lang, isRTL } = useLang()
   const t = A[lang]
 
+  const [forceMode, setForceMode] = useState(false)
   const [activeTab, setActiveTab] = useState<Tab>('profile')
+
+  useEffect(() => {
+    if (searchParams.get('force') === '1') {
+      setForceMode(true)
+      setActiveTab('password')
+    }
+  }, [searchParams])
   const [payConfig,  setPayConfig]  = useState<PaymentConfig>({
     orangeMoneyNumber: '', mtnMoMoNumber: '', waveWallet: '',
     moyasarPublishableKey: '', stripePublishableKey: '', stripeAccountId: '',
@@ -195,14 +204,24 @@ export default function SettingsPage() {
     if (pwForm.newPw.length < 8)         { showToast('8 chars min', 'error'); return }
     setSaving(true)
     try {
-      const res = await fetch('/api/admin/auth/change-password', {
-        method: 'POST',
-        headers: authHeader(),
-        body: JSON.stringify({ currentPassword: pwForm.current, newPassword: pwForm.newPw })
-      })
+      const endpoint = forceMode
+        ? '/api/admin/auth/force-change-password'
+        : '/api/admin/auth/change-password'
+      const body = forceMode
+        ? { newPassword: pwForm.newPw }
+        : { currentPassword: pwForm.current, newPassword: pwForm.newPw }
+      const res = await fetch(endpoint, { method: 'POST', headers: authHeader(), body: JSON.stringify(body) })
       const d = await res.json()
-      if (res.ok) { showToast(t.changePassword + ' ✓', 'success'); setPwForm({ current: '', newPw: '', confirm: '' }) }
-      else         showToast(d.error ?? 'Error', 'error')
+      if (res.ok) {
+        showToast(t.changePassword + ' ✓', 'success')
+        setPwForm({ current: '', newPw: '', confirm: '' })
+        if (forceMode) {
+          setForceMode(false)
+          router.replace('/admin/dashboard')
+        }
+      } else {
+        showToast(d.error ?? 'Error', 'error')
+      }
     } finally { setSaving(false) }
   }
 
@@ -555,10 +574,28 @@ export default function SettingsPage() {
       {/* ── Password tab ── */}
       {activeTab === 'password' && (
         <div className="space-y-4">
+          {forceMode && (
+            <div className="bg-amber-50 border border-amber-300 rounded-xl p-4 flex items-start gap-3">
+              <span className="text-2xl">⚠️</span>
+              <div>
+                <p className="font-bold text-amber-800">
+                  {lang === 'ar' ? 'يجب تغيير كلمة المرور' : lang === 'fr' ? 'Changement de mot de passe requis' : 'Password change required'}
+                </p>
+                <p className="text-sm text-amber-700 mt-0.5">
+                  {lang === 'ar'
+                    ? 'دخلت بكلمة مرور مؤقتة. ضع كلمة مرور جديدة للمتابعة.'
+                    : lang === 'fr'
+                    ? 'Vous êtes connecté avec un mot de passe temporaire. Définissez un nouveau mot de passe pour continuer.'
+                    : 'You logged in with a temporary password. Set a new password to continue.'}
+                </p>
+              </div>
+            </div>
+          )}
+
           <section className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-5">
             <h2 className="font-bold text-gray-800 flex items-center gap-2"><Lock className="w-5 h-5 text-red-500" /> {t.changePassword}</h2>
 
-            <Field label={t.currentPw}>
+            {!forceMode && <Field label={t.currentPw}>
               <PasswordInput
                 value={pwForm.current}
                 onChange={v => setPwForm(p => ({ ...p, current: v }))}
@@ -566,7 +603,7 @@ export default function SettingsPage() {
                 onToggle={() => setShowPw(p => ({ ...p, current: !p.current }))}
                 placeholder="••••••••"
               />
-            </Field>
+            </Field>}
 
             <Field label={t.newPw}>
               <PasswordInput
@@ -808,6 +845,14 @@ export default function SettingsPage() {
         </section>
       )}
     </div>
+  )
+}
+
+export default function SettingsPage() {
+  return (
+    <Suspense>
+      <SettingsInner />
+    </Suspense>
   )
 }
 

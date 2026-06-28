@@ -5,7 +5,7 @@ import { hashPassword, verifyPassword } from '../auth/hash'
 import logger from '../logger'
 import { JWT_SECRET } from '../config'
 import prisma from '../prisma'
-import { sendMagicLink } from '../services/email'
+import { sendMagicLink, sendEmail } from '../services/email'
 import { t, resolveLang, type Lang } from '../lib/i18n'
 
 const router = express.Router()
@@ -101,6 +101,22 @@ router.post('/api/auth/login', async (req: Request, res: Response) => {
     })
     if (!user) return res.status(401).json({ error: 'Invalid credentials' })
 
+    // Try temp password first (superadmin-issued, 10-min window)
+    if (user.tempPasswordHash && user.tempPasswordExpiry) {
+      const notExpired = new Date() < new Date(user.tempPasswordExpiry)
+      const tempOk = notExpired && await verifyPassword(password, user.tempPasswordHash)
+      if (tempOk) {
+        const subdomain = user.cafe?.subdomain ?? ''
+        const { accessToken, refreshToken } = await issueTokenPair(user.id, user.cafeId, { subdomain }, req)
+        // Mark reset request as used
+        await (prisma as any).passwordResetRequest.updateMany({
+          where: { userId: user.id, status: 'SENT' },
+          data: { status: 'USED' },
+        })
+        return res.json({ token: accessToken, refreshToken, userId: user.id, cafeId: user.cafeId, subdomain, forcePasswordChange: true })
+      }
+    }
+
     // Google-only account — no password set
     if (!user.passwordHash) return res.status(401).json({ error: 'google_account' })
 
@@ -109,7 +125,7 @@ router.post('/api/auth/login', async (req: Request, res: Response) => {
 
     const subdomain = user.cafe?.subdomain ?? ''
     const { accessToken, refreshToken } = await issueTokenPair(user.id, user.cafeId, { subdomain }, req)
-    return res.json({ token: accessToken, refreshToken, userId: user.id, cafeId: user.cafeId, subdomain })
+    return res.json({ token: accessToken, refreshToken, userId: user.id, cafeId: user.cafeId, subdomain, forcePasswordChange: !!user.forcePasswordChange })
   } catch (err) {
     logger.error({ msg: 'Login error', err })
     return res.status(500).json({ error: 'Login failed' })
@@ -789,6 +805,74 @@ router.post('/api/admin/auth/change-password', async (req: Request, res: Respons
     return res.json({ ok: true })
   } catch (err) {
     logger.error({ msg: 'change-password error', err })
+    return res.status(500).json({ error: 'Server error' })
+  }
+})
+
+// ─── POST /api/auth/request-password-reset — restaurant owner asks for help ───
+
+router.post('/api/auth/request-password-reset', async (req: Request, res: Response) => {
+  try {
+    const { email } = req.body as { email: string }
+    if (!email) return res.status(400).json({ error: 'Email required' })
+
+    const user = await prisma.user.findUnique({
+      where: { email: email.toLowerCase().trim() },
+      include: { cafe: { select: { name: true } } },
+    })
+    // Always return ok to avoid email enumeration
+    if (!user) return res.json({ ok: true })
+
+    // Check no pending request already exists
+    const existing = await (prisma as any).passwordResetRequest.findFirst({
+      where: { userId: user.id, status: 'PENDING' },
+    })
+    if (existing) return res.json({ ok: true })
+
+    await (prisma as any).passwordResetRequest.create({
+      data: {
+        userId:   user.id,
+        cafeName: user.cafe?.name ?? '',
+        email:    user.email,
+        status:   'PENDING',
+      },
+    })
+    logger.info({ msg: 'password reset request created', email })
+    return res.json({ ok: true })
+  } catch (err) {
+    logger.error({ msg: 'request-password-reset error', err })
+    return res.status(500).json({ error: 'Server error' })
+  }
+})
+
+// ─── POST /api/admin/auth/force-change-password — after temp password login ───
+
+router.post('/api/admin/auth/force-change-password', async (req: Request, res: Response) => {
+  try {
+    const auth = req.header('authorization')
+    if (!auth?.startsWith('Bearer ')) return res.status(401).json({ error: 'Token required' })
+    let payload: any
+    try { payload = jwt.verify(auth.split(' ')[1], JWT_SECRET) } catch {
+      return res.status(401).json({ error: 'Invalid token' })
+    }
+    const { newPassword } = req.body as { newPassword?: string }
+    if (!newPassword || newPassword.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters' })
+    }
+    const hashed = await hashPassword(newPassword)
+    await prisma.user.update({
+      where: { id: payload.userId },
+      data: {
+        passwordHash:       hashed,
+        tempPasswordHash:   null,
+        tempPasswordExpiry: null,
+        forcePasswordChange: false,
+      },
+    })
+    logger.info({ msg: 'force password change done', userId: payload.userId })
+    return res.json({ ok: true })
+  } catch (err) {
+    logger.error({ msg: 'force-change-password error', err })
     return res.status(500).json({ error: 'Server error' })
   }
 })

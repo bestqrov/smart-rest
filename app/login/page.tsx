@@ -19,10 +19,10 @@ const T: Record<Lang, Record<string, string>> = {
     password: 'Password', passwordPh: '••••••••',
     submit: 'Sign in', submitting: 'Signing in…',
     forgotPassword: 'Forgot password?',
-    forgotTitle: 'Reset your password',
-    forgotSub: "Enter your email — we'll send you a sign-in link.",
-    forgotSend: 'Send link', forgotSending: 'Sending…',
-    forgotDone: 'Check your inbox — link sent!',
+    forgotTitle: 'Request a temporary password',
+    forgotSub: 'Enter your email — our team will send you a temporary password valid for 10 minutes.',
+    forgotSend: 'Send request', forgotSending: 'Sending…',
+    forgotDone: '✅ Request sent! Check your inbox shortly.',
     noAccount: "No account yet?", signup: 'Sign up free',
     back: '← Back',
     copyright: 'Business OS · Food & Hospitality',
@@ -48,10 +48,10 @@ const T: Record<Lang, Record<string, string>> = {
     password: 'Mot de passe', passwordPh: '••••••••',
     submit: 'Se connecter', submitting: 'Connexion…',
     forgotPassword: 'Mot de passe oublié ?',
-    forgotTitle: 'Réinitialiser le mot de passe',
-    forgotSub: 'Entrez votre email — nous vous enverrons un lien de connexion.',
-    forgotSend: 'Envoyer le lien', forgotSending: 'Envoi…',
-    forgotDone: 'Vérifiez votre boîte mail — lien envoyé !',
+    forgotTitle: 'Demander un mot de passe temporaire',
+    forgotSub: 'Entrez votre email — notre équipe vous enverra un mot de passe valable 10 minutes.',
+    forgotSend: 'Envoyer la demande', forgotSending: 'Envoi…',
+    forgotDone: '✅ Demande envoyée ! Vérifiez votre boîte mail sous peu.',
     noAccount: 'Pas encore de compte ?', signup: 'Inscription gratuite',
     back: '← Retour',
     copyright: 'Business OS · Food & Hospitality',
@@ -77,10 +77,10 @@ const T: Record<Lang, Record<string, string>> = {
     password: 'كلمة المرور', passwordPh: '••••••••',
     submit: 'دخول', submitting: 'جاري الدخول…',
     forgotPassword: 'نسيت كلمة المرور؟',
-    forgotTitle: 'استعادة كلمة المرور',
-    forgotSub: 'أدخل بريدك — سنرسل لك رابط دخول فوري.',
-    forgotSend: 'إرسال الرابط', forgotSending: 'جاري الإرسال…',
-    forgotDone: '✅ تم الإرسال — تحقق من بريدك',
+    forgotTitle: 'طلب كلمة مرور مؤقتة',
+    forgotSub: 'أدخل بريدك — سيرسل لك فريقنا كلمة مرور مؤقتة صالحة 10 دقائق.',
+    forgotSend: 'إرسال الطلب', forgotSending: 'جاري الإرسال…',
+    forgotDone: '✅ تم إرسال الطلب! تحقق من بريدك قريباً.',
     noAccount: 'ليس لديك حساب؟', signup: 'ابدأ مجاناً',
     back: 'رجوع ←',
     copyright: 'Business OS · Food & Hospitality',
@@ -201,7 +201,11 @@ export default function LoginPage() {
       if (data.refreshToken) localStorage.setItem('refreshToken', data.refreshToken)
       localStorage.setItem('cafeId', data.cafeId)
       localStorage.setItem('subdomain', data.subdomain ?? '')
-      router.push('/admin/dashboard')
+      if (data.forcePasswordChange) {
+        router.push('/admin/settings?force=1')
+      } else {
+        router.push('/admin/dashboard')
+      }
     } catch {
       setError(t('errNetwork'))
     } finally {
@@ -219,7 +223,7 @@ export default function LoginPage() {
     if (!forgotEmail.trim()) return
     setForgotLoading(true)
     try {
-      await fetch('/api/auth/magic-login-send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: forgotEmail.trim() }) })
+      await fetch('/api/auth/request-password-reset', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: forgotEmail.trim() }) })
       setForgotDone(true)
     } catch {}
     finally { setForgotLoading(false) }

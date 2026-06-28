@@ -115,6 +115,37 @@ export default function SuperAdminPage() {
     localStorage.setItem('superadmin-theme', t)
   }
 
+  // Password reset requests
+  const [pwResets,       setPwResets]       = useState<any[]>([])
+  const [pwResetsOpen,   setPwResetsOpen]   = useState(false)
+  const [pwResetLoading, setPwResetLoading] = useState(false)
+  const [approvingReset, setApprovingReset] = useState<string | null>(null)
+
+  async function loadPwResets() {
+    setPwResetLoading(true)
+    try {
+      const res = await fetch('/api/superadmin/password-reset-requests', { headers: superHeader() })
+      if (res.ok) setPwResets(await res.json())
+    } finally { setPwResetLoading(false) }
+  }
+
+  async function approveReset(id: string) {
+    setApprovingReset(id)
+    try {
+      const res  = await fetch(`/api/superadmin/password-reset-requests/${id}/approve`, { method: 'POST', headers: superHeader() })
+      const data = await res.json()
+      if (!res.ok) { alert(data.error ?? 'Error'); return }
+      alert('✅ Mot de passe temporaire envoyé par email!')
+      loadPwResets()
+    } finally { setApprovingReset(null) }
+  }
+
+  async function rejectReset(id: string) {
+    if (!confirm('Rejeter cette demande?')) return
+    await fetch(`/api/superadmin/password-reset-requests/${id}/reject`, { method: 'POST', headers: superHeader() })
+    loadPwResets()
+  }
+
   // Demo requests
   const [demoRequests,   setDemoRequests]   = useState<any[]>([])
   const [demoLoading,    setDemoLoading]    = useState(false)
@@ -545,6 +576,74 @@ export default function SuperAdminPage() {
       {theme === 'A' && <ThemeA {...themeProps} />}
       {theme === 'B' && <ThemeB {...themeProps} />}
       {theme === 'C' && <ThemeC {...themeProps} />}
+
+      {/* ── Password Reset Requests floating button + panel ── */}
+      <div className="fixed bottom-6 left-6 z-50 flex flex-col items-start gap-3">
+        <button
+          onClick={() => { setPwResetsOpen(o => !o); if (!pwResetsOpen) loadPwResets() }}
+          className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2.5 rounded-full shadow-xl text-sm font-semibold transition-all"
+        >
+          🔑 Réinitialisations
+          {pwResets.filter(r => r.status === 'PENDING').length > 0 && (
+            <span className="bg-white text-red-600 rounded-full text-xs font-bold w-5 h-5 flex items-center justify-center">
+              {pwResets.filter(r => r.status === 'PENDING').length}
+            </span>
+          )}
+        </button>
+
+        {pwResetsOpen && (
+          <div className="bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl w-80 p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="font-bold text-white text-sm">🔑 Demandes de mot de passe</p>
+              <button onClick={() => setPwResetsOpen(false)} className="text-gray-400 hover:text-white">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {pwResetLoading ? (
+              <div className="flex justify-center py-4"><Loader2 className="w-5 h-5 animate-spin text-gray-400" /></div>
+            ) : pwResets.length === 0 ? (
+              <p className="text-gray-500 text-xs text-center py-3">Aucune demande en attente</p>
+            ) : (
+              <div className="space-y-2 max-h-72 overflow-y-auto">
+                {pwResets.map(r => (
+                  <div key={r.id} className="bg-gray-800 rounded-xl p-3 space-y-1.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-white text-xs font-semibold truncate">{r.cafeName || '—'}</p>
+                        <p className="text-gray-400 text-xs truncate">{r.email}</p>
+                        <p className="text-gray-500 text-[10px]">{new Date(r.createdAt).toLocaleString('fr-FR')}</p>
+                      </div>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
+                        r.status === 'PENDING' ? 'bg-amber-900 text-amber-300' :
+                        r.status === 'SENT'    ? 'bg-blue-900 text-blue-300'  :
+                        'bg-gray-700 text-gray-400'
+                      }`}>{r.status}</span>
+                    </div>
+                    {['PENDING','SENT'].includes(r.status) && (
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => approveReset(r.id)}
+                          disabled={approvingReset === r.id}
+                          className="flex-1 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-semibold py-1.5 rounded-lg transition-all disabled:opacity-50"
+                        >
+                          {approvingReset === r.id ? '…' : '✉️ Envoyer'}
+                        </button>
+                        <button
+                          onClick={() => rejectReset(r.id)}
+                          className="flex-1 bg-gray-700 hover:bg-red-800 text-gray-300 text-xs font-semibold py-1.5 rounded-lg transition-all"
+                        >
+                          Rejeter
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       {modal && (
         <TenantModalInline
