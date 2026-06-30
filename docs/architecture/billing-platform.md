@@ -66,6 +66,108 @@ src/billing/
 
 ---
 
+## Plan Management (Sprint K1)
+
+### Overview
+
+`BillingPlan` is a database-backed, SuperAdmin-managed plan entity stored in MongoDB (`billing_plans` collection). It is the commercial source of truth for what plans are sold, at what prices, and with what feature entitlements.
+
+Note: The hardcoded `PLAN_DEFINITIONS` in `src/tenant/plans/index.ts` define module access for the Tenant Lifecycle Engine. `BillingPlan` is the commercial counterpart — richer, editable, and directly managed by SuperAdmin.
+
+### Plan Schema
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `code` | String (unique) | Slug identifier, e.g. FREE, STARTER, PROFESSIONAL |
+| `name` | String | Display name |
+| `description` | String? | Optional description |
+| `monthlyPrice` | Float | Monthly subscription price |
+| `yearlyPrice` | Float | Yearly subscription price |
+| `currency` | String | ISO currency code (MAD, USD, EUR…) |
+| `isActive` | Boolean | Whether the plan is available for sale |
+| `isDefault` | Boolean | Exactly one plan is the default for new signups |
+| `displayOrder` | Int | Sort order in plan selector UI |
+| `maxUsers` | Int | Max staff accounts allowed |
+| `maxStorageGB` | Float | Max storage in GB |
+| `aiCredits` | Int | AI requests per month |
+| `marketplaceEnabled` | Boolean | Access to B2B Marketplace |
+| `automationEnabled` | Boolean | Access to Automation Engine |
+| `certificationEnabled` | Boolean | Access to Certification Engine |
+| `apiAccess` | Boolean | Access to REST API |
+| `supportLevel` | String | COMMUNITY / EMAIL / PRIORITY / DEDICATED |
+
+### Plan Lifecycle
+
+```
+CREATED ──► ACTIVE ──► DEFAULT (only one at a time)
+               │
+               ▼
+           INACTIVE
+```
+
+**Rules enforced by PlanValidation:**
+- `code` must be unique across all plans
+- Exactly one plan can be `isDefault = true` at any time (setting a new default automatically unsets the previous)
+- Cannot delete the default plan
+- Cannot delete a plan with active tenant subscriptions (ACTIVE / TRIAL / GRACE_PERIOD states)
+- Duplicated plans start as `isActive = false` and receive a timestamped code suffix
+- Cannot deactivate the default plan
+
+### Plan Events (5 new PlatformEventNames)
+
+| Event | When |
+|-------|------|
+| `PlanCreated` | New plan created or duplicated |
+| `PlanUpdated` | Any field changed |
+| `PlanDeleted` | Plan permanently removed |
+| `PlanActivated` | Plan made available for sale |
+| `PlanDeactivated` | Plan removed from sale |
+
+### Plan Architecture
+
+```
+src/billing/plans/
+  PlanTypes.ts        — BillingPlan interface, CreatePlanInput, UpdatePlanInput, SupportLevel
+  PlanRepository.ts   — Prisma CRUD (findAll, findById, findByCode, create, update, remove...)
+  PlanValidation.ts   — PlanValidationError + validateCreate/Update/Delete
+  PlanEvents.ts       — 5 EventBus emitters
+  PlanService.ts      — Business logic facade with audit logging
+  PlanCatalogService.ts — (unchanged) wraps hardcoded PLAN_DEFINITIONS for tenant lifecycle
+```
+
+### SuperAdmin API
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/superadmin/billing/plans` | GET | List all plans (filter: `?isActive=true`) |
+| `/api/superadmin/billing/plans/:id` | GET | Get plan by ID |
+| `/api/superadmin/billing/plans` | POST | Create plan |
+| `/api/superadmin/billing/plans/:id` | PATCH | Update plan |
+| `/api/superadmin/billing/plans/:id` | DELETE | Delete plan (with guards) |
+| `/api/superadmin/billing/plans/:id/duplicate` | POST | Duplicate plan |
+| `/api/superadmin/billing/plans/:id/activate` | POST | Activate plan |
+| `/api/superadmin/billing/plans/:id/deactivate` | POST | Deactivate plan |
+| `/api/superadmin/billing/plans/:id/set-default` | POST | Set as default |
+
+**Note:** The old `/api/superadmin/billing/plans` routes (listing hardcoded PLAN_DEFINITIONS) were renamed to `/api/superadmin/billing/plan-catalog`.
+
+### SuperAdmin UI
+
+Route: `/superadmin/billing/plans`
+
+Features:
+- Table view: Name, Code, Monthly Price, Feature badges (MP/AUTO/CERT/API), Status, Default badge, Actions
+- Actions per row: Edit, Duplicate, Activate/Deactivate, Set Default, Delete
+- Create/Edit modal with full form (18 fields)
+- Client-side search by name or code
+- Arabic default UI, RTL-aware
+
+### Future: Subscription Integration (Sprint K2)
+
+In Sprint K2, `BillingSubscription` will link tenants to `BillingPlan.code`. The QuotaService will then read limits from `BillingPlan` (DB) instead of PLAN_DEFINITIONS (hardcoded). A tenant's feature access will be resolved from their active BillingSubscription → BillingPlan → feature flags.
+
+---
+
 ## Invoice Lifecycle
 
 ```
