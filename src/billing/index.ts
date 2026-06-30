@@ -18,7 +18,11 @@ export {
   getPriceForTenant,
 } from './plans/PlanCatalogService'
 
-export { markOverdueInvoices } from './invoices/InvoiceService'
+export { markOverdueInvoices, getInvoice, listInvoices } from './invoices/InvoiceService'
+
+export { getSubscription } from './subscriptions/SubscriptionService'
+
+export { getUsageSummary } from './usage/BillingUsageService'
 
 export { checkQuota, checkAllQuotas, isAllowed } from './quotas/QuotaService'
 
