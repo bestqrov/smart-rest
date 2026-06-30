@@ -2164,3 +2164,32 @@ model BillingEventLog {
   @@index([createdAt])
   @@map("billing_event_logs")
 }
+
+// ─── Billing Platform — Plans (DB-backed, managed by SuperAdmin) ───────────────
+
+model BillingPlan {
+  id                   String   @id @default(auto()) @map("_id") @db.ObjectId
+  name                 String
+  code                 String   @unique
+  description          String?
+  monthlyPrice         Float    @default(0)
+  yearlyPrice          Float    @default(0)
+  currency             String   @default("MAD")
+  isActive             Boolean  @default(true)
+  isDefault            Boolean  @default(false)
+  displayOrder         Int      @default(0)
+  maxUsers             Int      @default(5)
+  maxStorageGB         Float    @default(10)
+  aiCredits            Int      @default(0)
+  marketplaceEnabled   Boolean  @default(false)
+  automationEnabled    Boolean  @default(false)
+  certificationEnabled Boolean  @default(false)
+  apiAccess            Boolean  @default(false)
+  supportLevel         String   @default("COMMUNITY")
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@index([isActive])
+  @@index([displayOrder])
+  @@map("billing_plans")
+}

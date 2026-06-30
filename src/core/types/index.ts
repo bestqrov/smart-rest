@@ -218,6 +218,12 @@ export type PlatformEventName =
   | 'InvoicePaid'
   | 'QuotaExceeded'
   | 'TrialEnding'
+  // Billing Plan Management
+  | 'PlanCreated'
+  | 'PlanUpdated'
+  | 'PlanDeleted'
+  | 'PlanActivated'
+  | 'PlanDeactivated'
 
 export interface PlatformEvent<T = unknown> {
   name:      PlatformEventName
