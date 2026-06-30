@@ -8,6 +8,7 @@ import {
   getUsageSummary,
   checkAllQuotas,
 } from '../billing'
+import { getSubscriptionWithPlan, getHistory } from '../billing/subscriptions/SubscriptionService'
 
 const router = Router()
 
@@ -70,6 +71,36 @@ router.get('/api/billing/limits', async (req, res) => {
     const { cafeId } = authRestaurant(req)
     const result     = await checkAllQuotas(cafeId)
     res.json({ limits: result })
+  } catch (err: any) { res.status(401).json({ error: err.message }) }
+})
+
+// ─── GET /api/billing/subscription ───────────────────────────────────────────
+// Current subscription with plan details
+router.get('/api/billing/subscription', async (req, res) => {
+  try {
+    const { cafeId } = authRestaurant(req)
+    const sub        = await getSubscriptionWithPlan(cafeId)
+    res.json({ subscription: sub })
+  } catch (err: any) { res.status(401).json({ error: err.message }) }
+})
+
+// ─── GET /api/billing/subscription/status ────────────────────────────────────
+// Simple status check
+router.get('/api/billing/subscription/status', async (req, res) => {
+  try {
+    const { cafeId } = authRestaurant(req)
+    const sub        = await getSubscriptionByTenant(cafeId)
+    res.json({ status: sub?.status ?? 'NONE', planCode: sub?.planCode ?? null, trialEndsAt: sub?.trialEndsAt ?? null })
+  } catch (err: any) { res.status(401).json({ error: err.message }) }
+})
+
+// ─── GET /api/billing/subscription/history ───────────────────────────────────
+// All subscriptions for tenant
+router.get('/api/billing/subscription/history', async (req, res) => {
+  try {
+    const { cafeId } = authRestaurant(req)
+    const history     = await getHistory(cafeId)
+    res.json({ history })
   } catch (err: any) { res.status(401).json({ error: err.message }) }
 })
 
