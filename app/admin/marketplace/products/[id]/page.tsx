@@ -101,15 +101,13 @@ export default function ProductDetailPage() {
     const h = authHeader()
     Promise.all([
       fetch(`/api/restaurant/marketplace/catalog/${id}`, { headers: h }),
-      fetch(`/api/restaurant/marketplace/compatibility/${id}`, { headers: h }),
       fetch('/api/restaurant/marketplace/bundles', { headers: h }),
-    ]).then(async ([pRes, cRes, bRes]) => {
+    ]).then(async ([pRes, bRes]) => {
       const pData = await pRes.json()
-      const cData = await cRes.json()
       const bData = await bRes.json()
       setProduct(pData.product ?? null)
       setRelated(pData.related ?? [])
-      setCompat(cData.compatibility ?? null)
+      setCompat(pData.compatibility ?? null)
       const all: Bundle[] = bData.bundles ?? []
       setBundles(all.filter(b => b.productIds.includes(id)).slice(0, 3))
     }).catch(() => {}).finally(() => setLoading(false))
