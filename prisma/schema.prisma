@@ -2193,3 +2193,30 @@ model BillingPlan {
   @@index([displayOrder])
   @@map("billing_plans")
 }
+
+// ─── Billing Platform — Subscriptions ────────────────────────────────────────
+
+model BillingSubscription {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId    String
+  planId      String
+  planCode    String
+  planName    String
+  status      String    @default("TRIAL")
+  startDate   DateTime  @default(now())
+  endDate     DateTime?
+  renewalDate DateTime?
+  trialEndsAt DateTime?
+  cancelledAt DateTime?
+  graceEndsAt DateTime?
+  autoRenew   Boolean   @default(true)
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([tenantId])
+  @@index([status])
+  @@index([tenantId, status])
+  @@index([renewalDate])
+  @@map("billing_subscriptions")
+}

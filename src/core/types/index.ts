@@ -224,6 +224,11 @@ export type PlatformEventName =
   | 'PlanDeleted'
   | 'PlanActivated'
   | 'PlanDeactivated'
+  // Billing Subscription Engine
+  | 'SubscriptionActivated'
+  | 'SubscriptionSuspended'
+  | 'SubscriptionExpired'
+  | 'PlanChanged'
 
 export interface PlatformEvent<T = unknown> {
   name:      PlatformEventName
