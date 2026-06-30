@@ -2024,3 +2024,29 @@ model RecommendationLog {
   @@index([productId])
   @@map("marketplace_recommendation_logs")
 }
+
+model PaymentTransaction {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  orderId     String
+  tenantId    String
+  module      String    @default("MARKETPLACE")
+  provider    String
+  method      String
+  status      String    @default("PENDING")
+  amount      Float
+  currency    String    @default("MAD")
+  reference   String?
+  notes       String?
+  paidAt      DateTime?
+  refundedAt  DateTime?
+  refundAmount Float?
+  metadata    String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([orderId])
+  @@index([tenantId, status])
+  @@index([provider, status])
+  @@index([module, status])
+  @@map("payment_transactions")
+}

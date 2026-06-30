@@ -193,6 +193,12 @@ export type PlatformEventName =
   | 'BundleViewed'
   | 'RecommendationAccepted'
   | 'RecommendationDismissed'
+  // Payment Engine
+  | 'PaymentCreated'
+  | 'PaymentAuthorized'
+  | 'PaymentSucceeded'
+  | 'PaymentFailed'
+  | 'PaymentRefunded'
 
 export interface PlatformEvent<T = unknown> {
   name:      PlatformEventName

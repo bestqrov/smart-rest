@@ -5,6 +5,7 @@ import { FeatureFlagService }      from './core'
 import { registerBuiltinProfiles } from './certification'
 import { initAnalyticsEngine }     from './analytics'
 import { initMarketplaceEngine }   from './marketplace'
+import { initPaymentEngine }        from './payments'
 
 import express from 'express'
 import http from 'http'
@@ -78,6 +79,8 @@ import marketplaceInventorySARouter      from './routes/marketplaceInventorySA'
 import marketplaceCatalogRestaurantRouter from './routes/marketplaceCatalogRestaurant'
 import marketplaceBundlesSARouter        from './routes/marketplaceBundlesSA'
 import marketplaceAISARouter             from './routes/marketplaceAISA'
+import paymentsSARouter                  from './routes/paymentsSA'
+import paymentsRestaurantRouter          from './routes/paymentsRestaurant'
 import inventoryAdminRouter from './routes/inventoryAdmin'
 import reviewGalleryRouter from './routes/reviewGallery'
 import demoRequestsRouter from './routes/demoRequests'
@@ -263,6 +266,8 @@ async function main() {
   app.use(marketplaceCatalogRestaurantRouter)
   app.use(marketplaceBundlesSARouter)
   app.use(marketplaceAISARouter)
+  app.use(paymentsSARouter)
+  app.use(paymentsRestaurantRouter)
   app.use(inventoryAdminRouter)
   app.use(reviewGalleryRouter)
   app.use(demoRequestsRouter)
@@ -321,6 +326,7 @@ async function main() {
 
   // Seed marketplace feature flags (idempotent)
   initMarketplaceEngine().catch(() => undefined)
+  initPaymentEngine().catch(() => undefined)
 
   // Collect cron task handles for graceful shutdown
   const cronTasks = [
