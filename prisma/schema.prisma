@@ -2096,6 +2096,7 @@ model TenantUsageSnapshot {
   reservations       Int      @default(0)
   marketplaceOrders  Int      @default(0)
   automations        Int      @default(0)
+  certificates       Int      @default(0)
   updatedAt          DateTime @updatedAt
 
   @@unique([tenantId, period])
@@ -2115,4 +2116,51 @@ model TenantSuspensionLog {
 
   @@index([tenantId])
   @@map("tenant_suspension_logs")
+}
+
+// ─── Billing Platform — Platform Invoices (subscription-based, tenant-scoped) ─
+
+model BillingPlatformInvoice {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  invoiceNumber String    @unique
+  tenantId      String
+  module        String    @default("RESTAURANT")
+  plan          String
+  status        String    @default("DRAFT")
+  subtotal      Float
+  taxAmount     Float     @default(0)
+  taxType       String    @default("NONE")
+  taxRate       Float     @default(0)
+  total         Float
+  currency      String    @default("MAD")
+  periodStart   DateTime
+  periodEnd     DateTime
+  dueDate       DateTime
+  paidAt        DateTime?
+  notes         String?
+  metadata      String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([tenantId])
+  @@index([status])
+  @@index([tenantId, status])
+  @@index([dueDate])
+  @@map("billing_platform_invoices")
+}
+
+// ─── Billing Platform — Event Log ─────────────────────────────────────────────
+
+model BillingEventLog {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId  String
+  type      String
+  module    String   @default("RESTAURANT")
+  payload   String
+  createdAt DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([type])
+  @@index([createdAt])
+  @@map("billing_event_logs")
 }

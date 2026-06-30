@@ -210,6 +210,14 @@ export type PlatformEventName =
   | 'TenantGracePeriodStarted'
   // Tenant Provisioning (from Restaurant / other SaaS modules)
   | 'CafeCreated'
+  // Billing Platform Engine
+  | 'SubscriptionCreated'
+  | 'SubscriptionRenewed'
+  | 'SubscriptionCancelled'
+  | 'InvoiceGenerated'
+  | 'InvoicePaid'
+  | 'QuotaExceeded'
+  | 'TrialEnding'
 
 export interface PlatformEvent<T = unknown> {
   name:      PlatformEventName
