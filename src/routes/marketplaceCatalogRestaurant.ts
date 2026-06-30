@@ -327,4 +327,30 @@ router.get('/api/restaurant/marketplace/widget', async (req, res) => {
   } catch (err: any) { res.status(401).json({ error: err.message }) }
 })
 
+// ─── Marketplace Notifications (tenant-scoped) ───────────────────────────────
+router.get('/api/restaurant/marketplace/notifications', async (req, res) => {
+  try {
+    const auth = authRestaurant(req)
+    const { default: prisma } = await import('../prisma')
+    const notifications = await (prisma as any).coreNotification.findMany({
+      where:   { module: 'MARKETPLACE', targetId: auth.cafeId },
+      orderBy: { createdAt: 'desc' },
+      take:    60,
+    })
+    res.json({ notifications })
+  } catch (err: any) { res.status(401).json({ error: err.message }) }
+})
+
+router.patch('/api/restaurant/marketplace/notifications/:id/read', async (req, res) => {
+  try {
+    authRestaurant(req)
+    const { default: prisma } = await import('../prisma')
+    await (prisma as any).coreNotification.update({
+      where: { id: String(req.params.id) },
+      data:  { read: true },
+    })
+    res.json({ ok: true })
+  } catch (err: any) { res.status(401).json({ error: err.message }) }
+})
+
 export default router

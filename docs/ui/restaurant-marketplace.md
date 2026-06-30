@@ -1,195 +1,227 @@
-# Restaurant Marketplace Experience — UI Reference
+# Restaurant Marketplace — UI Reference
 
-Restaurant-facing marketplace inside the Admin panel. Gated behind Feature Flag `marketplace = enabled`. No payments. No shipping. No customer checkout.
+SmartSuite Marketplace experience for Restaurant Admins. Visible only when the `marketplace` Feature Flag is enabled. Dark theme, RTL-first, Arabic default.
 
 ---
 
 ## Navigation
 
-Added to `/admin/layout.tsx` sidebar when `marketplaceEnabled === true` (fetched from `/api/restaurant/marketplace/flag`):
+### Main Admin Sidebar
+- **Marketplace** link appears conditionally (when `marketplace` Feature Flag is `enabled`).
+- Navigates to `/admin/marketplace`.
 
-| Icon | Label (AR) | Label (EN) | Path |
-|------|-----------|-----------|------|
-| Store | المتجر | Marketplace | `/admin/marketplace` |
+### Marketplace Sub-Nav (dark sticky bar)
+Shared layout via `app/admin/marketplace/layout.tsx`:
 
-The nav item is hidden when the feature flag is disabled or `comingSoon`.
+| Tab | Path | Icon |
+|-----|------|------|
+| Home | `/admin/marketplace` | Store |
+| Catalog | `/admin/marketplace/catalog` | Package |
+| Bundles | `/admin/marketplace/bundles` | Layers |
+| Orders | `/admin/marketplace/orders` | ShoppingCart |
+| Alerts | `/admin/marketplace/notifications` | Bell |
+
+---
+
+## Theme
+
+All marketplace pages use **dark theme**:
+- Background: `bg-gray-950`
+- Cards: `bg-gray-900 border border-gray-800`
+- Primary text: `text-white` / `text-gray-100`
+- Secondary text: `text-gray-400`
+- Muted: `text-gray-500`
+- Accent: `text-emerald-400` / `bg-emerald-600`
+- Inputs: `bg-gray-900 border border-gray-700 text-gray-100`
+- Skeleton: `animate-pulse bg-gray-800`
 
 ---
 
 ## Pages
 
-### Homepage (`/admin/marketplace`)
+### 1. Marketplace Home (`/admin/marketplace`)
 
-**Hero section** — gradient emerald, search bar (navigates to catalog on submit).
-
-**Stats widget (4 cards):**
-- Pending Orders (SUBMITTED status count)
-- Approved Orders count
-- Total Spent (sum of APPROVED + FULFILLED orders)
-- AI Recommendations count
-
-**Smart Alerts** — from `/api/restaurant/marketplace/alerts` — cards with severity color (INFO=blue, WARNING=amber, SUCCESS=emerald), action link.
-
-**Recommended For You** — from `/api/restaurant/marketplace/recommendations` — grid of 8 products with AI type badge.
-
-**Featured Products** — from `/api/restaurant/marketplace/featured` — grid of 8.
-
-**Trending** — from `.trending` in recommendations response — ranked list with order count reason.
-
-**Recently Added** — from `/api/restaurant/marketplace/recent` — grid of 4.
-
-**Recent Orders** — from widget response — list linked to order detail.
-
-**CTA row** — Browse Catalog + My Orders buttons.
+**Sections (top to bottom):**
+1. **Hero** — Gradient banner (`from-emerald-950 via-gray-900`) with search bar. Submits to `/catalog?q=`.
+2. **Stats Row** — Pending Orders · Approved Orders · Total Spent.
+3. **Quick Categories** — 8-column icon grid linking to `/catalog?category=:id`.
+4. **Smart Alerts** — Color-coded by severity (INFO/WARNING/SUCCESS).
+5. **Featured Products** — 4-card grid.
+6. **Recommended For You** — AI-scored recommendations with type badge.
+7. **Bundles** — 3-column cards with savings. Links to `/bundles`.
+8. **Services** — Products of type `SERVICE`.
+9. **Trending** — Ordered by purchase frequency.
+10. **New Arrivals** — Most recently added.
+11. **Recent Orders** — Last 5 with status + total.
 
 ---
 
-### Product Catalog (`/admin/marketplace/catalog`)
+### 2. Product Catalog (`/admin/marketplace/catalog`)
 
-**Filters:** Search (300ms debounce), Type dropdown, Featured toggle.
+**Filters (collapsible panel):**
+| Filter | Type | API param |
+|--------|------|-----------|
+| Search | Debounced text | `?q=` |
+| Type | Dropdown | `?type=` |
+| Brand | Dropdown (from API) | `?brand=` |
+| Availability | Dropdown | `?avail=inStock|lowStock|outOfStock` |
+| Price Range | Min + Max inputs | `?priceMin=&priceMax=` |
+| Featured | Toggle | `?featured=true` |
+| Category | From URL | `?category=` |
+| Sort | `newest|priceAsc|priceDesc|name|featured|trending` | `?sort=` |
 
-**View switch:** Grid (default) / List.
-
-**Pagination:** 20 per page, prev/next.
-
-**Product card (grid):** Thumbnail, name, SKU, effective price, stock status (colored).
-
-**Product card (list):** Row with thumbnail, name, SKU, type, price.
-
-**API:** `GET /api/restaurant/marketplace/catalog?search&type&featured&page&limit`
-
----
-
-### Product Detail (`/admin/marketplace/products/:id`)
-
-**Image gallery:** Main image + thumbnail strip (up to 5).
-
-**Info panel:**
-- Name, SKU, brand, tags
-- Price (with original + savings if discounted)
-- Stock status with available count
-- Compatibility badge (COMPATIBLE / PARTIAL / INCOMPATIBLE) + reasons
-
-**Add to Order button** — navigates to `/admin/marketplace/orders/new?productId=:id`
-
-**Description section** — full product description.
-
-**Specifications** — type, SKU, brand grid.
-
-**Supported Modules** — colored badges.
-
-**Supplier card** — company, country, star rating.
-
-**Related Products** — same category, 4 products.
-
-**API:** `GET /api/restaurant/marketplace/catalog/:id`
+**Views:** Grid (2–4 cols) ↔ List toggle. Pagination: 20/page.
 
 ---
 
-### Order Builder (`/admin/marketplace/orders/new`)
+### 3. Product Detail (`/admin/marketplace/products/[id]`)
 
-**Product search** — inline search with 300ms debounce, dropdown results, click to add.
+**Layout:** Left = image gallery · Right = info + CTA
 
-**Order items table:** Thumbnail, name, price/unit, quantity stepper (±), total, remove button.
-
-**Notes textarea** — passed to order on create.
-
-**Summary sidebar (sticky):**
-- Per-item breakdown
-- Subtotal
-- Save Draft button → creates order + adds items → redirects to order detail
-- Submit Order button → creates order + adds items + submits → redirects to order detail
-
-**No payment fields. No shipping fields.**
-
-**API flow:**
-1. `POST /api/restaurant/marketplace/orders` → creates DRAFT order
-2. `POST /api/restaurant/marketplace/orders/:id/items` (per item)
-3. `POST /api/restaurant/marketplace/orders/:id/submit` (on submit)
-
----
-
-### Order History (`/admin/marketplace/orders`)
-
-**Status filter bar** — scrollable chips for all 7 statuses + All.
-
-**Table:** Order #, Date (hidden on mobile), Status badge, Total, View link.
-
-**New Order button** → `/admin/marketplace/orders/new`
-
-**API:** `GET /api/restaurant/marketplace/orders?status&page&limit`
+**Sections:**
+- Aspect-square gallery with prev/next arrows + thumbnail strip
+- Type · Name · Brand · SKU
+- Effective price + crossed-out original
+- Stock status badge (In Stock / Low Stock / Out of Stock + unit count)
+- **Compatibility badge** — COMPATIBLE / PARTIAL / INCOMPATIBLE with score % and reason list
+- "Add to Order" CTA → `/orders/new?productId=:id`
+- Shipping placeholder
+- Supplier card (name, email, phone)
+- Description
+- Specs (from `metadata.specs` JSON)
+- Compatible SmartSuite Modules
+- Tags
+- **Bundles Including This** — filtered from bundle list
+- **Related Products** — 4-column grid
 
 ---
 
-### Order Detail (`/admin/marketplace/orders/:id`)
+### 4. Bundle List (`/admin/marketplace/bundles`)
 
-**Progress timeline** — 5 steps: DRAFT → SUBMITTED → UNDER_REVIEW → APPROVED → FULFILLED. Green for past, emerald dot for current. Hidden for REJECTED/CANCELLED.
+Gradient cards by type:
+| Type | Color |
+|------|-------|
+| STARTER | Emerald |
+| PROFESSIONAL | Blue |
+| PREMIUM | Purple |
+| CUSTOM | Gray |
 
-**Rejection/Cancellation notice** — red alert banner with reason.
-
-**Items table:** Product name, SKU, quantity, unit price, total.
-
-**Notes panel** (if any).
-
-**Totals sidebar:** Subtotal, Discount, Tax, Grand Total.
-
-**Cancel button** — visible for DRAFT and SUBMITTED orders only. Calls `POST /api/restaurant/marketplace/orders/:id/cancel`.
-
-**API:**
-- `GET /api/restaurant/marketplace/orders/:id`
-- `POST /api/restaurant/marketplace/orders/:id/cancel`
+Each shows: type · name · description · product count · savings badge · price · "Bundle Details" link.
 
 ---
 
-## Backend API Routes
+### 5. Bundle Detail (`/admin/marketplace/bundles/[id]`)
 
-All routes require `Authorization: Bearer <token>` (JWT with `cafeId`).
+- Hero card: type, name, description, count, savings
+- Pricing sidebar: individual total (crossed out) · bundle price · savings · "Order This Bundle"
+- Included products list: numbered, thumbnail, name, SKU, stock, price
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/api/restaurant/marketplace/flag` | Feature flag status |
-| GET | `/api/restaurant/marketplace/categories` | Active categories |
-| GET | `/api/restaurant/marketplace/catalog` | Paginated product list |
-| GET | `/api/restaurant/marketplace/catalog/:id` | Product detail with related |
-| GET | `/api/restaurant/marketplace/featured` | Featured products (tag=featured) |
-| GET | `/api/restaurant/marketplace/recent` | Recently added products |
-| GET | `/api/restaurant/marketplace/low-stock-deals` | Low stock products |
-| GET | `/api/restaurant/marketplace/recommendations` | AI recommendations |
-| POST | `/api/restaurant/marketplace/recommendations/:logId/accept` | Log acceptance |
-| POST | `/api/restaurant/marketplace/recommendations/:logId/dismiss` | Log dismissal |
-| GET | `/api/restaurant/marketplace/bundles` | Active bundles with products |
-| POST | `/api/restaurant/marketplace/bundles/:id/view` | Track bundle view event |
-| GET | `/api/restaurant/marketplace/alerts` | Smart alerts for this cafe |
-| GET | `/api/restaurant/marketplace/widget` | Dashboard widget data |
-| GET | `/api/restaurant/marketplace/compatibility/:productId` | Product compatibility check |
-
-Order management routes (from Epic 2):
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | `/api/restaurant/marketplace/orders` | Create DRAFT order |
-| POST | `/api/restaurant/marketplace/orders/:id/items` | Add item |
-| DELETE | `/api/restaurant/marketplace/orders/:id/items/:itemId` | Remove item |
-| POST | `/api/restaurant/marketplace/orders/:id/submit` | Submit for review |
-| POST | `/api/restaurant/marketplace/orders/:id/cancel` | Cancel |
-| GET | `/api/restaurant/marketplace/orders` | Order list with filters |
-| GET | `/api/restaurant/marketplace/orders/:id` | Order detail with items |
+**Order Bundle:** navigates to `/orders/new?productId=...&bundleId=:id` — all products pre-loaded.
 
 ---
 
-## Design System
+### 6. Order Builder (`/admin/marketplace/orders/new`)
 
-- **Theme:** Light (bg-white, bg-gray-50)
-- **RTL:** `useLang()` from `app/admin/lang-context.tsx` → `isRTL` → `dir={isRTL ? 'rtl' : 'ltr'}`
-- **Language:** Arabic (default) ↔ English via `useLang()` context
-- **Auth:** `localStorage.getItem('token')` → `Authorization: Bearer ${token}`
-- **Icons:** lucide-react only
-- **Accent:** emerald-600 as primary action color
+- Product search (debounced 300ms) → dropdown results
+- Cart: thumbnail · name · SKU · unit price · qty stepper · line total · remove
+- Notes textarea
+- Sticky summary: subtotal · Save Draft · Submit Order
+- **Duplicate Previous Order** — modal listing last FULFILLED orders
+
+**Pre-load via URL:**
+- `?productId=:id` → single product
+- `?productId=...&bundleId=:id` → bundle products
+
+**Submit flow:**
+1. POST `/orders` → `orderId`
+2. POST `/orders/:id/items`
+3. POST `/orders/:id/submit` (if submit selected)
+4. Redirect to `/orders/:id`
 
 ---
 
-## Feature Flag Gate
+### 7. Order History (`/admin/marketplace/orders`)
 
-The marketplace nav item fetches `GET /api/restaurant/marketplace/flag` on mount.  
-Returns `{ enabled: boolean }` — `true` only when the `marketplace` feature flag has status `'enabled'`.
+**Filters:** Search · Date range (from/to) · Status chips
 
-SuperAdmins enable the flag via the Feature Flags page in the SuperAdmin console.
+**Views:**
+- **Timeline** (default) — card per order with 5-step progress bar (DRAFT → SUBMITTED → UNDER REVIEW → APPROVED → FULFILLED). Rejected/Cancelled shown as terminal with red label.
+- **List** — compact table with status badge, date, total.
+
+**Pagination:** 12/page.
+
+---
+
+### 8. Order Detail (`/admin/marketplace/orders/[id]`)
+
+- Header: order number, date, status badge
+- Timeline: 5-step with active step glow (`shadow-[0_0_12px_rgba(16,185,129,0.3)]`)
+- Items table: name (links to product) · SKU · qty · unit price · total
+- Notes
+- Reorder button (→ `/orders/new?reorder=:id`)
+- Cancel button (DRAFT/SUBMITTED only)
+- Summary sidebar: subtotal · discount · tax · grand total
+
+---
+
+### 9. Notifications (`/admin/marketplace/notifications`)
+
+- Lists `coreNotification` records where `module = 'MARKETPLACE'` and `targetId = cafeId`
+- Tabs: All · Unread · Read
+- Unread count badge
+- Mark individual read (click)
+- Mark all read button
+- "View Order" link parsed from `metadata.orderId` or `entityId`
+
+**Notification events:**
+| Trigger | Level |
+|---------|-------|
+| PaymentCreated | INFO |
+| PaymentSucceeded | SUCCESS |
+| MarketplaceOrderApproved | SUCCESS |
+| Order Rejected | WARNING |
+| Order Fulfilled | SUCCESS |
+
+---
+
+## Order Status Lifecycle (restaurant view)
+
+```
+DRAFT → SUBMITTED → UNDER_REVIEW → APPROVED → FULFILLED
+                                 ↘ REJECTED  (terminal)
+DRAFT / SUBMITTED → CANCELLED    (restaurant-initiated)
+```
+
+---
+
+## Future: Payment UI
+
+Phase planned post-V1:
+1. "Payment Required" banner on Order Detail after approval
+2. Payment method selection (Cash / Bank Transfer)
+3. SuperAdmin validates → "Payment Confirmed" notification
+4. Order moves to "Ready for Fulfillment"
+
+---
+
+## Future: Shipping UI
+
+Phase planned post-V1:
+1. Supplier ships → tracking number on Order Detail
+2. "In Transit" timeline step
+3. Delivery confirmed → FULFILLED
+
+---
+
+## Quality Rules
+
+- No online payments.
+- No shipping.
+- No customer checkout.
+- No duplicated logic — all data via existing Marketplace APIs.
+- RTL first (`dir={isRTL ? 'rtl' : 'ltr'}`).
+- Arabic default.
+- Dark theme throughout.
+- Skeleton loading on all data-fetching sections.
+- Empty states with icon + message + CTA.
+- Error recovery with retry buttons.

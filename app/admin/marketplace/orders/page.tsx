@@ -2,180 +2,316 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
-import { ShoppingCart, RefreshCw, Plus, ChevronLeft, ChevronRight } from 'lucide-react'
+import {
+  ShoppingCart, RefreshCw, Plus, ChevronLeft, ChevronRight,
+  Clock, CheckCircle, XCircle, Send, FileText, Package, Search,
+  Grid3X3, List, Calendar,
+} from 'lucide-react'
 import { useLang } from '../../lang-context'
 
 interface Order {
   id: string; orderNumber: string; status: string; module: string
-  total: number; createdAt: string; notes?: string
+  total: number; createdAt: string; notes?: string; itemCount?: number
 }
 
 const T = {
   ar: {
     title: 'طلباتي', newOrder: 'طلب جديد', refresh: 'تحديث',
-    order: 'الطلب', status: 'الحالة', total: 'الإجمالي', date: 'التاريخ', view: 'عرض',
-    noOrders: 'لا توجد طلبات بعد', all: 'الكل',
+    order: 'الطلب رقم', status: 'الحالة', total: 'الإجمالي', date: 'التاريخ',
+    items: 'منتجات', view: 'عرض',
+    noOrders: 'لا توجد طلبات', noOrdersHint: 'ابدأ بإنشاء طلب شراء جديد',
+    all: 'الكل', search: 'ابحث عن طلب...', from: 'من', to: 'إلى',
     prev: 'السابق', next: 'التالي', of: 'من',
-    currency: 'د.م.',
+    currency: 'د.م.', timelineView: 'عرض الجدول الزمني', listView: 'عرض القائمة',
+    timeline: {
+      DRAFT: 'مسودة', SUBMITTED: 'مُرسل', UNDER_REVIEW: 'قيد المراجعة',
+      APPROVED: 'معتمد', REJECTED: 'مرفوض', FULFILLED: 'مُنجز', CANCELLED: 'ملغى',
+    } as Record<string,string>,
     STATUS: {
       DRAFT:'مسودة', SUBMITTED:'مُرسل', UNDER_REVIEW:'قيد المراجعة',
       APPROVED:'معتمد', REJECTED:'مرفوض', CANCELLED:'ملغى', FULFILLED:'مُنجز'
     } as Record<string,string>,
-    BADGE: {
-      DRAFT:'bg-gray-100 text-gray-600', SUBMITTED:'bg-amber-100 text-amber-700',
-      UNDER_REVIEW:'bg-blue-100 text-blue-700', APPROVED:'bg-emerald-100 text-emerald-700',
-      REJECTED:'bg-red-100 text-red-700', CANCELLED:'bg-red-50 text-red-500',
-      FULFILLED:'bg-emerald-50 text-emerald-600'
-    } as Record<string,string>,
   },
   en: {
     title: 'My Orders', newOrder: 'New Order', refresh: 'Refresh',
-    order: 'Order', status: 'Status', total: 'Total', date: 'Date', view: 'View',
-    noOrders: 'No orders yet', all: 'All',
+    order: 'Order', status: 'Status', total: 'Total', date: 'Date',
+    items: 'items', view: 'View',
+    noOrders: 'No orders yet', noOrdersHint: 'Start by creating a new purchase order',
+    all: 'All', search: 'Search orders...', from: 'From', to: 'To',
     prev: 'Prev', next: 'Next', of: 'of',
-    currency: 'MAD',
+    currency: 'MAD', timelineView: 'Timeline View', listView: 'List View',
+    timeline: {
+      DRAFT: 'Draft', SUBMITTED: 'Submitted', UNDER_REVIEW: 'Under Review',
+      APPROVED: 'Approved', REJECTED: 'Rejected', FULFILLED: 'Fulfilled', CANCELLED: 'Cancelled',
+    } as Record<string,string>,
     STATUS: {
       DRAFT:'Draft', SUBMITTED:'Submitted', UNDER_REVIEW:'Under Review',
       APPROVED:'Approved', REJECTED:'Rejected', CANCELLED:'Cancelled', FULFILLED:'Fulfilled'
-    } as Record<string,string>,
-    BADGE: {
-      DRAFT:'bg-gray-100 text-gray-600', SUBMITTED:'bg-amber-100 text-amber-700',
-      UNDER_REVIEW:'bg-blue-100 text-blue-700', APPROVED:'bg-emerald-100 text-emerald-700',
-      REJECTED:'bg-red-100 text-red-700', CANCELLED:'bg-red-50 text-red-500',
-      FULFILLED:'bg-emerald-50 text-emerald-600'
     } as Record<string,string>,
   },
 }
 
 const STATUSES = ['DRAFT','SUBMITTED','UNDER_REVIEW','APPROVED','REJECTED','CANCELLED','FULFILLED']
 
-function authHeader() { return { Authorization: `Bearer ${localStorage.getItem('token')}` } }
+const STATUS_STYLE: Record<string,string> = {
+  DRAFT:       'bg-gray-700/60 text-gray-300',
+  SUBMITTED:   'bg-amber-900/50 text-amber-300',
+  UNDER_REVIEW:'bg-blue-900/50 text-blue-300',
+  APPROVED:    'bg-emerald-900/50 text-emerald-300',
+  REJECTED:    'bg-red-900/50 text-red-300',
+  CANCELLED:   'bg-gray-800 text-gray-500',
+  FULFILLED:   'bg-emerald-900/30 text-emerald-400',
+}
+
+const STATUS_ICON: Record<string,any> = {
+  DRAFT: FileText, SUBMITTED: Send, UNDER_REVIEW: Clock,
+  APPROVED: CheckCircle, REJECTED: XCircle, CANCELLED: XCircle, FULFILLED: Package,
+}
+
+// Timeline steps (ordered progression)
+const TIMELINE_STEPS = ['DRAFT','SUBMITTED','UNDER_REVIEW','APPROVED','FULFILLED']
+
+function authHeader() { return { Authorization: `Bearer ${localStorage.getItem('token') ?? ''}` } }
+function fmt(n: number, cur = 'د.م.') { return `${cur} ${n.toLocaleString('ar-MA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` }
+
+function Skeleton({ className = '' }: { className?: string }) {
+  return <div className={`animate-pulse bg-gray-800 rounded-xl ${className}`} />
+}
+
+function TimelineCard({ order, t }: { order: Order; t: typeof T.ar }) {
+  const isTerminal = ['REJECTED','CANCELLED'].includes(order.status)
+  const activeIdx  = isTerminal ? -1 : TIMELINE_STEPS.indexOf(order.status)
+  const StatusIcon = STATUS_ICON[order.status] ?? Clock
+
+  return (
+    <Link href={`/admin/marketplace/orders/${order.id}`}
+      className="block bg-gray-900 border border-gray-800 rounded-2xl p-5 hover:border-gray-600 transition-all">
+      {/* Header */}
+      <div className="flex items-start justify-between mb-4">
+        <div>
+          <p className="text-xs text-gray-500 mb-0.5">{new Date(order.createdAt).toLocaleDateString(t.currency === 'د.م.' ? 'ar-MA' : 'en-GB')}</p>
+          <h3 className="text-sm font-semibold text-gray-100">{order.orderNumber}</h3>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${STATUS_STYLE[order.status] ?? STATUS_STYLE.DRAFT}`}>
+            {t.STATUS[order.status] ?? order.status}
+          </span>
+          <span className="text-sm font-bold text-white">{fmt(order.total, t.currency)}</span>
+        </div>
+      </div>
+
+      {/* Timeline bar */}
+      {isTerminal ? (
+        <div className={`flex items-center gap-2 text-xs ${order.status === 'REJECTED' ? 'text-red-400' : 'text-gray-500'}`}>
+          <XCircle className="w-3.5 h-3.5" />
+          {t.STATUS[order.status]}
+          {order.notes && <span className="text-gray-500 truncate"> · {order.notes}</span>}
+        </div>
+      ) : (
+        <div className="flex items-center gap-0">
+          {TIMELINE_STEPS.map((step, i) => {
+            const done    = i <= activeIdx
+            const current = i === activeIdx
+            const Icon    = STATUS_ICON[step] ?? Clock
+            return (
+              <div key={step} className="flex items-center flex-1 last:flex-none">
+                {/* Step circle */}
+                <div className={`flex flex-col items-center gap-1 shrink-0`}>
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center border-2 transition-all ${
+                    current ? 'border-emerald-500 bg-emerald-500/20 text-emerald-400'
+                    : done   ? 'border-emerald-700 bg-emerald-900/40 text-emerald-500'
+                    :          'border-gray-700 bg-gray-800 text-gray-600'
+                  }`}>
+                    <Icon className="w-3 h-3" />
+                  </div>
+                  <span className={`text-xs whitespace-nowrap ${current ? 'text-emerald-400' : done ? 'text-gray-400' : 'text-gray-600'}`}>
+                    {t.timeline[step]}
+                  </span>
+                </div>
+                {/* Connector line */}
+                {i < TIMELINE_STEPS.length - 1 && (
+                  <div className={`h-0.5 flex-1 mx-1 mb-4 ${i < activeIdx ? 'bg-emerald-700' : 'bg-gray-700'}`} />
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </Link>
+  )
+}
 
 export default function OrdersPage() {
   const { lang, isRTL } = useLang()
   const t = T[lang as 'ar' | 'en'] ?? T.ar
 
-  const [orders, setOrders]   = useState<Order[]>([])
-  const [total, setTotal]     = useState(0)
-  const [page, setPage]       = useState(1)
-  const [status, setStatus]   = useState('')
+  const [orders,  setOrders]  = useState<Order[]>([])
+  const [total,   setTotal]   = useState(0)
+  const [page,    setPage]    = useState(1)
   const [loading, setLoading] = useState(true)
-  const LIMIT = 15
+  const [view,    setView]    = useState<'timeline' | 'list'>('timeline')
 
-  const load = useCallback(async (pg = 1, st = '') => {
+  const [status,  setStatus]  = useState('')
+  const [search,  setSearch]  = useState('')
+  const [dateFrom,setDateFrom]= useState('')
+  const [dateTo,  setDateTo]  = useState('')
+
+  const limit = 12
+
+  const load = useCallback(async () => {
     setLoading(true)
     try {
-      const qs = new URLSearchParams({ page: String(pg), limit: String(LIMIT) })
-      if (st) qs.set('status', st)
-      const res  = await fetch(`/api/restaurant/marketplace/orders?${qs}`, { headers: authHeader() })
-      const json = await res.json()
-      setOrders(json.orders ?? [])
-      setTotal(json.total ?? 0)
-    } finally { setLoading(false) }
-  }, [])
+      const q = new URLSearchParams()
+      if (status)   q.set('status', status)
+      if (search)   q.set('q', search)
+      if (dateFrom) q.set('from', dateFrom)
+      if (dateTo)   q.set('to', dateTo)
+      q.set('page', String(page))
+      q.set('limit', String(limit))
+      const res  = await fetch(`/api/restaurant/marketplace/orders?${q}`, { headers: authHeader() })
+      const data = await res.json()
+      setOrders(data.orders ?? [])
+      setTotal(data.total ?? 0)
+    } catch {}
+    setLoading(false)
+  }, [status, search, dateFrom, dateTo, page])
 
-  useEffect(() => { load(1, status) }, [status])
+  useEffect(() => { load() }, [load])
 
-  const totalPages = Math.ceil(total / LIMIT)
-  const currency   = t.currency
+  const totalPages = Math.ceil(total / limit)
 
   return (
-    <div className="min-h-full p-4 md:p-6" dir={isRTL ? 'rtl' : 'ltr'}>
-      {/* Header */}
+    <div>
+      {/* ── Header ──────────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between mb-5">
-        <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-          <ShoppingCart className="w-5 h-5 text-emerald-600" />{t.title}
-        </h1>
         <div className="flex items-center gap-2">
-          <button onClick={() => load(page, status)} disabled={loading}
-            className="p-2 bg-white border border-gray-200 rounded-xl hover:bg-gray-50">
-            <RefreshCw className={`w-4 h-4 text-gray-500 ${loading ? 'animate-spin' : ''}`} />
+          <ShoppingCart className="w-5 h-5 text-emerald-400" />
+          <h1 className="text-xl font-bold text-white">{t.title}</h1>
+          {total > 0 && <span className="text-xs bg-gray-700 text-gray-300 px-2 py-0.5 rounded-full">{total}</span>}
+        </div>
+        <div className="flex items-center gap-2">
+          {/* View toggle */}
+          <div className="flex border border-gray-700 rounded-xl overflow-hidden">
+            <button onClick={() => setView('timeline')}
+              className={`px-3 py-2 text-xs transition-colors ${view === 'timeline' ? 'bg-gray-700 text-white' : 'text-gray-400 hover:text-gray-200'}`}>
+              <Grid3X3 className="w-3.5 h-3.5" />
+            </button>
+            <button onClick={() => setView('list')}
+              className={`px-3 py-2 text-xs border-s border-gray-700 transition-colors ${view === 'list' ? 'bg-gray-700 text-white' : 'text-gray-400 hover:text-gray-200'}`}>
+              <List className="w-3.5 h-3.5" />
+            </button>
+          </div>
+          <button onClick={load} disabled={loading}
+            className="p-2 rounded-xl bg-gray-800 border border-gray-700 text-gray-400 hover:text-gray-200 transition-colors">
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
           <Link href="/admin/marketplace/orders/new"
-            className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 text-white text-sm font-semibold rounded-xl hover:bg-emerald-700">
-            <Plus className="w-4 h-4" />{t.newOrder}
+            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors">
+            <Plus className="w-4 h-4" /> {t.newOrder}
           </Link>
         </div>
       </div>
 
-      {/* Status filter */}
-      <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
+      {/* ── Filters ──────────────────────────────────────────────────────────── */}
+      <div className="flex flex-wrap gap-3 mb-5">
+        {/* Search */}
+        <div className="relative flex-1 min-w-40">
+          <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" />
+          <input value={search} onChange={e => { setSearch(e.target.value); setPage(1) }} placeholder={t.search}
+            className="w-full bg-gray-900 border border-gray-700 rounded-xl ps-9 pe-3 py-2 text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500" />
+        </div>
+        {/* Date from */}
+        <div className="flex items-center gap-1.5">
+          <Calendar className="w-3.5 h-3.5 text-gray-500 shrink-0" />
+          <input type="date" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setPage(1) }}
+            className="bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-emerald-500" />
+        </div>
+        <span className="text-gray-600 self-center">—</span>
+        <input type="date" value={dateTo} onChange={e => { setDateTo(e.target.value); setPage(1) }}
+          className="bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-emerald-500" />
+      </div>
+
+      {/* ── Status Chips ─────────────────────────────────────────────────────── */}
+      <div className="flex gap-2 mb-6 flex-wrap">
         <button onClick={() => { setStatus(''); setPage(1) }}
-          className={`px-3 py-1.5 rounded-xl text-xs font-medium shrink-0 ${!status ? 'bg-gray-800 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}>
+          className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${!status ? 'bg-emerald-700 text-white' : 'bg-gray-800 text-gray-400 hover:text-gray-200'}`}>
           {t.all}
         </button>
         {STATUSES.map(s => (
           <button key={s} onClick={() => { setStatus(s); setPage(1) }}
-            className={`px-3 py-1.5 rounded-xl text-xs font-medium shrink-0 ${status === s ? 'bg-gray-800 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}>
+            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${status === s ? 'bg-emerald-700 text-white' : `${STATUS_STYLE[s]} hover:opacity-80`}`}>
             {t.STATUS[s]}
           </button>
         ))}
       </div>
 
-      {/* Table */}
+      {/* ── Content ──────────────────────────────────────────────────────────── */}
       {loading ? (
-        <div className="flex items-center justify-center py-16">
-          <RefreshCw className="w-6 h-6 animate-spin text-emerald-500" />
+        <div className={view === 'timeline' ? 'grid md:grid-cols-2 gap-4' : 'space-y-3'}>
+          {[0,1,2,3,4,5].map(i => <Skeleton key={i} className={view === 'timeline' ? 'h-36' : 'h-16'} />)}
         </div>
       ) : orders.length === 0 ? (
-        <div className="text-center py-16 text-gray-400">
-          <ShoppingCart className="w-10 h-10 mx-auto mb-3 opacity-30" />
-          <p>{t.noOrders}</p>
+        <div className="text-center py-16">
+          <ShoppingCart className="w-12 h-12 text-gray-700 mx-auto mb-3" />
+          <p className="text-gray-400 text-sm">{t.noOrders}</p>
+          <p className="text-gray-600 text-xs mt-1">{t.noOrdersHint}</p>
           <Link href="/admin/marketplace/orders/new"
-            className="mt-4 inline-flex items-center gap-1 text-sm text-emerald-600 font-medium">
-            <Plus className="w-4 h-4" />{t.newOrder}
+            className="mt-4 inline-flex items-center gap-2 bg-emerald-700 hover:bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm transition-colors">
+            <Plus className="w-4 h-4" /> {t.newOrder}
           </Link>
         </div>
+      ) : view === 'timeline' ? (
+        <div className="grid md:grid-cols-2 gap-4">
+          {orders.map(o => <TimelineCard key={o.id} order={o} t={t} />)}
+        </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-50 text-xs text-gray-400">
-                <th className="px-4 py-3 text-start">{t.order}</th>
-                <th className="px-4 py-3 text-start hidden sm:table-cell">{t.date}</th>
-                <th className="px-4 py-3 text-center">{t.status}</th>
-                <th className="px-4 py-3 text-end">{t.total}</th>
-                <th className="px-4 py-3 w-16" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {orders.map(order => (
-                <tr key={order.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-3 font-semibold text-gray-700">{order.orderNumber}</td>
-                  <td className="px-4 py-3 text-gray-400 text-xs hidden sm:table-cell">
-                    {new Date(order.createdAt).toLocaleDateString(lang === 'ar' ? 'ar-MA' : 'en-GB')}
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${t.BADGE[order.status] ?? 'bg-gray-100 text-gray-600'}`}>
-                      {t.STATUS[order.status] ?? order.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-end font-bold text-gray-800">
-                    {order.total.toFixed(2)} {currency}
-                  </td>
-                  <td className="px-4 py-3 text-end">
-                    <Link href={`/admin/marketplace/orders/${order.id}`}
-                      className="text-xs text-emerald-600 font-medium hover:underline">{t.view}</Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+          <div className="grid grid-cols-5 gap-4 px-5 py-2.5 border-b border-gray-800 text-xs text-gray-500 font-medium uppercase tracking-wide">
+            <span className="col-span-2">{t.order}</span>
+            <span>{t.status}</span>
+            <span>{t.date}</span>
+            <span className="text-end">{t.total}</span>
+          </div>
+          {orders.map((o, i) => {
+            const StatusIcon = STATUS_ICON[o.status] ?? Clock
+            return (
+              <Link key={o.id} href={`/admin/marketplace/orders/${o.id}`}
+                className={`grid grid-cols-5 gap-4 px-5 py-3.5 hover:bg-gray-800/60 transition-colors ${i > 0 ? 'border-t border-gray-800' : ''}`}>
+                <div className="col-span-2 flex items-center gap-2">
+                  <StatusIcon className="w-4 h-4 text-gray-500 shrink-0" />
+                  <span className="text-sm text-gray-200 font-medium">{o.orderNumber}</span>
+                </div>
+                <div>
+                  <span className={`text-xs px-2.5 py-1 rounded-full ${STATUS_STYLE[o.status] ?? STATUS_STYLE.DRAFT}`}>
+                    {t.STATUS[o.status] ?? o.status}
+                  </span>
+                </div>
+                <span className="text-sm text-gray-400 self-center">
+                  {new Date(o.createdAt).toLocaleDateString(t.currency === 'د.م.' ? 'ar-MA' : 'en-GB')}
+                </span>
+                <span className="text-sm font-bold text-white text-end self-center">{fmt(o.total, t.currency)}</span>
+              </Link>
+            )
+          })}
         </div>
       )}
 
-      {/* Pagination */}
+      {/* ── Pagination ─────────────────────────────────────────────────────────── */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2 mt-5">
-          <button onClick={() => { setPage(p => p - 1); load(page - 1, status) }} disabled={page === 1}
-            className="p-2 rounded-xl bg-white border border-gray-200 text-gray-500 disabled:opacity-40">
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-          <span className="text-sm text-gray-600">{page} {t.of} {totalPages}</span>
-          <button onClick={() => { setPage(p => p + 1); load(page + 1, status) }} disabled={page === totalPages}
-            className="p-2 rounded-xl bg-white border border-gray-200 text-gray-500 disabled:opacity-40">
-            <ChevronRight className="w-4 h-4" />
-          </button>
+        <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-800">
+          <span className="text-xs text-gray-500">{page} {t.of} {totalPages}</span>
+          <div className="flex gap-2">
+            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}
+              className="flex items-center gap-1 px-3 py-2 rounded-lg text-sm bg-gray-800 text-gray-300 disabled:opacity-40 hover:bg-gray-700 transition-colors">
+              {isRTL ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+              {t.prev}
+            </button>
+            <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages}
+              className="flex items-center gap-1 px-3 py-2 rounded-lg text-sm bg-gray-800 text-gray-300 disabled:opacity-40 hover:bg-gray-700 transition-colors">
+              {t.next}
+              {isRTL ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+            </button>
+          </div>
         </div>
       )}
     </div>

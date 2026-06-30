@@ -1,9 +1,12 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, ShoppingCart, Package, RefreshCw, CheckCircle, XCircle, Clock, Send, AlertTriangle } from 'lucide-react'
+import {
+  ArrowLeft, ShoppingCart, Package, RefreshCw, CheckCircle, XCircle,
+  Clock, Send, AlertTriangle, FileText, ChevronRight, Copy,
+} from 'lucide-react'
 import { useLang } from '../../../lang-context'
 
 interface OrderItem {
@@ -14,236 +17,278 @@ interface OrderItem {
 interface Order {
   id: string; orderNumber: string; status: string; module: string
   total: number; subtotal: number; discount: number; tax: number
-  notes?: string; createdAt: string; updatedAt: string
-  requestedBy: string; approvedBy?: string; supplierId?: string; currency: string
+  notes?: string; rejectionReason?: string
+  createdAt: string; updatedAt: string
+  requestedBy: string; approvedBy?: string; currency: string
+  items?: OrderItem[]
 }
 
 const T = {
   ar: {
-    back: 'رجوع', order: 'الطلب', status: 'الحالة', date: 'التاريخ',
+    back: 'طلباتي', order: 'تفاصيل الطلب', status: 'الحالة', date: 'التاريخ',
     items: 'المنتجات', name: 'المنتج', qty: 'الكمية', price: 'السعر', total: 'الإجمالي',
     subtotal: 'المجموع', discount: 'الخصم', tax: 'الضريبة', grandTotal: 'الإجمالي الكلي',
     notes: 'الملاحظات', cancel: 'إلغاء الطلب', confirmCancel: 'هل تريد إلغاء هذا الطلب؟',
     loading: 'جاري التحميل...', notFound: 'الطلب غير موجود',
-    currency: 'د.م.',
+    reorder: 'إعادة الطلب', currency: 'د.م.',
+    rejection: 'سبب الرفض',
     STATUS: {
       DRAFT:'مسودة', SUBMITTED:'مُرسل', UNDER_REVIEW:'قيد المراجعة',
       APPROVED:'معتمد', REJECTED:'مرفوض', CANCELLED:'ملغى', FULFILLED:'مُنجز'
     } as Record<string,string>,
-    BADGE: {
-      DRAFT:'bg-gray-100 text-gray-600', SUBMITTED:'bg-amber-100 text-amber-700',
-      UNDER_REVIEW:'bg-blue-100 text-blue-700', APPROVED:'bg-emerald-100 text-emerald-700',
-      REJECTED:'bg-red-100 text-red-700', CANCELLED:'bg-red-50 text-red-500',
-      FULFILLED:'bg-emerald-50 text-emerald-600'
+    timeline: {
+      DRAFT:'مسودة', SUBMITTED:'مُرسل', UNDER_REVIEW:'مراجعة', APPROVED:'معتمد', FULFILLED:'مُنجز'
     } as Record<string,string>,
   },
   en: {
-    back: 'Back', order: 'Order', status: 'Status', date: 'Date',
-    items: 'Items', name: 'Product', qty: 'Qty', price: 'Price', total: 'Total',
+    back: 'My Orders', order: 'Order Details', status: 'Status', date: 'Date',
+    items: 'Items', name: 'Product', qty: 'Qty', price: 'Unit Price', total: 'Total',
     subtotal: 'Subtotal', discount: 'Discount', tax: 'Tax', grandTotal: 'Grand Total',
-    notes: 'Notes', cancel: 'Cancel Order', confirmCancel: 'Are you sure you want to cancel this order?',
+    notes: 'Notes', cancel: 'Cancel Order', confirmCancel: 'Cancel this order?',
     loading: 'Loading...', notFound: 'Order not found',
-    currency: 'MAD',
+    reorder: 'Reorder', currency: 'MAD',
+    rejection: 'Rejection Reason',
     STATUS: {
       DRAFT:'Draft', SUBMITTED:'Submitted', UNDER_REVIEW:'Under Review',
       APPROVED:'Approved', REJECTED:'Rejected', CANCELLED:'Cancelled', FULFILLED:'Fulfilled'
     } as Record<string,string>,
-    BADGE: {
-      DRAFT:'bg-gray-100 text-gray-600', SUBMITTED:'bg-amber-100 text-amber-700',
-      UNDER_REVIEW:'bg-blue-100 text-blue-700', APPROVED:'bg-emerald-100 text-emerald-700',
-      REJECTED:'bg-red-100 text-red-700', CANCELLED:'bg-red-50 text-red-500',
-      FULFILLED:'bg-emerald-50 text-emerald-600'
+    timeline: {
+      DRAFT:'Draft', SUBMITTED:'Submitted', UNDER_REVIEW:'Review', APPROVED:'Approved', FULFILLED:'Fulfilled'
     } as Record<string,string>,
   },
 }
 
-const TIMELINE = ['DRAFT', 'SUBMITTED', 'UNDER_REVIEW', 'APPROVED', 'FULFILLED']
+const STATUS_STYLE: Record<string,string> = {
+  DRAFT:'bg-gray-700 text-gray-300', SUBMITTED:'bg-amber-900/50 text-amber-300',
+  UNDER_REVIEW:'bg-blue-900/50 text-blue-300', APPROVED:'bg-emerald-900/50 text-emerald-300',
+  REJECTED:'bg-red-900/50 text-red-300', CANCELLED:'bg-gray-800 text-gray-500',
+  FULFILLED:'bg-emerald-900/30 text-emerald-400',
+}
+const TIMELINE_STEPS = ['DRAFT','SUBMITTED','UNDER_REVIEW','APPROVED','FULFILLED']
+const STEP_ICONS: Record<string,any> = {
+  DRAFT: FileText, SUBMITTED: Send, UNDER_REVIEW: Clock, APPROVED: CheckCircle, FULFILLED: Package,
+}
 
-function authHeader() { return { Authorization: `Bearer ${localStorage.getItem('token')}` } }
+function authHeader() { return { Authorization: `Bearer ${localStorage.getItem('token') ?? ''}` } }
+function fmt(n: number, cur = 'د.م.') { return `${cur} ${n.toLocaleString('ar-MA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` }
+
+function Skeleton({ className = '' }: { className?: string }) {
+  return <div className={`animate-pulse bg-gray-800 rounded-xl ${className}`} />
+}
 
 export default function OrderDetailPage() {
   const { lang, isRTL } = useLang()
   const t = T[lang as 'ar' | 'en'] ?? T.ar
-  const { id } = useParams<{ id: string }>()
+  const { id } = useParams() as { id: string }
+  const router = useRouter()
 
-  const [order, setOrder]   = useState<Order | null>(null)
-  const [items, setItems]   = useState<OrderItem[]>([])
+  const [order,   setOrder]   = useState<Order | null>(null)
   const [loading, setLoading] = useState(true)
-  const [acting, setActing] = useState(false)
-  const [message, setMessage] = useState('')
+  const [toast,   setToast]   = useState<string | null>(null)
 
-  function load() {
+  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 2500) }
+
+  const load = async () => {
     setLoading(true)
-    fetch(`/api/restaurant/marketplace/orders/${id}`, { headers: authHeader() })
-      .then(r => r.json())
-      .then(d => { setOrder(d.order ?? null); setItems(d.items ?? []) })
-      .finally(() => setLoading(false))
-  }
-
-  useEffect(() => { load() }, [id])
-
-  async function cancelOrder() {
-    if (!confirm(t.confirmCancel)) return
-    setActing(true)
     try {
-      const res = await fetch(`/api/restaurant/marketplace/orders/${id}/cancel`, {
-        method: 'POST', headers: authHeader(),
-      })
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.error)
-      setMessage('تم إلغاء الطلب')
-      load()
-    } catch (err: any) { setMessage(err.message) } finally { setActing(false) }
+      const res  = await fetch(`/api/restaurant/marketplace/orders/${id}`, { headers: authHeader() })
+      const data = await res.json()
+      setOrder(data.order ?? null)
+    } catch {}
+    setLoading(false)
   }
 
-  if (loading) return (
-    <div className="flex items-center justify-center min-h-96">
-      <RefreshCw className="w-6 h-6 animate-spin text-emerald-500" />
-    </div>
-  )
-  if (!order) return (
-    <div className="text-center py-20 text-gray-400">
-      <ShoppingCart className="w-10 h-10 mx-auto mb-3 opacity-30" />
-      <p>{t.notFound}</p>
-      <Link href="/admin/marketplace/orders" className="mt-4 inline-block text-emerald-600 text-sm">{t.back}</Link>
-    </div>
-  )
+  useEffect(() => { if (id) load() }, [id])
 
-  const timelineIdx  = TIMELINE.indexOf(order.status)
-  const isFinal      = ['REJECTED', 'CANCELLED', 'FULFILLED'].includes(order.status)
-  const canCancel    = ['DRAFT', 'SUBMITTED'].includes(order.status)
-  const currency     = order.currency ?? t.currency
+  const handleCancel = async () => {
+    if (!confirm(t.confirmCancel)) return
+    try {
+      await fetch(`/api/restaurant/marketplace/orders/${id}/cancel`, { method: 'POST', headers: { ...authHeader(), 'Content-Type': 'application/json' } })
+      showToast(lang === 'ar' ? 'تم الإلغاء' : 'Cancelled')
+      load()
+    } catch { showToast(lang === 'ar' ? 'حدث خطأ' : 'Error') }
+  }
+
+  if (loading) {
+    return (
+      <div className="space-y-5">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-24" />
+        <Skeleton className="h-48" />
+      </div>
+    )
+  }
+
+  if (!order) {
+    return (
+      <div className="text-center py-16">
+        <ShoppingCart className="w-12 h-12 text-gray-600 mx-auto mb-3" />
+        <p className="text-gray-400">{t.notFound}</p>
+        <Link href="/admin/marketplace/orders" className="mt-4 inline-block text-emerald-400 text-sm">{t.back}</Link>
+      </div>
+    )
+  }
+
+  const isTerminal   = ['REJECTED','CANCELLED'].includes(order.status)
+  const canCancel    = ['DRAFT','SUBMITTED'].includes(order.status)
+  const activeStepIdx = isTerminal ? -1 : TIMELINE_STEPS.indexOf(order.status)
 
   return (
-    <div className="min-h-full p-4 md:p-6" dir={isRTL ? 'rtl' : 'ltr'}>
-      {/* Header */}
-      <div className="flex items-center gap-4 mb-6">
-        <Link href="/admin/marketplace/orders" className="p-2 bg-white border border-gray-200 rounded-xl hover:bg-gray-50">
-          <ArrowLeft className={`w-4 h-4 ${isRTL ? 'rotate-180' : ''}`} />
-        </Link>
-        <div className="flex-1">
-          <h1 className="text-lg font-bold text-gray-800">{order.orderNumber}</h1>
-          <p className="text-xs text-gray-400 mt-0.5">{new Date(order.createdAt).toLocaleDateString(lang === 'ar' ? 'ar-MA' : 'en-GB')}</p>
+    <div>
+      {/* ── Header ─────────────────────────────────────────────────────────────── */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <Link href="/admin/marketplace/orders"
+            className="p-2 rounded-lg bg-gray-800 border border-gray-700 text-gray-400 hover:text-gray-200 hover:bg-gray-700 transition-colors">
+            {isRTL ? <ChevronRight className="w-4 h-4" /> : <ArrowLeft className="w-4 h-4" />}
+          </Link>
+          <div>
+            <h1 className="text-lg font-bold text-white">{order.orderNumber}</h1>
+            <p className="text-xs text-gray-400">{new Date(order.createdAt).toLocaleString(lang === 'ar' ? 'ar-MA' : 'en-GB')}</p>
+          </div>
         </div>
-        <span className={`text-sm px-3 py-1.5 rounded-full font-semibold ${t.BADGE[order.status] ?? 'bg-gray-100 text-gray-600'}`}>
-          {t.STATUS[order.status] ?? order.status}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className={`text-sm px-3 py-1.5 rounded-full font-medium ${STATUS_STYLE[order.status] ?? STATUS_STYLE.DRAFT}`}>
+            {t.STATUS[order.status] ?? order.status}
+          </span>
+          <button onClick={load} className="p-2 rounded-lg bg-gray-800 border border-gray-700 text-gray-400 hover:text-gray-200 transition-colors">
+            <RefreshCw className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
-      {message && (
-        <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl text-sm">{message}</div>
-      )}
-
-      {/* Timeline */}
-      {!['REJECTED','CANCELLED'].includes(order.status) && (
-        <div className="bg-white rounded-2xl border border-gray-100 p-5 mb-5">
+      {/* ── Timeline ────────────────────────────────────────────────────────────── */}
+      <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 mb-6">
+        {isTerminal ? (
+          <div className={`flex items-center gap-3 ${order.status === 'REJECTED' ? 'text-red-400' : 'text-gray-500'}`}>
+            <XCircle className="w-5 h-5" />
+            <div>
+              <p className="text-sm font-medium">{t.STATUS[order.status]}</p>
+              {order.rejectionReason && (
+                <p className="text-xs opacity-80 mt-0.5">{t.rejection}: {order.rejectionReason}</p>
+              )}
+            </div>
+          </div>
+        ) : (
           <div className="flex items-center">
-            {TIMELINE.map((step, i) => {
-              const done    = i < timelineIdx || (i === timelineIdx && step === 'FULFILLED')
-              const current = i === timelineIdx
+            {TIMELINE_STEPS.map((step, i) => {
+              const done    = i <= activeStepIdx
+              const current = i === activeStepIdx
+              const Icon    = STEP_ICONS[step]
               return (
                 <div key={step} className="flex items-center flex-1 last:flex-none">
-                  <div className="flex flex-col items-center">
-                    <div className={`w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all ${
-                      done    ? 'border-emerald-500 bg-emerald-500' :
-                      current ? 'border-emerald-500 bg-white' :
-                                'border-gray-200 bg-white'
+                  <div className="flex flex-col items-center gap-1.5 shrink-0">
+                    <div className={`w-9 h-9 rounded-full flex items-center justify-center border-2 transition-all ${
+                      current ? 'border-emerald-500 bg-emerald-500/20 text-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.3)]'
+                      : done   ? 'border-emerald-700 bg-emerald-900/30 text-emerald-500'
+                      :          'border-gray-700 bg-gray-800 text-gray-600'
                     }`}>
-                      {done && <CheckCircle className="w-4 h-4 text-white" />}
-                      {current && !done && <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />}
+                      {done && !current ? <CheckCircle className="w-4 h-4" /> : <Icon className="w-4 h-4" />}
                     </div>
-                    <p className={`text-[10px] mt-1 text-center max-w-[56px] leading-tight ${current ? 'font-semibold text-emerald-600' : done ? 'text-gray-400' : 'text-gray-300'}`}>
-                      {t.STATUS[step]}
-                    </p>
+                    <span className={`text-xs text-center whitespace-nowrap ${current ? 'text-emerald-400 font-medium' : done ? 'text-gray-400' : 'text-gray-600'}`}>
+                      {t.timeline[step]}
+                    </span>
                   </div>
-                  {i < TIMELINE.length - 1 && (
-                    <div className={`flex-1 h-0.5 mx-1 mb-4 ${i < timelineIdx ? 'bg-emerald-500' : 'bg-gray-100'}`} />
+                  {i < TIMELINE_STEPS.length - 1 && (
+                    <div className={`h-0.5 flex-1 mx-2 mb-5 rounded-full ${i < activeStepIdx ? 'bg-emerald-600' : 'bg-gray-700'}`} />
                   )}
                 </div>
               )
             })}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
-      {/* Rejection / cancellation notice */}
-      {(order.status === 'REJECTED' || order.status === 'CANCELLED') && (
-        <div className="bg-red-50 border border-red-200 rounded-2xl p-4 mb-5 flex items-start gap-3">
-          <XCircle className="w-5 h-5 text-red-500 mt-0.5 shrink-0" />
-          <div>
-            <p className="font-semibold text-red-700">{t.STATUS[order.status]}</p>
-            {order.notes && <p className="text-sm text-red-600 mt-0.5">{order.notes}</p>}
-          </div>
-        </div>
-      )}
-
-      <div className="grid md:grid-cols-3 gap-5">
-        {/* Items */}
-        <div className="md:col-span-2">
-          <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-            <div className="px-5 py-3 border-b border-gray-50">
-              <h2 className="font-bold text-gray-800 flex items-center gap-2">
-                <Package className="w-4 h-4 text-gray-500" />{t.items}
-              </h2>
+      <div className="grid lg:grid-cols-3 gap-6">
+        {/* ── Items ────────────────────────────────────────────────────────────── */}
+        <div className="lg:col-span-2">
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+            <div className="px-5 py-3 border-b border-gray-800">
+              <h2 className="text-sm font-semibold text-gray-300">{t.items}</h2>
             </div>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-50 text-xs text-gray-400">
-                  <th className="px-5 py-3 text-start">{t.name}</th>
-                  <th className="px-5 py-3 text-center w-16">{t.qty}</th>
-                  <th className="px-5 py-3 text-end w-28">{t.price}</th>
-                  <th className="px-5 py-3 text-end w-28">{t.total}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {items.map(item => (
-                  <tr key={item.id}>
-                    <td className="px-5 py-3">
-                      <p className="font-semibold text-gray-700">{item.name}</p>
-                      <p className="text-xs text-gray-400">{item.sku}</p>
-                    </td>
-                    <td className="px-5 py-3 text-center text-gray-600">{item.quantity}</td>
-                    <td className="px-5 py-3 text-end text-gray-600">{item.unitPrice.toFixed(2)}</td>
-                    <td className="px-5 py-3 text-end font-bold text-gray-800">{item.total.toFixed(2)} {currency}</td>
-                  </tr>
+            {!order.items || order.items.length === 0 ? (
+              <div className="text-center py-8 text-gray-500 text-sm">{lang === 'ar' ? 'لا توجد منتجات' : 'No items'}</div>
+            ) : (
+              <>
+                <div className="grid grid-cols-5 gap-3 px-5 py-2 text-xs text-gray-500 font-medium uppercase tracking-wide border-b border-gray-800">
+                  <span className="col-span-2">{t.name}</span>
+                  <span className="text-center">{t.qty}</span>
+                  <span className="text-end">{t.price}</span>
+                  <span className="text-end">{t.total}</span>
+                </div>
+                {order.items.map((item, i) => (
+                  <div key={item.id} className={`grid grid-cols-5 gap-3 px-5 py-3 items-center ${i > 0 ? 'border-t border-gray-800' : ''}`}>
+                    <div className="col-span-2">
+                      <Link href={`/admin/marketplace/products/${item.productId}`}
+                        className="text-sm text-gray-200 hover:text-emerald-400 transition-colors font-medium line-clamp-1">{item.name}</Link>
+                      <p className="text-xs text-gray-500 mt-0.5">{item.sku}</p>
+                    </div>
+                    <span className="text-sm text-gray-300 text-center">{item.quantity}</span>
+                    <span className="text-sm text-gray-300 text-end">{fmt(item.unitPrice, t.currency)}</span>
+                    <span className="text-sm font-semibold text-white text-end">{fmt(item.total, t.currency)}</span>
+                  </div>
                 ))}
-              </tbody>
-            </table>
+              </>
+            )}
           </div>
 
           {/* Notes */}
           {order.notes && (
-            <div className="bg-white rounded-2xl border border-gray-100 p-5 mt-3">
-              <p className="text-xs font-semibold text-gray-400 mb-1">{t.notes}</p>
-              <p className="text-sm text-gray-700">{order.notes}</p>
+            <div className="mt-4 bg-gray-900 border border-gray-800 rounded-xl p-4">
+              <p className="text-xs text-gray-400 mb-1">{t.notes}</p>
+              <p className="text-sm text-gray-300">{order.notes}</p>
             </div>
           )}
+
+          {/* Actions */}
+          <div className="flex gap-3 mt-4">
+            <Link href={`/admin/marketplace/orders/new?reorder=${id}`}
+              className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 px-4 py-2.5 rounded-xl text-sm transition-colors">
+              <Copy className="w-4 h-4" /> {t.reorder}
+            </Link>
+            {canCancel && (
+              <button onClick={handleCancel}
+                className="flex items-center gap-2 bg-red-900/30 hover:bg-red-900/50 border border-red-800/50 text-red-400 px-4 py-2.5 rounded-xl text-sm transition-colors">
+                <XCircle className="w-4 h-4" /> {t.cancel}
+              </button>
+            )}
+          </div>
         </div>
 
-        {/* Sidebar: totals + actions */}
-        <div className="space-y-4">
-          <div className="bg-white rounded-2xl border border-gray-100 p-5">
-            <h2 className="font-bold text-gray-800 mb-4">{t.grandTotal}</h2>
-            <div className="space-y-2 text-sm text-gray-600">
-              <div className="flex justify-between"><span>{t.subtotal}</span><span>{order.subtotal.toFixed(2)} {currency}</span></div>
-              {order.discount > 0 && <div className="flex justify-between text-emerald-600"><span>{t.discount}</span><span>−{order.discount.toFixed(2)}</span></div>}
-              {order.tax > 0     && <div className="flex justify-between"><span>{t.tax}</span><span>+{order.tax.toFixed(2)}</span></div>}
+        {/* ── Summary sidebar ───────────────────────────────────────────────────── */}
+        <div>
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 space-y-3 sticky top-20">
+            <h2 className="text-sm font-semibold text-gray-300 mb-4">{t.order}</h2>
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-400">{t.subtotal}</span>
+              <span className="text-gray-200">{fmt(order.subtotal, t.currency)}</span>
             </div>
-            <div className="border-t border-gray-100 mt-3 pt-3 flex justify-between font-bold text-gray-900 text-base">
-              <span>{t.grandTotal}</span><span>{order.total.toFixed(2)} {currency}</span>
+            {order.discount > 0 && (
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-400">{t.discount}</span>
+                <span className="text-emerald-400">−{fmt(order.discount, t.currency)}</span>
+              </div>
+            )}
+            {order.tax > 0 && (
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-400">{t.tax}</span>
+                <span className="text-gray-200">{fmt(order.tax, t.currency)}</span>
+              </div>
+            )}
+            <div className="border-t border-gray-700 pt-3 flex justify-between">
+              <span className="text-base font-bold text-white">{t.grandTotal}</span>
+              <span className="text-base font-bold text-emerald-400">{fmt(order.total, t.currency)}</span>
             </div>
           </div>
-
-          {/* Cancel button */}
-          {canCancel && (
-            <button onClick={cancelOrder} disabled={acting}
-              className="w-full flex items-center justify-center gap-2 py-3 bg-red-50 border border-red-200 text-red-600 rounded-xl font-semibold hover:bg-red-100 transition-colors disabled:opacity-40">
-              {acting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
-              {t.cancel}
-            </button>
-          )}
         </div>
       </div>
+
+      {/* ── Toast ──────────────────────────────────────────────────────────────── */}
+      {toast && (
+        <div className="fixed bottom-6 inset-x-0 flex justify-center z-50 pointer-events-none">
+          <div className="bg-emerald-700 text-white text-sm px-5 py-3 rounded-full shadow-xl">{toast}</div>
+        </div>
+      )}
     </div>
   )
 }
