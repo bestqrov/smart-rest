@@ -99,6 +99,25 @@ async function runNightlyJobs(): Promise<void> {
     where: { expiresAt: { lt: new Date() } }
   })
 
+  // ─── Tenant Lifecycle maintenance ─────────────────────────────────────────
+  try {
+    const {
+      notifyExpiringTrials,
+      expireTrials,
+      expireGracePeriods,
+      cleanupExpiredPromotions,
+    } = await import('../tenant')
+    const [warned, expired, graceExpired, promosCleaned] = await Promise.all([
+      notifyExpiringTrials(3),
+      expireTrials(7),
+      expireGracePeriods(),
+      cleanupExpiredPromotions(),
+    ])
+    logger.info({ msg: '[CRON] Tenant lifecycle sweep', warned, expired: expired.length, graceExpired: graceExpired.length, promosCleaned })
+  } catch (err) {
+    logger.error({ msg: '[CRON] Tenant lifecycle sweep failed', err })
+  }
+
   logger.info({
     msg:                 '[CRON] Nightly jobs completed',
     cafes:               cafes.length,

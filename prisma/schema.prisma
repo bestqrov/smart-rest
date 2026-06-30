@@ -2050,3 +2050,69 @@ model PaymentTransaction {
   @@index([module, status])
   @@map("payment_transactions")
 }
+
+// ─── Tenant Lifecycle Engine ──────────────────────────────────────────────────
+
+model TenantProfile {
+  id                 String    @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId           String    @unique
+  tenantType         String    @default("RESTAURANT")
+  state              String    @default("PENDING")
+  plan               String    @default("FREE")
+  trialEndsAt        DateTime?
+  suspendedAt        DateTime?
+  suspensionType     String?
+  suspensionReason   String?
+  gracePeriodEndsAt  DateTime?
+  activatedAt        DateTime?
+  cancelledAt        DateTime?
+  archivedAt         DateTime?
+  defaultLanguage    String    @default("ar")
+  defaultCurrency    String    @default("MAD")
+  country            String    @default("MA")
+  timezone           String    @default("Africa/Casablanca")
+  featureOverrides   String?   // JSON: Record<string, boolean>
+  tempPromotions     String?   // JSON: TempPromotion[]
+  customLimits       String?   // JSON: Partial<PlanLimits>
+  metadata           String?   // JSON: arbitrary extra data
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  @@index([state])
+  @@index([plan])
+  @@index([tenantType, state])
+  @@map("tenant_profiles")
+}
+
+model TenantUsageSnapshot {
+  id                 String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId           String
+  period             String   // YYYY-MM
+  storageBytes       Float    @default(0)
+  aiRequests         Int      @default(0)
+  userCount          Int      @default(0)
+  tableCount         Int      @default(0)
+  qrCount            Int      @default(0)
+  reservations       Int      @default(0)
+  marketplaceOrders  Int      @default(0)
+  automations        Int      @default(0)
+  updatedAt          DateTime @updatedAt
+
+  @@unique([tenantId, period])
+  @@index([tenantId])
+  @@map("tenant_usage_snapshots")
+}
+
+model TenantSuspensionLog {
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId     String
+  type         String    // MANUAL | AUTOMATIC | BILLING | SECURITY | MAINTENANCE
+  reason       String
+  suspendedBy  String?
+  resolvedAt   DateTime?
+  resolvedBy   String?
+  createdAt    DateTime  @default(now())
+
+  @@index([tenantId])
+  @@map("tenant_suspension_logs")
+}

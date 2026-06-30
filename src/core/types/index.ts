@@ -199,6 +199,17 @@ export type PlatformEventName =
   | 'PaymentSucceeded'
   | 'PaymentFailed'
   | 'PaymentRefunded'
+  // Tenant Lifecycle Engine
+  | 'TenantCreated'
+  | 'TenantActivated'
+  | 'TenantPlanChanged'
+  | 'TenantSuspended'
+  | 'TenantReactivated'
+  | 'TenantArchived'
+  | 'TenantTrialStarted'
+  | 'TenantGracePeriodStarted'
+  // Tenant Provisioning (from Restaurant / other SaaS modules)
+  | 'CafeCreated'
 
 export interface PlatformEvent<T = unknown> {
   name:      PlatformEventName
