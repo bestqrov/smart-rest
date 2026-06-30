@@ -119,7 +119,7 @@ export default function NewOrderPage() {
     debounceRef.current = setTimeout(async () => {
       setSearching(true)
       try {
-        const res  = await fetch(`/api/restaurant/marketplace/catalog?q=${encodeURIComponent(query)}&limit=8`, { headers: authHeader() })
+        const res  = await fetch(`/api/restaurant/marketplace/catalog?search=${encodeURIComponent(query)}&limit=8`, { headers: authHeader() })
         const data = await res.json()
         setResults(data.products ?? [])
       } catch {}
