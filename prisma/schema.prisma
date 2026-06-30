@@ -1987,3 +1987,40 @@ model MarketplaceOrderItem {
   @@index([productId])
   @@map("marketplace_order_items")
 }
+
+model MarketplaceBundle {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  slug        String   @unique
+  description String
+  type        String
+  bundlePrice Float
+  currency    String   @default("MAD")
+  savings     Float    @default(0)
+  productIds  String[]
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([active])
+  @@map("marketplace_bundles")
+}
+
+model RecommendationLog {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId         String
+  productId        String
+  type             String
+  confidence       Float
+  reason           String
+  priority         Int      @default(5)
+  status           String   @default("VIEWED")
+  estimatedRoi     Float?
+  estimatedPayback Float?
+  metadata         String?
+  createdAt        DateTime @default(now())
+
+  @@index([tenantId, status])
+  @@index([productId])
+  @@map("marketplace_recommendation_logs")
+}

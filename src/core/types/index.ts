@@ -188,6 +188,11 @@ export type PlatformEventName =
   | 'MarketplaceOrderRejected'
   | 'MarketplaceOrderCancelled'
   | 'MarketplaceOrderFulfilled'
+  // Marketplace AI
+  | 'RecommendationGenerated'
+  | 'BundleViewed'
+  | 'RecommendationAccepted'
+  | 'RecommendationDismissed'
 
 export interface PlatformEvent<T = unknown> {
   name:      PlatformEventName

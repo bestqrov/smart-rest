@@ -75,6 +75,9 @@ import marketplaceCategoriesSARouter     from './routes/marketplaceCategoriesSA'
 import marketplaceProductsSARouter       from './routes/marketplaceProductsSA'
 import marketplaceSuppliersSARouter      from './routes/marketplaceSuppliersSA'
 import marketplaceInventorySARouter      from './routes/marketplaceInventorySA'
+import marketplaceCatalogRestaurantRouter from './routes/marketplaceCatalogRestaurant'
+import marketplaceBundlesSARouter        from './routes/marketplaceBundlesSA'
+import marketplaceAISARouter             from './routes/marketplaceAISA'
 import inventoryAdminRouter from './routes/inventoryAdmin'
 import reviewGalleryRouter from './routes/reviewGallery'
 import demoRequestsRouter from './routes/demoRequests'
@@ -257,6 +260,9 @@ async function main() {
   app.use(marketplaceProductsSARouter)
   app.use(marketplaceSuppliersSARouter)
   app.use(marketplaceInventorySARouter)
+  app.use(marketplaceCatalogRestaurantRouter)
+  app.use(marketplaceBundlesSARouter)
+  app.use(marketplaceAISARouter)
   app.use(inventoryAdminRouter)
   app.use(reviewGalleryRouter)
   app.use(demoRequestsRouter)

@@ -109,6 +109,13 @@ export {
   isEditableStatus,
 } from './workflow/OrderWorkflow'
 
+// AI — Recommendation Engine (Epic 5)
+export * as RecommendationService from './ai/RecommendationService'
+export * as BundleEngine          from './ai/BundleEngine'
+export * as SmartAlerts           from './ai/SmartAlerts'
+export { checkCompatibility, compatibilityLabel, compatibilityColor } from './ai/CompatibilityEngine'
+export type { RecommendationType, AIScore, MarketplaceRecommendation, SmartAlert, MarketplaceBundle as AIBundle, RecommendationContext, WidgetData } from './ai/types'
+
 // Feature flag keys
 export const MARKETPLACE_FLAGS = {
   ENABLED:    'marketplace.enabled',
@@ -144,7 +151,16 @@ export async function initMarketplaceEngine(): Promise<void> {
         },
       })
     }
+    // Seed default bundles (idempotent)
+    const { BUNDLE_SEEDS } = await import('./ai/BundleEngine')
+    for (const seed of BUNDLE_SEEDS) {
+      await (prisma as any).marketplaceBundle.upsert({
+        where:  { slug: seed.slug },
+        update: {},
+        create: { ...seed, savings: 0, currency: 'MAD', active: true },
+      })
+    }
   } catch {
-    // Non-fatal — engine still functions without feature flags
+    // Non-fatal — engine still functions without feature flags or default bundles
   }
 }

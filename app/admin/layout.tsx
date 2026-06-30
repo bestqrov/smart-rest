@@ -10,7 +10,8 @@ import {
   AlertTriangle, Loader2, Gift, Zap, ChefHat, Bell, Monitor,
   Users, BarChart3, Copy, Check, ExternalLink, Building2,
   Banknote, Wallet, CalendarClock, Sparkles, Settings, Languages, TrendingUp, Film,
-  Package, Lock, LayoutGrid, Wrench, Receipt, ShoppingCart, CalendarDays, Radio, ShieldCheck
+  Package, Lock, LayoutGrid, Wrench, Receipt, ShoppingCart, CalendarDays, Radio, ShieldCheck,
+  Store
 } from 'lucide-react'
 import { AdminLangProvider, useLang, type AdminLang } from './lang-context'
 import { A, type AdminT } from '@/lib/adminI18n'
@@ -292,6 +293,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
   const [gateAction, setGateAction] = useState<string | null>(null)
   const [isDemo, setIsDemo] = useState(false)
   const [showDemoExit, setShowDemoExit] = useState(false)
+  const [marketplaceEnabled, setMarketplaceEnabled] = useState(false)
 
   function authHeader() { return { Authorization: `Bearer ${localStorage.getItem('token')}` } }
 
@@ -386,6 +388,15 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
   }, [])
 
   useEffect(() => { loadCafe() }, [router, pathname])
+
+  useEffect(() => {
+    const token = localStorage.getItem('token')
+    if (!token) return
+    fetch('/api/restaurant/marketplace/flag', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => d && setMarketplaceEnabled(d.enabled === true))
+      .catch(() => undefined)
+  }, [])
 
   useEffect(() => {
     if (!isDemo) return
@@ -564,6 +575,27 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
             )
           })}
 
+          {/* ── Marketplace (feature flag gated) ────────────────────── */}
+          {marketplaceEnabled && (
+            <Link href="/admin/marketplace"
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors group ${
+                pathname.startsWith('/admin/marketplace')
+                  ? 'bg-emerald-600 text-white'
+                  : 'text-gray-400 hover:bg-[#243460] hover:text-white'
+              }`}>
+              <Store className="w-5 h-5 shrink-0" />
+              <span className="text-sm font-medium flex-1">
+                {lang === 'ar' ? 'المتجر' : 'Marketplace'}
+              </span>
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                AI
+              </span>
+              {pathname.startsWith('/admin/marketplace') && (
+                <ChevronRight className={`w-4 h-4 opacity-70 ${!isRTL ? 'rotate-180' : ''}`} />
+              )}
+            </Link>
+          )}
+
           {/* ── Smart Inventory (premium gated item) ────────────────── */}
           {cafe && (
             <Link href="/admin/inventory"
@@ -678,6 +710,22 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
                   </Link>
                 )
               })}
+
+              {/* Marketplace (feature flag gated) */}
+              {marketplaceEnabled && (
+                <Link href="/admin/marketplace" onClick={() => setOpen(false)}
+                  className={`flex items-center gap-3 px-3 py-3 rounded-xl ${
+                    pathname.startsWith('/admin/marketplace')
+                      ? 'bg-emerald-600 text-white'
+                      : 'text-gray-400 hover:bg-[#243460] hover:text-white'
+                  }`}>
+                  <Store className="w-5 h-5" />
+                  <span className="font-medium flex-1">
+                    {lang === 'ar' ? 'المتجر' : 'Marketplace'}
+                  </span>
+                  <span className="text-[10px] font-bold text-emerald-400">AI</span>
+                </Link>
+              )}
 
               {/* Smart Inventory (gated) */}
               {cafe && (
