@@ -2,7 +2,6 @@ import { Router } from 'express'
 import {
   listPlansWithPricing,
   getPlanWithPricing,
-  subscriptions,
   invoices,
   usage,
   quotas,
@@ -28,10 +27,6 @@ function requireSuperAdmin(req: any, res: any): boolean {
   return true
 }
 
-function saEmail(req: any): string {
-  return String(req.headers['x-superadmin-email'] ?? 'sa@system')
-}
-
 // ─── Plan endpoints ───────────────────────────────────────────────────────────
 
 router.get('/api/superadmin/billing/plan-catalog', async (req, res) => {
@@ -51,61 +46,12 @@ router.get('/api/superadmin/billing/plan-catalog/:plan', async (req, res) => {
 })
 
 // ─── Subscription endpoints ───────────────────────────────────────────────────
-
-router.get('/api/superadmin/billing/subscriptions/:tenantId', async (req, res) => {
-  if (!requireSuperAdmin(req, res)) return
-  try {
-    const subscription = await subscriptions.getSubscriptionByTenant(req.params.tenantId)
-    if (!subscription) return res.status(404).json({ error: 'Subscription not found' })
-    res.json({ subscription })
-  } catch (err: any) { res.status(500).json({ error: err.message }) }
-})
-
-router.post('/api/superadmin/billing/subscriptions/:tenantId/plan', async (req, res) => {
-  if (!requireSuperAdmin(req, res)) return
-  try {
-    const { planId } = req.body
-    const by = saEmail(req)
-    const subscription = await subscriptions.getSubscriptionByTenant(req.params.tenantId)
-    if (!subscription) return res.status(404).json({ error: 'Subscription not found' })
-    const result = await subscriptions.changePlan(subscription.id, planId, by)
-    res.json(result)
-  } catch (err: any) { res.status(500).json({ error: err.message }) }
-})
-
-router.post('/api/superadmin/billing/subscriptions/:tenantId/cancel', async (req, res) => {
-  if (!requireSuperAdmin(req, res)) return
-  try {
-    const by = saEmail(req)
-    const subscription = await subscriptions.getSubscriptionByTenant(req.params.tenantId)
-    if (!subscription) return res.status(404).json({ error: 'Subscription not found' })
-    const result = await subscriptions.cancel(subscription.id, by)
-    res.json(result)
-  } catch (err: any) { res.status(500).json({ error: err.message }) }
-})
-
-router.post('/api/superadmin/billing/subscriptions/:tenantId/suspend', async (req, res) => {
-  if (!requireSuperAdmin(req, res)) return
-  try {
-    const { reason } = req.body
-    const by = saEmail(req)
-    const subscription = await subscriptions.getSubscriptionByTenant(req.params.tenantId)
-    if (!subscription) return res.status(404).json({ error: 'Subscription not found' })
-    const result = await subscriptions.suspend(subscription.id, reason, by)
-    res.json(result)
-  } catch (err: any) { res.status(500).json({ error: err.message }) }
-})
-
-router.post('/api/superadmin/billing/subscriptions/:tenantId/reactivate', async (req, res) => {
-  if (!requireSuperAdmin(req, res)) return
-  try {
-    const by = saEmail(req)
-    const subscription = await subscriptions.getSubscriptionByTenant(req.params.tenantId)
-    if (!subscription) return res.status(404).json({ error: 'Subscription not found' })
-    const result = await subscriptions.resume(subscription.id, by)
-    res.json(result)
-  } catch (err: any) { res.status(500).json({ error: err.message }) }
-})
+// NOTE: Subscription CRUD/lifecycle (get/cancel/suspend/reactivate/change-plan)
+// now lives exclusively in `billingSubscriptionsSA.ts`, which is mounted on the
+// same `/api/superadmin/billing/subscriptions/:id` path patterns using
+// subscription-document-id semantics. Keeping duplicate handlers here would
+// either collide (Express dispatches to whichever router is registered first)
+// or silently diverge in contract (tenantId vs subscription id). Removed.
 
 // ─── Invoice endpoints ────────────────────────────────────────────────────────
 
