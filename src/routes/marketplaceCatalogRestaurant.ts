@@ -49,7 +49,7 @@ router.get('/api/restaurant/marketplace/catalog', async (req, res) => {
     const { default: prisma } = await import('../prisma')
 
     const where: Record<string, unknown> = {
-      status: 'PUBLISHED',
+      status: 'ACTIVE',
       visibility: { in: ['PUBLIC', 'MODULE_ONLY'] },
     }
     if (search)     where.name       = { contains: search, mode: 'insensitive' }
@@ -86,7 +86,7 @@ router.get('/api/restaurant/marketplace/featured', async (req, res) => {
     authRestaurant(req)
     const { default: prisma } = await import('../prisma')
     const products = await (prisma as any).marketplaceProduct.findMany({
-      where: { status: 'PUBLISHED', tags: { has: 'featured' } },
+      where: { status: 'ACTIVE', tags: { has: 'featured' } },
       take: 8, orderBy: { updatedAt: 'desc' },
     })
     const enriched = await Promise.all(products.map(async (p: any) => {
@@ -104,7 +104,7 @@ router.get('/api/restaurant/marketplace/recent', async (req, res) => {
     authRestaurant(req)
     const { default: prisma } = await import('../prisma')
     const products = await (prisma as any).marketplaceProduct.findMany({
-      where: { status: 'PUBLISHED', visibility: { in: ['PUBLIC', 'MODULE_ONLY'] } },
+      where: { status: 'ACTIVE', visibility: { in: ['PUBLIC', 'MODULE_ONLY'] } },
       take: 8, orderBy: { createdAt: 'desc' },
     })
     const enriched = await Promise.all(products.map(async (p: any) => {
@@ -126,7 +126,7 @@ router.get('/api/restaurant/marketplace/low-stock-deals', async (req, res) => {
     })
     const productIds = invItems.map((i: any) => i.productId)
     const products   = await (prisma as any).marketplaceProduct.findMany({
-      where: { id: { in: productIds }, status: 'PUBLISHED' },
+      where: { id: { in: productIds }, status: 'ACTIVE' },
     })
     const enriched = products.map((p: any) => {
       const inv = invItems.find((i: any) => i.productId === p.id)
@@ -160,7 +160,7 @@ router.get('/api/restaurant/marketplace/catalog/:id', async (req, res) => {
 
     // Related products (same category)
     const related = await (prisma as any).marketplaceProduct.findMany({
-      where: { categoryId: product.categoryId, id: { not: id }, status: 'PUBLISHED' },
+      where: { categoryId: product.categoryId, id: { not: id }, status: 'ACTIVE' },
       take: 4,
     })
 
