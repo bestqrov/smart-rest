@@ -2,7 +2,7 @@
 import { Router }  from 'express'
 import jwt         from 'jsonwebtoken'
 import {
-  getSubscription,
+  getSubscriptionByTenant,
   listInvoices,
   getInvoice,
   getUsageSummary,
@@ -23,7 +23,7 @@ function authRestaurant(req: any): { cafeId: string } {
 router.get('/api/billing/plan', async (req, res) => {
   try {
     const { cafeId }     = authRestaurant(req)
-    const subscription   = await getSubscription(cafeId)
+    const subscription   = await getSubscriptionByTenant(cafeId)
     res.json({ subscription })
   } catch (err: any) { res.status(401).json({ error: err.message }) }
 })

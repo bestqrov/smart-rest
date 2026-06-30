@@ -20,7 +20,7 @@ export {
 
 export { markOverdueInvoices, getInvoice, listInvoices } from './invoices/InvoiceService'
 
-export { getSubscription } from './subscriptions/SubscriptionService'
+export { getSubscription, getSubscriptionByTenant } from './subscriptions/SubscriptionService'
 
 export { getUsageSummary } from './usage/BillingUsageService'
 

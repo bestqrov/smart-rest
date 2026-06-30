@@ -55,7 +55,7 @@ router.get('/api/superadmin/billing/plan-catalog/:plan', async (req, res) => {
 router.get('/api/superadmin/billing/subscriptions/:tenantId', async (req, res) => {
   if (!requireSuperAdmin(req, res)) return
   try {
-    const subscription = await subscriptions.getSubscription(req.params.tenantId)
+    const subscription = await subscriptions.getSubscriptionByTenant(req.params.tenantId)
     if (!subscription) return res.status(404).json({ error: 'Subscription not found' })
     res.json({ subscription })
   } catch (err: any) { res.status(500).json({ error: err.message }) }
@@ -64,8 +64,11 @@ router.get('/api/superadmin/billing/subscriptions/:tenantId', async (req, res) =
 router.post('/api/superadmin/billing/subscriptions/:tenantId/plan', async (req, res) => {
   if (!requireSuperAdmin(req, res)) return
   try {
-    const { plan, module: mod } = req.body
-    const result = await subscriptions.changePlan(req.params.tenantId, mod, plan as Plan)
+    const { planId } = req.body
+    const by = saEmail(req)
+    const subscription = await subscriptions.getSubscriptionByTenant(req.params.tenantId)
+    if (!subscription) return res.status(404).json({ error: 'Subscription not found' })
+    const result = await subscriptions.changePlan(subscription.id, planId, by)
     res.json(result)
   } catch (err: any) { res.status(500).json({ error: err.message }) }
 })
@@ -73,8 +76,10 @@ router.post('/api/superadmin/billing/subscriptions/:tenantId/plan', async (req, 
 router.post('/api/superadmin/billing/subscriptions/:tenantId/cancel', async (req, res) => {
   if (!requireSuperAdmin(req, res)) return
   try {
-    const { module: mod } = req.body
-    const result = await subscriptions.cancelSubscription(req.params.tenantId, mod)
+    const by = saEmail(req)
+    const subscription = await subscriptions.getSubscriptionByTenant(req.params.tenantId)
+    if (!subscription) return res.status(404).json({ error: 'Subscription not found' })
+    const result = await subscriptions.cancel(subscription.id, by)
     res.json(result)
   } catch (err: any) { res.status(500).json({ error: err.message }) }
 })
@@ -82,9 +87,11 @@ router.post('/api/superadmin/billing/subscriptions/:tenantId/cancel', async (req
 router.post('/api/superadmin/billing/subscriptions/:tenantId/suspend', async (req, res) => {
   if (!requireSuperAdmin(req, res)) return
   try {
-    const { reason, module: mod } = req.body
+    const { reason } = req.body
     const by = saEmail(req)
-    const result = await subscriptions.suspendSubscription(req.params.tenantId, mod, reason, by)
+    const subscription = await subscriptions.getSubscriptionByTenant(req.params.tenantId)
+    if (!subscription) return res.status(404).json({ error: 'Subscription not found' })
+    const result = await subscriptions.suspend(subscription.id, reason, by)
     res.json(result)
   } catch (err: any) { res.status(500).json({ error: err.message }) }
 })
@@ -93,7 +100,9 @@ router.post('/api/superadmin/billing/subscriptions/:tenantId/reactivate', async 
   if (!requireSuperAdmin(req, res)) return
   try {
     const by = saEmail(req)
-    const result = await subscriptions.reactivateSubscription(req.params.tenantId, by)
+    const subscription = await subscriptions.getSubscriptionByTenant(req.params.tenantId)
+    if (!subscription) return res.status(404).json({ error: 'Subscription not found' })
+    const result = await subscriptions.resume(subscription.id, by)
     res.json(result)
   } catch (err: any) { res.status(500).json({ error: err.message }) }
 })
