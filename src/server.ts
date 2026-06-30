@@ -86,6 +86,7 @@ import tenantSARouter                    from './routes/tenantSA'
 import tenantRestaurantRouter            from './routes/tenantRestaurant'
 import billingSuperAdminRouter           from './routes/billingSuperAdmin'
 import billingRestaurantRouter           from './routes/billingRestaurant'
+import billingPlansSARouter              from './routes/billingPlansSA'
 import inventoryAdminRouter from './routes/inventoryAdmin'
 import reviewGalleryRouter from './routes/reviewGallery'
 import demoRequestsRouter from './routes/demoRequests'
@@ -277,6 +278,7 @@ async function main() {
   app.use(tenantRestaurantRouter)
   app.use(billingSuperAdminRouter)
   app.use(billingRestaurantRouter)
+  app.use(billingPlansSARouter)
   app.use(inventoryAdminRouter)
   app.use(reviewGalleryRouter)
   app.use(demoRequestsRouter)

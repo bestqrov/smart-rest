@@ -34,7 +34,7 @@ function saEmail(req: any): string {
 
 // ─── Plan endpoints ───────────────────────────────────────────────────────────
 
-router.get('/api/superadmin/billing/plans', async (req, res) => {
+router.get('/api/superadmin/billing/plan-catalog', async (req, res) => {
   if (!requireSuperAdmin(req, res)) return
   try {
     const plans = await listPlansWithPricing()
@@ -42,7 +42,7 @@ router.get('/api/superadmin/billing/plans', async (req, res) => {
   } catch (err: any) { res.status(500).json({ error: err.message }) }
 })
 
-router.get('/api/superadmin/billing/plans/:plan', async (req, res) => {
+router.get('/api/superadmin/billing/plan-catalog/:plan', async (req, res) => {
   if (!requireSuperAdmin(req, res)) return
   try {
     const plan = await getPlanWithPricing(req.params.plan as Plan)
