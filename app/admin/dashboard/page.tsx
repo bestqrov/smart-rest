@@ -6,8 +6,9 @@ import { io, Socket } from 'socket.io-client'
 import {
   TrendingUp, ShoppingBag, Users, Clock,
   Bell, CheckCheck, Wallet, AlertTriangle, Loader2,
-  ChefHat, Heart, Activity, UserPlus
+  ChefHat, Heart, Activity, UserPlus, Store, ShoppingCart
 } from 'lucide-react'
+import Link from 'next/link'
 import { useLang } from '../lang-context'
 import { A } from '../../../lib/adminI18n'
 import CertificationTracker from './CertificationTracker'
@@ -23,6 +24,13 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [calls, setCalls]     = useState<WaiterCall[]>([])
   const [staffCount, setStaffCount] = useState<number | null>(null)
+  const [mpEnabled, setMpEnabled] = useState(false)
+  const [mpWidget,  setMpWidget]  = useState<{
+    pendingOrders:   number
+    approvedOrders:  number
+    totalSpent:      number
+    recentPurchases: Array<{ id: string; orderNumber: string; status: string; total: number; createdAt: string }>
+  } | null>(null)
   const socketRef = useRef<Socket | null>(null)
 
   function authHeader() {
@@ -40,6 +48,23 @@ export default function DashboardPage() {
     loadStats()
     fetch('/api/finance/status', { headers: authHeader() }).then(r => r.ok ? r.json() : null).then(b => b && setBilling(b))
     fetch('/api/admin/staff',    { headers: authHeader() }).then(r => r.ok ? r.json() : null).then(st => st && setStaffCount(st?.waiters?.length ?? 0))
+
+    const token3 = localStorage.getItem('token')
+    if (token3) {
+      const h3 = { Authorization: `Bearer ${token3}` }
+      fetch('/api/restaurant/marketplace/flag', { headers: h3 })
+        .then(r => r.ok ? r.json() : null)
+        .then(d => {
+          if (d?.enabled) {
+            setMpEnabled(true)
+            fetch('/api/restaurant/marketplace/widget', { headers: h3 })
+              .then(r => r.ok ? r.json() : null)
+              .then(w => w && setMpWidget(w))
+              .catch(() => undefined)
+          }
+        })
+        .catch(() => undefined)
+    }
 
     // Auto-refresh every 60s
     const refreshId = setInterval(loadStats, 60_000)
@@ -252,6 +277,10 @@ export default function DashboardPage() {
           {/* Smart Resto Certified progress */}
           <CertificationTracker />
 
+          {mpEnabled && mpWidget && (
+            <MarketplaceWidget data={mpWidget} isRTL={isRTL} lang={lang} />
+          )}
+
           {/* Top products */}
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
             <h3 className="font-bold text-gray-800 mb-3">{t.products}</h3>
@@ -423,6 +452,89 @@ function DonutChart({ value, color }: { value: number; color: string }) {
       <span className="absolute inset-0 flex items-center justify-center text-[11px] font-black text-gray-800">
         {value}%
       </span>
+    </div>
+  )
+}
+
+function MarketplaceWidget({ data, isRTL, lang }: {
+  data: {
+    pendingOrders:   number
+    approvedOrders:  number
+    totalSpent:      number
+    recentPurchases: Array<{ id: string; orderNumber: string; status: string; total: number; createdAt: string }>
+  }
+  isRTL: boolean
+  lang:  string
+}) {
+  const isAr = lang === 'ar'
+  const t = isAr
+    ? { title:'المتجر الذكي', pending:'بانتظار الموافقة', approved:'معتمدة', spent:'إجمالي المشتريات', recent:'آخر الطلبات', viewAll:'عرض الكل', quickOrder:'طلب سريع', currency:'د.م.' }
+    : { title:'Marketplace', pending:'Pending', approved:'Approved', spent:'Total Spent', recent:'Recent Orders', viewAll:'View All', quickOrder:'Quick Order', currency:'MAD' }
+
+  const STATUS_STYLE: Record<string, string> = {
+    DRAFT:'text-gray-400', SUBMITTED:'text-amber-500',
+    UNDER_REVIEW:'text-blue-500', APPROVED:'text-emerald-500',
+    REJECTED:'text-red-500', FULFILLED:'text-emerald-400',
+  }
+  const STATUS_LABEL: Record<string, Record<string, string>> = {
+    ar: { DRAFT:'مسودة', SUBMITTED:'مُرسل', UNDER_REVIEW:'مراجعة', APPROVED:'معتمد', REJECTED:'مرفوض', FULFILLED:'مُنجز', CANCELLED:'ملغى' },
+    en: { DRAFT:'Draft', SUBMITTED:'Submitted', UNDER_REVIEW:'Under Review', APPROVED:'Approved', REJECTED:'Rejected', FULFILLED:'Fulfilled', CANCELLED:'Cancelled' },
+  }
+  const labels = STATUS_LABEL[isAr ? 'ar' : 'en'] ?? STATUS_LABEL.en
+
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5" dir={isRTL ? 'rtl' : 'ltr'}>
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-xl bg-emerald-50 flex items-center justify-center">
+            <Store className="w-4 h-4 text-emerald-600" />
+          </div>
+          <span className="font-bold text-gray-900 text-sm">{t.title}</span>
+        </div>
+        <Link href="/admin/marketplace/orders/new"
+          className="text-xs text-emerald-600 hover:text-emerald-700 font-medium flex items-center gap-1">
+          <ShoppingCart className="w-3 h-3" />
+          {t.quickOrder}
+        </Link>
+      </div>
+
+      <div className="grid grid-cols-3 gap-3 mb-4">
+        <div className="text-center">
+          <div className="text-xl font-extrabold text-amber-600">{data.pendingOrders}</div>
+          <div className="text-[10px] text-gray-400 mt-0.5">{t.pending}</div>
+        </div>
+        <div className="text-center">
+          <div className="text-xl font-extrabold text-emerald-600">{data.approvedOrders}</div>
+          <div className="text-[10px] text-gray-400 mt-0.5">{t.approved}</div>
+        </div>
+        <div className="text-center">
+          <div className="text-xl font-extrabold text-gray-800">
+            {data.totalSpent >= 1000
+              ? `${(data.totalSpent / 1000).toFixed(1)}k`
+              : data.totalSpent.toLocaleString()}
+          </div>
+          <div className="text-[10px] text-gray-400 mt-0.5">{t.currency}</div>
+        </div>
+      </div>
+
+      {data.recentPurchases.length > 0 && (
+        <>
+          <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-2">{t.recent}</div>
+          <div className="space-y-1.5">
+            {data.recentPurchases.slice(0, 3).map(o => (
+              <Link key={o.id} href={`/admin/marketplace/orders/${o.id}`}
+                className="flex items-center justify-between py-1 hover:bg-gray-50 rounded px-1 transition-colors">
+                <span className="text-xs font-mono text-gray-600">{o.orderNumber}</span>
+                <span className={`text-[10px] font-medium ${STATUS_STYLE[o.status] ?? 'text-gray-400'}`}>
+                  {labels[o.status] ?? o.status}
+                </span>
+              </Link>
+            ))}
+          </div>
+          <Link href="/admin/marketplace/orders"
+            className="mt-2 text-[10px] text-emerald-600 hover:underline block text-center">{t.viewAll}</Link>
+        </>
+      )}
     </div>
   )
 }
