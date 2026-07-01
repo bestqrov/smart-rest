@@ -26,8 +26,10 @@ function norm(s: string): string {
 }
 
 // ─── Send Evolution API WhatsApp message ─────────────────────────────────────
+// Exported (K23) so FeedbackService can reuse it for multi-channel delivery
+// instead of duplicating the Evolution API call. No behavior change.
 
-async function sendWhatsApp(to: string, message: string): Promise<void> {
+export async function sendWhatsApp(to: string, message: string): Promise<void> {
   const base     = process.env.EVOLUTION_API_URL
   const instance = process.env.EVOLUTION_INSTANCE
   const apiKey   = process.env.EVOLUTION_API_KEY

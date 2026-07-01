@@ -1084,6 +1084,26 @@ model Feedback {
   @@index([createdAt])
 }
 
+// K23 — Customer Feedback Automation: support ticket auto-created for low
+// (<=2) feedback scores. No formal relation to Feedback — same denormalized
+// cafeId + sourceId convention already used elsewhere (e.g. PaymentTransaction).
+model SupportTicket {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId      String    @db.ObjectId
+  source      String    @default("FEEDBACK") // FEEDBACK | REVIEW
+  sourceId    String
+  phone       String?
+  subject     String
+  status      String    @default("OPEN")     // OPEN | IN_PROGRESS | ESCALATED | RESOLVED
+  priority    String    @default("NORMAL")   // NORMAL | HIGH | URGENT
+  createdAt   DateTime  @default(now())
+  escalatedAt DateTime?
+  resolvedAt  DateTime?
+
+  @@index([cafeId, status])
+  @@index([sourceId])
+}
+
 // ─── Online Payment Sessions (Gulf Stripe / Africa Mobile Money) ─────────────
 
 model OnlinePayment {

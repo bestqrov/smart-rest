@@ -284,6 +284,12 @@ export type PlatformEventName =
   | 'ReviewSubmitted'
   | 'ReviewFlaggedNegative'
   | 'GoogleReviewLinkUpdated'
+  // Customer Feedback Automation
+  | 'FeedbackRequested'
+  | 'FeedbackSubmitted'
+  | 'SupportTicketCreated'
+  | 'SupportTicketEscalated'
+  | 'SupportTicketResolved'
 
 export interface PlatformEvent<T = unknown> {
   name:      PlatformEventName
