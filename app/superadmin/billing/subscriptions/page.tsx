@@ -36,6 +36,7 @@ const T = {
     } as Record<string, string>,
     prev: 'السابق', next: 'التالي', of: 'من',
     changePlanTitle: 'تغيير خطة الاشتراك', selectPlan: 'اختر خطة', save: 'حفظ',
+    plansLoadError: 'تعذر تحميل قائمة الخطط', genericError: 'حدث خطأ ما',
   },
   en: {
     title: 'Subscriptions', subtitle: 'Manage tenant subscriptions',
@@ -55,6 +56,7 @@ const T = {
     } as Record<string, string>,
     prev: 'Previous', next: 'Next', of: 'of',
     changePlanTitle: 'Change Subscription Plan', selectPlan: 'Select a plan', save: 'Save',
+    plansLoadError: 'Failed to load plans list', genericError: 'Something went wrong',
   },
 }
 
@@ -86,6 +88,10 @@ export default function SubscriptionsPage() {
   const [changePlanSub, setChangePlanSub] = useState<string | null>(null)
   const [plans, setPlans]         = useState<PlanOption[]>([])
   const [newPlanId, setNewPlanId] = useState('')
+  const [pendingId, setPendingId] = useState<string | null>(null)
+  const [saving, setSaving]       = useState(false)
+  const [modalError, setModalError] = useState<string | null>(null)
+  const [plansLoadError, setPlansLoadError] = useState(false)
 
   const t = T[lang]
   const isRTL = lang === 'ar'
@@ -109,13 +115,30 @@ export default function SubscriptionsPage() {
 
   useEffect(() => { load() }, [load])
 
-  async function action(id: string, path: string, body?: Record<string, unknown>) {
-    await fetch(`/api/superadmin/billing/subscriptions/${id}${path}`, {
-      method: 'POST',
-      headers: { ...header(), 'Content-Type': 'application/json' },
-      ...(body ? { body: JSON.stringify(body) } : {}),
-    })
-    load()
+  async function action(id: string, path: string, body?: Record<string, unknown>, silent = false) {
+    setPendingId(id)
+    try {
+      const res = await fetch(`/api/superadmin/billing/subscriptions/${id}${path}`, {
+        method: 'POST',
+        headers: { ...header(), 'Content-Type': 'application/json' },
+        ...(body ? { body: JSON.stringify(body) } : {}),
+      })
+      if (!res.ok) {
+        const json = await res.json().catch(() => null)
+        const message = json?.error ?? t.genericError
+        if (silent) setModalError(message)
+        else alert(message)
+        return false
+      }
+      await load()
+      return true
+    } catch {
+      if (silent) setModalError(t.genericError)
+      else alert(t.genericError)
+      return false
+    } finally {
+      setPendingId(null)
+    }
   }
 
   async function handleSuspend(id: string) {
@@ -131,17 +154,29 @@ export default function SubscriptionsPage() {
   async function openChangePlan(id: string) {
     setChangePlanSub(id)
     setNewPlanId('')
+    setModalError(null)
+    setPlansLoadError(false)
     if (plans.length === 0) {
-      const res  = await fetch('/api/superadmin/billing/plans', { headers: header() })
-      const json = await res.json()
-      setPlans(json.plans ?? [])
+      try {
+        const res  = await fetch('/api/superadmin/billing/plans', { headers: header() })
+        if (!res.ok) { setPlansLoadError(true); return }
+        const json = await res.json()
+        setPlans(json.plans ?? [])
+      } catch {
+        setPlansLoadError(true)
+      }
     }
   }
 
   async function submitChangePlan() {
     if (!changePlanSub || !newPlanId) return
-    await action(changePlanSub, '/change-plan', { planId: newPlanId })
-    setChangePlanSub(null)
+    setSaving(true); setModalError(null)
+    try {
+      const ok = await action(changePlanSub, '/change-plan', { planId: newPlanId }, true)
+      if (ok) setChangePlanSub(null)
+    } finally {
+      setSaving(false)
+    }
   }
 
   function goPage(p: number) {
@@ -237,46 +272,59 @@ export default function SubscriptionsPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1 justify-end">
-                        {canActivate && (
-                          <button onClick={() => action(sub.id, '/activate')}
-                            title={t.activate}
-                            className="p-1.5 text-green-400 hover:bg-green-900/30 rounded">
-                            <Power className="w-4 h-4" />
-                          </button>
-                        )}
-                        {canSuspend && (
-                          <button onClick={() => handleSuspend(sub.id)}
-                            title={t.suspend}
-                            className="p-1.5 text-orange-400 hover:bg-orange-900/30 rounded">
-                            <Pause className="w-4 h-4" />
-                          </button>
-                        )}
-                        {canResume && (
-                          <button onClick={() => action(sub.id, '/resume')}
-                            title={t.resume}
-                            className="p-1.5 text-green-400 hover:bg-green-900/30 rounded">
-                            <Play className="w-4 h-4" />
-                          </button>
-                        )}
-                        {canRenew && (
-                          <button onClick={() => action(sub.id, '/renew')}
-                            title={t.renew}
-                            className="p-1.5 text-blue-400 hover:bg-blue-900/30 rounded">
-                            <RotateCw className="w-4 h-4" />
-                          </button>
-                        )}
-                        <button onClick={() => openChangePlan(sub.id)}
-                          title={t.changePlan}
-                          className="p-1.5 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-700 rounded">
-                          <ArrowLeftRight className="w-4 h-4" />
-                        </button>
-                        {canCancel && (
-                          <button onClick={() => handleCancel(sub.id)}
-                            title={t.cancel}
-                            className="p-1.5 text-red-400 hover:bg-red-900/30 rounded">
-                            <X className="w-4 h-4" />
-                          </button>
-                        )}
+                        {(() => {
+                          const rowBusy = pendingId === sub.id
+                          return (
+                            <>
+                              {canActivate && (
+                                <button onClick={() => action(sub.id, '/activate')}
+                                  disabled={rowBusy}
+                                  title={t.activate}
+                                  className="p-1.5 text-green-400 hover:bg-green-900/30 rounded disabled:opacity-40 disabled:cursor-not-allowed">
+                                  <Power className="w-4 h-4" />
+                                </button>
+                              )}
+                              {canSuspend && (
+                                <button onClick={() => handleSuspend(sub.id)}
+                                  disabled={rowBusy}
+                                  title={t.suspend}
+                                  className="p-1.5 text-orange-400 hover:bg-orange-900/30 rounded disabled:opacity-40 disabled:cursor-not-allowed">
+                                  <Pause className="w-4 h-4" />
+                                </button>
+                              )}
+                              {canResume && (
+                                <button onClick={() => action(sub.id, '/resume')}
+                                  disabled={rowBusy}
+                                  title={t.resume}
+                                  className="p-1.5 text-green-400 hover:bg-green-900/30 rounded disabled:opacity-40 disabled:cursor-not-allowed">
+                                  <Play className="w-4 h-4" />
+                                </button>
+                              )}
+                              {canRenew && (
+                                <button onClick={() => action(sub.id, '/renew')}
+                                  disabled={rowBusy}
+                                  title={t.renew}
+                                  className="p-1.5 text-blue-400 hover:bg-blue-900/30 rounded disabled:opacity-40 disabled:cursor-not-allowed">
+                                  <RotateCw className="w-4 h-4" />
+                                </button>
+                              )}
+                              <button onClick={() => openChangePlan(sub.id)}
+                                disabled={rowBusy}
+                                title={t.changePlan}
+                                className="p-1.5 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-700 rounded disabled:opacity-40 disabled:cursor-not-allowed">
+                                <ArrowLeftRight className="w-4 h-4" />
+                              </button>
+                              {canCancel && (
+                                <button onClick={() => handleCancel(sub.id)}
+                                  disabled={rowBusy}
+                                  title={t.cancel}
+                                  className="p-1.5 text-red-400 hover:bg-red-900/30 rounded disabled:opacity-40 disabled:cursor-not-allowed">
+                                  <X className="w-4 h-4" />
+                                </button>
+                              )}
+                            </>
+                          )
+                        })()}
                       </div>
                     </td>
                   </tr>
@@ -307,6 +355,9 @@ export default function SubscriptionsPage() {
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
           <div className="bg-zinc-900 rounded-2xl w-full max-w-sm p-6">
             <h2 className="text-lg font-bold mb-5 text-zinc-100">{t.changePlanTitle}</h2>
+            {plansLoadError && (
+              <div className="mb-3 p-3 bg-red-900/30 border border-red-700 rounded-lg text-red-300 text-sm">{t.plansLoadError}</div>
+            )}
             <select value={newPlanId} onChange={e => setNewPlanId(e.target.value)}
               className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100">
               <option value="">{t.selectPlan}</option>
@@ -314,13 +365,17 @@ export default function SubscriptionsPage() {
                 <option key={p.id} value={p.id}>{p.name} ({p.code})</option>
               ))}
             </select>
+            {modalError && (
+              <div className="mt-4 p-3 bg-red-900/30 border border-red-700 rounded-lg text-red-300 text-sm">{modalError}</div>
+            )}
             <div className="flex items-center justify-end gap-3 mt-6">
               <button onClick={() => setChangePlanSub(null)}
                 className="px-4 py-2 text-sm bg-zinc-800 hover:bg-zinc-700 rounded-lg transition">
                 {t.cancel}
               </button>
-              <button onClick={submitChangePlan} disabled={!newPlanId}
-                className="px-4 py-2 text-sm bg-blue-700 hover:bg-blue-600 rounded-lg transition disabled:opacity-50">
+              <button onClick={submitChangePlan} disabled={!newPlanId || saving}
+                className="px-4 py-2 text-sm bg-blue-700 hover:bg-blue-600 rounded-lg transition disabled:opacity-50 flex items-center gap-2">
+                {saving && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
                 {t.save}
               </button>
             </div>
