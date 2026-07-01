@@ -539,6 +539,28 @@ model OrderItem {
   @@index([productId])
 }
 
+// ─── Kitchen Display System (K12 Foundation) ─────────────────────────────────
+// One ticket per order, tracked independently of Order.status (which stays
+// untouched) — kitchen-side workflow: PENDING → ACCEPTED → PREPARING → READY
+// → SERVED, with CANCELLED reachable up to PREPARING.
+model KitchenTicket {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  orderId     String    @unique @db.ObjectId
+  cafeId      String    @db.ObjectId
+  status      String    @default("PENDING")
+  station     String?
+  acceptedAt  DateTime?
+  preparingAt DateTime?
+  readyAt     DateTime?
+  servedAt    DateTime?
+  cancelledAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([cafeId, status])
+  @@map("kitchen_tickets")
+}
+
 // ─── Billing ──────────────────────────────────────────────────────────────────
 
 model BillingTier {

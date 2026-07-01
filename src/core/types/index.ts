@@ -238,6 +238,11 @@ export type PlatformEventName =
   | 'OrderUpdated'
   | 'OrderCompleted'
   | 'OrderCancelled'
+  // Kitchen Display System
+  | 'KitchenOrderAccepted'
+  | 'KitchenOrderPreparing'
+  | 'KitchenOrderReady'
+  | 'KitchenOrderServed'
 
 export interface PlatformEvent<T = unknown> {
   name:      PlatformEventName

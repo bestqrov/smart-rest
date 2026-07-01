@@ -7,6 +7,7 @@ import { initAnalyticsEngine }     from './analytics'
 import { initMarketplaceEngine }   from './marketplace'
 import { initPaymentEngine }        from './payments'
 import { initTenantEngine }         from './tenant'
+import { initKitchenEngine }        from './kitchen/KitchenTicketService'
 
 import express from 'express'
 import http from 'http'
@@ -348,6 +349,7 @@ async function main() {
   initMarketplaceEngine().catch(() => undefined)
   initPaymentEngine().catch(() => undefined)
   initTenantEngine().catch(() => undefined)
+  initKitchenEngine().catch(() => undefined)
 
   // Collect cron task handles for graceful shutdown
   const cronTasks = [
