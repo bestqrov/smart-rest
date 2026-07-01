@@ -333,12 +333,22 @@ model Cafe {
   cafeCustomers        CafeCustomer[]
   billingInvoices      BillingInvoice[]
 
+  // Multi-Branch Operations (K18) — flat self-relation, same pattern as
+  // Table.mergedIntoTableId/mergedTables. Null = standalone cafe (default,
+  // covers every existing row). Every other model (Product, StockItem,
+  // Staff, ...) already scopes by cafeId, so branch-level menu/inventory/
+  // staff isolation is already guaranteed — this only adds the grouping.
+  parentCafeId String? @db.ObjectId
+  parentCafe   Cafe?   @relation("CafeBranches", fields: [parentCafeId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  branches     Cafe[]  @relation("CafeBranches")
+
   // Indexes for geo-targeting, package segmentation, and n8n campaign queries
   @@index([country])
   @@index([city])
   @@index([packageType])
   @@index([certificationStatus])
   @@index([billingStatus])
+  @@index([parentCafeId])
 
 }
 

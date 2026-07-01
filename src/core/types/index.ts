@@ -265,6 +265,9 @@ export type PlatformEventName =
   | 'PosOrdersMerged'
   | 'PosReceiptReprinted'
   | 'PosOrderNotesUpdated'
+  // Multi-Branch Operations
+  | 'BranchAdded'
+  | 'BranchRemoved'
 
 export interface PlatformEvent<T = unknown> {
   name:      PlatformEventName
