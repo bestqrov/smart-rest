@@ -27,3 +27,10 @@ export { getUsageSummary } from './usage/BillingUsageService'
 export { checkQuota, checkAllQuotas, isAllowed } from './quotas/QuotaService'
 
 export { notifyTrialEnding } from './notifications/BillingNotifications'
+
+export {
+  getMRR,
+  getSubscriptionCounts,
+  getFailedPaymentsCount,
+  getRevenueDashboard,
+} from './metrics/BillingMetricsService'
