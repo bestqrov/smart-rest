@@ -225,6 +225,12 @@ export type PlatformEventName =
   | 'PlanDeleted'
   | 'PlanActivated'
   | 'PlanDeactivated'
+  // POS Core Engine
+  | 'PosOrderOpened'
+  | 'PosOrderItemAdded'
+  | 'PosOrderItemUpdated'
+  | 'PosOrderItemRemoved'
+  | 'PosOrderClosed'
 
 export interface PlatformEvent<T = unknown> {
   name:      PlatformEventName

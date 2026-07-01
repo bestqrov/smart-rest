@@ -475,6 +475,8 @@ model Order {
   orderSource     OrderSource @default(QR_CODE)
   billStatus      BillStatus  @default(OPENED)
   totalCommission Float       @default(0)
+  // POS Core (K11) — order-level discount, applied on top of item subtotal
+  discountAmount  Float?
   // staff member who entered the order manually (null for QR orders)
   createdById  String? @db.ObjectId
   createdBy    Staff?  @relation("OrderCreatedBy", fields: [createdById], references: [id])
