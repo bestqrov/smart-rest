@@ -238,15 +238,13 @@ When a quota is exceeded:
 ## APIs
 
 ### SuperAdmin
+
+_Subscription endpoints moved to their own table under [Subscription Engine → SuperAdmin API](#superadmin-api) (Sprint K2) — the old tenant-scoped `/subscriptions/:tenantId/*` routes below were removed._
+
 | Endpoint | Description |
 |----------|-------------|
 | `GET /api/superadmin/billing/plans` | List all plans with pricing |
 | `GET /api/superadmin/billing/plans/:plan` | Single plan detail |
-| `GET /api/superadmin/billing/subscriptions/:tenantId` | Tenant subscription state |
-| `POST /api/superadmin/billing/subscriptions/:tenantId/plan` | Change tenant plan |
-| `POST /api/superadmin/billing/subscriptions/:tenantId/cancel` | Cancel subscription |
-| `POST /api/superadmin/billing/subscriptions/:tenantId/suspend` | Suspend subscription |
-| `POST /api/superadmin/billing/subscriptions/:tenantId/reactivate` | Reactivate |
 | `GET /api/superadmin/billing/invoices` | List invoices (filterable) |
 | `GET /api/superadmin/billing/invoices/:id` | Invoice detail |
 | `POST /api/superadmin/billing/invoices/generate` | Generate + publish invoice |
@@ -343,7 +341,7 @@ src/billing/subscriptions/
 
 ### SuperAdmin API
 
-> Note: these routes live in `src/routes/billingSubscriptionsSA.ts` and are the sole canonical implementation. Earlier tenant-scoped subscription routes (`/subscriptions/:tenantId`, `.../plan`, `.../suspend`, `.../reactivate`) documented under "Existing Billing Platform APIs" above were removed in commit `16c8c5e` (route-shadowing fix) and are superseded by this table.
+These routes live in `src/routes/billingSubscriptionsSA.ts` and are the sole canonical implementation (the old tenant-scoped subscription routes were removed from `billingSuperAdmin.ts`).
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
