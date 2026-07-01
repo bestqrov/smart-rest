@@ -2,6 +2,9 @@ import express, { Request, Response } from 'express'
 import prisma from '../prisma'
 import { authorizeAdmin } from '../middleware/authorizeAdmin'
 import logger from '../logger'
+import {
+  queuePost, listPosts, retryPost, recordPublishResult, getConnectedPlatforms,
+} from '../social/SocialPostService'
 
 const router = express.Router()
 
@@ -300,6 +303,85 @@ router.patch('/campaigns/:id/status', async (req: Request, res: Response) => {
   } catch (err) {
     logger.error({ msg: 'campaign status update error', err, id })
     return res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
+// ─── K27 — Social Media Automation Engine ────────────────────────────────────
+
+// POST /api/marketing/social-posts — queue a post (immediate or scheduled)
+router.post('/social-posts', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const { cafeId } = req.admin!
+    const { platform, contentType, caption, mediaUrl, sourceCampaignId, scheduledFor } = req.body as {
+      platform?: string; contentType?: string; caption?: string; mediaUrl?: string
+      sourceCampaignId?: string; scheduledFor?: string
+    }
+    if (!platform || !caption) return res.status(400).json({ error: 'platform and caption are required' })
+
+    const post = await queuePost(cafeId, {
+      platform: platform as any,
+      contentType: contentType as any,
+      caption, mediaUrl, sourceCampaignId,
+      scheduledFor: scheduledFor ? new Date(scheduledFor) : undefined,
+    })
+    return res.status(202).json({ post })
+  } catch (err: any) {
+    logger.error({ msg: 'POST /social-posts error', err })
+    return res.status(400).json({ error: err.message ?? 'Failed to queue post' })
+  }
+})
+
+// GET /api/marketing/social-posts?status=
+router.get('/social-posts', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const { cafeId } = req.admin!
+    const posts = await listPosts(cafeId, req.query.status as string | undefined)
+    return res.json({ posts })
+  } catch (err) {
+    logger.error({ msg: 'GET /social-posts error', err })
+    return res.status(500).json({ error: 'Failed to fetch posts' })
+  }
+})
+
+// POST /api/marketing/social-posts/:id/retry
+router.post('/social-posts/:id/retry', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const post = await retryPost(req.params.id as string)
+    return res.json({ post })
+  } catch (err: any) {
+    return res.status(400).json({ error: err.message ?? 'Failed to retry post' })
+  }
+})
+
+// PATCH /api/marketing/social-posts/:id/status — n8n callback, same secret as campaigns/:id/status
+router.patch('/social-posts/:id/status', async (req: Request, res: Response) => {
+  const id     = req.params.id as string
+  const secret = req.headers['x-callback-secret']
+  if (!secret || secret !== process.env.MARKETING_CALLBACK_SECRET) {
+    return res.status(401).json({ error: 'Unauthorized callback' })
+  }
+  const { status, externalPostId, error } = req.body as { status?: string; externalPostId?: string; error?: string }
+  if (status !== 'PUBLISHED' && status !== 'FAILED') {
+    return res.status(400).json({ error: 'status must be PUBLISHED or FAILED' })
+  }
+  try {
+    const post = await recordPublishResult(id, status, externalPostId, error)
+    return res.json({ ok: true, post })
+  } catch (err) {
+    logger.error({ msg: 'social post status update error', err, id })
+    return res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
+// GET /api/marketing/social-accounts — unified connected-platform view
+router.get('/social-accounts', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const { cafeId } = req.admin!
+    const platforms = await getConnectedPlatforms(cafeId)
+    return res.json({ platforms })
+  } catch (err) {
+    logger.error({ msg: 'GET /social-accounts error', err })
+    return res.status(500).json({ error: 'Failed to fetch connected accounts' })
   }
 })
 

@@ -303,6 +303,10 @@ export type PlatformEventName =
   | 'EmailMessageClicked'
   | 'EmailMessageBounced'
   | 'EmailBroadcastCompleted'
+  // Social Media Automation Engine
+  | 'SocialPostQueued'
+  | 'SocialPostPublished'
+  | 'SocialPostFailed'
 
 export interface PlatformEvent<T = unknown> {
   name:      PlatformEventName

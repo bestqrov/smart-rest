@@ -284,6 +284,8 @@ model Cafe {
   igUserId          String @default("")  // Instagram Business account ID
   tiktokAccessToken String @default("")  // TikTok OAuth2 access token
   snapAccessToken   String @default("")  // Snapchat OAuth2 access token
+  linkedinAccessToken String @default("") // K27 — LinkedIn OAuth2 access token
+  xAccessToken        String @default("") // K27 — X (Twitter) OAuth2 access token
 
   // ── Smart Resto Certified ─────────────────────────────────────────────────
   ownerPhone             String              @default("")
@@ -1367,6 +1369,33 @@ model MarketingCampaign {
   @@index([cafeId])
   @@index([status])
   @@index([createdAt])
+}
+
+// K27 — Social Media Automation Engine. Publishing reuses the existing n8n
+// marketing webhook (same N8N_MARKETING_WEBHOOK_URL / Upload-Post.com
+// pipeline already used by MarketingCampaign's video flow) — this is the
+// generalized queue/schedule/retry layer on top of it, not a second
+// per-platform integration. sourceCampaignId links back to an existing
+// MarketingCampaign when the post is that campaign's video (no formal
+// relation, same denormalized-id convention used elsewhere in this schema).
+model SocialPost {
+  id               String    @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId           String    @db.ObjectId
+  platform         String    // facebook | instagram | tiktok | snapchat | linkedin | x
+  contentType      String    @default("TEXT") // VIDEO | IMAGE | TEXT
+  caption          String    @default("")
+  mediaUrl         String?
+  sourceCampaignId String?
+  status           String    @default("QUEUED") // QUEUED | SCHEDULED | PUBLISHING | PUBLISHED | FAILED
+  scheduledFor     DateTime?
+  retryCount       Int       @default(0)
+  error            String?
+  externalPostId   String?
+  publishedAt      DateTime?
+  createdAt        DateTime  @default(now())
+
+  @@index([cafeId, status])
+  @@index([status, scheduledFor])
 }
 
 // ─── SmartTraiteur — Events & Catering ───────────────────────────────────────

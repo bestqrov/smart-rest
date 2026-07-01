@@ -12,6 +12,7 @@ import { initWhatsAppEngine }       from './whatsapp/WhatsAppEngine'
 import { startWhatsAppSchedulerCron } from './cron/whatsappScheduler'
 import { initEmailEngine }          from './email/EmailEngine'
 import { startEmailSchedulerCron }  from './cron/emailScheduler'
+import { startSocialSchedulerCron } from './cron/socialScheduler'
 
 import express from 'express'
 import http from 'http'
@@ -374,6 +375,7 @@ async function main() {
     startSubscriptionLifecycleCron(),
     startWhatsAppSchedulerCron(),
     startEmailSchedulerCron(),
+    startSocialSchedulerCron(),
   ]
 
   httpServer.listen(port, '0.0.0.0', () => {
