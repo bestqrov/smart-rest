@@ -105,6 +105,7 @@ import { startWeeklyBillingCron } from './cron/weeklyBilling'
 import { startDailyDebtDetectionCron } from './cron/dailyDebtDetection'
 import { startNightlyCron } from './cron/nightly'
 import { startCertificationCron } from './cron/certificationEval'
+import { startSubscriptionLifecycleCron } from './cron/subscriptionLifecycle'
 import { initChangeStreams, closeChangeStreams } from './services/changeStreams'
 
 async function main() {
@@ -348,6 +349,7 @@ async function main() {
     startWeeklyBillingCron(),
     startNightlyCron(),
     startCertificationCron(),
+    startSubscriptionLifecycleCron(),
   ]
 
   httpServer.listen(port, '0.0.0.0', () => {
