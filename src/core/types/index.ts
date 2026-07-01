@@ -246,6 +246,11 @@ export type PlatformEventName =
   // Inventory Intelligence (restaurant recipe/stock — distinct from marketplace InventoryUpdated)
   | 'StockLevelChanged'
   | 'StockLow'
+  // Tables Management
+  | 'TableStatusChanged'
+  | 'TableTransferred'
+  | 'TableMerged'
+  | 'TableUnmerged'
 
 export interface PlatformEvent<T = unknown> {
   name:      PlatformEventName

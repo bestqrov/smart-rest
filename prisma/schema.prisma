@@ -352,6 +352,10 @@ model Table {
   qrToken     String  @unique
   isActive    Boolean @default(true)
   zone        String?
+  // K14 — explicit override for states not derivable from active orders
+  // (RESERVED | CLEANING). Null = status is computed from orders (AVAILABLE/OCCUPIED),
+  // same logic already used by routes/pos/tablesStatus.ts.
+  manualStatus String?
 
   // Waiter currently serving this table (cleared when bill is closed)
   assignedWaiterId String? @db.ObjectId
