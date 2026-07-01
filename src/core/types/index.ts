@@ -274,6 +274,12 @@ export type PlatformEventName =
   | 'CustomerNoteUpdated'
   | 'CustomerFavoriteAdded'
   | 'CustomerFavoriteRemoved'
+  // Loyalty & Rewards
+  | 'LoyaltyPointsEarned'
+  | 'LoyaltyPointsRedeemed'
+  | 'LoyaltyTierChanged'
+  | 'LoyaltyRewardCreated'
+  | 'LoyaltyRewardRedeemed'
 
 export interface PlatformEvent<T = unknown> {
   name:      PlatformEventName

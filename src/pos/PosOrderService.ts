@@ -11,6 +11,7 @@ import logger from '../logger'
 import { eventBus, publishStandardEvent } from '../core'
 import { createTransaction, markPaid } from '../payments/services/PaymentService'
 import { deductInventoryForOrder } from '../services/inventoryDeduction'
+import { earnPoints } from '../loyalty/LoyaltyService'
 import type { ProviderName, PaymentMethod as EnginePaymentMethod } from '../payments/types'
 
 type OrderPaymentMethod = 'CASH' | 'CARD' | 'ONLINE'
@@ -236,6 +237,17 @@ export async function closeOrder(
     await prisma.$transaction(tx => deductInventoryForOrder(tx, cafeId, orderId))
   } catch (err) {
     logger.error({ msg: '[PosOrderService] inventory deduction failed', orderId, cafeId, err })
+  }
+
+  // Same best-effort posture: awarding points must not undo a completed,
+  // already-paid order. Same 10-unit-per-point rule already used by
+  // routes/orders.ts's own COMPLETED handler (untouched, separate code path).
+  if (order.customerPhone) {
+    try {
+      await earnPoints(cafeId, order.customerPhone, totals.totalPrice, orderId)
+    } catch (err) {
+      logger.error({ msg: '[PosOrderService] loyalty earn failed', orderId, cafeId, err })
+    }
   }
 
   logger.info({ msg: '[PosOrderService] order closed', orderId, cafeId, staffId: input.staffId, totalPrice: totals.totalPrice })

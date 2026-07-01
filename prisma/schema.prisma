@@ -317,6 +317,7 @@ model Cafe {
   events             Event[]
   guests             Guest[]
   loyaltyAccounts    LoyaltyAccount[]
+  loyaltyRewards     LoyaltyReward[]
   // Smart Inventory module relations
   inventorySuppliers   InventorySupplier[]
   purchaseOrders       PurchaseOrder[]
@@ -1351,6 +1352,10 @@ model LoyaltyAccount {
   // Accumulated points (never goes negative)
   points  Int    @default(0)
 
+  // K20 — increment-only total ever earned, used for membership tier
+  // (unlike `points`, redemption never lowers this)
+  lifetimePoints Int @default(0)
+
   // Running ledger — each entry is immutable
   ledger  LoyaltyEntry[]
 
@@ -1360,6 +1365,21 @@ model LoyaltyAccount {
   @@unique([cafeId, phone])
   @@index([cafeId])
   @@index([phone])
+}
+
+// K20 — Loyalty Reward Catalog
+model LoyaltyReward {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId      String   @db.ObjectId
+  cafe        Cafe     @relation(fields: [cafeId], references: [id])
+  name        String
+  description String?
+  pointsCost  Int
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([cafeId, isActive])
 }
 
 // Embedded ledger entry — appended on earn or redeem, never mutated
