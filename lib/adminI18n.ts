@@ -49,6 +49,7 @@ export const A = {
     social:        'التسويق الذكي',
     marketplace:   'المتجر',
     billing:       'الفواتير',
+    subscription:  'الاشتراك',
     settings:      'الإعدادات',
     menuAI:        'محرك المنيو الذكي',
 
@@ -222,6 +223,7 @@ export const A = {
     social:        'Smart Marketing',
     marketplace:   'Marketplace',
     billing:       'Billing',
+    subscription:  'Subscription',
     settings:      'Settings',
     menuAI:        'Smart Menu AI',
 
@@ -383,6 +385,7 @@ export const A = {
     social:        'Marketing intelligent',
     marketplace:   'Marketplace',
     billing:       'Facturation',
+    subscription:  'Abonnement',
     settings:      'Paramètres',
     menuAI:        'Menu IA intelligent',
 
@@ -544,6 +547,7 @@ export const A = {
     social:        'Marketing inteligente',
     marketplace:   'Marketplace',
     billing:       'Facturación',
+    subscription:  'Suscripción',
     settings:      'Configuración',
     menuAI:        'Menú IA inteligente',
 
