@@ -53,3 +53,16 @@ export {
   getAllBillingSettings,
   updateBillingSetting,
 } from './settings/BillingSettingsService'
+
+export {
+  logSubscriptionCreated,
+  logSubscriptionRenewed,
+  logSubscriptionCancelled,
+  logSubscriptionExpired,
+  logPaymentCreated,
+  logPaymentSucceeded,
+  logPaymentFailed,
+  logSettingsUpdated,
+  listBillingAudit,
+} from './audit/BillingAuditService'
+export type { BillingAuditFilter } from './audit/BillingAuditService'

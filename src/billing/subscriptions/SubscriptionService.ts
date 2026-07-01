@@ -15,6 +15,12 @@ import {
   notifySubscriptionRenewed,
 } from '../notifications/BillingNotifications'
 import { getTrialDurationDays } from '../settings/BillingSettingsService'
+import {
+  logSubscriptionCreated,
+  logSubscriptionRenewed,
+  logSubscriptionCancelled,
+  logSubscriptionExpired,
+} from '../audit/BillingAuditService'
 
 // ─── Create Subscription ──────────────────────────────────────────────────────
 export async function createSubscription(
@@ -27,6 +33,7 @@ export async function createSubscription(
   await assignPlan(tenantId, input)
   const profile = await activate(tenantId)
   await emitSubscriptionCreated({ tenantId, module, plan, metadata: { action: 'createSubscription' } as any }).catch(() => undefined)
+  await logSubscriptionCreated(tenantId, 'system', { module, plan })
   return profile
 }
 
@@ -55,18 +62,27 @@ export async function renewSubscription(
   const profile  = await activate(tenantId)
   await emitSubscriptionRenewed({ tenantId, module, plan, metadata: { action: 'renewSubscription' } as any }).catch(() => undefined)
   await notifySubscriptionRenewed(tenantId, plan).catch(() => undefined)
+  await logSubscriptionRenewed(tenantId, 'system', { module, plan })
   return profile
 }
 
 // ─── Cancel Subscription ──────────────────────────────────────────────────────
+// `reason: 'EXPIRED'` is used by the lifecycle sweep for trials that timed out
+// without conversion, so the audit trail can distinguish it from a manual cancel.
 export async function cancelSubscription(
   tenantId: string,
   module:   string,
+  reason:   'MANUAL' | 'EXPIRED' = 'MANUAL',
 ): Promise<TenantProfile> {
   const existing = await getProfile(tenantId)
   const plan     = existing?.plan ?? 'FREE'
   const profile  = await cancel(tenantId)
-  await emitSubscriptionCancelled({ tenantId, module, plan, metadata: { action: 'cancelSubscription' } as any }).catch(() => undefined)
+  await emitSubscriptionCancelled({ tenantId, module, plan, metadata: { action: 'cancelSubscription', reason } as any }).catch(() => undefined)
+  if (reason === 'EXPIRED') {
+    await logSubscriptionExpired(tenantId, 'system', { module, plan })
+  } else {
+    await logSubscriptionCancelled(tenantId, 'system', { module, plan })
+  }
   return profile
 }
 

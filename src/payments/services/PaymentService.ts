@@ -7,6 +7,9 @@ import {
 } from '../transactions/TransactionService'
 import { refundTransaction } from '../refunds/RefundService'
 import { eventBus, NotificationService } from '../../core'
+import {
+  logPaymentCreated, logPaymentSucceeded, logPaymentFailed,
+} from '../../billing/audit/BillingAuditService'
 import type {
   CreateTransactionInput, PaymentTransaction, TransactionFilter, TransactionPage,
 } from '../types'
@@ -36,6 +39,8 @@ export async function createTransaction(
     entityId: tx.id,
     targetId: tx.tenantId,
   }).catch(() => undefined)
+
+  await logPaymentCreated(tx.tenantId, tx.id, 'system', { amount: tx.amount, currency: tx.currency, provider: tx.provider })
 
   return tx
 }
@@ -104,6 +109,8 @@ export async function markPaid(
     targetId: tx.tenantId,
   }).catch(() => undefined)
 
+  await logPaymentSucceeded(tx.tenantId, tx.id, 'system', { amount: tx.amount, currency: tx.currency, reference: captureRef })
+
   return updated
 }
 
@@ -125,6 +132,8 @@ export async function fail(
   eventBus.publish('PaymentFailed', {
     txId, orderId: tx.orderId, tenantId: tx.tenantId, reason,
   }, 'payment-engine')
+
+  await logPaymentFailed(tx.tenantId, tx.id, 'system', { reason })
 
   return updated
 }

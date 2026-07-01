@@ -4,6 +4,7 @@
 // generically at GET/PATCH /api/superadmin/ops/runtime(/:key).
 
 import { getAllSettings, getSetting, updateSetting } from '../../ops/runtime/RuntimeConfig'
+import { logSettingsUpdated } from '../audit/BillingAuditService'
 import type { RuntimeSetting } from '../../ops/types'
 
 export async function getTrialDurationDays(): Promise<number> {
@@ -41,5 +42,7 @@ export async function updateBillingSetting(
   updatedBy = 'system',
 ): Promise<RuntimeSetting> {
   if (!key.startsWith('billing.')) throw new Error(`BillingSettingsService: "${key}" is not a billing setting`)
-  return updateSetting(key, value, updatedBy)
+  const setting = await updateSetting(key, value, updatedBy)
+  await logSettingsUpdated(key, updatedBy, { value })
+  return setting
 }

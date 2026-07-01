@@ -57,6 +57,7 @@ export interface AuditFilter extends PageOptions {
   module?:      string
   entity?:      string
   entityId?:    string
+  action?:      string
   performedBy?: string
   from?:        Date
   to?:          Date

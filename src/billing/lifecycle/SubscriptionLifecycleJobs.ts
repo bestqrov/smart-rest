@@ -57,7 +57,7 @@ export async function runSubscriptionExpirationCheck(module = DEFAULT_MODULE): P
   const cancelled: string[] = []
   for (const t of expired) {
     try {
-      await cancelSubscription(t.tenantId, module)
+      await cancelSubscription(t.tenantId, module, 'EXPIRED')
       cancelled.push(t.tenantId)
     } catch { /* already transitioned by another job — safe to skip */ }
   }
