@@ -6,6 +6,7 @@
 import { notifyTrialEnding }                              from '../notifications/BillingNotifications'
 import { emitTrialEnding }                                 from '../events/BillingEvents'
 import { cancelSubscription, suspendSubscription, renewSubscription } from '../subscriptions/SubscriptionService'
+import { getDefaultAutoRenew }                             from '../settings/BillingSettingsService'
 
 async function getPrisma() {
   const { default: prisma } = await import('../../prisma')
@@ -85,8 +86,11 @@ export async function runGracePeriodExpirationCheck(module = DEFAULT_MODULE): Pr
 
 // ─── 4. Automatic renewal checks ───────────────────────────────────────────
 // GRACE_PERIOD / SUSPENDED tenants with a recently paid invoice → reactivated.
+// Skipped entirely when the "billing.default_auto_renew" setting is off.
 // Idempotent: once renewed (state ACTIVE) the tenant no longer matches the filter.
 export async function runAutomaticRenewalChecks(module = DEFAULT_MODULE, lookbackHours = 24): Promise<string[]> {
+  if (!(await getDefaultAutoRenew())) return []
+
   const prisma = await getPrisma()
   const since  = new Date(Date.now() - lookbackHours * 3600000)
 

@@ -71,12 +71,13 @@ export async function activate(tenantId: string, activatedBy?: string): Promise<
 }
 
 // ─── Start Trial ──────────────────────────────────────────────────────────────
-export async function startTrial(tenantId: string, plan: Plan = 'STARTER'): Promise<TenantProfile> {
+export async function startTrial(tenantId: string, plan: Plan = 'STARTER', trialDays?: number): Promise<TenantProfile> {
   const raw = await rawGet(tenantId)
   assertTransition(raw.state as TenantState, 'TRIAL')
 
   const def         = getPlan(plan)
-  const trialEndsAt = new Date(Date.now() + def.trialDays * 86400000)
+  const days        = trialDays ?? def.trialDays
+  const trialEndsAt = new Date(Date.now() + days * 86400000)
 
   const profile = await rawUpdate(tenantId, {
     state: 'TRIAL',
@@ -89,7 +90,7 @@ export async function startTrial(tenantId: string, plan: Plan = 'STARTER'): Prom
 
   NotificationService.createNotification({
     level:    'INFO',
-    title:    `تجربة ${def.trialDays} يوماً مجاناً`,
+    title:    `تجربة ${days} يوماً مجاناً`,
     message:  `تمت بدء تجربتك المجانية على خطة ${plan}. تنتهي في ${trialEndsAt.toLocaleDateString('ar-MA')}.`,
     module:   'TENANT',
     entityId: tenantId,

@@ -14,6 +14,7 @@ import {
   notifySubscriptionSuspended,
   notifySubscriptionRenewed,
 } from '../notifications/BillingNotifications'
+import { getTrialDurationDays } from '../settings/BillingSettingsService'
 
 // ─── Create Subscription ──────────────────────────────────────────────────────
 export async function createSubscription(
@@ -38,7 +39,8 @@ export async function startTrialSubscription(
   await ensureProfile(tenantId)
   const input: AssignPlanInput = { plan }
   await assignPlan(tenantId, input)
-  const profile = await startTrial(tenantId, plan)
+  const trialDays = await getTrialDurationDays()
+  const profile = await startTrial(tenantId, plan, trialDays)
   await emitSubscriptionCreated({ tenantId, module, plan, metadata: { action: 'startTrialSubscription' } as any }).catch(() => undefined)
   return profile
 }

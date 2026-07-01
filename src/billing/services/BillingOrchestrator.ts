@@ -14,6 +14,7 @@ import {
   notifyInvoiceGenerated,
   notifyInvoicePaid,
 }                         from '../notifications/BillingNotifications'
+import { getBillingCurrency } from '../settings/BillingSettingsService'
 import type { Plan }      from '../../tenant/types'
 import type { PlatformInvoice } from '../types'
 
@@ -36,7 +37,7 @@ export async function generateInvoice(input: {
 }): Promise<PlatformInvoice> {
   const pricing  = await PlanCatalog.getPriceForTenant(input.plan, input.country)
   const subtotal = pricing?.price ?? 0
-  const currency = pricing?.currency ?? 'MAD'
+  const currency = pricing?.currency ?? await getBillingCurrency()
   const taxType  = Taxes.detectTaxType(input.country)
   const tax      = Taxes.calculateTax(subtotal, currency, input.country, taxType)
 
