@@ -233,6 +233,11 @@ export type PlatformEventName =
   | 'PosOrderClosed'
   // Notifications
   | 'NotificationCreated'
+  // Order Management Core
+  | 'OrderCreated'
+  | 'OrderUpdated'
+  | 'OrderCompleted'
+  | 'OrderCancelled'
 
 export interface PlatformEvent<T = unknown> {
   name:      PlatformEventName
