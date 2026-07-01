@@ -59,6 +59,10 @@ export async function logSettingsUpdated(key: string, performedBy: string, metad
   await log('SETTINGS', 'PLATFORM', 'SETTINGS_UPDATED', key, performedBy, metadata)
 }
 
+export async function logUsageReset(tenantId: string, performedBy: string, metadata?: Record<string, unknown>): Promise<void> {
+  await log('USAGE', tenantId, 'USAGE_RESET', tenantId, performedBy, metadata)
+}
+
 export interface BillingAuditFilter {
   tenantId?: string
   action?:   string

@@ -25,6 +25,8 @@ const FIELD_MAPPINGS: FieldMapping[] = [
   { usageKey: 'marketplaceOrders', limitsKey: 'marketplaceOrdersPerMonth' },
   { usageKey: 'automations',       limitsKey: 'automationExecutionsPerMonth' },
   { usageKey: 'userCount',         limitsKey: 'users' },
+  { usageKey: 'tableCount',        limitsKey: 'tables' },
+  { usageKey: 'qrCount',           limitsKey: 'qrCodes' },
   { usageKey: 'storageBytes',      limitsKey: 'storageGb', toBytesGb: true },
 ]
 
