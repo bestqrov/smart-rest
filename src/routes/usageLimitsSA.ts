@@ -1,23 +1,9 @@
 import { Router } from 'express'
 import { getAllRemainingQuotas, getRemainingQuota, resetUsageCounters } from '../billing'
+import { requireSuperAdmin, saEmail } from './_billingAuthGuard'
+import logger from '../logger'
 
 const router = Router()
-
-function requireSuperAdmin(req: any, res: any): boolean {
-  if (req.headers['x-superadmin-secret'] !== process.env.SUPERADMIN_SECRET) {
-    res.status(401).json({ error: 'Unauthorized' })
-    return false
-  }
-  if (!req.headers['x-superadmin-email']) {
-    res.status(401).json({ error: 'Unauthorized' })
-    return false
-  }
-  return true
-}
-
-function saEmail(req: any): string {
-  return String(req.headers['x-superadmin-email'] ?? 'sa@system')
-}
 
 // GET /api/superadmin/billing/usage-limits/:tenantId/remaining?field=aiRequests
 router.get('/api/superadmin/billing/usage-limits/:tenantId/remaining', async (req, res) => {
@@ -28,7 +14,10 @@ router.get('/api/superadmin/billing/usage-limits/:tenantId/remaining', async (re
       ? await getRemainingQuota(req.params.tenantId, field)
       : await getAllRemainingQuotas(req.params.tenantId)
     res.json({ remaining: result })
-  } catch (err: any) { res.status(500).json({ error: err.message }) }
+  } catch (err: any) {
+    logger.error({ msg: '[billing/usage-limits] remaining failed', tenantId: req.params.tenantId, err: err.message })
+    res.status(500).json({ error: err.message })
+  }
 })
 
 // POST /api/superadmin/billing/usage-limits/:tenantId/reset — admin only
@@ -36,8 +25,12 @@ router.post('/api/superadmin/billing/usage-limits/:tenantId/reset', async (req, 
   if (!requireSuperAdmin(req, res)) return
   try {
     await resetUsageCounters(req.params.tenantId, saEmail(req))
+    logger.info({ msg: '[billing/usage-limits] usage reset', tenantId: req.params.tenantId, by: saEmail(req) })
     res.json({ ok: true })
-  } catch (err: any) { res.status(500).json({ error: err.message }) }
+  } catch (err: any) {
+    logger.error({ msg: '[billing/usage-limits] reset failed', tenantId: req.params.tenantId, err: err.message })
+    res.status(500).json({ error: err.message })
+  }
 })
 
 export default router

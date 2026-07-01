@@ -35,6 +35,9 @@ export async function generateInvoice(input: {
   dueDate:     Date
   notes?:      string
 }): Promise<PlatformInvoice> {
+  const existing = await Invoices.findByPeriod(input.tenantId, input.module, input.periodStart, input.periodEnd)
+  if (existing) return existing
+
   const pricing  = await PlanCatalog.getPriceForTenant(input.plan, input.country)
   const subtotal = pricing?.price ?? 0
   const currency = pricing?.currency ?? await getBillingCurrency()

@@ -42,6 +42,13 @@ export async function updateBillingSetting(
   updatedBy = 'system',
 ): Promise<RuntimeSetting> {
   if (!key.startsWith('billing.')) throw new Error(`BillingSettingsService: "${key}" is not a billing setting`)
+
+  const current = (await getAllBillingSettings()).find(s => s.key === key)
+  if (!current) throw new Error(`BillingSettingsService: unknown setting "${key}"`)
+  if (typeof value !== current.type) {
+    throw new Error(`BillingSettingsService: "${key}" expects type ${current.type}, got ${typeof value}`)
+  }
+
   const setting = await updateSetting(key, value, updatedBy)
   await logSettingsUpdated(key, updatedBy, { value })
   return setting

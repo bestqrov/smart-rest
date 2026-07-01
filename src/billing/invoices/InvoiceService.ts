@@ -125,6 +125,24 @@ export async function getInvoice(id: string): Promise<PlatformInvoice | null> {
   return row ? toInvoice(row) : null
 }
 
+// Used by generateInvoice to avoid creating a duplicate invoice for a period
+// that's already been billed (idempotency guard for retried/duplicate calls).
+export async function findByPeriod(
+  tenantId:    string,
+  module:      string,
+  periodStart: Date,
+  periodEnd:   Date,
+): Promise<PlatformInvoice | null> {
+  const prisma = await getPrisma()
+  const row    = await (prisma as any).billingPlatformInvoice.findFirst({
+    where: {
+      tenantId, module, periodStart, periodEnd,
+      status: { not: 'CANCELLED' },
+    },
+  })
+  return row ? toInvoice(row) : null
+}
+
 export async function listInvoices(filter: {
   tenantId?:  string
   status?:    InvoiceStatus

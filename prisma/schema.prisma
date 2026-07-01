@@ -1694,6 +1694,7 @@ model AuditEntry {
 
   @@index([module])
   @@index([entityId])
+  @@index([action])
   @@index([performedBy])
   @@index([timestamp])
   @@map("core_audit_entries")

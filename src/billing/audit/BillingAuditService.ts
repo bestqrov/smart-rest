@@ -5,6 +5,7 @@
 // in metadata.resourceId.
 
 import { AuditService } from '../../core'
+import logger from '../../logger'
 import type { AuditEntry, AuditFilter, PagedResult } from '../../core/types'
 
 const MODULE = 'BILLING'
@@ -24,7 +25,9 @@ async function log(
     action,
     performedBy,
     metadata:    { resourceId, ...metadata },
-  }).catch(() => undefined)
+  }).catch(err => {
+    logger.error({ msg: '[BillingAudit] failed to write audit entry', entity, action, tenantId, err: err.message })
+  })
 }
 
 export async function logSubscriptionCreated(tenantId: string, performedBy: string, metadata?: Record<string, unknown>): Promise<void> {

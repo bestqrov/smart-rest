@@ -7,6 +7,7 @@ import { notifyTrialEnding }                              from '../notifications
 import { emitTrialEnding }                                 from '../events/BillingEvents'
 import { cancelSubscription, suspendSubscription, renewSubscription } from '../subscriptions/SubscriptionService'
 import { getDefaultAutoRenew }                             from '../settings/BillingSettingsService'
+import logger                                              from '../../logger'
 
 async function getPrisma() {
   const { default: prisma } = await import('../../prisma')
@@ -59,7 +60,9 @@ export async function runSubscriptionExpirationCheck(module = DEFAULT_MODULE): P
     try {
       await cancelSubscription(t.tenantId, module, 'EXPIRED')
       cancelled.push(t.tenantId)
-    } catch { /* already transitioned by another job — safe to skip */ }
+    } catch (err: any) {
+      logger.warn({ msg: '[BillingLifecycle] expiration cancel skipped', tenantId: t.tenantId, err: err.message })
+    }
   }
   return cancelled
 }
@@ -79,7 +82,9 @@ export async function runGracePeriodExpirationCheck(module = DEFAULT_MODULE): Pr
     try {
       await suspendSubscription(t.tenantId, module, 'Grace period expired', 'system')
       suspended.push(t.tenantId)
-    } catch { /* already transitioned by another job — safe to skip */ }
+    } catch (err: any) {
+      logger.warn({ msg: '[BillingLifecycle] grace-period suspend skipped', tenantId: t.tenantId, err: err.message })
+    }
   }
   return suspended
 }
@@ -111,7 +116,9 @@ export async function runAutomaticRenewalChecks(module = DEFAULT_MODULE, lookbac
     try {
       await renewSubscription(t.tenantId, module)
       renewed.push(t.tenantId)
-    } catch { /* already transitioned by another job — safe to skip */ }
+    } catch (err: any) {
+      logger.warn({ msg: '[BillingLifecycle] auto-renewal skipped', tenantId: t.tenantId, err: err.message })
+    }
   }
   return renewed
 }
