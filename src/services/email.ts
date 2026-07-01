@@ -118,21 +118,26 @@ export async function sendMagicLink({ to, magicLink, lang, cafeName = '' }: Send
 }
 
 // ─── Generic transactional email ─────────────────────────────────────────────
+// Returns the Resend message id (or null if skipped in dev/no API key) —
+// added for K26 so EmailEngine can correlate delivery/open/click/bounce
+// webhooks with the message that was sent. Existing callers ignoring the
+// return value are unaffected (was Promise<void> before).
 
-export async function sendEmail(to: string, subject: string, html: string): Promise<void> {
+export async function sendEmail(to: string, subject: string, html: string): Promise<string | null> {
   if (!API_KEY) {
     logger.info({ msg: '📧 [DEV] No API key — skipping email', to, subject })
-    return
+    return null
   }
   const res = await fetch('https://api.resend.com/emails', {
     method:  'POST',
     headers: { 'Authorization': `Bearer ${API_KEY}`, 'Content-Type': 'application/json' },
     body:    JSON.stringify({ from: FROM, to, subject, html }),
   })
+  const data = await res.json().catch(() => ({})) as Record<string, unknown>
   if (!res.ok) {
-    const data = await res.json().catch(() => ({}))
     logger.error({ msg: 'sendEmail Resend error', status: res.status, data })
     throw new Error(`sendEmail failed: ${res.status}`)
   }
-  logger.info({ msg: '✅ Generic email sent', to, subject })
+  logger.info({ msg: '✅ Generic email sent', to, subject, id: data['id'] })
+  return typeof data['id'] === 'string' ? data['id'] : null
 }

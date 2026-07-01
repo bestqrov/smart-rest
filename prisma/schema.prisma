@@ -1139,6 +1139,45 @@ model WhatsAppTemplate {
   @@unique([cafeId, key])
 }
 
+// K26 — Email Automation Engine. Delivery reuses the existing Resend sender
+// (services/email.ts sendEmail) — this is the log/queue/tracking on top of
+// it, not a second provider integration. Mirrors WhatsAppMessage/Template.
+model EmailMessage {
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId       String    @db.ObjectId
+  to           String
+  providerId   String?   // Resend message id, used to correlate webhook events
+  templateKey  String?
+  subject      String
+  body         String
+  status       String    @default("PENDING") // PENDING | SENT | FAILED | SKIPPED | DELIVERED | OPENED | CLICKED | BOUNCED
+  retryCount   Int       @default(0)
+  error        String?
+  scheduledFor DateTime?
+  sentAt       DateTime?
+  openedAt     DateTime?
+  clickedAt    DateTime?
+  bouncedAt    DateTime?
+  createdAt    DateTime  @default(now())
+
+  @@index([cafeId, status])
+  @@index([providerId])
+  @@index([status, scheduledFor])
+}
+
+model EmailTemplate {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId    String   @db.ObjectId
+  key       String
+  subject   String
+  body      String   // supports {{placeholders}}
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([cafeId, key])
+}
+
 // ─── Online Payment Sessions (Gulf Stripe / Africa Mobile Money) ─────────────
 
 model OnlinePayment {

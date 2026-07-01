@@ -295,6 +295,14 @@ export type PlatformEventName =
   | 'WhatsAppMessageSent'
   | 'WhatsAppMessageFailed'
   | 'WhatsAppBroadcastCompleted'
+  // Email Automation Engine
+  | 'EmailMessageQueued'
+  | 'EmailMessageSent'
+  | 'EmailMessageFailed'
+  | 'EmailMessageOpened'
+  | 'EmailMessageClicked'
+  | 'EmailMessageBounced'
+  | 'EmailBroadcastCompleted'
 
 export interface PlatformEvent<T = unknown> {
   name:      PlatformEventName
