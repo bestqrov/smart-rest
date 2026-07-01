@@ -258,6 +258,13 @@ export type PlatformEventName =
   | 'ReservationCancelled'
   | 'ReservationCheckedIn'
   | 'ReservationNoShow'
+  // POS Advanced
+  | 'PosOrderHeld'
+  | 'PosOrderResumed'
+  | 'PosOrderSplit'
+  | 'PosOrdersMerged'
+  | 'PosReceiptReprinted'
+  | 'PosOrderNotesUpdated'
 
 export interface PlatformEvent<T = unknown> {
   name:      PlatformEventName

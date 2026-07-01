@@ -8,7 +8,7 @@
 
 import prisma from '../prisma'
 import logger from '../logger'
-import { eventBus } from '../core'
+import { eventBus, publishStandardEvent } from '../core'
 import { createTransaction, markPaid } from '../payments/services/PaymentService'
 import { deductInventoryForOrder } from '../services/inventoryDeduction'
 import type { ProviderName, PaymentMethod as EnginePaymentMethod } from '../payments/types'
@@ -244,4 +244,120 @@ export async function closeOrder(
   }, 'pos-core')
 
   return updated
+}
+
+// ─── 8. Hold / Resume order ───────────────────────────────────────────────────
+// Parks an order without changing its workflow status/billStatus — orthogonal
+// to both, so existing status-based queries elsewhere are unaffected.
+export async function holdOrder(orderId: string, cafeId: string) {
+  const order = await getOrderOrThrow(orderId, cafeId)
+  if (order.isPaid) throw new Error('Cannot hold a paid order')
+  if (order.heldAt) return order
+
+  const updated = await prisma.order.update({ where: { id: orderId }, data: { heldAt: new Date() }, include: { items: true } })
+  publishStandardEvent('PosOrderHeld', { tenantId: cafeId, resourceId: orderId, metadata: {} }, 'pos-core')
+  return updated
+}
+
+export async function resumeOrder(orderId: string, cafeId: string) {
+  await getOrderOrThrow(orderId, cafeId)
+  const updated = await prisma.order.update({ where: { id: orderId }, data: { heldAt: null }, include: { items: true } })
+  publishStandardEvent('PosOrderResumed', { tenantId: cafeId, resourceId: orderId, metadata: {} }, 'pos-core')
+  return updated
+}
+
+// ─── 9. Order-level notes ────────────────────────────────────────────────────
+// Distinct from AddItemInput.notes, which is already per-item.
+export async function setOrderNotes(orderId: string, cafeId: string, notes: string) {
+  await getOrderOrThrow(orderId, cafeId)
+  const updated = await prisma.order.update({ where: { id: orderId }, data: { notes }, include: { items: true } })
+  publishStandardEvent('PosOrderNotesUpdated', { tenantId: cafeId, resourceId: orderId, metadata: { notes } }, 'pos-core')
+  return updated
+}
+
+// ─── 10. Split bill ───────────────────────────────────────────────────────────
+// Moves a subset of an order's items into a brand-new order (same table/
+// customer/staff/paymentMethod), recalculating totals on both. Distinct from
+// routes/pos/checkoutBySeats.ts, which closes already-separate per-seat
+// orders — this splits a single order's items after the fact.
+export async function splitBill(orderId: string, cafeId: string, itemIds: string[]) {
+  if (itemIds.length === 0) throw new Error('itemIds must not be empty')
+  const order = await getOrderOrThrow(orderId, cafeId)
+  if (order.isPaid) throw new Error('Cannot split a paid order')
+
+  const itemsToMove = order.items.filter(i => itemIds.includes(i.id))
+  if (itemsToMove.length === 0) throw new Error('None of the given itemIds belong to this order')
+  if (itemsToMove.length === order.items.length) throw new Error('Cannot split all items — order would be left empty')
+
+  const newOrder = await openOrder({
+    cafeId,
+    tableId:       order.tableId ?? undefined,
+    customerPhone: order.customerPhone ?? undefined,
+    staffId:       order.createdById ?? undefined,
+    paymentMethod: order.paymentMethod as OrderPaymentMethod,
+  })
+
+  await prisma.orderItem.updateMany({
+    where: { id: { in: itemsToMove.map(i => i.id) } },
+    data:  { orderId: newOrder.id },
+  })
+
+  const [updatedOriginal, updatedNew] = await Promise.all([
+    recalcTotals(orderId),
+    recalcTotals(newOrder.id),
+  ])
+
+  publishStandardEvent('PosOrderSplit', {
+    tenantId: cafeId, resourceId: orderId, metadata: { newOrderId: newOrder.id, movedItemIds: itemIds },
+  }, 'pos-core')
+
+  return { original: updatedOriginal, split: updatedNew }
+}
+
+// ─── 11. Merge orders ─────────────────────────────────────────────────────────
+// Moves all items from source orders into a target order, then cancels the
+// now-empty source orders. Distinct from table merge (routes/tables.ts,
+// permanent/structural) and from pos/orders.ts's append-on-create — this
+// combines already-separate, already-created orders.
+export async function mergeOrders(cafeId: string, targetOrderId: string, sourceOrderIds: string[]) {
+  const ids = sourceOrderIds.filter(id => id !== targetOrderId)
+  if (ids.length === 0) throw new Error('sourceOrderIds must contain at least one order other than the target')
+
+  const target = await getOrderOrThrow(targetOrderId, cafeId)
+  if (target.isPaid) throw new Error('Cannot merge into a paid order')
+
+  const sources = await prisma.order.findMany({ where: { id: { in: ids }, cafeId } })
+  if (sources.length !== ids.length) throw new Error('One or more source orders not found for this cafe')
+  if (sources.some(o => o.isPaid)) throw new Error('Cannot merge a paid order')
+
+  await prisma.orderItem.updateMany({
+    where: { orderId: { in: ids } },
+    data:  { orderId: targetOrderId },
+  })
+  await prisma.order.updateMany({
+    where: { id: { in: ids } },
+    data:  { status: 'CANCELLED' },
+  })
+
+  const updated = await recalcTotals(targetOrderId)
+
+  publishStandardEvent('PosOrdersMerged', {
+    tenantId: cafeId, resourceId: targetOrderId, metadata: { mergedOrderIds: ids },
+  }, 'pos-core')
+
+  return updated
+}
+
+// ─── 12. Receipt reprint ──────────────────────────────────────────────────────
+// API-first hook: returns the receipt data for an already-closed order and
+// emits an event; no physical printer integration here.
+export async function reprintReceipt(orderId: string, cafeId: string) {
+  const order = await getOrderOrThrow(orderId, cafeId)
+  if (!order.isPaid) throw new Error('Cannot reprint a receipt for an unpaid order')
+
+  publishStandardEvent('PosReceiptReprinted', {
+    tenantId: cafeId, resourceId: orderId, metadata: { totalPrice: order.totalPrice },
+  }, 'pos-core')
+
+  return order
 }

@@ -483,6 +483,9 @@ model Order {
   discountAmount  Float?
   // Order Management Core (K11) — DINE_IN | TAKEAWAY | DELIVERY (defaults to DINE_IN in code when absent)
   orderType       String?
+  // POS Advanced (K16) — order-level notes, and hold/resume timestamp (null = not held)
+  notes           String?
+  heldAt          DateTime?
   // staff member who entered the order manually (null for QR orders)
   createdById  String? @db.ObjectId
   createdBy    Staff?  @relation("OrderCreatedBy", fields: [createdById], references: [id])
