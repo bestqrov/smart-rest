@@ -77,19 +77,17 @@ export default function BillingPage() {
           </div>
         </Link>
 
-        {/* Subscriptions — disabled */}
-        <div className="opacity-50 cursor-not-allowed bg-zinc-900 border border-zinc-800 rounded-2xl p-6 flex flex-col gap-3">
-          <div className="w-12 h-12 rounded-xl bg-zinc-800 flex items-center justify-center">
-            <Users className="w-6 h-6 text-zinc-400" />
+        {/* Subscriptions — active */}
+        <Link href="/superadmin/billing/subscriptions"
+          className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 hover:bg-zinc-800 transition flex flex-col gap-3">
+          <div className="w-12 h-12 rounded-xl bg-blue-900/50 flex items-center justify-center">
+            <Users className="w-6 h-6 text-blue-400" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-lg font-semibold text-zinc-100">{t.subscriptions}</h2>
-              <span className="text-xs bg-zinc-700 text-zinc-400 px-2 py-0.5 rounded-full">{t.comingSoon}</span>
-            </div>
+            <h2 className="text-lg font-semibold text-zinc-100">{t.subscriptions}</h2>
             <p className="text-sm text-zinc-400 mt-1">{t.subscriptionsDesc}</p>
           </div>
-        </div>
+        </Link>
 
         {/* Invoices — disabled */}
         <div className="opacity-50 cursor-not-allowed bg-zinc-900 border border-zinc-800 rounded-2xl p-6 flex flex-col gap-3">
