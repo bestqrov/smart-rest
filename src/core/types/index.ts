@@ -231,6 +231,8 @@ export type PlatformEventName =
   | 'PosOrderItemUpdated'
   | 'PosOrderItemRemoved'
   | 'PosOrderClosed'
+  // Notifications
+  | 'NotificationCreated'
 
 export interface PlatformEvent<T = unknown> {
   name:      PlatformEventName
@@ -238,4 +240,17 @@ export interface PlatformEvent<T = unknown> {
   source:    string
   timestamp: Date
   traceId?:  string
+}
+
+// ── Standard Event Payload (K11: Platform Event Standardization) ──────────────
+// Shared payload shape for Subscriptions/Billing/Payments/Notifications
+// events published via eventBus.publish — see core/events/StandardEvent.ts.
+export interface StandardEventPayload {
+  eventId:    string
+  eventName:  PlatformEventName
+  tenantId:   string
+  actor:      string
+  timestamp:  Date
+  resourceId: string
+  metadata?:  Record<string, unknown>
 }

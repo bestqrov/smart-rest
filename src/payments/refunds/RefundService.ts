@@ -1,6 +1,6 @@
 import { getProvider }      from '../providers/registry'
 import { getTransaction, updateTransaction } from '../transactions/TransactionService'
-import { eventBus }         from '../../core'
+import { publishStandardEvent } from '../../core'
 import type { PaymentTransaction } from '../types'
 
 // ─── Refund Service ───────────────────────────────────────────────────────────
@@ -32,14 +32,10 @@ export async function refundTransaction(
     notes:        reason ?? tx.notes,
   })
 
-  eventBus.publish('PaymentRefunded', {
-    txId,
-    orderId:      tx.orderId,
-    tenantId:     tx.tenantId,
-    amount:       tx.amount,
-    refundAmount,
-    currency:     tx.currency,
-    reference:    result.reference,
+  publishStandardEvent('PaymentRefunded', {
+    tenantId:   tx.tenantId,
+    resourceId: txId,
+    metadata:   { orderId: tx.orderId, amount: tx.amount, refundAmount, currency: tx.currency, reference: result.reference },
   }, 'payment-engine')
 
   return updated

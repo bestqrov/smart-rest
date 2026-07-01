@@ -6,7 +6,7 @@ import {
   updateTransaction,
 } from '../transactions/TransactionService'
 import { refundTransaction } from '../refunds/RefundService'
-import { eventBus, NotificationService } from '../../core'
+import { publishStandardEvent, NotificationService } from '../../core'
 import {
   logPaymentCreated, logPaymentSucceeded, logPaymentFailed,
 } from '../../billing/audit/BillingAuditService'
@@ -21,14 +21,10 @@ export async function createTransaction(
 ): Promise<PaymentTransaction> {
   const tx = await dbCreate(input)
 
-  eventBus.publish('PaymentCreated', {
-    txId:     tx.id,
-    orderId:  tx.orderId,
-    tenantId: tx.tenantId,
-    amount:   tx.amount,
-    currency: tx.currency,
-    provider: tx.provider,
-    method:   tx.method,
+  publishStandardEvent('PaymentCreated', {
+    tenantId:   tx.tenantId,
+    resourceId: tx.id,
+    metadata:   { orderId: tx.orderId, amount: tx.amount, currency: tx.currency, provider: tx.provider, method: tx.method },
   }, 'payment-engine')
 
   NotificationService.createNotification({
@@ -61,8 +57,10 @@ export async function authorize(
     reference: result.reference ?? tx.reference,
   })
 
-  eventBus.publish('PaymentAuthorized', {
-    txId, orderId: tx.orderId, tenantId: tx.tenantId, amount: tx.amount,
+  publishStandardEvent('PaymentAuthorized', {
+    tenantId:   tx.tenantId,
+    resourceId: txId,
+    metadata:   { orderId: tx.orderId, amount: tx.amount },
   }, 'payment-engine')
 
   return updated
@@ -95,9 +93,10 @@ export async function markPaid(
     notes:     notes ?? tx.notes,
   })
 
-  eventBus.publish('PaymentSucceeded', {
-    txId, orderId: tx.orderId, tenantId: tx.tenantId,
-    amount: tx.amount, currency: tx.currency, reference: captureRef,
+  publishStandardEvent('PaymentSucceeded', {
+    tenantId:   tx.tenantId,
+    resourceId: txId,
+    metadata:   { orderId: tx.orderId, amount: tx.amount, currency: tx.currency, reference: captureRef },
   }, 'payment-engine')
 
   NotificationService.createNotification({
@@ -129,8 +128,10 @@ export async function fail(
     notes:  reason ?? tx.notes,
   })
 
-  eventBus.publish('PaymentFailed', {
-    txId, orderId: tx.orderId, tenantId: tx.tenantId, reason,
+  publishStandardEvent('PaymentFailed', {
+    tenantId:   tx.tenantId,
+    resourceId: txId,
+    metadata:   { orderId: tx.orderId, reason },
   }, 'payment-engine')
 
   await logPaymentFailed(tx.tenantId, tx.id, 'system', { reason })

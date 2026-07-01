@@ -5,6 +5,8 @@
 
 // ── Events ────────────────────────────────────────────────────────────────────
 export { eventBus } from './events/EventBus'
+export { publishStandardEvent } from './events/StandardEvent'
+export type { StandardEventInput } from './events/StandardEvent'
 
 // ── Audit ─────────────────────────────────────────────────────────────────────
 export * as AuditService from './audit/AuditService'
@@ -42,6 +44,7 @@ export type {
   FlagContext,
   PlatformEventName,
   PlatformEvent,
+  StandardEventPayload,
 } from './types'
 
 export { ok, err } from './types'
