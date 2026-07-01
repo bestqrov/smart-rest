@@ -14,6 +14,8 @@ import { Server as SocketIOServer } from 'socket.io'
 import { authorizeAdmin } from '../middleware/authorizeAdmin'
 import prisma from '../prisma'
 import logger from '../logger'
+import { publishStandardEvent } from '../core'
+import { updateReservation, checkInReservation, markNoShow, hasTableConflict } from '../reservations/ReservationService'
 
 const router = express.Router()
 
@@ -78,6 +80,9 @@ router.post('/api/reservations', async (req: Request, res: Response) => {
     }
 
     logger.info({ msg: 'New reservation', cafeId: table.cafeId, reservationId: reservation.id })
+    publishStandardEvent('ReservationCreated', {
+      tenantId: table.cafeId, resourceId: reservation.id, metadata: { guests: reservation.guests, date: reservation.date },
+    }, 'reservations')
     return res.status(201).json({ ok: true, reservationId: reservation.id })
   } catch (err) {
     logger.error({ msg: 'POST /api/reservations error', err })
@@ -145,6 +150,9 @@ router.patch('/api/kitchen/reservations/:id', authorizeAdmin, async (req: Reques
     }
 
     logger.info({ msg: 'Reservation updated', cafeId, id, status: newStatus })
+    publishStandardEvent(newStatus === 'ACCEPTED' ? 'ReservationConfirmed' : 'ReservationCancelled', {
+      tenantId: cafeId, resourceId: id, metadata: {},
+    }, 'reservations')
     return res.json({ ok: true, status: newStatus })
   } catch (err) {
     logger.error({ msg: 'PATCH /api/kitchen/reservations/:id error', err })
@@ -230,8 +238,19 @@ router.patch('/api/admin/reservations/:id', authorizeAdmin, async (req: Request,
     const id     = req.params['id'] as string
     const { action, tableNumber } = req.body as { action?: string; tableNumber?: number }
 
+    // check-in / no-show are new K15 transitions — delegate to ReservationService
+    // (validation, update, and event emission all happen there).
+    if (action === 'check-in' || action === 'no-show') {
+      const updated = action === 'check-in'
+        ? await checkInReservation(id, cafeId)
+        : await markNoShow(id, cafeId)
+      const io = req.app.get('io') as import('socket.io').Server | undefined
+      if (io) io.to(`kds_room_${cafeId}`).emit('reservation_updated', { id, status: updated.status })
+      return res.json({ ok: true, status: updated.status })
+    }
+
     if (action !== 'accept' && action !== 'cancel' && action !== 'complete') {
-      return res.status(400).json({ error: 'action must be "accept", "cancel", or "complete"' })
+      return res.status(400).json({ error: 'action must be "accept", "cancel", "complete", "check-in", or "no-show"' })
     }
 
     const reservation = await prisma.reservation.findUnique({
@@ -251,6 +270,14 @@ router.patch('/api/admin/reservations/:id', authorizeAdmin, async (req: Request,
       return res.status(422).json({ error: `Cannot ${action} a reservation with status ${reservation.status}` })
     }
 
+    // Prevent booking conflicts when a table is assigned on acceptance.
+    if (action === 'accept' && tableNumber != null) {
+      const full = await prisma.reservation.findUnique({ where: { id }, select: { date: true } })
+      if (full && await hasTableConflict(cafeId, Number(tableNumber), full.date, id)) {
+        return res.status(409).json({ error: `Table ${tableNumber} is already booked around that time` })
+      }
+    }
+
     const statusMap: Record<string, string> = { accept: 'ACCEPTED', cancel: 'CANCELLED', complete: 'COMPLETED' }
     const newStatus = statusMap[action]!
 
@@ -263,10 +290,47 @@ router.patch('/api/admin/reservations/:id', authorizeAdmin, async (req: Request,
     if (io) io.to(`kds_room_${cafeId}`).emit('reservation_updated', { id, status: newStatus })
 
     logger.info({ msg: 'Admin reservation update', cafeId, id, status: newStatus })
+    if (action === 'accept' || action === 'cancel') {
+      publishStandardEvent(action === 'accept' ? 'ReservationConfirmed' : 'ReservationCancelled', {
+        tenantId: cafeId, resourceId: id, metadata: { tableNumber },
+      }, 'reservations')
+    }
     return res.json({ ok: true, status: newStatus })
   } catch (err) {
     logger.error({ msg: 'PATCH /api/admin/reservations/:id error', err })
     return res.status(500).json({ error: 'Failed' })
+  }
+})
+
+// ─── PUT /api/admin/reservations/:id ─────────────────────────────────────────
+// Edit reservation details (name/phone/guests/date/notes/tableNumber).
+// Separate from the action-based PATCH above, which only handles status
+// transitions. New in K15 — reservations had no way to be edited before.
+
+router.put('/api/admin/reservations/:id', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const cafeId = req.admin!.cafeId
+    const id     = req.params['id'] as string
+    const { name, phone, guests, date, notes, tableNumber } = req.body as {
+      name?: string; phone?: string; guests?: number; date?: string; notes?: string; tableNumber?: number
+    }
+
+    const updated = await updateReservation(id, cafeId, {
+      name, phone,
+      guests: guests != null ? Number(guests) : undefined,
+      date:   date ? new Date(date) : undefined,
+      notes,
+      tableNumber: tableNumber != null ? Number(tableNumber) : undefined,
+    })
+
+    const io = req.app.get('io') as import('socket.io').Server | undefined
+    if (io) io.to(`kds_room_${cafeId}`).emit('reservation_updated', { id, status: updated.status })
+
+    logger.info({ msg: 'Admin reservation edited', cafeId, id })
+    return res.json({ ok: true, reservation: updated })
+  } catch (err: any) {
+    logger.error({ msg: 'PUT /api/admin/reservations/:id error', err })
+    return res.status(400).json({ error: err.message ?? 'Failed' })
   }
 })
 

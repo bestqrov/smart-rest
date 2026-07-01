@@ -251,6 +251,13 @@ export type PlatformEventName =
   | 'TableTransferred'
   | 'TableMerged'
   | 'TableUnmerged'
+  // Reservation Management
+  | 'ReservationCreated'
+  | 'ReservationUpdated'
+  | 'ReservationConfirmed'
+  | 'ReservationCancelled'
+  | 'ReservationCheckedIn'
+  | 'ReservationNoShow'
 
 export interface PlatformEvent<T = unknown> {
   name:      PlatformEventName

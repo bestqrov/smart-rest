@@ -871,7 +871,7 @@ model Reservation {
   tableNumber Int?     // physical table number (optional, set by staff on confirmation)
   date        DateTime
   notes       String   @default("")
-  // PENDING | ACCEPTED | COMPLETED | CANCELLED
+  // PENDING | ACCEPTED | COMPLETED | CANCELLED | CHECKED_IN | NO_SHOW (K15)
   // COMPLETED triggers n8n review-request flow and gamification counter increment
   status      String   @default("PENDING")
   // Pre-order snapshot captured at reservation or updated by waiter during visit
