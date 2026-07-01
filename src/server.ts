@@ -6,6 +6,7 @@ import { registerBuiltinProfiles } from './certification'
 import { initAnalyticsEngine }     from './analytics'
 import { initMarketplaceEngine }   from './marketplace'
 import { initPaymentEngine }        from './payments'
+import { initBillingEventNotifications } from './billing/notifications/BillingEventNotificationHub'
 import { initTenantEngine }         from './tenant'
 
 import express from 'express'
@@ -344,6 +345,7 @@ async function main() {
   // Seed marketplace feature flags (idempotent)
   initMarketplaceEngine().catch(() => undefined)
   initPaymentEngine().catch(() => undefined)
+  initBillingEventNotifications()
   initTenantEngine().catch(() => undefined)
 
   // Collect cron task handles for graceful shutdown
