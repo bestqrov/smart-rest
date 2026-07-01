@@ -267,6 +267,111 @@ When a quota is exceeded:
 
 ---
 
+## Subscription Engine (Sprint K2)
+
+### Overview
+
+`BillingSubscription` is the DB-backed subscription record linking a tenant to a `BillingPlan`. It tracks lifecycle state (TRIAL → ACTIVE → etc.) independently from `TenantProfile` (which tracks platform-level access). The two will be linked in a future sprint.
+
+### Subscription Schema
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `tenantId` | String | The tenant (restaurant/hotel/etc.) identifier |
+| `planId` | String | `BillingPlan._id` |
+| `planCode` | String | Denormalized plan code (FREE, STARTER…) |
+| `planName` | String | Denormalized plan name |
+| `status` | String | TRIAL / ACTIVE / GRACE_PERIOD / SUSPENDED / CANCELLED / EXPIRED |
+| `startDate` | DateTime | When subscription started |
+| `endDate` | DateTime? | Scheduled end date |
+| `renewalDate` | DateTime? | Next auto-renewal date |
+| `trialEndsAt` | DateTime? | Trial expiry |
+| `cancelledAt` | DateTime? | Cancellation timestamp |
+| `graceEndsAt` | DateTime? | Grace period end |
+| `autoRenew` | Boolean | Auto-renew flag |
+| `notes` | String? | Admin notes |
+
+### Subscription Lifecycle
+
+```
+TRIAL ──────────────► ACTIVE ──────► GRACE_PERIOD ──► ACTIVE
+  │                     │                 │
+  │                     ▼                 ▼
+  ├──► CANCELLED     SUSPENDED ──────► CANCELLED
+  │       (terminal)     │
+  └──► EXPIRED           └──► CANCELLED
+          (terminal)
+```
+
+Valid transitions enforced by `SubscriptionValidation.assertTransition()`:
+- `TRIAL` → ACTIVE, CANCELLED, EXPIRED
+- `ACTIVE` → GRACE_PERIOD, SUSPENDED, CANCELLED, EXPIRED
+- `GRACE_PERIOD` → ACTIVE, SUSPENDED, CANCELLED
+- `SUSPENDED` → ACTIVE, CANCELLED
+- `CANCELLED`, `EXPIRED` — terminal (no further transitions)
+
+**Business rules:**
+- One active subscription per tenant (TRIAL/ACTIVE/GRACE_PERIOD/SUSPENDED)
+- Trial cannot be restarted on an existing subscription
+- Cannot modify a CANCELLED or EXPIRED subscription
+- Plan change allowed in any non-terminal state
+
+### Subscription Architecture
+
+```
+src/billing/subscriptions/
+  SubscriptionTypes.ts         — BillingSubscription, SubscriptionStatus, SubscriptionWithPlan
+  SubscriptionRepository.ts    — Prisma CRUD + findActiveByTenant + findWithPlan + countByPlan
+  SubscriptionValidation.ts    — SubscriptionError + assertTransition + assertOneActive
+  SubscriptionLifecycle.ts     — activate, renew, suspend, resume, cancel, expire, changePlan
+  SubscriptionEvents.ts        — 7 EventBus emitters
+  SubscriptionNotifications.ts — 5 NotificationService calls
+  SubscriptionService.ts       — Full facade with audit logging
+```
+
+### Subscription Events (4 new + reuses 3 from Epic K)
+
+| Event | When |
+|-------|------|
+| `SubscriptionCreated` | New subscription created (trial or active) |
+| `SubscriptionActivated` | Transition to ACTIVE state |
+| `SubscriptionRenewed` | Renewal processed |
+| `SubscriptionSuspended` | Suspended by SuperAdmin |
+| `SubscriptionCancelled` | Cancelled by tenant or SA |
+| `SubscriptionExpired` | Auto-expired (cron job) |
+| `PlanChanged` | Plan upgraded or downgraded |
+
+### SuperAdmin API
+
+> Note: these routes live in `src/routes/billingSubscriptionsSA.ts` and are the sole canonical implementation. Earlier tenant-scoped subscription routes (`/subscriptions/:tenantId`, `.../plan`, `.../suspend`, `.../reactivate`) documented under "Existing Billing Platform APIs" above were removed in commit `16c8c5e` (route-shadowing fix) and are superseded by this table.
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/superadmin/billing/subscriptions` | GET | List subscriptions (filter: status, tenantId, planCode) |
+| `/api/superadmin/billing/subscriptions/:id` | GET | Subscription detail |
+| `/api/superadmin/billing/subscriptions` | POST | Create trial or active subscription |
+| `/api/superadmin/billing/subscriptions/:id` | PATCH | Update notes |
+| `/api/superadmin/billing/subscriptions/:id/activate` | POST | Activate |
+| `/api/superadmin/billing/subscriptions/:id/suspend` | POST | Suspend |
+| `/api/superadmin/billing/subscriptions/:id/resume` | POST | Resume |
+| `/api/superadmin/billing/subscriptions/:id/cancel` | POST | Cancel |
+| `/api/superadmin/billing/subscriptions/:id/renew` | POST | Renew |
+| `/api/superadmin/billing/subscriptions/:id/change-plan` | POST | Change plan (body: planId) |
+
+### Restaurant API
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /api/billing/subscription` | Current subscription with plan details |
+| `GET /api/billing/subscription/status` | Quick status check |
+| `GET /api/billing/subscription/history` | Full subscription history |
+
+### Future: Invoice Integration (Sprint K3)
+
+In Sprint K3, subscription renewals will automatically trigger invoice generation via `BillingOrchestrator.generateInvoice()`. The `renewalDate` field will be used by a cron job to generate invoices 3 days before renewal.
+
+---
+
 ## Extension Guide
 
 ### Add a new tax provider
