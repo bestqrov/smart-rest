@@ -268,6 +268,12 @@ export type PlatformEventName =
   // Multi-Branch Operations
   | 'BranchAdded'
   | 'BranchRemoved'
+  // CRM Foundation
+  | 'CustomerTagged'
+  | 'CustomerUntagged'
+  | 'CustomerNoteUpdated'
+  | 'CustomerFavoriteAdded'
+  | 'CustomerFavoriteRemoved'
 
 export interface PlatformEvent<T = unknown> {
   name:      PlatformEventName

@@ -1682,9 +1682,16 @@ model CafeCustomer {
   visits    Int      @default(1)
   createdAt DateTime @default(now())
 
+  // CRM Foundation (K19) — visit/order history is derived from Order.customerPhone
+  // (not duplicated here); tags/notes/favorites are genuinely new.
+  tags               String[] @default([])
+  notes              String?
+  favoriteProductIds String[] @default([])
+
   @@unique([cafeId, phone])
   @@index([cafeId, lastVisit])
   @@index([cafeId, optIn])
+  @@index([cafeId, tags])
 }
 
 // ─── AI Center ────────────────────────────────────────────────────────────────
