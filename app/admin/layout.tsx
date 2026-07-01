@@ -38,7 +38,7 @@ const NAV = [
   { href: '/admin/marketing',     icon: Film,           key: 'marketing'     },
   { href: '/admin/social',     icon: Share2,          key: 'social'     },
   { href: '/admin/billing',    icon: CreditCard,      key: 'billing'    },
-  { href: '/admin/billing/subscription', icon: Package, key: 'subscription' },
+  { href: '/admin/billing/subscription', icon: Wallet, key: 'subscription' },
   { href: '/admin/settings',   icon: Settings,        key: 'settings'   },
 ] as const
 
