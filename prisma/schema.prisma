@@ -275,6 +275,9 @@ model Cafe {
   reEngagementMessage String?  // template — use {{name}} and {{cafe}} as placeholders
   reEngagementDays    Int?     @default(7)  // days of inactivity before sending
 
+  // K21 — Google Business review link, shown to customers after a high (>=4) rating
+  googleReviewLink String?
+
   // ── Social media credentials (per-cafe, filled when owner connects accounts) ─
   fbPageId          String @default("")  // Facebook Page numeric ID
   fbAccessToken     String @default("")  // long-lived FB page token (~60 days)

@@ -2,6 +2,11 @@ import express, { Request, Response } from 'express'
 import { Server as SocketIOServer } from 'socket.io'
 import prisma from '../prisma'
 import logger from '../logger'
+import { authorizeAdmin } from '../middleware/authorizeAdmin'
+import {
+  getGoogleReviewLink, setGoogleReviewLink, flagNegativeReview, notifyReviewSubmitted,
+  listOrderReviews, getRatingAnalytics,
+} from '../reviews/ReviewService'
 
 const router = express.Router()
 
@@ -61,6 +66,7 @@ router.post('/api/orders/:orderId/review', async (req: Request, res: Response) =
     })
 
     // High-rating path: fire n8n webhook for social media automation
+    let googleReviewLink: string | null = null
     if (rating >= 4) {
       const webhookUrl = process.env.N8N_WEBHOOK_URL
       if (webhookUrl) {
@@ -70,6 +76,8 @@ router.post('/api/orders/:orderId/review', async (req: Request, res: Response) =
           body: JSON.stringify({ orderId, cafeId: order.cafeId, rating, reviewText }),
         }).catch((err) => logger.warn('n8n webhook failed:', err))
       }
+      // K21 — funnel high ratings toward the cafe's Google review link, if configured
+      googleReviewLink = await getGoogleReviewLink(order.cafeId).catch(() => null)
     }
 
     // Low-rating path: alert waiter via socket
@@ -84,12 +92,73 @@ router.post('/api/orders/:orderId/review', async (req: Request, res: Response) =
           reviewText,
         })
       }
+      // K21 — persisted alert (the socket emit above is ephemeral; this survives
+      // even if no one's watching live), reusing the existing SystemNotification model.
+      await flagNegativeReview(order.cafeId, orderId, rating, reviewText).catch((err) => logger.warn('flagNegativeReview failed:', err))
     }
 
-    return res.json({ success: true })
+    await notifyReviewSubmitted(order.cafeId, orderId, rating).catch(() => undefined)
+
+    return res.json({ success: true, googleReviewLink })
   } catch (err) {
     logger.error(err)
     return res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
+// ─── K21 — admin endpoints ────────────────────────────────────────────────────
+
+// GET /api/admin/reviews?minRating=&maxRating=&page=&limit=
+router.get('/api/admin/reviews', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const cafeId = req.admin!.cafeId
+    const { minRating, maxRating, page, limit } = req.query as Record<string, string>
+    const result = await listOrderReviews(cafeId, {
+      minRating: minRating ? Number(minRating) : undefined,
+      maxRating: maxRating ? Number(maxRating) : undefined,
+      page:      page  ? Number(page)  : undefined,
+      limit:     limit ? Number(limit) : undefined,
+    })
+    return res.json(result)
+  } catch (err) {
+    logger.error(err)
+    return res.status(500).json({ error: 'Failed to fetch reviews' })
+  }
+})
+
+// GET /api/admin/reviews/analytics?from=&to=
+router.get('/api/admin/reviews/analytics', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const cafeId = req.admin!.cafeId
+    const { from, to } = req.query as Record<string, string>
+    const analytics = await getRatingAnalytics(cafeId, from ? new Date(from) : undefined, to ? new Date(to) : undefined)
+    return res.json(analytics)
+  } catch (err) {
+    logger.error(err)
+    return res.status(500).json({ error: 'Failed to fetch rating analytics' })
+  }
+})
+
+// GET/PATCH /api/admin/reviews/google-link
+router.get('/api/admin/reviews/google-link', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const link = await getGoogleReviewLink(req.admin!.cafeId)
+    return res.json({ googleReviewLink: link })
+  } catch (err) {
+    logger.error(err)
+    return res.status(500).json({ error: 'Failed to fetch link' })
+  }
+})
+
+router.patch('/api/admin/reviews/google-link', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const { link } = req.body as { link?: string }
+    if (!link?.trim()) return res.status(400).json({ error: 'link is required' })
+    const updated = await setGoogleReviewLink(req.admin!.cafeId, link.trim())
+    return res.json({ googleReviewLink: updated })
+  } catch (err) {
+    logger.error(err)
+    return res.status(500).json({ error: 'Failed to update link' })
   }
 })
 

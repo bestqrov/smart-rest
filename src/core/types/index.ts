@@ -280,6 +280,10 @@ export type PlatformEventName =
   | 'LoyaltyTierChanged'
   | 'LoyaltyRewardCreated'
   | 'LoyaltyRewardRedeemed'
+  // Reviews & Reputation
+  | 'ReviewSubmitted'
+  | 'ReviewFlaggedNegative'
+  | 'GoogleReviewLinkUpdated'
 
 export interface PlatformEvent<T = unknown> {
   name:      PlatformEventName
