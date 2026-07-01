@@ -88,6 +88,8 @@ import billingSuperAdminRouter           from './routes/billingSuperAdmin'
 import billingRestaurantRouter           from './routes/billingRestaurant'
 import billingPlansSARouter              from './routes/billingPlansSA'
 import billingSubscriptionsSARouter      from './routes/billingSubscriptionsSA'
+import billingPaymentsSARouter           from './routes/billingPaymentsSA'
+import billingPaymentWebhookRouter       from './routes/billingPaymentWebhook'
 import inventoryAdminRouter from './routes/inventoryAdmin'
 import reviewGalleryRouter from './routes/reviewGallery'
 import demoRequestsRouter from './routes/demoRequests'
@@ -281,6 +283,8 @@ async function main() {
   app.use(billingRestaurantRouter)
   app.use(billingPlansSARouter)
   app.use(billingSubscriptionsSARouter)
+  app.use(billingPaymentsSARouter)
+  app.use(billingPaymentWebhookRouter)
   app.use(inventoryAdminRouter)
   app.use(reviewGalleryRouter)
   app.use(demoRequestsRouter)
