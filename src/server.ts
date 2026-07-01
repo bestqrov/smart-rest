@@ -8,6 +8,8 @@ import { initMarketplaceEngine }   from './marketplace'
 import { initPaymentEngine }        from './payments'
 import { initTenantEngine }         from './tenant'
 import { initKitchenEngine }        from './kitchen/KitchenTicketService'
+import { initWhatsAppEngine }       from './whatsapp/WhatsAppEngine'
+import { startWhatsAppSchedulerCron } from './cron/whatsappScheduler'
 
 import express from 'express'
 import http from 'http'
@@ -60,6 +62,7 @@ import whatsappWebhookRouter from './routes/whatsappWebhook'
 import recipesRouter from './routes/recipes'
 import antiFraudRouter from './routes/antiFraud'
 import feedbackRouter from './routes/feedback'
+import whatsappAdminRouter from './routes/whatsappAdmin'
 import landingConfigRouter from './routes/landingConfig'
 import marketingRouter from './routes/marketing'
 import traiteurRouter from './routes/traiteur'
@@ -255,6 +258,7 @@ async function main() {
   app.use(recipesRouter)
   app.use(antiFraudRouter)
   app.use(feedbackRouter)
+  app.use(whatsappAdminRouter)
   app.use(landingConfigRouter)
   app.use('/api/marketing', marketingRouter)
   app.use('/api/v1/equipment', equipmentRouter)
@@ -352,6 +356,7 @@ async function main() {
   initPaymentEngine().catch(() => undefined)
   initTenantEngine().catch(() => undefined)
   initKitchenEngine().catch(() => undefined)
+  initWhatsAppEngine()
 
   // Collect cron task handles for graceful shutdown
   const cronTasks = [
@@ -360,6 +365,7 @@ async function main() {
     startNightlyCron(),
     startCertificationCron(),
     startSubscriptionLifecycleCron(),
+    startWhatsAppSchedulerCron(),
   ]
 
   httpServer.listen(port, '0.0.0.0', () => {

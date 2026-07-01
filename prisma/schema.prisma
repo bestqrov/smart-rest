@@ -1104,6 +1104,41 @@ model SupportTicket {
   @@index([sourceId])
 }
 
+// K25 — WhatsApp Automation Engine. Delivery reuses the existing Evolution
+// API sender (routes/antiFraud.ts sendWhatsApp) — this is the log/queue on
+// top of it, not a second provider integration.
+model WhatsAppMessage {
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId       String    @db.ObjectId
+  phone        String
+  direction    String    @default("OUTBOUND") // OUTBOUND | INBOUND
+  templateKey  String?
+  body         String
+  status       String    @default("PENDING")  // PENDING | SENT | FAILED | SKIPPED
+  retryCount   Int       @default(0)
+  error        String?
+  scheduledFor DateTime?
+  sentAt       DateTime?
+  createdAt    DateTime  @default(now())
+
+  @@index([cafeId, status])
+  @@index([cafeId, phone])
+  @@index([status, scheduledFor])
+}
+
+model WhatsAppTemplate {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId    String   @db.ObjectId
+  key       String   // e.g. "review_request", "low_stock_alert" — same idea as
+                      // the existing Cafe.reEngagementMessage, generalized
+  body      String   // supports {{placeholders}}
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([cafeId, key])
+}
+
 // ─── Online Payment Sessions (Gulf Stripe / Africa Mobile Money) ─────────────
 
 model OnlinePayment {

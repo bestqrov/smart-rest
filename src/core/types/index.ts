@@ -290,6 +290,11 @@ export type PlatformEventName =
   | 'SupportTicketCreated'
   | 'SupportTicketEscalated'
   | 'SupportTicketResolved'
+  // WhatsApp Automation Engine
+  | 'WhatsAppMessageQueued'
+  | 'WhatsAppMessageSent'
+  | 'WhatsAppMessageFailed'
+  | 'WhatsAppBroadcastCompleted'
 
 export interface PlatformEvent<T = unknown> {
   name:      PlatformEventName
