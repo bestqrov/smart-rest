@@ -12,6 +12,7 @@
 
 import { Prisma } from '@prisma/client'
 import logger from '../logger'
+import { publishStandardEvent } from '../core'
 
 type TxClient = Prisma.TransactionClient
 
@@ -88,6 +89,13 @@ export async function deductInventoryForOrder(
 
     result.deducted.push({ ingredientName, qty: totalQty, unit: stockItem.unit })
 
+    // Hook for future Smart Intelligence Layer consumers (eventBus.subscribe).
+    publishStandardEvent('StockLevelChanged', {
+      tenantId:   cafeId,
+      resourceId: stockItem.id,
+      metadata:   { ingredientName, orderId, deductedQty: totalQty, currentQty: newQty, unit: stockItem.unit },
+    }, 'inventory-deduction')
+
     if (isNowLow) {
       result.lowStockItems.push({
         id:               stockItem.id,
@@ -95,6 +103,12 @@ export async function deductInventoryForOrder(
         currentQty:       newQty,
         minimumThreshold: stockItem.minimumThreshold
       })
+
+      publishStandardEvent('StockLow', {
+        tenantId:   cafeId,
+        resourceId: stockItem.id,
+        metadata:   { ingredientName, currentQty: newQty, minimumThreshold: stockItem.minimumThreshold, unit: stockItem.unit },
+      }, 'inventory-deduction')
 
       // Create an in-app low-stock notification (idempotent — one per ingredient per day)
       const today = new Date()

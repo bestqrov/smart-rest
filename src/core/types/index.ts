@@ -243,6 +243,9 @@ export type PlatformEventName =
   | 'KitchenOrderPreparing'
   | 'KitchenOrderReady'
   | 'KitchenOrderServed'
+  // Inventory Intelligence (restaurant recipe/stock — distinct from marketplace InventoryUpdated)
+  | 'StockLevelChanged'
+  | 'StockLow'
 
 export interface PlatformEvent<T = unknown> {
   name:      PlatformEventName
