@@ -2494,6 +2494,32 @@ model Recommendation {
   @@map("intelligence_recommendations")
 }
 
+// K36 — Insight Engine. Distinct from Recommendation above: an insight is an
+// observation at a point in time (event-triggered), so every trigger
+// creates a new row — no unique(tenantId, ruleId) upsert like
+// Recommendation, which represents one standing actionable item per rule.
+model Insight {
+  id             String    @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId       String
+  ruleId         String
+  category       String
+  severity       String    @default("INFO") // INFO | WARNING | CRITICAL
+  title          String
+  description    String
+  status         String    @default("NEW")  // NEW | ACKNOWLEDGED | RESOLVED | DISMISSED
+  sourceEventId  String?                    // NormalizedIntelligenceEvent.eventId that triggered this
+  metadata       String?                    // JSON string
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  acknowledgedAt DateTime?
+  resolvedAt     DateTime?
+
+  @@index([tenantId, status])
+  @@index([category])
+  @@index([severity])
+  @@map("intelligence_insights")
+}
+
 // ─── Billing Platform — Plans (DB-backed, managed by SuperAdmin) ───────────────
 
 model BillingPlan {

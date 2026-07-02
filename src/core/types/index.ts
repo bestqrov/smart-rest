@@ -328,6 +328,11 @@ export type PlatformEventName =
   | 'IntelRecommendationActivated'
   | 'IntelRecommendationDismissed'
   | 'IntelRecommendationCompleted'
+  // Smart Intelligence — Insight Engine (K36)
+  | 'IntelInsightCreated'
+  | 'IntelInsightAcknowledged'
+  | 'IntelInsightResolved'
+  | 'IntelInsightDismissed'
 
 export interface PlatformEvent<T = unknown> {
   name:      PlatformEventName
