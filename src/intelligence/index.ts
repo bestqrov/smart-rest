@@ -1,4 +1,4 @@
-// ─── Smart Intelligence Platform — Public API (K30-K33 + K35-K50) ──────────
+// ─── Smart Intelligence Platform — Public API (K30-K33 + K35-K51) ──────────
 // Infrastructure only. Two families of "rules" coexist by design, not by
 // accident: Recommendation/Insight/Decision rules (K35/K36/K38) are
 // TypeScript functions — code, in-memory, one global behavior, deployed
@@ -59,12 +59,19 @@
 // capabilities (K49, tenant-resolved), workflows (K48), advisors (K46),
 // runtime stats (K45). No new listing logic, no mutation/execution
 // endpoints; OpenAPIRegistry's manifest is generated from that same
-// routing table, not hand-authored). Still exactly one eventBus
-// subscription for the whole module. No built-in agents/rules/executors/
-// templates/namespaces/schedules/advisors/skills/workflows ship except
-// the Data Hub knowledge source, the built-in model catalog, and the
-// built-in Agent Framework capability entries (all direct reuse/
-// reference data, not business rules); nothing here is business-specific.
+// routing table, not hand-authored), and Observability (K51 — no new
+// logging/monitoring system; agent execution metrics read K45's
+// RuntimeMonitoring stats, provider performance and error aggregation
+// both replay K31's persisted IntelligenceEventLog, and
+// checkIntelligenceHealth is shaped as ops/types' ModuleHealth so it
+// slots into ops/health/HealthService.ts's existing check list — the
+// platform still has exactly one health check API). Still exactly one
+// eventBus subscription for the whole module. No built-in
+// agents/rules/executors/templates/namespaces/schedules/advisors/skills/
+// workflows ship except the Data Hub knowledge source, the built-in
+// model catalog, and the built-in Agent Framework capability entries
+// (all direct reuse/reference data, not business rules); nothing here is
+// business-specific.
 
 export type { IntelligenceAgentDefinition, AgentEventHandler, NormalizedIntelligenceEvent } from './types'
 
@@ -122,3 +129,5 @@ export * from './orchestrator'
 export * from './capabilities'
 
 export * from './gateway'
+
+export * from './observability'
