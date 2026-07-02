@@ -1,4 +1,4 @@
-// ─── Smart Intelligence Platform — Public API (K30-K33 + K35-K49) ──────────
+// ─── Smart Intelligence Platform — Public API (K30-K33 + K35-K50) ──────────
 // Infrastructure only. Two families of "rules" coexist by design, not by
 // accident: Recommendation/Insight/Decision rules (K35/K36/K38) are
 // TypeScript functions — code, in-memory, one global behavior, deployed
@@ -52,12 +52,19 @@
 // seeds K40's closed AgentCapability union as discoverable infra entries;
 // validateSkillRequiredCapabilities checks a K47 skill's declared
 // requiredCapabilities against this catalog without SkillRegistry itself
-// changing). Still exactly one eventBus subscription for the whole
-// module. No built-in agents/rules/executors/templates/namespaces/
-// schedules/advisors/skills/workflows ship except the Data Hub knowledge
-// source, the built-in model catalog, and the built-in Agent Framework
-// capability entries (all direct reuse/reference data, not business
-// rules); nothing here is business-specific.
+// changing), and the API Gateway (K50 — a single read-only HTTP surface,
+// mounted separately at src/routes/intelligenceGateway.ts, whose
+// ServiceRouter maps a :service segment onto an already-existing
+// discovery/list function per module — agents (K40), skills (K47),
+// capabilities (K49, tenant-resolved), workflows (K48), advisors (K46),
+// runtime stats (K45). No new listing logic, no mutation/execution
+// endpoints; OpenAPIRegistry's manifest is generated from that same
+// routing table, not hand-authored). Still exactly one eventBus
+// subscription for the whole module. No built-in agents/rules/executors/
+// templates/namespaces/schedules/advisors/skills/workflows ship except
+// the Data Hub knowledge source, the built-in model catalog, and the
+// built-in Agent Framework capability entries (all direct reuse/
+// reference data, not business rules); nothing here is business-specific.
 
 export type { IntelligenceAgentDefinition, AgentEventHandler, NormalizedIntelligenceEvent } from './types'
 
@@ -113,3 +120,5 @@ export * from './skills'
 export * from './orchestrator'
 
 export * from './capabilities'
+
+export * from './gateway'

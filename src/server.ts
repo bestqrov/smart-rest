@@ -81,6 +81,7 @@ import opsLogsRouter                 from './routes/opsLogs'
 import opsBackupRouter               from './routes/opsBackup'
 import opsRuntimeRouter              from './routes/opsRuntime'
 import opsSecurityRouter             from './routes/opsSecurity'
+import intelligenceGatewayRouter     from './routes/intelligenceGateway'
 import marketplaceOrdersSARouter         from './routes/marketplaceOrdersSA'
 import marketplaceOrdersRestaurantRouter from './routes/marketplaceOrdersRestaurant'
 import marketplaceDashboardSARouter      from './routes/marketplaceDashboardSA'
@@ -284,6 +285,7 @@ async function main() {
   app.use(opsBackupRouter)
   app.use(opsRuntimeRouter)
   app.use(opsSecurityRouter)
+  app.use(intelligenceGatewayRouter)
   app.use(marketplaceOrdersSARouter)
   app.use(marketplaceOrdersRestaurantRouter)
   app.use(marketplaceDashboardSARouter)
