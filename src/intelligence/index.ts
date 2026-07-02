@@ -1,4 +1,4 @@
-// ─── Smart Intelligence Platform — Public API (K30-K33 + K35-K37) ──────────
+// ─── Smart Intelligence Platform — Public API (K30-K33 + K35-K38) ──────────
 // Infrastructure only: agent contract/registry, event normalization/
 // categorization/persistence/replay, the pull-based Data Hub (cross-module
 // adapters, unified tenant-aware access, feature extraction, cache hooks),
@@ -6,9 +6,11 @@
 // composed from existing services), the Recommendation Engine (rule-based,
 // pulled on demand), the Insight Engine (rule-based, event-driven — insight
 // rules register as agents under the hood, so there's still only one
-// eventBus subscription in this whole module), and the Action Engine
-// (executor registry + explicit-only queue/run — nothing auto-executes).
-// No built-in agents/rules/executors ship — future sprints register them;
+// eventBus subscription in this whole module), the Action Engine (executor
+// registry + explicit-only queue/run — nothing auto-executes), and the
+// Decision Engine (synthesizes recommendations + insights into a decision;
+// "executed" only ever means queuing an Action via Action Engine, never
+// running a business action). No built-in agents/rules/executors ship;
 // nothing here is business-specific.
 
 export type { IntelligenceAgentDefinition, AgentEventHandler, NormalizedIntelligenceEvent } from './types'
@@ -41,3 +43,5 @@ export * from './recommendations'
 export * from './insights'
 
 export * from './actions'
+
+export * from './decisions'

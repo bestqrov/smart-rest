@@ -339,6 +339,11 @@ export type PlatformEventName =
   | 'IntelActionCompleted'
   | 'IntelActionFailed'
   | 'IntelActionCancelled'
+  // Smart Intelligence — Decision Engine Foundation (K38)
+  | 'IntelDecisionCreated'
+  | 'IntelDecisionApproved'
+  | 'IntelDecisionRejected'
+  | 'IntelDecisionExecuted'
 
 export interface PlatformEvent<T = unknown> {
   name:      PlatformEventName

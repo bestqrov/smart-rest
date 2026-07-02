@@ -2546,6 +2546,36 @@ model Action {
   @@map("intelligence_actions")
 }
 
+// K38 — Decision Engine Foundation. Synthesizes Recommendation (K35) +
+// Insight (K36) records into a decision; EXECUTED only ever means "queued
+// an Action (K37) via enqueueAction" — never that a business action
+// actually ran, since Action Engine itself requires a separate explicit
+// runAction call. Every lifecycle transition is also written to the
+// existing AuditService (core) rather than a second audit table.
+model Decision {
+  id                        String    @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId                  String
+  ruleId                    String
+  category                  String
+  title                     String
+  description               String
+  priority                  String    @default("MEDIUM") // LOW | MEDIUM | HIGH | URGENT
+  confidence                Float                          // 0-1
+  status                    String    @default("PENDING")  // PENDING | APPROVED | REJECTED | EXECUTED
+  suggestedActionExecutorId String?
+  suggestedActionInput      String?   // JSON string
+  linkedActionId            String?   // Action.id, set once executeDecision queues it
+  metadata                  String?   // JSON string
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
+  decidedAt                 DateTime?
+  executedAt                DateTime?
+
+  @@index([tenantId, status])
+  @@index([category])
+  @@map("intelligence_decisions")
+}
+
 // ─── Billing Platform — Plans (DB-backed, managed by SuperAdmin) ───────────────
 
 model BillingPlan {
