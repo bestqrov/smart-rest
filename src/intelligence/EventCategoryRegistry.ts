@@ -54,6 +54,7 @@ const PREFIX_MODULE_MAP: [prefix: string, module: string][] = [
   ['DemoActivated', 'demo'],
   ['UserPassword',  'auth'],
   ['Notification',  'notifications'],
+  ['IntelRecommendation', 'intelligence'],
 ]
 
 export function categorizeEvent(eventName: PlatformEventName): string {

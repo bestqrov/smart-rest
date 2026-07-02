@@ -320,6 +320,14 @@ export type PlatformEventName =
   | 'ReviewReplyGenerated'
   | 'SeoScoreCalculated'
   | 'CitationChecked'
+  // Smart Intelligence — Recommendation Engine (K35). "Intel" prefix avoids
+  // colliding with the existing marketplace Recommendation* events above,
+  // which are a different domain (product recommendations, not
+  // business-intelligence recommendations for tenant owners).
+  | 'IntelRecommendationCreated'
+  | 'IntelRecommendationActivated'
+  | 'IntelRecommendationDismissed'
+  | 'IntelRecommendationCompleted'
 
 export interface PlatformEvent<T = unknown> {
   name:      PlatformEventName

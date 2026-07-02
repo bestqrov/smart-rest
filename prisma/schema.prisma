@@ -2468,6 +2468,32 @@ model IntelligenceEventLog {
   @@map("intelligence_event_logs")
 }
 
+// K35 — Recommendation Engine Foundation. One row per (tenantId, ruleId) —
+// re-running the engine updates score/priority in place rather than
+// duplicating, so a rule always has at most one live recommendation per
+// tenant. Status is the NEW → ACTIVE → DISMISSED → COMPLETED lifecycle.
+model Recommendation {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId    String
+  ruleId      String
+  category    String
+  title       String
+  description String
+  priority    String    @default("MEDIUM") // LOW | MEDIUM | HIGH | URGENT
+  score       Float
+  status      String    @default("NEW")    // NEW | ACTIVE | DISMISSED | COMPLETED
+  metadata    String?   // JSON string
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  dismissedAt DateTime?
+  completedAt DateTime?
+
+  @@unique([tenantId, ruleId])
+  @@index([tenantId, status])
+  @@index([category])
+  @@map("intelligence_recommendations")
+}
+
 // ─── Billing Platform — Plans (DB-backed, managed by SuperAdmin) ───────────────
 
 model BillingPlan {
