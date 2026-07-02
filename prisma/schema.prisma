@@ -2625,6 +2625,28 @@ model IntelRule {
   @@map("intelligence_rules")
 }
 
+// K43 — Prompt Engine. Generic, tenant-agnostic template storage (distinct
+// from marketing-brain's MessageTemplate, which is domain-specific to
+// campaign generation). Same versioning shape as KnowledgeEntry (K39) /
+// IntelRule (K41): isCurrent flag + version counter, one table.
+model IntelPromptTemplate {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  key          String                     // stable id across versions, e.g. "seo-tip-summary"
+  name         String
+  category     String
+  version      Int      @default(1)
+  isCurrent    Boolean  @default(true)
+  systemPrompt String
+  userPrompt   String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([key, version])
+  @@index([key, isCurrent])
+  @@index([category])
+  @@map("intelligence_prompt_templates")
+}
+
 // ─── Billing Platform — Plans (DB-backed, managed by SuperAdmin) ───────────────
 
 model BillingPlan {
