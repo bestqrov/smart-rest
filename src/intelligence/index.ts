@@ -1,4 +1,4 @@
-// ─── Smart Intelligence Platform — Public API (K30-K33 + K35-K48) ──────────
+// ─── Smart Intelligence Platform — Public API (K30-K33 + K35-K49) ──────────
 // Infrastructure only. Two families of "rules" coexist by design, not by
 // accident: Recommendation/Insight/Decision rules (K35/K36/K38) are
 // TypeScript functions — code, in-memory, one global behavior, deployed
@@ -44,11 +44,20 @@
 // DECISION_EXECUTE steps only ever queue, never auto-run, the same
 // boundary those engines already enforce on their own. Run state is
 // in-memory; the durable trail is the existing AuditService, no new
-// table). Still exactly one eventBus subscription for the whole module.
-// No built-in agents/rules/executors/templates/namespaces/schedules/
-// advisors/skills/workflows ship except the Data Hub knowledge source and
-// the built-in model catalog (both direct reuse/reference data, not
-// business rules); nothing here is business-specific.
+// table), and the Capability Engine (K49 — the one catalog for the
+// capability strings K40 agents, K46 advisors, and K47 skills already
+// reference; dependency/conflict graph reuses K48's resolveExecutionOrder
+// rather than a second topological sort; compatibility checks reuse K42's
+// getProvider for requiresProvider; registerBuiltinAgentFrameworkCapabilities
+// seeds K40's closed AgentCapability union as discoverable infra entries;
+// validateSkillRequiredCapabilities checks a K47 skill's declared
+// requiredCapabilities against this catalog without SkillRegistry itself
+// changing). Still exactly one eventBus subscription for the whole
+// module. No built-in agents/rules/executors/templates/namespaces/
+// schedules/advisors/skills/workflows ship except the Data Hub knowledge
+// source, the built-in model catalog, and the built-in Agent Framework
+// capability entries (all direct reuse/reference data, not business
+// rules); nothing here is business-specific.
 
 export type { IntelligenceAgentDefinition, AgentEventHandler, NormalizedIntelligenceEvent } from './types'
 
@@ -102,3 +111,5 @@ export * from './advisor'
 export * from './skills'
 
 export * from './orchestrator'
+
+export * from './capabilities'
