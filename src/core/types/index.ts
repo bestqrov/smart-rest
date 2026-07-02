@@ -344,6 +344,8 @@ export type PlatformEventName =
   | 'IntelDecisionApproved'
   | 'IntelDecisionRejected'
   | 'IntelDecisionExecuted'
+  // Smart Intelligence — Knowledge Engine (K39)
+  | 'IntelKnowledgeRecorded'
 
 export interface PlatformEvent<T = unknown> {
   name:      PlatformEventName

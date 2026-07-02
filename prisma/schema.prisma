@@ -2576,6 +2576,27 @@ model Decision {
   @@map("intelligence_decisions")
 }
 
+// K39 — Knowledge Engine. Versioned business facts, one table (append-only
+// history + isCurrent flag for fast lookup) rather than a separate current-
+// value table plus a separate history table — no duplicate storage. No
+// vectors/embeddings; retrieval is by (tenantId, key), not similarity.
+model KnowledgeEntry {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId   String
+  key        String                     // namespaced, e.g. "billing.mrr", "business.peakHours"
+  value      String                     // JSON-stringified string|number|boolean|null
+  sourceType String                     // MANUAL | DATA_HUB | INSIGHT | DECISION | SYSTEM
+  sourceId   String?
+  confidence Float?
+  version    Int      @default(1)
+  isCurrent  Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  @@index([tenantId, key, isCurrent])
+  @@index([tenantId, sourceType])
+  @@map("intelligence_knowledge_entries")
+}
+
 // ─── Billing Platform — Plans (DB-backed, managed by SuperAdmin) ───────────────
 
 model BillingPlan {

@@ -18,6 +18,7 @@ import { getAgentsForEvent } from './AgentRegistry'
 import { normalizeEvent } from './EventNormalizer'
 import { persistEvent } from './EventPersistence'
 import { registerBuiltinDataAdapters } from './data/adapters'
+import { registerDataHubKnowledgeSource } from './knowledge/KnowledgeEngine'
 
 let initialized = false
 
@@ -43,6 +44,7 @@ export function initIntelligenceCore(): void {
   if (initialized) return
   eventBus.subscribe('*', dispatch)
   registerBuiltinDataAdapters()
+  registerDataHubKnowledgeSource()
   initialized = true
-  logger.info({ msg: '[Intelligence] Core initialized — subscribed to all platform events, data adapters registered' })
+  logger.info({ msg: '[Intelligence] Core initialized — subscribed to all platform events, data adapters + knowledge sources registered' })
 }
