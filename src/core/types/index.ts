@@ -333,6 +333,12 @@ export type PlatformEventName =
   | 'IntelInsightAcknowledged'
   | 'IntelInsightResolved'
   | 'IntelInsightDismissed'
+  // Smart Intelligence — Action Engine (K37)
+  | 'IntelActionQueued'
+  | 'IntelActionStarted'
+  | 'IntelActionCompleted'
+  | 'IntelActionFailed'
+  | 'IntelActionCancelled'
 
 export interface PlatformEvent<T = unknown> {
   name:      PlatformEventName

@@ -2520,6 +2520,32 @@ model Insight {
   @@map("intelligence_insights")
 }
 
+// K37 — Action Engine. Distinct from AIJobService's AIJob model (used by
+// K29 for AI-specific work) — this is the generic queue for any registered
+// action executor, business-agnostic. Execution is always explicit
+// (enqueueAction/runAction called directly): the `mode` field records
+// intent (MANUAL vs AUTOMATIC) but nothing in this codebase auto-triggers
+// AUTOMATIC-mode actions yet — that wiring is out of scope by design.
+model Action {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId      String
+  executorId    String
+  category      String
+  mode          String    @default("MANUAL") // MANUAL | AUTOMATIC
+  status        String    @default("QUEUED")  // QUEUED | RUNNING | COMPLETED | FAILED | CANCELLED
+  input         String?   // JSON string
+  resultSuccess Boolean?
+  resultMessage String?
+  resultData    String?   // JSON string
+  createdAt     DateTime  @default(now())
+  startedAt     DateTime?
+  completedAt   DateTime?
+
+  @@index([tenantId, status])
+  @@index([executorId])
+  @@map("intelligence_actions")
+}
+
 // ─── Billing Platform — Plans (DB-backed, managed by SuperAdmin) ───────────────
 
 model BillingPlan {
