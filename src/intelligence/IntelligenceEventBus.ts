@@ -19,6 +19,7 @@ import { normalizeEvent } from './EventNormalizer'
 import { persistEvent } from './EventPersistence'
 import { registerBuiltinDataAdapters } from './data/adapters'
 import { registerDataHubKnowledgeSource } from './knowledge/KnowledgeEngine'
+import { initAIProviderBridge } from './ai/AIProviderBridge'
 
 let initialized = false
 
@@ -45,6 +46,7 @@ export function initIntelligenceCore(): void {
   eventBus.subscribe('*', dispatch)
   registerBuiltinDataAdapters()
   registerDataHubKnowledgeSource()
+  initAIProviderBridge()
   initialized = true
-  logger.info({ msg: '[Intelligence] Core initialized — subscribed to all platform events, data adapters + knowledge sources registered' })
+  logger.info({ msg: '[Intelligence] Core initialized — subscribed to all platform events, data adapters + knowledge sources + AI provider bridge registered' })
 }

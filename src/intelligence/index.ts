@@ -1,4 +1,4 @@
-// ─── Smart Intelligence Platform — Public API (K30-K33 + K35-K41) ──────────
+// ─── Smart Intelligence Platform — Public API (K30-K33 + K35-K42) ──────────
 // Infrastructure only. Two families of "rules" coexist by design, not by
 // accident: Recommendation/Insight/Decision rules (K35/K36/K38) are
 // TypeScript functions — code, in-memory, one global behavior, deployed
@@ -8,11 +8,15 @@
 // normalization/categorization/persistence/replay, the pull-based Data Hub,
 // the Context Engine, the Action Engine (explicit-only queue/run — nothing
 // auto-executes), the Knowledge Engine (versioned facts, no vectors/RAG),
-// and the Agent Framework (capabilities/permissions/lifecycle/health on the
-// same K30 AgentRegistry). Still exactly one eventBus subscription for the
-// whole module. No built-in agents/rules/executors ship except the Data Hub
-// knowledge source (a direct reuse of K32, not a business rule); nothing
-// here is business-specific.
+// the Agent Framework (capabilities/permissions/lifecycle/health on the
+// same K30 AgentRegistry), and the AI Provider Layer (K42 — re-exports the
+// existing, complete marketing-brain/providers system: interface, registry,
+// selector/failover, usage tracking; adds only a Model Registry and a
+// usage-event bridge into this module's event stream). Still exactly one
+// eventBus subscription for the whole module. No built-in agents/rules/
+// executors ship except the Data Hub knowledge source and the built-in
+// model catalog (both direct reuse/reference data, not business rules);
+// nothing here is business-specific.
 
 export type { IntelligenceAgentDefinition, AgentEventHandler, NormalizedIntelligenceEvent } from './types'
 
@@ -52,3 +56,5 @@ export * from './knowledge'
 export * from './agents'
 
 export * from './rules'
+
+export * from './ai'

@@ -354,6 +354,8 @@ export type PlatformEventName =
   // Smart Intelligence — Rule Engine (K41)
   | 'IntelRuleDefined'
   | 'IntelRuleTriggered'
+  // Smart Intelligence — AI Provider Layer (K42)
+  | 'IntelAIUsageRecorded'
 
 export interface PlatformEvent<T = unknown> {
   name:      PlatformEventName
