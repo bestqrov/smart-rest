@@ -364,6 +364,10 @@ export type PlatformEventName =
   // Smart Intelligence — Business Advisor Foundation (K46)
   | 'IntelAdvisorRequested'
   | 'IntelAdvisorResponded'
+  // Smart Intelligence — Orchestrator (K48)
+  | 'IntelWorkflowStarted'
+  | 'IntelWorkflowStepDispatched'
+  | 'IntelWorkflowCompleted'
 
 export interface PlatformEvent<T = unknown> {
   name:      PlatformEventName

@@ -1,4 +1,4 @@
-// ─── Smart Intelligence Platform — Public API (K30-K33 + K35-K47) ──────────
+// ─── Smart Intelligence Platform — Public API (K30-K33 + K35-K48) ──────────
 // Infrastructure only. Two families of "rules" coexist by design, not by
 // accident: Recommendation/Insight/Decision rules (K35/K36/K38) are
 // TypeScript functions — code, in-memory, one global behavior, deployed
@@ -35,12 +35,20 @@
 // ModelRegistry; invocation reuses K45's concurrency slots and timeout
 // wrapper under a separate "skill:" key namespace so it never contends
 // with agent runs; permission checks resolve a caller's capabilities from
-// K40's framework agents or K46's advisors rather than a third store).
-// Still exactly one eventBus subscription for the whole module. No
-// built-in agents/rules/executors/templates/namespaces/schedules/
-// advisors/skills ship except the Data Hub knowledge source and the
-// built-in model catalog (both direct reuse/reference data, not business
-// rules); nothing here is business-specific.
+// K40's framework agents or K46's advisors rather than a third store),
+// and the Orchestrator (K48 — workflows are declared data, steps + an
+// explicit dependsOn graph, never generated; DependencyResolver is a pure
+// topological sort, not a planner. TaskRouter sends each step to the one
+// engine that already owns that work — K45 runAgentNow, K47 invokeSkill,
+// K37 enqueueAction, K38 evaluateDecisions/executeDecision — so ACTION and
+// DECISION_EXECUTE steps only ever queue, never auto-run, the same
+// boundary those engines already enforce on their own. Run state is
+// in-memory; the durable trail is the existing AuditService, no new
+// table). Still exactly one eventBus subscription for the whole module.
+// No built-in agents/rules/executors/templates/namespaces/schedules/
+// advisors/skills/workflows ship except the Data Hub knowledge source and
+// the built-in model catalog (both direct reuse/reference data, not
+// business rules); nothing here is business-specific.
 
 export type { IntelligenceAgentDefinition, AgentEventHandler, NormalizedIntelligenceEvent } from './types'
 
@@ -92,3 +100,5 @@ export * from './runtime'
 export * from './advisor'
 
 export * from './skills'
+
+export * from './orchestrator'
