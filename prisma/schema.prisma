@@ -2441,6 +2441,33 @@ model BillingEventLog {
   @@map("billing_event_logs")
 }
 
+// K31 — Smart Intelligence Event Hub. Cross-domain persistence for every
+// platform event (billing/pos/kitchen/inventory/tables/reservations/orders/
+// branches/crm/loyalty/reviews/feedback/whatsapp/email/social/affiliate/seo/
+// tenant/marketplace/...), not just one module — distinct purpose from
+// BillingEventLog above, which stays billing-only and untouched. Backs
+// event replay support.
+model IntelligenceEventLog {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  eventId    String
+  eventName  String
+  module     String
+  tenantId   String?
+  actor      String?
+  resourceId String?
+  source     String
+  metadata   String?  // JSON string
+  timestamp  DateTime
+  createdAt  DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([eventName])
+  @@index([module])
+  @@index([source])
+  @@index([timestamp])
+  @@map("intelligence_event_logs")
+}
+
 // ─── Billing Platform — Plans (DB-backed, managed by SuperAdmin) ───────────────
 
 model BillingPlan {

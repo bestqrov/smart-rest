@@ -24,6 +24,11 @@ export function hasAgent(id: string): boolean {
   return registry.has(id)
 }
 
+// K31 — subscription API symmetry (register/unregister).
+export function unregisterAgent(id: string): boolean {
+  return registry.delete(id)
+}
+
 export function getAllAgents(): IntelligenceAgentDefinition[] {
   return Array.from(registry.values())
 }
