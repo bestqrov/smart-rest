@@ -63,6 +63,7 @@ const PREFIX_MODULE_MAP: [prefix: string, module: string][] = [
   ['IntelRule',           'intelligence'],
   ['IntelAI',             'intelligence'],
   ['IntelPrompt',         'intelligence'],
+  ['IntelAdvisor',        'intelligence'],
 ]
 
 export function categorizeEvent(eventName: PlatformEventName): string {

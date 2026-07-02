@@ -361,6 +361,9 @@ export type PlatformEventName =
   | 'IntelPromptExecuted'
   // Smart Intelligence — Agent Runtime (K45)
   | 'IntelAgentScheduledRun'
+  // Smart Intelligence — Business Advisor Foundation (K46)
+  | 'IntelAdvisorRequested'
+  | 'IntelAdvisorResponded'
 
 export interface PlatformEvent<T = unknown> {
   name:      PlatformEventName
