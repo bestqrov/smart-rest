@@ -1,4 +1,4 @@
-// ─── Smart Intelligence Platform — Public API (K30-K33 + K35-K39) ──────────
+// ─── Smart Intelligence Platform — Public API (K30-K33 + K35-K40) ──────────
 // Infrastructure only: agent contract/registry, event normalization/
 // categorization/persistence/replay, the pull-based Data Hub (cross-module
 // adapters, unified tenant-aware access, feature extraction, cache hooks),
@@ -10,11 +10,13 @@
 // registry + explicit-only queue/run — nothing auto-executes), the Decision
 // Engine (synthesizes recommendations + insights into a decision; "executed"
 // only ever means queuing an Action via Action Engine, never running a
-// business action), and the Knowledge Engine (versioned business facts,
-// no vectors/embeddings/RAG — retrieval is by tenantId+key). No built-in
-// agents/rules/executors ship (except the Data Hub knowledge source, wired
-// at initIntelligenceCore since it's a direct reuse of K32, not a new
-// business rule); nothing here is business-specific.
+// business action), the Knowledge Engine (versioned business facts, no
+// vectors/embeddings/RAG — retrieval is by tenantId+key), and the Agent
+// Framework (capabilities/permissions/lifecycle/health on top of the same
+// K30 AgentRegistry — still one eventBus subscription, no second dispatch
+// loop). No built-in agents/rules/executors ship (except the Data Hub
+// knowledge source, a direct reuse of K32, not a business rule); nothing
+// here is business-specific.
 
 export type { IntelligenceAgentDefinition, AgentEventHandler, NormalizedIntelligenceEvent } from './types'
 
@@ -50,3 +52,5 @@ export * from './actions'
 export * from './decisions'
 
 export * from './knowledge'
+
+export * from './agents'

@@ -346,6 +346,11 @@ export type PlatformEventName =
   | 'IntelDecisionExecuted'
   // Smart Intelligence — Knowledge Engine (K39)
   | 'IntelKnowledgeRecorded'
+  // Smart Intelligence — Agent Framework (K40)
+  | 'IntelAgentRegistered'
+  | 'IntelAgentStatusChanged'
+  | 'IntelAgentError'
+  | 'IntelAgentMessage'
 
 export interface PlatformEvent<T = unknown> {
   name:      PlatformEventName

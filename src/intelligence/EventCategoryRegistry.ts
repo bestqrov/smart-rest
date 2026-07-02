@@ -58,6 +58,7 @@ const PREFIX_MODULE_MAP: [prefix: string, module: string][] = [
   ['IntelInsight',        'intelligence'],
   ['IntelAction',         'intelligence'],
   ['IntelDecision',       'intelligence'],
+  ['IntelAgent',          'intelligence'],
   ['IntelKnowledge',      'intelligence'],
 ]
 
