@@ -287,6 +287,12 @@ model Cafe {
   linkedinAccessToken String @default("") // K27 — LinkedIn OAuth2 access token
   xAccessToken        String @default("") // K27 — X (Twitter) OAuth2 access token
 
+  // ── Google Business Profile (K29) ─────────────────────────────────────────
+  googleBusinessProfileId    String?   // GBP location id
+  googleBusinessAccessToken  String?   // OAuth2 access token
+  gbpSyncEnabled              Boolean  @default(false)
+  gbpLastSyncedAt             DateTime?
+
   // ── Smart Resto Certified ─────────────────────────────────────────────────
   ownerPhone             String              @default("")
   ownerEmail             String              @default("")
@@ -2384,6 +2390,39 @@ model ReferralConversion {
   @@unique([referredCafeId])
   @@index([affiliateId, commissionStatus])
   @@index([referralCode])
+}
+
+// K29 — Local SEO & Google Business Automation. Review monitoring/analytics
+// reuse the existing ReviewService (K21) and FeedbackService (K23) — this
+// model only tracks directory listing status ("citation hooks"), not an
+// automated scanner (no such integration exists to scan against).
+model SeoCitation {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId        String    @db.ObjectId
+  source        String    // GOOGLE | YELP | TRIPADVISOR | FACEBOOK | OTHER
+  url           String?
+  status        String    @default("MISSING") // LISTED | MISSING | INCONSISTENT
+  lastCheckedAt DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@unique([cafeId, source])
+  @@index([cafeId, status])
+}
+
+// AI-assisted reply suggestions for reviews/feedback. Tracked as its own
+// record (Order/Feedback aren't touched) and via the existing AIJobService
+// (services/aiJobService.ts) rather than a second job-tracking mechanism.
+model SeoReviewReply {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId         String   @db.ObjectId
+  sourceType     String   // FEEDBACK | ORDER_REVIEW
+  sourceId       String
+  suggestedReply String
+  aiJobId        String?
+  status         String   @default("SUGGESTED") // SUGGESTED | APPROVED | SENT
+  createdAt      DateTime @default(now())
+
+  @@index([cafeId, sourceType, sourceId])
 }
 
 // ─── Billing Platform — Event Log ─────────────────────────────────────────────

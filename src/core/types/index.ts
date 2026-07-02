@@ -314,6 +314,12 @@ export type PlatformEventName =
   | 'CommissionEarned'
   | 'CommissionApproved'
   | 'CommissionPaid'
+  // Local SEO & Google Business Automation
+  | 'GbpProfileSynced'
+  | 'GbpSyncFailed'
+  | 'ReviewReplyGenerated'
+  | 'SeoScoreCalculated'
+  | 'CitationChecked'
 
 export interface PlatformEvent<T = unknown> {
   name:      PlatformEventName

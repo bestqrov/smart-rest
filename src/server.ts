@@ -103,6 +103,7 @@ import billingAuditSARouter              from './routes/billingAuditSA'
 import usageLimitsSARouter               from './routes/usageLimitsSA'
 import branchesSARouter                  from './routes/branchesSA'
 import affiliateAdminRouter              from './routes/affiliateAdmin'
+import seoAdminRouter                    from './routes/seoAdmin'
 import inventoryAdminRouter from './routes/inventoryAdmin'
 import reviewGalleryRouter from './routes/reviewGallery'
 import demoRequestsRouter from './routes/demoRequests'
@@ -305,6 +306,7 @@ async function main() {
   app.use(usageLimitsSARouter)
   app.use(branchesSARouter)
   app.use(affiliateAdminRouter)
+  app.use(seoAdminRouter)
   app.use(inventoryAdminRouter)
   app.use(reviewGalleryRouter)
   app.use(demoRequestsRouter)
