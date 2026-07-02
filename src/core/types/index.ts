@@ -351,6 +351,9 @@ export type PlatformEventName =
   | 'IntelAgentStatusChanged'
   | 'IntelAgentError'
   | 'IntelAgentMessage'
+  // Smart Intelligence — Rule Engine (K41)
+  | 'IntelRuleDefined'
+  | 'IntelRuleTriggered'
 
 export interface PlatformEvent<T = unknown> {
   name:      PlatformEventName

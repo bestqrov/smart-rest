@@ -2597,6 +2597,34 @@ model KnowledgeEntry {
   @@map("intelligence_knowledge_entries")
 }
 
+// K41 — Rule Engine. Distinct from the RecommendationRule/InsightRule/
+// DecisionRule registries (K35/K36/K38): those hold TypeScript functions
+// (code, in-memory, one global behavior). This holds DECLARATIVE rules —
+// conditions + an action binding, as data — so they're persisted,
+// versioned, and can be overridden per tenant without a deploy. Same
+// versioning shape as KnowledgeEntry (K39): isCurrent flag + version
+// counter in one table, no separate history table.
+model IntelRule {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  key          String                     // stable id across versions, e.g. "low-mrr-alert"
+  tenantId     String?                    // null = platform default; set = tenant-specific override
+  name         String
+  category     String
+  version      Int      @default(1)
+  isCurrent    Boolean  @default(true)
+  isActive     Boolean  @default(true)
+  conditions   String                     // JSON RuleConditionGroup
+  actionType   String                     // ACTION | DECISION
+  actionConfig String                     // JSON RuleActionBinding
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([key, tenantId, version])
+  @@index([key, tenantId, isCurrent])
+  @@index([category])
+  @@map("intelligence_rules")
+}
+
 // ─── Billing Platform — Plans (DB-backed, managed by SuperAdmin) ───────────────
 
 model BillingPlan {

@@ -1,21 +1,17 @@
-// ─── Smart Intelligence Platform — Public API (K30-K33 + K35-K40) ──────────
-// Infrastructure only: agent contract/registry, event normalization/
-// categorization/persistence/replay, the pull-based Data Hub (cross-module
-// adapters, unified tenant-aware access, feature extraction, cache hooks),
-// the Context Engine (tenant/branch/user/business/time/request context
-// composed from existing services), the Recommendation Engine (rule-based,
-// pulled on demand), the Insight Engine (rule-based, event-driven — insight
-// rules register as agents under the hood, so there's still only one
-// eventBus subscription in this whole module), the Action Engine (executor
-// registry + explicit-only queue/run — nothing auto-executes), the Decision
-// Engine (synthesizes recommendations + insights into a decision; "executed"
-// only ever means queuing an Action via Action Engine, never running a
-// business action), the Knowledge Engine (versioned business facts, no
-// vectors/embeddings/RAG — retrieval is by tenantId+key), and the Agent
-// Framework (capabilities/permissions/lifecycle/health on top of the same
-// K30 AgentRegistry — still one eventBus subscription, no second dispatch
-// loop). No built-in agents/rules/executors ship (except the Data Hub
-// knowledge source, a direct reuse of K32, not a business rule); nothing
+// ─── Smart Intelligence Platform — Public API (K30-K33 + K35-K41) ──────────
+// Infrastructure only. Two families of "rules" coexist by design, not by
+// accident: Recommendation/Insight/Decision rules (K35/K36/K38) are
+// TypeScript functions — code, in-memory, one global behavior, deployed
+// with the app. The Rule Engine (K41) holds DECLARATIVE rules — conditions
+// + an action binding, as data — persisted, versioned, and overridable per
+// tenant without a deploy. Also here: agent contract/registry, event
+// normalization/categorization/persistence/replay, the pull-based Data Hub,
+// the Context Engine, the Action Engine (explicit-only queue/run — nothing
+// auto-executes), the Knowledge Engine (versioned facts, no vectors/RAG),
+// and the Agent Framework (capabilities/permissions/lifecycle/health on the
+// same K30 AgentRegistry). Still exactly one eventBus subscription for the
+// whole module. No built-in agents/rules/executors ship except the Data Hub
+// knowledge source (a direct reuse of K32, not a business rule); nothing
 // here is business-specific.
 
 export type { IntelligenceAgentDefinition, AgentEventHandler, NormalizedIntelligenceEvent } from './types'
@@ -54,3 +50,5 @@ export * from './decisions'
 export * from './knowledge'
 
 export * from './agents'
+
+export * from './rules'
