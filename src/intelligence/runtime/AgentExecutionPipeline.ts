@@ -17,7 +17,7 @@ import type { RunAgentOptions, RuntimeRunResult } from './types'
 
 const DEFAULT_TIMEOUT_MS = 30_000
 
-function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+export function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error(`Agent run timed out after ${timeoutMs}ms`)), timeoutMs)
     promise.then(

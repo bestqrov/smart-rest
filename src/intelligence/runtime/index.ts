@@ -5,13 +5,13 @@ export type {
   RuntimePhase, RuntimeMonitoringEvent, RuntimeMonitoringHook, ScheduleDefinition,
 } from './types'
 
-export { setMaxConcurrency, getActiveCount } from './ConcurrencyController'
+export { setMaxConcurrency, getActiveCount, tryAcquire, release } from './ConcurrencyController'
 
 export {
   addRuntimeMonitoringHook, removeRuntimeMonitoringHook, getRuntimeStats, getAllRuntimeStats,
 } from './RuntimeMonitoring'
 
-export { runAgentNow } from './AgentExecutionPipeline'
+export { runAgentNow, withTimeout } from './AgentExecutionPipeline'
 
 export { registerSchedule, unregisterSchedule, isScheduled, getScheduledAgentIds } from './AgentScheduler'
 
