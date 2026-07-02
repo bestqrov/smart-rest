@@ -12,6 +12,7 @@ import { initWhatsAppEngine }       from './whatsapp/WhatsAppEngine'
 import { startWhatsAppSchedulerCron } from './cron/whatsappScheduler'
 import { initEmailEngine }          from './email/EmailEngine'
 import { initAffiliateEngine }      from './affiliate/AffiliateService'
+import { initIntelligenceCore }     from './intelligence'
 import { startEmailSchedulerCron }  from './cron/emailScheduler'
 import { startSocialSchedulerCron } from './cron/socialScheduler'
 
@@ -371,6 +372,7 @@ async function main() {
   initWhatsAppEngine()
   initEmailEngine()
   initAffiliateEngine()
+  initIntelligenceCore()
 
   // Collect cron task handles for graceful shutdown
   const cronTasks = [
