@@ -17,6 +17,7 @@ import logger from '../logger'
 import { getAgentsForEvent } from './AgentRegistry'
 import { normalizeEvent } from './EventNormalizer'
 import { persistEvent } from './EventPersistence'
+import { registerBuiltinDataAdapters } from './data/adapters'
 
 let initialized = false
 
@@ -41,6 +42,7 @@ export async function dispatch(event: PlatformEvent): Promise<void> {
 export function initIntelligenceCore(): void {
   if (initialized) return
   eventBus.subscribe('*', dispatch)
+  registerBuiltinDataAdapters()
   initialized = true
-  logger.info({ msg: '[Intelligence] Core initialized — subscribed to all platform events' })
+  logger.info({ msg: '[Intelligence] Core initialized — subscribed to all platform events, data adapters registered' })
 }
