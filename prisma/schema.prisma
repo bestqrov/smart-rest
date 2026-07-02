@@ -2346,6 +2346,46 @@ model BillingPlatformInvoice {
   @@map("billing_platform_invoices")
 }
 
+// K28 — Referral & Affiliate Platform. Conversion detection reuses the
+// existing BillingEvents 'InvoicePaid' event (billing platform, K5/K11) via
+// eventBus.subscribe — no separate payment-watching logic. referredCafeId is
+// a plain denormalized id (same convention as PaymentTransaction.tenantId
+// and other K18+ models), no formal relation.
+model AffiliateAccount {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  name             String
+  email            String   @unique
+  phone            String?
+  referralCode     String   @unique
+  status           String   @default("ACTIVE")  // ACTIVE | SUSPENDED
+  commissionType   String   @default("PERCENT")  // PERCENT | FIXED
+  commissionValue  Float    @default(10)         // 10 = 10% if PERCENT, or a flat amount if FIXED
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([status])
+}
+
+// One row per referred tenant — doubles as the tracking record, the
+// conversion record, and the commission ledger entry (payout-ready via
+// commissionStatus), rather than three separate models for one lifecycle.
+model ReferralConversion {
+  id               String    @id @default(auto()) @map("_id") @db.ObjectId
+  affiliateId      String    @db.ObjectId
+  referralCode     String
+  referredCafeId   String    @db.ObjectId
+  status           String    @default("TRACKED")  // TRACKED | CONVERTED | REJECTED
+  commissionAmount Float?
+  commissionStatus String    @default("PENDING")  // PENDING | APPROVED | PAID
+  convertedAt      DateTime?
+  paidAt           DateTime?
+  createdAt        DateTime  @default(now())
+
+  @@unique([referredCafeId])
+  @@index([affiliateId, commissionStatus])
+  @@index([referralCode])
+}
+
 // ─── Billing Platform — Event Log ─────────────────────────────────────────────
 
 model BillingEventLog {

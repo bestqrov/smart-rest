@@ -307,6 +307,13 @@ export type PlatformEventName =
   | 'SocialPostQueued'
   | 'SocialPostPublished'
   | 'SocialPostFailed'
+  // Referral & Affiliate Platform
+  | 'AffiliateCreated'
+  | 'ReferralTracked'
+  | 'ReferralConverted'
+  | 'CommissionEarned'
+  | 'CommissionApproved'
+  | 'CommissionPaid'
 
 export interface PlatformEvent<T = unknown> {
   name:      PlatformEventName

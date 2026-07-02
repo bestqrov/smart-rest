@@ -11,6 +11,7 @@ import { initKitchenEngine }        from './kitchen/KitchenTicketService'
 import { initWhatsAppEngine }       from './whatsapp/WhatsAppEngine'
 import { startWhatsAppSchedulerCron } from './cron/whatsappScheduler'
 import { initEmailEngine }          from './email/EmailEngine'
+import { initAffiliateEngine }      from './affiliate/AffiliateService'
 import { startEmailSchedulerCron }  from './cron/emailScheduler'
 import { startSocialSchedulerCron } from './cron/socialScheduler'
 
@@ -101,6 +102,7 @@ import billingSettingsSARouter           from './routes/billingSettingsSA'
 import billingAuditSARouter              from './routes/billingAuditSA'
 import usageLimitsSARouter               from './routes/usageLimitsSA'
 import branchesSARouter                  from './routes/branchesSA'
+import affiliateAdminRouter              from './routes/affiliateAdmin'
 import inventoryAdminRouter from './routes/inventoryAdmin'
 import reviewGalleryRouter from './routes/reviewGallery'
 import demoRequestsRouter from './routes/demoRequests'
@@ -302,6 +304,7 @@ async function main() {
   app.use(billingAuditSARouter)
   app.use(usageLimitsSARouter)
   app.use(branchesSARouter)
+  app.use(affiliateAdminRouter)
   app.use(inventoryAdminRouter)
   app.use(reviewGalleryRouter)
   app.use(demoRequestsRouter)
@@ -365,6 +368,7 @@ async function main() {
   initKitchenEngine().catch(() => undefined)
   initWhatsAppEngine()
   initEmailEngine()
+  initAffiliateEngine()
 
   // Collect cron task handles for graceful shutdown
   const cronTasks = [
