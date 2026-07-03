@@ -25,6 +25,7 @@ import { getCustomerAdvisorSummary } from '../customer-advisor'
 import { getMarketingAdvisorSummary } from '../marketing-advisor'
 import { getReservationAdvisorSummary } from '../reservation-advisor'
 import { getStaffAdvisorSummary } from '../staff-advisor'
+import { getFinancialAdvisorSummary } from '../financial-advisor'
 import type { GatewayOperation } from './types'
 
 const operations = new Map<string, GatewayOperation>()
@@ -129,6 +130,13 @@ register({
   handler: (ctx) => {
     if (!ctx.tenantId) throw new Error('tenantId query parameter is required for the staff-advisor service')
     return getStaffAdvisorSummary(ctx.tenantId)
+  },
+})
+register({
+  id: 'financial-advisor', version: 'v1', summary: 'Financial Advisor — revenue, profit, expenses, cash flow, AOV, margins, cost optimization, health score (K65)', path: '/financial-advisor',
+  handler: (ctx) => {
+    if (!ctx.tenantId) throw new Error('tenantId query parameter is required for the financial-advisor service')
+    return getFinancialAdvisorSummary(ctx.tenantId)
   },
 })
 

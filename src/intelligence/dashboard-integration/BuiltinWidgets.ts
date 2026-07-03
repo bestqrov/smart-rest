@@ -16,6 +16,7 @@ import { getCustomerAdvisorSummary } from '../customer-advisor'
 import { getMarketingAdvisorSummary } from '../marketing-advisor'
 import { getReservationAdvisorSummary } from '../reservation-advisor'
 import { getStaffAdvisorSummary } from '../staff-advisor'
+import { getFinancialAdvisorSummary } from '../financial-advisor'
 import { registerWidget } from './WidgetRegistry'
 import type { WidgetDefinition } from './types'
 
@@ -89,6 +90,11 @@ const BUILTIN_WIDGETS: WidgetDefinition[] = [
     id: 'staff-advisor-summary', module: 'staff-advisor', name: 'Staff Advisor',
     type: 'list', size: 'md', visibleToRoles: ['admin'], tenantScoped: true,
     getData: (tenantId) => getStaffAdvisorSummary(tenantId!),
+  },
+  {
+    id: 'financial-advisor-summary', module: 'financial-advisor', name: 'Financial Advisor',
+    type: 'list', size: 'md', visibleToRoles: ['admin'], tenantScoped: true,
+    getData: (tenantId) => getFinancialAdvisorSummary(tenantId!),
   },
 ]
 

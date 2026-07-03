@@ -1,4 +1,4 @@
-// ─── Smart Intelligence Platform — Public API (K30-K33 + K35-K64) ──────────
+// ─── Smart Intelligence Platform — Public API (K30-K33 + K35-K65) ──────────
 // Infrastructure only. Two families of "rules" coexist by design, not by
 // accident: Recommendation/Insight/Decision rules (K35/K36/K38) are
 // TypeScript functions — code, in-memory, one global behavior, deployed
@@ -162,3 +162,5 @@ export * from './marketing-advisor'
 export * from './reservation-advisor'
 
 export * from './staff-advisor'
+
+export * from './financial-advisor'
