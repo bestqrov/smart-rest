@@ -15,6 +15,7 @@ export const DEFAULT_DASHBOARD_LAYOUT: DashboardLayoutConfig = {
     { id: 'priorities',  title: 'Priorities',  widgetIds: ['top-priorities', 'critical-alerts'] },
     { id: 'growth',      title: 'Growth',      widgetIds: ['recommendations-summary', 'opportunities-summary'] },
     { id: 'automation',  title: 'Automation',  widgetIds: ['automation-advisor-summary'] },
+    { id: 'inventory',   title: 'Inventory',   widgetIds: ['inventory-advisor-summary'] },
     { id: 'activity',    title: 'Activity',    widgetIds: ['notification-history'] },
   ],
 }

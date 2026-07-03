@@ -11,6 +11,7 @@ import {
 import { getAutomationAdvisorSummary } from '../automation-advisor'
 import { getIntelligenceNotificationHistory } from '../notification-advisor'
 import { checkIntelligenceHealth } from '../observability'
+import { getInventoryAdvisorSummary } from '../inventory-advisor'
 import { registerWidget } from './WidgetRegistry'
 import type { WidgetDefinition } from './types'
 
@@ -59,6 +60,11 @@ const BUILTIN_WIDGETS: WidgetDefinition[] = [
     id: 'intelligence-platform-health', module: 'observability', name: 'Intelligence Platform Health',
     type: 'stat', size: 'sm', visibleToRoles: ['system'], tenantScoped: false,
     getData: () => checkIntelligenceHealth(),
+  },
+  {
+    id: 'inventory-advisor-summary', module: 'inventory-advisor', name: 'Inventory Advisor',
+    type: 'list', size: 'md', visibleToRoles: ['admin', 'staff'], tenantScoped: true,
+    getData: (tenantId) => getInventoryAdvisorSummary(tenantId!),
   },
 ]
 

@@ -20,6 +20,7 @@ import { getExecutiveDashboard } from '../executive-dashboard'
 import { getIntelligenceNotificationHistory } from '../notification-advisor'
 import { getIntelligenceOverview } from '../dashboard-integration'
 import { checkAIReadiness } from '../ai-readiness'
+import { getInventoryAdvisorSummary } from '../inventory-advisor'
 import type { GatewayOperation } from './types'
 
 const operations = new Map<string, GatewayOperation>()
@@ -89,6 +90,13 @@ register({
       providerId: ctx.query['providerId'],
       modelId:    ctx.query['modelId'],
     })
+  },
+})
+register({
+  id: 'inventory-advisor', version: 'v1', summary: 'Inventory Advisor — low/out-of-stock, slow/fast movers, overstock, reorder suggestions (K60)', path: '/inventory-advisor',
+  handler: (ctx) => {
+    if (!ctx.tenantId) throw new Error('tenantId query parameter is required for the inventory-advisor service')
+    return getInventoryAdvisorSummary(ctx.tenantId)
   },
 })
 
