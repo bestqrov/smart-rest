@@ -14,6 +14,7 @@ import {
   getProviderPerformanceMetrics, getRecentIntelligenceErrors,
 } from '../observability'
 import { getBusinessInsightsSummary } from '../business-skills'
+import { getUnifiedBusinessSummary } from '../business-advisor'
 import type { GatewayOperation } from './types'
 
 const operations = new Map<string, GatewayOperation>()
@@ -37,6 +38,13 @@ register({
   handler: (ctx) => {
     if (!ctx.tenantId) throw new Error('tenantId query parameter is required for the business-insights service')
     return getBusinessInsightsSummary(ctx.tenantId)
+  },
+})
+register({
+  id: 'business-advisor', version: 'v1', summary: 'Business Advisor v1 unified summary (K53)', path: '/business-advisor',
+  handler: (ctx) => {
+    if (!ctx.tenantId) throw new Error('tenantId query parameter is required for the business-advisor service')
+    return getUnifiedBusinessSummary(ctx.tenantId)
   },
 })
 

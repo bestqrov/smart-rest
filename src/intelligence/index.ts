@@ -1,4 +1,4 @@
-// ─── Smart Intelligence Platform — Public API (K30-K33 + K35-K51) ──────────
+// ─── Smart Intelligence Platform — Public API (K30-K33 + K35-K53) ──────────
 // Infrastructure only. Two families of "rules" coexist by design, not by
 // accident: Recommendation/Insight/Decision rules (K35/K36/K38) are
 // TypeScript functions — code, in-memory, one global behavior, deployed
@@ -70,8 +70,15 @@
 // agents/rules/executors/templates/namespaces/schedules/advisors/skills/
 // workflows ship except the Data Hub knowledge source, the built-in
 // model catalog, and the built-in Agent Framework capability entries
-// (all direct reuse/reference data, not business rules); nothing here is
-// business-specific.
+// (all direct reuse/reference data, not business rules) — until K52/K53,
+// which are the first business-content sprints: business-skills (K52)
+// registers seven rule-based Insight rules (K36) over real tenant data;
+// business-advisor (K53) registers three rule-based Recommendation rules
+// (K35) as "opportunities" plus a Business Advisor (K46) whose real
+// output (health score, priority issues, opportunities, next actions) is
+// delivered via direct calls to getUnifiedBusinessSummary — K46's
+// AgentEventHandler still returns void, unchanged, so AdvisorResponse
+// .content stays unused by this module. No LLM calls anywhere in K52/K53.
 
 export type { IntelligenceAgentDefinition, AgentEventHandler, NormalizedIntelligenceEvent } from './types'
 
@@ -133,3 +140,5 @@ export * from './gateway'
 export * from './observability'
 
 export * from './business-skills'
+
+export * from './business-advisor'
