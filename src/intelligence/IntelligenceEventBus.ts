@@ -20,6 +20,7 @@ import { persistEvent } from './EventPersistence'
 import { registerBuiltinDataAdapters } from './data/adapters'
 import { registerDataHubKnowledgeSource } from './knowledge/KnowledgeEngine'
 import { initAIProviderBridge } from './ai/AIProviderBridge'
+import { registerBusinessSkillsPack } from './business-skills'
 
 let initialized = false
 
@@ -47,6 +48,7 @@ export function initIntelligenceCore(): void {
   registerBuiltinDataAdapters()
   registerDataHubKnowledgeSource()
   initAIProviderBridge()
+  registerBusinessSkillsPack()
   initialized = true
-  logger.info({ msg: '[Intelligence] Core initialized — subscribed to all platform events, data adapters + knowledge sources + AI provider bridge registered' })
+  logger.info({ msg: '[Intelligence] Core initialized — subscribed to all platform events, data adapters + knowledge sources + AI provider bridge + business skills pack registered' })
 }

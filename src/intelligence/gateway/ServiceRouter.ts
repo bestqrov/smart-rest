@@ -13,6 +13,7 @@ import {
   checkIntelligenceHealth, getIntelligenceDashboardMetrics,
   getProviderPerformanceMetrics, getRecentIntelligenceErrors,
 } from '../observability'
+import { getBusinessInsightsSummary } from '../business-skills'
 import type { GatewayOperation } from './types'
 
 const operations = new Map<string, GatewayOperation>()
@@ -31,6 +32,13 @@ register({ id: 'health',         version: 'v1', summary: 'Intelligence module he
 register({ id: 'dashboard',      version: 'v1', summary: 'Intelligence dashboard metrics snapshot (K51)',   path: '/dashboard',      handler: () => getIntelligenceDashboardMetrics() })
 register({ id: 'provider-performance', version: 'v1', summary: 'AI provider performance over a time window (K51)', path: '/provider-performance', handler: () => getProviderPerformanceMetrics() })
 register({ id: 'errors',         version: 'v1', summary: 'Recent aggregated Intelligence errors (K51)',     path: '/errors',         handler: () => getRecentIntelligenceErrors() })
+register({
+  id: 'business-insights', version: 'v1', summary: 'Business Skills Pack insights dashboard summary (K52)', path: '/business-insights',
+  handler: (ctx) => {
+    if (!ctx.tenantId) throw new Error('tenantId query parameter is required for the business-insights service')
+    return getBusinessInsightsSummary(ctx.tenantId)
+  },
+})
 
 export function getOperation(id: string): GatewayOperation | undefined {
   return operations.get(id)

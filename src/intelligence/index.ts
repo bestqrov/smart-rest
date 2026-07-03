@@ -131,3 +131,5 @@ export * from './capabilities'
 export * from './gateway'
 
 export * from './observability'
+
+export * from './business-skills'
