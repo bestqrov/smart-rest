@@ -26,6 +26,7 @@ import { getMarketingAdvisorSummary } from '../marketing-advisor'
 import { getReservationAdvisorSummary } from '../reservation-advisor'
 import { getStaffAdvisorSummary } from '../staff-advisor'
 import { getFinancialAdvisorSummary } from '../financial-advisor'
+import { getExecutiveBriefing } from '../executive-ai-advisor'
 import type { GatewayOperation } from './types'
 
 const operations = new Map<string, GatewayOperation>()
@@ -137,6 +138,13 @@ register({
   handler: (ctx) => {
     if (!ctx.tenantId) throw new Error('tenantId query parameter is required for the financial-advisor service')
     return getFinancialAdvisorSummary(ctx.tenantId)
+  },
+})
+register({
+  id: 'executive-ai-advisor', version: 'v1', summary: 'Executive AI Advisor — unified health score, top priorities, critical alerts, cross-module opportunities/risks, action plan (K66)', path: '/executive-ai-advisor',
+  handler: (ctx) => {
+    if (!ctx.tenantId) throw new Error('tenantId query parameter is required for the executive-ai-advisor service')
+    return getExecutiveBriefing(ctx.tenantId)
   },
 })
 

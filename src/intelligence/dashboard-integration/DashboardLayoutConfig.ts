@@ -11,6 +11,7 @@ const KEY = 'layout'
 export const DEFAULT_DASHBOARD_LAYOUT: DashboardLayoutConfig = {
   id: 'default', name: 'Default Intelligence Dashboard',
   sections: [
+    { id: 'executive-ai', title: 'Executive AI Briefing', widgetIds: ['executive-ai-briefing'] },
     { id: 'overview',    title: 'Overview',    widgetIds: ['business-health-score', 'executive-kpis'] },
     { id: 'priorities',  title: 'Priorities',  widgetIds: ['top-priorities', 'critical-alerts'] },
     { id: 'growth',      title: 'Growth',      widgetIds: ['recommendations-summary', 'opportunities-summary'] },

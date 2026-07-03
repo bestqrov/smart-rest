@@ -17,6 +17,7 @@ import { getMarketingAdvisorSummary } from '../marketing-advisor'
 import { getReservationAdvisorSummary } from '../reservation-advisor'
 import { getStaffAdvisorSummary } from '../staff-advisor'
 import { getFinancialAdvisorSummary } from '../financial-advisor'
+import { getExecutiveBriefing } from '../executive-ai-advisor'
 import { registerWidget } from './WidgetRegistry'
 import type { WidgetDefinition } from './types'
 
@@ -95,6 +96,11 @@ const BUILTIN_WIDGETS: WidgetDefinition[] = [
     id: 'financial-advisor-summary', module: 'financial-advisor', name: 'Financial Advisor',
     type: 'list', size: 'md', visibleToRoles: ['admin'], tenantScoped: true,
     getData: (tenantId) => getFinancialAdvisorSummary(tenantId!),
+  },
+  {
+    id: 'executive-ai-briefing', module: 'executive-ai-advisor', name: 'Executive AI Briefing',
+    type: 'custom', size: 'xl', visibleToRoles: ['admin'], tenantScoped: true,
+    getData: (tenantId) => getExecutiveBriefing(tenantId!),
   },
 ]
 
