@@ -26,6 +26,7 @@ import { registerNotificationAdvisorAgent } from './notification-advisor'
 import { registerBuiltinIntelligenceWidgets } from './dashboard-integration'
 import { registerInventoryAdvisorAgent } from './inventory-advisor'
 import { registerCustomerAdvisorAgent } from './customer-advisor'
+import { registerMarketingAdvisorAgent } from './marketing-advisor'
 
 let initialized = false
 
@@ -58,7 +59,8 @@ export function initIntelligenceCore(): void {
   registerNotificationAdvisorAgent()
   registerInventoryAdvisorAgent()
   registerCustomerAdvisorAgent()
+  registerMarketingAdvisorAgent()
   registerBuiltinIntelligenceWidgets()
   initialized = true
-  logger.info({ msg: '[Intelligence] Core initialized — subscribed to all platform events, data adapters + knowledge sources + AI provider bridge + business skills pack + business advisor v1 + notification advisor + inventory advisor + customer advisor + dashboard widgets registered' })
+  logger.info({ msg: '[Intelligence] Core initialized — subscribed to all platform events, data adapters + knowledge sources + AI provider bridge + business skills pack + business advisor v1 + notification advisor + inventory advisor + customer advisor + marketing advisor + dashboard widgets registered' })
 }

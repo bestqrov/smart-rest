@@ -22,6 +22,7 @@ import { getIntelligenceOverview } from '../dashboard-integration'
 import { checkAIReadiness } from '../ai-readiness'
 import { getInventoryAdvisorSummary } from '../inventory-advisor'
 import { getCustomerAdvisorSummary } from '../customer-advisor'
+import { getMarketingAdvisorSummary } from '../marketing-advisor'
 import type { GatewayOperation } from './types'
 
 const operations = new Map<string, GatewayOperation>()
@@ -105,6 +106,13 @@ register({
   handler: (ctx) => {
     if (!ctx.tenantId) throw new Error('tenantId query parameter is required for the customer-advisor service')
     return getCustomerAdvisorSummary(ctx.tenantId)
+  },
+})
+register({
+  id: 'marketing-advisor', version: 'v1', summary: 'Marketing Advisor — channel performance, best posting times, ROI estimates, promotions, targeting (K62)', path: '/marketing-advisor',
+  handler: (ctx) => {
+    if (!ctx.tenantId) throw new Error('tenantId query parameter is required for the marketing-advisor service')
+    return getMarketingAdvisorSummary(ctx.tenantId)
   },
 })
 

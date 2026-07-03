@@ -13,6 +13,7 @@ import { getIntelligenceNotificationHistory } from '../notification-advisor'
 import { checkIntelligenceHealth } from '../observability'
 import { getInventoryAdvisorSummary } from '../inventory-advisor'
 import { getCustomerAdvisorSummary } from '../customer-advisor'
+import { getMarketingAdvisorSummary } from '../marketing-advisor'
 import { registerWidget } from './WidgetRegistry'
 import type { WidgetDefinition } from './types'
 
@@ -71,6 +72,11 @@ const BUILTIN_WIDGETS: WidgetDefinition[] = [
     id: 'customer-advisor-summary', module: 'customer-advisor', name: 'Customer Advisor',
     type: 'list', size: 'md', visibleToRoles: ['admin', 'staff'], tenantScoped: true,
     getData: (tenantId) => getCustomerAdvisorSummary(tenantId!),
+  },
+  {
+    id: 'marketing-advisor-summary', module: 'marketing-advisor', name: 'Marketing Advisor',
+    type: 'list', size: 'md', visibleToRoles: ['admin'], tenantScoped: true,
+    getData: (tenantId) => getMarketingAdvisorSummary(tenantId!),
   },
 ]
 
