@@ -22,6 +22,7 @@ import { registerDataHubKnowledgeSource } from './knowledge/KnowledgeEngine'
 import { initAIProviderBridge } from './ai/AIProviderBridge'
 import { registerBusinessSkillsPack } from './business-skills'
 import { registerBusinessAdvisorV1 } from './business-advisor'
+import { registerNotificationAdvisorAgent } from './notification-advisor'
 
 let initialized = false
 
@@ -51,6 +52,7 @@ export function initIntelligenceCore(): void {
   initAIProviderBridge()
   registerBusinessSkillsPack()
   registerBusinessAdvisorV1()
+  registerNotificationAdvisorAgent()
   initialized = true
-  logger.info({ msg: '[Intelligence] Core initialized — subscribed to all platform events, data adapters + knowledge sources + AI provider bridge + business skills pack + business advisor v1 registered' })
+  logger.info({ msg: '[Intelligence] Core initialized — subscribed to all platform events, data adapters + knowledge sources + AI provider bridge + business skills pack + business advisor v1 + notification advisor registered' })
 }
