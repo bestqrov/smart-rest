@@ -1,5 +1,8 @@
 import { Router } from 'express'
-import { askCopilot, getCopilotSessionContext } from '../intelligence/ai-copilot'
+import {
+  askCopilot, getCopilotSessionContext,
+  proposeCopilotAction, confirmCopilotAction, rejectCopilotAction,
+} from '../intelligence/ai-copilot'
 import { normalizeSuccess, normalizeError, createIntelligenceGatewayLimiter } from '../intelligence/gateway'
 
 const router = Router()
@@ -44,6 +47,58 @@ router.get('/api/superadmin/intelligence/copilot/history', requireSuperAdmin, co
   try {
     const session = await getCopilotSessionContext(tenantId, sessionId)
     res.json(normalizeSuccess({ history: session.history }, 'v1'))
+  } catch (err: any) {
+    res.status(500).json(normalizeError(err?.message ?? 'Internal error'))
+  }
+})
+
+// POST /api/superadmin/intelligence/copilot/action/propose — Action
+// Assistant (K69): never executes anything, only creates a PENDING
+// Decision (K38) a human must separately confirm.
+router.post('/api/superadmin/intelligence/copilot/action/propose', requireSuperAdmin, copilotLimiter, async (req, res) => {
+  const { tenantId, message, performedBy } = req.body ?? {}
+
+  if (!tenantId || !message || !performedBy) {
+    return res.status(400).json(normalizeError('tenantId, message and performedBy are all required'))
+  }
+
+  try {
+    const proposal = await proposeCopilotAction(tenantId, message, performedBy)
+    res.json(normalizeSuccess(proposal, 'v1'))
+  } catch (err: any) {
+    res.status(500).json(normalizeError(err?.message ?? 'Internal error'))
+  }
+})
+
+// POST /api/superadmin/intelligence/copilot/action/confirm — the only
+// route that turns a proposal into a queued action (K37 enqueueAction,
+// never run) — requires an explicit, human-initiated call.
+router.post('/api/superadmin/intelligence/copilot/action/confirm', requireSuperAdmin, copilotLimiter, async (req, res) => {
+  const { decisionId, performedBy } = req.body ?? {}
+
+  if (!decisionId || !performedBy) {
+    return res.status(400).json(normalizeError('decisionId and performedBy are required'))
+  }
+
+  try {
+    const result = await confirmCopilotAction(decisionId, performedBy)
+    res.json(normalizeSuccess(result, 'v1'))
+  } catch (err: any) {
+    res.status(500).json(normalizeError(err?.message ?? 'Internal error'))
+  }
+})
+
+// POST /api/superadmin/intelligence/copilot/action/reject
+router.post('/api/superadmin/intelligence/copilot/action/reject', requireSuperAdmin, copilotLimiter, async (req, res) => {
+  const { decisionId, performedBy } = req.body ?? {}
+
+  if (!decisionId || !performedBy) {
+    return res.status(400).json(normalizeError('decisionId and performedBy are required'))
+  }
+
+  try {
+    const result = await rejectCopilotAction(decisionId, performedBy)
+    res.json(normalizeSuccess(result, 'v1'))
   } catch (err: any) {
     res.status(500).json(normalizeError(err?.message ?? 'Internal error'))
   }
