@@ -18,6 +18,7 @@ import { getUnifiedBusinessSummary } from '../business-advisor'
 import { getAutomationAdvisorSummary } from '../automation-advisor'
 import { getExecutiveDashboard } from '../executive-dashboard'
 import { getIntelligenceNotificationHistory } from '../notification-advisor'
+import { getIntelligenceOverview } from '../dashboard-integration'
 import type { GatewayOperation } from './types'
 
 const operations = new Map<string, GatewayOperation>()
@@ -69,6 +70,13 @@ register({
   handler: (ctx) => {
     if (!ctx.tenantId) throw new Error('tenantId query parameter is required for the notifications service')
     return getIntelligenceNotificationHistory(ctx.tenantId)
+  },
+})
+register({
+  id: 'intelligence-overview', version: 'v1', summary: 'Combined Executive Dashboard + widget bundle for a tenant (K57)', path: '/intelligence-overview',
+  handler: (ctx) => {
+    if (!ctx.tenantId) throw new Error('tenantId query parameter is required for the intelligence-overview service')
+    return getIntelligenceOverview(ctx.tenantId)
   },
 })
 

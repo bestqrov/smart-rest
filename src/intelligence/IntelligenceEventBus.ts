@@ -23,6 +23,7 @@ import { initAIProviderBridge } from './ai/AIProviderBridge'
 import { registerBusinessSkillsPack } from './business-skills'
 import { registerBusinessAdvisorV1 } from './business-advisor'
 import { registerNotificationAdvisorAgent } from './notification-advisor'
+import { registerBuiltinIntelligenceWidgets } from './dashboard-integration'
 
 let initialized = false
 
@@ -53,6 +54,7 @@ export function initIntelligenceCore(): void {
   registerBusinessSkillsPack()
   registerBusinessAdvisorV1()
   registerNotificationAdvisorAgent()
+  registerBuiltinIntelligenceWidgets()
   initialized = true
-  logger.info({ msg: '[Intelligence] Core initialized — subscribed to all platform events, data adapters + knowledge sources + AI provider bridge + business skills pack + business advisor v1 + notification advisor registered' })
+  logger.info({ msg: '[Intelligence] Core initialized — subscribed to all platform events, data adapters + knowledge sources + AI provider bridge + business skills pack + business advisor v1 + notification advisor + dashboard widgets registered' })
 }
