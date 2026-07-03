@@ -7,13 +7,13 @@ import {
   Globe, FileUp, Camera, Sparkles, ChevronRight, ChevronLeft,
   Loader2, Check, Edit2, Trash2, Plus, X, AlertTriangle,
   Zap, CreditCard, Lock, CheckCircle, RefreshCw, BookOpen,
-  Eye, EyeOff, Tag, Flame, Leaf, Star
+  Eye, EyeOff, Tag, Flame, Leaf, Star, Wand2
 } from 'lucide-react'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type Lang = 'ar' | 'fr' | 'en' | 'es'
-type Path = 'url' | 'file' | 'camera' | 'manual'
+type Path = 'url' | 'file' | 'camera' | 'manual' | 'suggest'
 type Stage = 'path-select' | 'input' | 'enhancing' | 'review' | 'done'
 
 interface DraftItem {
@@ -22,6 +22,17 @@ interface DraftItem {
   price: number; calories?: number; tags?: string[]
   category: string; imageUrl?: string
   _key: string
+}
+
+// Country + business-type aware starter catalog (reuses the same data/
+// endpoint as the onboarding wizard — src/onboarding/ProductCatalog.ts).
+interface CatalogProductItem { key: string; nameAr: string; nameFr: string; nameEn: string; suggestedPrice?: number }
+interface CatalogCategoryItem { key: string; nameAr: string; nameFr: string; nameEn: string; icon: string; products: CatalogProductItem[] }
+
+function catalogNameFor(item: { nameAr: string; nameFr: string; nameEn: string }, lang: Lang): string {
+  if (lang === 'ar') return item.nameAr
+  if (lang === 'en') return item.nameEn
+  return item.nameFr // fr & es share the French name (no separate ES data yet)
 }
 
 // ── i18n ─────────────────────────────────────────────────────────────────────
@@ -35,7 +46,15 @@ const T = {
       file:   { label: 'ملف رقمي', sub: 'رفع Excel أو Word أو PDF' },
       camera: { label: 'صورة المنيو', sub: 'ارفع صورة أو صوّر قائمتك الورقية' },
       manual: { label: 'إدخال يدوي', sub: 'أدخل أسماء الوجبات وسيقترح النظام الأسعار تلقائياً' },
+      suggest: { label: 'اقترح لي منيو', sub: 'قائمة جاهزة حسب دولتك ونوع نشاطك' },
     },
+    suggestTitle: 'اختر الأصناف التي تريد إضافتها',
+    suggestSub: 'اقتراحات مبنية على دولتك ونوع نشاطك — عدّل أو أضف لاحقاً كيفما تحب',
+    suggestSelectAll: 'اختيار الكل',
+    suggestClearAll: 'إلغاء الكل',
+    suggestNone: 'لا توجد اقتراحات لهذا النوع/الدولة بعد',
+    suggestApply: 'إضافة الأصناف المختارة',
+    suggestSelected: 'صنف مختار',
     pathTitle: 'اختر طريقة إنشاء المنيو',
     urlLabel:  'رابط الموقع الإلكتروني',
     urlPh:     'https://example.com/menu',
@@ -98,7 +117,15 @@ const T = {
       file:   { label: 'Fichier numérique', sub: 'Importez Excel, Word ou PDF' },
       camera: { label: 'Photo du menu', sub: 'Importez ou photographiez votre menu papier' },
       manual: { label: 'Saisie manuelle', sub: 'Entrez les noms, l\'IA suggère les prix' },
+      suggest: { label: 'Suggérer pour moi', sub: 'Menu prêt selon votre pays et type d\'activité' },
     },
+    suggestTitle: 'Choisissez les plats à ajouter',
+    suggestSub: 'Suggestions basées sur votre pays et type d\'activité — modifiez ou ajoutez plus tard',
+    suggestSelectAll: 'Tout sélectionner',
+    suggestClearAll: 'Tout désélectionner',
+    suggestNone: 'Aucune suggestion pour ce type/pays pour l\'instant',
+    suggestApply: 'Ajouter les plats sélectionnés',
+    suggestSelected: 'plat(s) sélectionné(s)',
     pathTitle: 'Choisissez votre méthode',
     urlLabel:  'URL du site web',
     urlPh:     'https://example.com/menu',
@@ -161,7 +188,15 @@ const T = {
       file:   { label: 'Digital File', sub: 'Upload Excel, Word or PDF' },
       camera: { label: 'Menu Photo', sub: 'Upload or photograph your printed menu' },
       manual: { label: 'Manual Entry', sub: 'Enter dish names, AI suggests prices' },
+      suggest: { label: 'Suggest for me', sub: 'Ready-made menu based on your country and business type' },
     },
+    suggestTitle: 'Choose the items to add',
+    suggestSub: 'Suggestions based on your country and business type — edit or add more later',
+    suggestSelectAll: 'Select all',
+    suggestClearAll: 'Clear all',
+    suggestNone: 'No suggestions yet for this type/country',
+    suggestApply: 'Add selected items',
+    suggestSelected: 'item(s) selected',
     pathTitle: 'Choose your menu creation method',
     urlLabel:  'Website URL',
     urlPh:     'https://example.com/menu',
@@ -224,7 +259,15 @@ const T = {
       file:   { label: 'Archivo digital', sub: 'Sube Excel, Word o PDF' },
       camera: { label: 'Foto del menú', sub: 'Sube o fotografía tu menú impreso' },
       manual: { label: 'Entrada manual', sub: 'Ingresa nombres, la IA sugiere precios' },
+      suggest: { label: 'Sugerir por mí', sub: 'Menú listo según tu país y tipo de negocio' },
     },
+    suggestTitle: 'Elige los platos a añadir',
+    suggestSub: 'Sugerencias según tu país y tipo de negocio — edita o añade más después',
+    suggestSelectAll: 'Seleccionar todo',
+    suggestClearAll: 'Deseleccionar todo',
+    suggestNone: 'Aún no hay sugerencias para este tipo/país',
+    suggestApply: 'Añadir platos seleccionados',
+    suggestSelected: 'plato(s) seleccionado(s)',
     pathTitle: 'Elige tu método',
     urlLabel:  'URL del sitio web',
     urlPh:     'https://example.com/menu',
@@ -380,6 +423,11 @@ export default function MenuGenPage() {
   const [camImages, setCamImages] = useState<{ data: string; mimeType: string; preview: string }[]>([])
   const [manualText, setManualText] = useState('')
 
+  // "Suggest for me" — country + business-type aware starter catalog
+  const [suggestCatalog, setSuggestCatalog] = useState<CatalogCategoryItem[]>([])
+  const [suggestLoading, setSuggestLoading] = useState(false)
+  const [suggestSelected, setSuggestSelected] = useState<Record<string, Set<string>>>({})
+
   // Draft items
   const [items, setItems]    = useState<DraftItem[]>([])
   const [enhanced,       setEnhanced]       = useState(false)
@@ -412,6 +460,60 @@ export default function MenuGenPage() {
         }
       })
   }, [])
+
+  // Fetch the suggested starter catalog whenever the "suggest" path is opened
+  // (or country/tier change) — reuses GET /api/admin/onboarding/product-catalog,
+  // no catalog data duplicated client-side.
+  useEffect(() => {
+    if (path !== 'suggest' || stage !== 'input') return
+    setSuggestLoading(true)
+    fetch(`/api/admin/onboarding/product-catalog?country=${encodeURIComponent(country)}&businessType=${encodeURIComponent(tier)}`, {
+      headers: authHeader(),
+    })
+      .then(r => r.ok ? r.json() : { categories: [] })
+      .then(body => setSuggestCatalog(body.categories ?? []))
+      .catch(() => setSuggestCatalog([]))
+      .finally(() => setSuggestLoading(false))
+  }, [path, stage, country, tier])
+
+  function toggleSuggestProduct(categoryKey: string, productKey: string) {
+    setSuggestSelected(prev => {
+      const next = { ...prev }
+      const set = new Set(next[categoryKey] ?? [])
+      if (set.has(productKey)) set.delete(productKey); else set.add(productKey)
+      next[categoryKey] = set
+      return next
+    })
+  }
+
+  function toggleSuggestCategoryAll(category: CatalogCategoryItem) {
+    setSuggestSelected(prev => {
+      const current = prev[category.key] ?? new Set<string>()
+      const allSelected = category.products.every(p => current.has(p.key))
+      return { ...prev, [category.key]: allSelected ? new Set() : new Set(category.products.map(p => p.key)) }
+    })
+  }
+
+  const totalSuggestSelected = Object.values(suggestSelected).reduce((sum, s) => sum + s.size, 0)
+
+  function applySuggestedItems() {
+    const draft: DraftItem[] = []
+    for (const category of suggestCatalog) {
+      const picked = suggestSelected[category.key]
+      if (!picked || picked.size === 0) continue
+      for (const product of category.products) {
+        if (!picked.has(product.key)) continue
+        draft.push({
+          nameAr: product.nameAr, nameEn: product.nameEn, nameFr: product.nameFr, nameEs: product.nameFr,
+          price: product.suggestedPrice ?? 0,
+          category: category.nameEn,
+          _key: `${product.nameEn}-${draft.length}`,
+        })
+      }
+    }
+    setItems(draft)
+    setStage('review')
+  }
 
   function key(item: Omit<DraftItem, '_key'>, i: number) { return `${item.nameEn}-${i}` }
 
@@ -624,10 +726,10 @@ export default function MenuGenPage() {
         {stage === 'path-select' && (
           <div className="space-y-4">
             <h2 className="text-lg font-bold text-slate-700">{t.pathTitle}</h2>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              {(['url','file','camera','manual'] as Path[]).map(p => {
-                const icons = { url: Globe, file: FileUp, camera: Camera, manual: BookOpen }
-                const colors = { url: 'blue', file: 'violet', camera: 'emerald', manual: 'amber' }
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+              {(['suggest','url','file','camera','manual'] as Path[]).map(p => {
+                const icons = { suggest: Wand2, url: Globe, file: FileUp, camera: Camera, manual: BookOpen }
+                const colors = { suggest: 'rose', url: 'blue', file: 'violet', camera: 'emerald', manual: 'amber' }
                 const Icon = icons[p]
                 const col  = colors[p]
                 return (
@@ -663,6 +765,69 @@ export default function MenuGenPage() {
               </button>
               <h2 className="font-bold text-slate-800">{t.paths[path].label}</h2>
             </div>
+
+            {/* Suggest for me — country + business-type aware starter catalog */}
+            {path === 'suggest' && (
+              <div className="space-y-4">
+                <div>
+                  <h3 className="font-bold text-slate-700 text-sm">{t.suggestTitle}</h3>
+                  <p className="text-xs text-slate-400 mt-0.5">{t.suggestSub}</p>
+                </div>
+
+                {suggestLoading && (
+                  <div className="flex items-center justify-center py-10">
+                    <Loader2 className="w-6 h-6 animate-spin text-rose-400" />
+                  </div>
+                )}
+
+                {!suggestLoading && suggestCatalog.length === 0 && (
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-6 text-sm text-slate-500 text-center">
+                    {t.suggestNone}
+                  </div>
+                )}
+
+                {!suggestLoading && suggestCatalog.length > 0 && (
+                  <div className="space-y-3 max-h-96 overflow-y-auto pe-1">
+                    {suggestCatalog.map(category => {
+                      const picked = suggestSelected[category.key] ?? new Set<string>()
+                      const allSelected = category.products.length > 0 && category.products.every(p => picked.has(p.key))
+                      return (
+                        <div key={category.key} className="border border-slate-200 rounded-xl overflow-hidden">
+                          <div className="flex items-center justify-between bg-slate-50 px-3 py-2">
+                            <span className="text-sm font-bold text-slate-700 flex items-center gap-1.5">
+                              <span>{category.icon}</span> {catalogNameFor(category, lang)}
+                            </span>
+                            <button type="button" onClick={() => toggleSuggestCategoryAll(category)}
+                              className="text-xs font-semibold text-rose-600 hover:text-rose-700">
+                              {allSelected ? t.suggestClearAll : t.suggestSelectAll}
+                            </button>
+                          </div>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-2 gap-y-1.5 px-3 py-2.5">
+                            {category.products.map(product => {
+                              const checked = picked.has(product.key)
+                              return (
+                                <label key={product.key} className="flex items-center gap-1.5 text-sm cursor-pointer select-none">
+                                  <input type="checkbox" checked={checked} onChange={() => toggleSuggestProduct(category.key, product.key)}
+                                    className="w-4 h-4 rounded accent-rose-500" />
+                                  <span className={checked ? 'text-slate-800 font-medium' : 'text-slate-500'}>{catalogNameFor(product, lang)}</span>
+                                </label>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+
+                {totalSuggestSelected > 0 && (
+                  <button onClick={applySuggestedItems}
+                    className="flex items-center gap-2 px-6 py-3 bg-rose-500 hover:bg-rose-400 text-white rounded-xl font-bold text-sm transition-all">
+                    <Wand2 className="w-4 h-4" /> {t.suggestApply} ({totalSuggestSelected} {t.suggestSelected})
+                  </button>
+                )}
+              </div>
+            )}
 
             {/* URL input */}
             {path === 'url' && (
