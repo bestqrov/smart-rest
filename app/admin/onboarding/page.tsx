@@ -87,8 +87,8 @@ const T = {
     },
     step4: {
       title: 'حساب المدير الرئيسي', sub: 'إنشاء حساب مشرف لتسجيل الدخول عبر POS',
-      managerName: 'اسم المدير', pin: 'الرمز السري (4 أرقام)', pinConfirm: 'تأكيد الرمز السري',
-      pinMismatch: 'الرمزان غير متطابقان', pinInvalid: '4 أرقام فقط',
+      managerName: 'اسم المدير', pin: 'الرمز السري (4 إلى 8 أرقام)', pinConfirm: 'تأكيد الرمز السري',
+      pinMismatch: 'الرمزان غير متطابقان', pinInvalid: 'من 4 إلى 8 أرقام',
       showPin: 'إظهار', hidePin: 'إخفاء',
     },
     step5: {
@@ -137,8 +137,8 @@ const T = {
     },
     step4: {
       title: 'Compte gérant principal', sub: 'Accès POS pour le superviseur',
-      managerName: 'Nom du gérant', pin: 'Code PIN (4 chiffres)', pinConfirm: 'Confirmer le code PIN',
-      pinMismatch: 'Les codes PIN ne correspondent pas', pinInvalid: '4 chiffres requis',
+      managerName: 'Nom du gérant', pin: 'Code PIN (4 à 8 chiffres)', pinConfirm: 'Confirmer le code PIN',
+      pinMismatch: 'Les codes PIN ne correspondent pas', pinInvalid: '4 à 8 chiffres requis',
       showPin: 'Afficher', hidePin: 'Masquer',
     },
     step5: {
@@ -187,8 +187,8 @@ const T = {
     },
     step4: {
       title: 'Main Manager Account', sub: 'Supervisor account for POS login',
-      managerName: 'Manager name', pin: 'PIN Code (4 digits)', pinConfirm: 'Confirm PIN Code',
-      pinMismatch: 'PIN codes do not match', pinInvalid: '4 digits required',
+      managerName: 'Manager name', pin: 'PIN Code (4 to 8 digits)', pinConfirm: 'Confirm PIN Code',
+      pinMismatch: 'PIN codes do not match', pinInvalid: '4 to 8 digits required',
       showPin: 'Show', hidePin: 'Hide',
     },
     step5: {
@@ -237,8 +237,8 @@ const T = {
     },
     step4: {
       title: 'Cuenta del gerente principal', sub: 'Acceso POS para el supervisor',
-      managerName: 'Nombre del gerente', pin: 'Código PIN (4 dígitos)', pinConfirm: 'Confirmar PIN',
-      pinMismatch: 'Los códigos no coinciden', pinInvalid: 'Se requieren 4 dígitos',
+      managerName: 'Nombre del gerente', pin: 'Código PIN (4 a 8 dígitos)', pinConfirm: 'Confirmar PIN',
+      pinMismatch: 'Los códigos no coinciden', pinInvalid: 'Se requieren de 4 a 8 dígitos',
       showPin: 'Mostrar', hidePin: 'Ocultar',
     },
     step5: {
@@ -414,7 +414,7 @@ export default function OnboardingPage() {
     }
     if (step === 4) {
       if (!data.managerName.trim())          { setStepErr(t.step4.managerName + ' — required'); return false }
-      if (!/^\d{4}$/.test(data.managerPin))  { setStepErr(t.step4.pinInvalid); return false }
+      if (!/^\d{4,8}$/.test(data.managerPin))  { setStepErr(t.step4.pinInvalid); return false }
       if (data.managerPin !== data.pinConfirm) { setStepErr(t.step4.pinMismatch); return false }
     }
     return true
@@ -714,8 +714,8 @@ export default function OnboardingPage() {
               </Field>
               <Field label={`🔐 ${t.step4.pin}`}>
                 <div className="relative">
-                  <input type={showPin ? 'text' : 'password'} inputMode="numeric" maxLength={4}
-                    value={data.managerPin} onChange={e => set('managerPin', e.target.value.replace(/\D/g, '').slice(0,4))}
+                  <input type={showPin ? 'text' : 'password'} inputMode="numeric" maxLength={8}
+                    value={data.managerPin} onChange={e => set('managerPin', e.target.value.replace(/\D/g, '').slice(0,8))}
                     placeholder="••••" className="input text-center text-2xl tracking-[0.5em] font-bold" />
                   <button type="button" onClick={() => setShowPin(p => !p)}
                     className="absolute inset-y-0 end-3 flex items-center text-slate-400 hover:text-slate-600">
@@ -724,8 +724,8 @@ export default function OnboardingPage() {
                 </div>
               </Field>
               <Field label={`🔐 ${t.step4.pinConfirm}`}>
-                <input type={showPin ? 'text' : 'password'} inputMode="numeric" maxLength={4}
-                  value={data.pinConfirm} onChange={e => set('pinConfirm', e.target.value.replace(/\D/g, '').slice(0,4))}
+                <input type={showPin ? 'text' : 'password'} inputMode="numeric" maxLength={8}
+                  value={data.pinConfirm} onChange={e => set('pinConfirm', e.target.value.replace(/\D/g, '').slice(0,8))}
                   placeholder="••••" className="input text-center text-2xl tracking-[0.5em] font-bold" />
               </Field>
               <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-2 text-sm">

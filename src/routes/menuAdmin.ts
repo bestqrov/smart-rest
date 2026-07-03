@@ -449,7 +449,7 @@ router.delete('/api/admin/staff/:id', authorizeAdmin, async (req: Request, res: 
 //   businessName, logoUrl?, currency,
 //   coffeeRefPrice, sandwichRefPrice,
 //   zones: [{ name, tableCount }],
-//   managerName, managerPin (4 digits)
+//   managerName, managerPin (4-8 digits)
 // }
 
 router.post('/api/admin/onboarding', authorizeAdmin, async (req: Request, res: Response) => {
@@ -480,7 +480,7 @@ router.post('/api/admin/onboarding', authorizeAdmin, async (req: Request, res: R
     if (!sandwichRefPrice || sandwichRefPrice < 0) return res.status(400).json({ error: 'sandwichRefPrice is required' })
     if (!zones?.length)                       return res.status(400).json({ error: 'At least one zone is required' })
     if (!managerName?.trim())                 return res.status(400).json({ error: 'managerName is required' })
-    if (!/^\d{4}$/.test(managerPin))          return res.status(400).json({ error: 'managerPin must be 4 digits' })
+    if (!/^\d{4,8}$/.test(managerPin))        return res.status(400).json({ error: 'managerPin must be 4-8 digits' })
 
     const bcrypt = await import('bcrypt')
     const { randomUUID } = await import('crypto')
