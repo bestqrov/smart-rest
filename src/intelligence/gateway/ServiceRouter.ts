@@ -19,6 +19,7 @@ import { getAutomationAdvisorSummary } from '../automation-advisor'
 import { getExecutiveDashboard } from '../executive-dashboard'
 import { getIntelligenceNotificationHistory } from '../notification-advisor'
 import { getIntelligenceOverview } from '../dashboard-integration'
+import { checkAIReadiness } from '../ai-readiness'
 import type { GatewayOperation } from './types'
 
 const operations = new Map<string, GatewayOperation>()
@@ -77,6 +78,17 @@ register({
   handler: (ctx) => {
     if (!ctx.tenantId) throw new Error('tenantId query parameter is required for the intelligence-overview service')
     return getIntelligenceOverview(ctx.tenantId)
+  },
+})
+register({
+  id: 'ai-readiness', version: 'v1', summary: 'AI Readiness report — provider/prompt/context/capability checks, never invokes an LLM (K58)', path: '/ai-readiness',
+  handler: (ctx) => {
+    if (!ctx.tenantId) throw new Error('tenantId query parameter is required for the ai-readiness service')
+    return checkAIReadiness(ctx.tenantId, {
+      promptKey:  ctx.query['promptKey'],
+      providerId: ctx.query['providerId'],
+      modelId:    ctx.query['modelId'],
+    })
   },
 })
 
