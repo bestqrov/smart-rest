@@ -51,7 +51,7 @@ const T = {
   ar: {
     welcome: 'مرحباً بك في Smart Resto',
     welcomeSub: 'أكمل الإعداد الأولي في 5 خطوات سريعة',
-    steps: ['نوع المنشأة', 'هوية المكان', 'التسعير', 'الهيكلة', 'الأمان'],
+    steps: ['نوع المنشأة', 'هوية المكان', 'التسعير', 'الهيكلة', 'الأمان', 'المنيو'],
     step0: {
       title: 'ما هو نوع منشأتك؟',
       sub:   'هذا يحدد واجهة النظام والميزات المتاحة لك',
@@ -91,12 +91,17 @@ const T = {
       pinMismatch: 'الرمزان غير متطابقان', pinInvalid: '4 أرقام فقط',
       showPin: 'إظهار', hidePin: 'إخفاء',
     },
+    step5: {
+      title: 'ابنِ منيو البداية', sub: 'اختر المنتجات الجاهزة حسب دولتك ونوع نشاطك — يمكنك تعديلها لاحقاً',
+      typeLabel: 'نوع المنتجات المقترحة', selectAll: 'اختيار الكل', clearAll: 'إلغاء الكل',
+      selectedCount: 'منتج محدد', noSuggestions: 'لا توجد اقتراحات لهذه الدولة بعد — يمكنك إضافة المنتجات يدوياً لاحقاً', skip: 'تخطي هذه الخطوة',
+    },
     next: 'التالي', back: 'رجوع', launch: 'إنهاء وإطلاق النظام 🚀', launching: 'جارٍ الإطلاق…', error: 'حدث خطأ، حاول مجدداً',
   },
   fr: {
     welcome: 'Bienvenue sur Smart Resto',
     welcomeSub: 'Configurez votre établissement en 5 étapes',
-    steps: ['Type', 'Identité', 'Tarification', 'Structure', 'Sécurité'],
+    steps: ['Type', 'Identité', 'Tarification', 'Structure', 'Sécurité', 'Menu'],
     step0: {
       title: "Quel est votre type d'établissement ?",
       sub:   'Cela détermine l\'interface et les fonctionnalités disponibles',
@@ -136,12 +141,17 @@ const T = {
       pinMismatch: 'Les codes PIN ne correspondent pas', pinInvalid: '4 chiffres requis',
       showPin: 'Afficher', hidePin: 'Masquer',
     },
+    step5: {
+      title: 'Construisez votre menu de départ', sub: 'Choisissez des produits prêts selon votre pays et type d\'activité — modifiable plus tard',
+      typeLabel: 'Type de produits suggérés', selectAll: 'Tout sélectionner', clearAll: 'Tout désélectionner',
+      selectedCount: 'produits sélectionnés', noSuggestions: 'Pas encore de suggestions pour ce pays — vous pourrez ajouter vos produits manuellement plus tard.', skip: 'Passer cette étape',
+    },
     next: 'Suivant', back: 'Retour', launch: 'Terminer et lancer 🚀', launching: 'Lancement…', error: 'Erreur, réessayez',
   },
   en: {
     welcome: 'Welcome to Smart Resto',
     welcomeSub: 'Set up your establishment in 5 quick steps',
-    steps: ['Type', 'Identity', 'Pricing', 'Structure', 'Security'],
+    steps: ['Type', 'Identity', 'Pricing', 'Structure', 'Security', 'Menu'],
     step0: {
       title: 'What type of establishment are you?',
       sub:   'This determines your system interface and available features',
@@ -181,12 +191,17 @@ const T = {
       pinMismatch: 'PIN codes do not match', pinInvalid: '4 digits required',
       showPin: 'Show', hidePin: 'Hide',
     },
+    step5: {
+      title: 'Build your starter menu', sub: 'Pick ready-made products for your country and business type — editable anytime later',
+      typeLabel: 'Suggested product type', selectAll: 'Select all', clearAll: 'Clear all',
+      selectedCount: 'products selected', noSuggestions: 'No suggestions available for this country yet — you can add products manually later.', skip: 'Skip this step',
+    },
     next: 'Next', back: 'Back', launch: 'Finish & Launch 🚀', launching: 'Launching…', error: 'An error occurred, retry',
   },
   es: {
     welcome: 'Bienvenido a Smart Resto',
     welcomeSub: 'Configura tu establecimiento en 5 pasos',
-    steps: ['Tipo', 'Identidad', 'Precios', 'Estructura', 'Seguridad'],
+    steps: ['Tipo', 'Identidad', 'Precios', 'Estructura', 'Seguridad', 'Menú'],
     step0: {
       title: '¿Qué tipo de establecimiento tienes?',
       sub:   'Esto determina la interfaz y las funciones disponibles',
@@ -226,6 +241,11 @@ const T = {
       pinMismatch: 'Los códigos no coinciden', pinInvalid: 'Se requieren 4 dígitos',
       showPin: 'Mostrar', hidePin: 'Ocultar',
     },
+    step5: {
+      title: 'Crea tu menú inicial', sub: 'Elige productos listos según tu país y tipo de negocio — editable después',
+      typeLabel: 'Tipo de productos sugeridos', selectAll: 'Seleccionar todo', clearAll: 'Deseleccionar todo',
+      selectedCount: 'productos seleccionados', noSuggestions: 'Aún no hay sugerencias para este país — podrás añadir productos manualmente más tarde.', skip: 'Saltar este paso',
+    },
     next: 'Siguiente', back: 'Atrás', launch: 'Finalizar y lanzar 🚀', launching: 'Lanzando…', error: 'Error, inténtalo de nuevo',
   },
 }
@@ -239,8 +259,31 @@ interface WizardData {
   zones: Zone[]; managerName: string; managerPin: string; pinConfirm: string
 }
 
-const STEP_ICONS = [Sparkles, Building2, DollarSign, LayoutGrid, ShieldCheck]
-const TOTAL_STEPS = 5
+// ── Step 5: suggested product catalog ─────────────────────────────────────────
+// Mirrors src/onboarding/ProductCatalog.ts's shape — kept local to this page
+// (app/ never imports server-side src/ modules directly), fetched from
+// GET /api/admin/onboarding/product-catalog.
+type CatalogBusinessType = 'CAFE' | 'RESTAURANT' | 'TRAITEUR' | 'PASTRY' | 'FOOD_TRUCK' | 'HOTEL'
+interface CatalogProductItem { key: string; nameAr: string; nameFr: string; nameEn: string; suggestedPrice?: number }
+interface CatalogCategoryItem { key: string; nameAr: string; nameFr: string; nameEn: string; icon: string; products: CatalogProductItem[] }
+
+const CATALOG_TYPE_OPTIONS: { value: CatalogBusinessType; icon: string; label: Record<Lang, string> }[] = [
+  { value: 'CAFE',       icon: '☕', label: { ar: 'مقهى',   fr: 'Café',       en: 'Café',       es: 'Cafetería' } },
+  { value: 'RESTAURANT', icon: '🍽️', label: { ar: 'مطعم',   fr: 'Restaurant', en: 'Restaurant', es: 'Restaurante' } },
+  { value: 'PASTRY',     icon: '🧁', label: { ar: 'حلويات', fr: 'Pâtisserie', en: 'Bakery',     es: 'Pastelería' } },
+  { value: 'FOOD_TRUCK', icon: '🚚', label: { ar: 'فود تراك', fr: 'Food Truck', en: 'Food Truck', es: 'Food Truck' } },
+  { value: 'TRAITEUR',   icon: '🎂', label: { ar: 'طراتور', fr: 'Traiteur',   en: 'Caterer',    es: 'Catering' } },
+  { value: 'HOTEL',      icon: '🏨', label: { ar: 'فندق',   fr: 'Hôtel',      en: 'Hotel',      es: 'Hotel' } },
+]
+
+function nameFor(item: { nameAr: string; nameFr: string; nameEn: string }, lang: Lang): string {
+  if (lang === 'ar') return item.nameAr
+  if (lang === 'fr' || lang === 'es') return item.nameFr
+  return item.nameEn
+}
+
+const STEP_ICONS = [Sparkles, Building2, DollarSign, LayoutGrid, ShieldCheck, Utensils]
+const TOTAL_STEPS = 6
 
 export default function OnboardingPage() {
   const router  = useRouter()
@@ -255,6 +298,12 @@ export default function OnboardingPage() {
   const [error,   setError]   = useState('')
   const [showPin, setShowPin] = useState(false)
   const [stepErr, setStepErr] = useState('')
+
+  // Step 5 — suggested product catalog
+  const [catalogType,     setCatalogType]     = useState<CatalogBusinessType>('CAFE')
+  const [catalog,         setCatalog]         = useState<CatalogCategoryItem[]>([])
+  const [catalogLoading,  setCatalogLoading]  = useState(false)
+  const [selectedProducts, setSelectedProducts] = useState<Record<string, Set<string>>>({})
 
   const [data, setData] = useState<WizardData>({
     tier: 'CAFE',
@@ -281,8 +330,45 @@ export default function OnboardingPage() {
           sandwichRefPrice: p.sandwichRefPrice ? String(p.sandwichRefPrice) : '',
           tier:             (p.tier as 'CAFE'|'RESTAURANT') ?? 'CAFE',
         }))
+        if (p.tier === 'RESTAURANT' || p.tier === 'CAFE') setCatalogType(p.tier)
       })
   }, [])
+
+  // Fetch the suggested product catalog whenever country or catalog type
+  // changes — reuses GET /api/admin/onboarding/product-catalog, no client-
+  // side catalog data duplicated here.
+  useEffect(() => {
+    const token = localStorage.getItem('token')
+    if (!token) return
+    setCatalogLoading(true)
+    fetch(`/api/admin/onboarding/product-catalog?country=${encodeURIComponent(data.country)}&businessType=${encodeURIComponent(catalogType)}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.ok ? r.json() : { categories: [] })
+      .then(body => setCatalog(body.categories ?? []))
+      .catch(() => setCatalog([]))
+      .finally(() => setCatalogLoading(false))
+  }, [data.country, catalogType])
+
+  function toggleProduct(categoryKey: string, productKey: string) {
+    setSelectedProducts(prev => {
+      const next = { ...prev }
+      const set = new Set(next[categoryKey] ?? [])
+      if (set.has(productKey)) set.delete(productKey); else set.add(productKey)
+      next[categoryKey] = set
+      return next
+    })
+  }
+
+  function toggleCategoryAll(category: CatalogCategoryItem) {
+    setSelectedProducts(prev => {
+      const current = prev[category.key] ?? new Set<string>()
+      const allSelected = category.products.every(p => current.has(p.key))
+      return { ...prev, [category.key]: allSelected ? new Set() : new Set(category.products.map(p => p.key)) }
+    })
+  }
+
+  const totalSelectedProducts = Object.values(selectedProducts).reduce((sum, s) => sum + s.size, 0)
 
   function set<K extends keyof WizardData>(key: K, val: WizardData[K]) {
     setData(d => ({ ...d, [key]: val })); setStepErr('')
@@ -361,6 +447,20 @@ export default function OnboardingPage() {
       })
       const body = await res.json()
       if (!res.ok) { setError(body.error ?? t.error); return }
+
+      // Best-effort: apply any selected starter-menu products. Never blocks
+      // launch — the owner can always add products manually afterwards.
+      if (totalSelectedProducts > 0) {
+        const selections = Object.entries(selectedProducts)
+          .filter(([, keys]) => keys.size > 0)
+          .map(([categoryKey, keys]) => ({ categoryKey, productKeys: [...keys] }))
+        await fetch('/api/admin/onboarding/apply-product-catalog', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ country: data.country, businessType: catalogType, selections }),
+        }).catch(() => undefined)
+      }
+
       // After onboarding → go to smart menu generation
       router.replace('/admin/menu-gen')
     } catch {
@@ -636,6 +736,75 @@ export default function OnboardingPage() {
                 <div className="flex justify-between"><span className="text-slate-500">Currency</span><span className="font-bold text-amber-600">{data.currency}</span></div>
                 <div className="flex justify-between"><span className="text-slate-500">Tables</span><span className="font-medium">{totalTables} / {data.zones.length} zones</span></div>
               </div>
+            </StepCard>
+          )}
+
+          {/* ── Step 5: Starter menu ────────────────────────────── */}
+          {step === 5 && (
+            <StepCard title={t.step5.title} sub={t.step5.sub}>
+              <Field label={`🍴 ${t.step5.typeLabel}`}>
+                <div className="grid grid-cols-3 gap-2">
+                  {CATALOG_TYPE_OPTIONS.map(opt => (
+                    <button key={opt.value} type="button" onClick={() => setCatalogType(opt.value)}
+                      className={`flex flex-col items-center gap-1 p-2.5 rounded-xl border-2 transition-all text-center ${
+                        catalogType === opt.value ? 'border-amber-400 bg-amber-50' : 'border-slate-200 hover:border-slate-300 bg-white'
+                      }`}>
+                      <span className="text-xl leading-none">{opt.icon}</span>
+                      <span className={`text-xs font-bold ${catalogType === opt.value ? 'text-amber-700' : 'text-slate-600'}`}>{opt.label[lang]}</span>
+                    </button>
+                  ))}
+                </div>
+              </Field>
+
+              {catalogLoading && (
+                <div className="flex items-center justify-center py-8">
+                  <div className="w-6 h-6 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+                </div>
+              )}
+
+              {!catalogLoading && catalog.length === 0 && (
+                <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-4 text-sm text-slate-500 text-center">
+                  {t.step5.noSuggestions}
+                </div>
+              )}
+
+              {!catalogLoading && catalog.length > 0 && (
+                <div className="space-y-3 max-h-80 overflow-y-auto pe-1">
+                  {catalog.map(category => {
+                    const selectedInCategory = selectedProducts[category.key] ?? new Set<string>()
+                    const allSelected = category.products.length > 0 && category.products.every(p => selectedInCategory.has(p.key))
+                    return (
+                      <div key={category.key} className="border border-slate-200 rounded-xl overflow-hidden">
+                        <div className="flex items-center justify-between bg-slate-50 px-3 py-2">
+                          <span className="text-sm font-bold text-slate-700 flex items-center gap-1.5">
+                            <span>{category.icon}</span> {nameFor(category, lang)}
+                          </span>
+                          <button type="button" onClick={() => toggleCategoryAll(category)}
+                            className="text-xs font-semibold text-amber-600 hover:text-amber-700">
+                            {allSelected ? t.step5.clearAll : t.step5.selectAll}
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-2 gap-y-1.5 px-3 py-2.5">
+                          {category.products.map(product => {
+                            const checked = selectedInCategory.has(product.key)
+                            return (
+                              <label key={product.key} className="flex items-center gap-1.5 text-sm cursor-pointer select-none">
+                                <input type="checkbox" checked={checked} onChange={() => toggleProduct(category.key, product.key)}
+                                  className="w-4 h-4 rounded accent-amber-500" />
+                                <span className={checked ? 'text-slate-800 font-medium' : 'text-slate-500'}>{nameFor(product, lang)}</span>
+                              </label>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+
+              <p className="text-xs text-slate-400 text-center">
+                {totalSelectedProducts} {t.step5.selectedCount}
+              </p>
             </StepCard>
           )}
 

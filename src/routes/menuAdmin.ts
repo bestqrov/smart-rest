@@ -2,6 +2,7 @@ import express, { Request, Response } from 'express'
 import { authorizeAdmin } from '../middleware/authorizeAdmin'
 import logger from '../logger'
 import prisma from '../prisma'
+import { getProductCatalog, resolveSelectedProducts } from '../onboarding/ProductCatalog'
 
 const router = express.Router()
 
@@ -546,6 +547,87 @@ router.post('/api/admin/onboarding', authorizeAdmin, async (req: Request, res: R
   } catch (err) {
     logger.error({ msg: 'POST /api/admin/onboarding error', err })
     return res.status(500).json({ error: 'Onboarding failed' })
+  }
+})
+
+// ─── Onboarding — suggested product catalog ────────────────────────────────────
+// Country + business-type aware starter menu checklist. Read from
+// src/onboarding/ProductCatalog.ts — no data duplicated here.
+
+router.get('/api/admin/onboarding/product-catalog', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const country      = String(req.query.country ?? '')
+    const businessType = String(req.query.businessType ?? '')
+    if (!country || !businessType) {
+      return res.status(400).json({ error: 'country and businessType query params are required' })
+    }
+    const categories = getProductCatalog(country, businessType)
+    return res.json({ categories })
+  } catch (err) {
+    logger.error({ msg: 'GET onboarding product-catalog error', err })
+    return res.status(500).json({ error: 'Failed' })
+  }
+})
+
+// Body: { country, businessType, selections: [{ categoryKey, productKeys: string[] }] }
+// Re-resolves selections against the same server-side catalog (never
+// trusts client-supplied names/prices) and creates Category + Product
+// rows using the exact same Prisma calls as the manual menu-builder
+// endpoints above — idempotent: skips a product if one with the same
+// name already exists in that category for this cafe (safe to re-submit).
+router.post('/api/admin/onboarding/apply-product-catalog', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const cafeId = req.admin!.cafeId
+    const { country, businessType, selections } = req.body as {
+      country?:      string
+      businessType?: string
+      selections?:   { categoryKey: string; productKeys: string[] }[]
+    }
+
+    if (!country || !businessType || !Array.isArray(selections) || selections.length === 0) {
+      return res.status(400).json({ error: 'country, businessType and at least one selection are required' })
+    }
+
+    const resolved = resolveSelectedProducts(country, businessType, selections)
+    if (resolved.length === 0) {
+      return res.status(400).json({ error: 'No matching catalog items for the given selections' })
+    }
+
+    let createdCategories = 0
+    let createdProducts   = 0
+
+    for (const { category, products } of resolved) {
+      let cat = await prisma.category.findFirst({ where: { cafeId, nameEn: category.nameEn } })
+      if (!cat) {
+        const last = await prisma.category.findFirst({ where: { cafeId }, orderBy: { order: 'desc' } })
+        cat = await prisma.category.create({
+          data: {
+            cafeId, nameAr: category.nameAr, nameEn: category.nameEn, nameFr: category.nameFr,
+            nameEs: '', nameDe: '', order: (last?.order ?? 0) + 1,
+          },
+        })
+        createdCategories++
+      }
+
+      for (const product of products) {
+        const existing = await prisma.product.findFirst({ where: { categoryId: cat.id, nameEn: product.nameEn } })
+        if (existing) continue
+
+        await prisma.product.create({
+          data: {
+            categoryId: cat.id, nameAr: product.nameAr, nameEn: product.nameEn, nameFr: product.nameFr,
+            nameEs: '', nameDe: '', price: product.suggestedPrice ?? 0,
+          },
+        })
+        createdProducts++
+      }
+    }
+
+    logger.info({ msg: 'onboarding product catalog applied', cafeId, createdCategories, createdProducts })
+    return res.json({ success: true, createdCategories, createdProducts })
+  } catch (err) {
+    logger.error({ msg: 'POST onboarding apply-product-catalog error', err })
+    return res.status(500).json({ error: 'Failed' })
   }
 })
 
