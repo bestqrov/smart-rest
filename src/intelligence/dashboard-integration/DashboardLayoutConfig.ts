@@ -18,6 +18,7 @@ export const DEFAULT_DASHBOARD_LAYOUT: DashboardLayoutConfig = {
     { id: 'inventory',   title: 'Inventory',   widgetIds: ['inventory-advisor-summary'] },
     { id: 'customers',   title: 'Customers',   widgetIds: ['customer-advisor-summary'] },
     { id: 'marketing',   title: 'Marketing',   widgetIds: ['marketing-advisor-summary'] },
+    { id: 'reservations', title: 'Reservations', widgetIds: ['reservation-advisor-summary'] },
     { id: 'activity',    title: 'Activity',    widgetIds: ['notification-history'] },
   ],
 }

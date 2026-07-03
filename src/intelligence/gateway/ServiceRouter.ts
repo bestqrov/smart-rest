@@ -23,6 +23,7 @@ import { checkAIReadiness } from '../ai-readiness'
 import { getInventoryAdvisorSummary } from '../inventory-advisor'
 import { getCustomerAdvisorSummary } from '../customer-advisor'
 import { getMarketingAdvisorSummary } from '../marketing-advisor'
+import { getReservationAdvisorSummary } from '../reservation-advisor'
 import type { GatewayOperation } from './types'
 
 const operations = new Map<string, GatewayOperation>()
@@ -113,6 +114,13 @@ register({
   handler: (ctx) => {
     if (!ctx.tenantId) throw new Error('tenantId query parameter is required for the marketing-advisor service')
     return getMarketingAdvisorSummary(ctx.tenantId)
+  },
+})
+register({
+  id: 'reservation-advisor', version: 'v1', summary: 'Reservation Advisor — trend, peak prediction, no-show/cancellation analysis, table utilization (K63)', path: '/reservation-advisor',
+  handler: (ctx) => {
+    if (!ctx.tenantId) throw new Error('tenantId query parameter is required for the reservation-advisor service')
+    return getReservationAdvisorSummary(ctx.tenantId)
   },
 })
 
