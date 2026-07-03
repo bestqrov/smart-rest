@@ -16,6 +16,7 @@ import {
 import { getBusinessInsightsSummary } from '../business-skills'
 import { getUnifiedBusinessSummary } from '../business-advisor'
 import { getAutomationAdvisorSummary } from '../automation-advisor'
+import { getExecutiveDashboard } from '../executive-dashboard'
 import type { GatewayOperation } from './types'
 
 const operations = new Map<string, GatewayOperation>()
@@ -53,6 +54,13 @@ register({
   handler: (ctx) => {
     if (!ctx.tenantId) throw new Error('tenantId query parameter is required for the automation-advisor service')
     return getAutomationAdvisorSummary(ctx.tenantId)
+  },
+})
+register({
+  id: 'executive-dashboard', version: 'v1', summary: 'Executive Dashboard — health, KPIs, priorities, alerts, timeline (K55)', path: '/executive-dashboard',
+  handler: (ctx) => {
+    if (!ctx.tenantId) throw new Error('tenantId query parameter is required for the executive-dashboard service')
+    return getExecutiveDashboard(ctx.tenantId)
   },
 })
 
