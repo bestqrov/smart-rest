@@ -21,6 +21,7 @@ import { getIntelligenceNotificationHistory } from '../notification-advisor'
 import { getIntelligenceOverview } from '../dashboard-integration'
 import { checkAIReadiness } from '../ai-readiness'
 import { getInventoryAdvisorSummary } from '../inventory-advisor'
+import { getCustomerAdvisorSummary } from '../customer-advisor'
 import type { GatewayOperation } from './types'
 
 const operations = new Map<string, GatewayOperation>()
@@ -97,6 +98,13 @@ register({
   handler: (ctx) => {
     if (!ctx.tenantId) throw new Error('tenantId query parameter is required for the inventory-advisor service')
     return getInventoryAdvisorSummary(ctx.tenantId)
+  },
+})
+register({
+  id: 'customer-advisor', version: 'v1', summary: 'Customer Advisor — segments, churn risk, LTV, retention actions (K61)', path: '/customer-advisor',
+  handler: (ctx) => {
+    if (!ctx.tenantId) throw new Error('tenantId query parameter is required for the customer-advisor service')
+    return getCustomerAdvisorSummary(ctx.tenantId)
   },
 })
 
