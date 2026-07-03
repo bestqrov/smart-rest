@@ -15,6 +15,7 @@ import {
 } from '../observability'
 import { getBusinessInsightsSummary } from '../business-skills'
 import { getUnifiedBusinessSummary } from '../business-advisor'
+import { getAutomationAdvisorSummary } from '../automation-advisor'
 import type { GatewayOperation } from './types'
 
 const operations = new Map<string, GatewayOperation>()
@@ -45,6 +46,13 @@ register({
   handler: (ctx) => {
     if (!ctx.tenantId) throw new Error('tenantId query parameter is required for the business-advisor service')
     return getUnifiedBusinessSummary(ctx.tenantId)
+  },
+})
+register({
+  id: 'automation-advisor', version: 'v1', summary: 'Automation Advisor summary — opportunities, readiness, pending approvals (K54)', path: '/automation-advisor',
+  handler: (ctx) => {
+    if (!ctx.tenantId) throw new Error('tenantId query parameter is required for the automation-advisor service')
+    return getAutomationAdvisorSummary(ctx.tenantId)
   },
 })
 
