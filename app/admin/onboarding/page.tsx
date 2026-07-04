@@ -483,10 +483,10 @@ export default function OnboardingPage() {
 
   return (
     <div dir={isRTL ? 'rtl' : 'ltr'}
-      className="min-h-screen bg-gradient-to-br from-emerald-950 via-slate-900 to-slate-950 flex flex-col items-center justify-center px-4 py-10 relative overflow-hidden">
+      className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-950 flex flex-col items-center justify-center px-4 py-10 relative overflow-hidden">
 
-      <div className="absolute -top-24 -end-24 w-80 h-80 bg-amber-400/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-28 -start-20 w-80 h-80 bg-emerald-400/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -top-24 -end-24 w-80 h-80 bg-blue-400/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-28 -start-20 w-80 h-80 bg-indigo-400/10 rounded-full blur-3xl pointer-events-none" />
 
       {data.logoUrl && (
         <div className="fixed inset-0 bg-center bg-no-repeat bg-contain opacity-[0.04] pointer-events-none"
@@ -499,7 +499,7 @@ export default function OnboardingPage() {
         <div className={`flex gap-2 mb-6 ${isRTL ? 'justify-start' : 'justify-end'}`}>
           {(Object.keys(T) as Lang[]).map(l => (
             <button key={l} onClick={() => setLang(l)}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors ${lang === l ? 'bg-amber-500 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}>
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors ${lang === l ? 'bg-blue-500 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}>
               {l.toUpperCase()}
             </button>
           ))}
@@ -508,7 +508,7 @@ export default function OnboardingPage() {
         {/* Header */}
         <div className="text-center mb-8">
           <div className="relative inline-flex items-center justify-center mb-3">
-            <div className="absolute inset-0 bg-amber-400/30 rounded-2xl blur-xl" />
+            <div className="absolute inset-0 bg-blue-400/30 rounded-2xl blur-xl" />
             <img src={brandLogoUrl} alt="Smart Resto" className="relative w-16 h-16 rounded-2xl object-contain bg-white/95 p-1.5 shadow-lg" />
           </div>
           <h1 className="text-2xl font-extrabold text-white">{t.welcome}</h1>
@@ -524,10 +524,10 @@ export default function OnboardingPage() {
             return (
               <div key={i} className="flex items-center">
                 <div className="flex flex-col items-center gap-1">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${done ? 'bg-green-500 text-white' : active ? 'bg-amber-500 text-white ring-4 ring-amber-500/30' : 'bg-slate-700 text-slate-400'}`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${done ? 'bg-green-500 text-white' : active ? 'bg-blue-500 text-white ring-4 ring-blue-500/30' : 'bg-slate-700 text-slate-400'}`}>
                     {done ? <Check className="w-3.5 h-3.5" /> : <Icon className="w-3.5 h-3.5" />}
                   </div>
-                  <span className={`text-xs font-medium hidden sm:block ${active ? 'text-amber-400' : done ? 'text-green-400' : 'text-slate-500'}`}>{label}</span>
+                  <span className={`text-xs font-medium hidden sm:block ${active ? 'text-blue-400' : done ? 'text-green-400' : 'text-slate-500'}`}>{label}</span>
                 </div>
                 {i < TOTAL_STEPS - 1 && (
                   <div className={`w-6 sm:w-10 h-0.5 mx-0.5 mt-[-14px] transition-colors ${i < step ? 'bg-green-500' : 'bg-slate-700'}`} />
@@ -551,12 +551,12 @@ export default function OnboardingPage() {
                   onClick={() => set('tier', 'CAFE')}
                   className={`relative rounded-2xl border-2 p-4 text-start transition-all hover:shadow-md ${
                     data.tier === 'CAFE'
-                      ? 'border-amber-500 bg-amber-50 shadow-md shadow-amber-100'
-                      : 'border-slate-200 hover:border-amber-200'
+                      ? 'border-blue-500 bg-blue-50 shadow-md shadow-blue-100'
+                      : 'border-slate-200 hover:border-blue-200'
                   }`}
                 >
                   {data.tier === 'CAFE' && (
-                    <div className="absolute top-3 end-3 w-5 h-5 bg-amber-500 rounded-full flex items-center justify-center">
+                    <div className="absolute top-3 end-3 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
                       <Check className="w-3 h-3 text-white" />
                     </div>
                   )}
@@ -625,8 +625,8 @@ export default function OnboardingPage() {
                   <div className="flex items-center gap-2 mt-2">
                     <span className="text-lg">{selectedEntry.flag}</span>
                     <span className="text-xs text-slate-500">{selectedEntry.name[lang]}</span>
-                    <span className="ms-auto flex items-center gap-1 bg-amber-50 border border-amber-200 text-amber-700 text-xs font-bold px-3 py-1 rounded-full">
-                      {t.step1.currency.split('(')[0].trim()}: <span className="text-amber-600 font-extrabold">{data.currency}</span>
+                    <span className="ms-auto flex items-center gap-1 bg-blue-50 border border-blue-200 text-blue-700 text-xs font-bold px-3 py-1 rounded-full">
+                      {t.step1.currency.split('(')[0].trim()}: <span className="text-blue-600 font-extrabold">{data.currency}</span>
                     </span>
                   </div>
                 )}
@@ -662,7 +662,7 @@ export default function OnboardingPage() {
           {/* ── Step 2: Pricing ────────────────────────────────── */}
           {step === 2 && (
             <StepCard title={t.step2.title} sub={t.step2.sub}>
-              <div className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 text-sm text-amber-700">
+              <div className="bg-blue-50 border border-blue-200 rounded-2xl px-4 py-3 text-sm text-blue-700">
                 💡 {t.step2.hint}
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -691,7 +691,7 @@ export default function OnboardingPage() {
               <div className="space-y-2">
                 {data.zones.map((zone, i) => (
                   <div key={i} className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-full bg-amber-100 text-amber-700 text-xs font-bold flex items-center justify-center shrink-0">{i + 1}</div>
+                    <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 text-xs font-bold flex items-center justify-center shrink-0">{i + 1}</div>
                     <input value={zone.name} onChange={e => updateZone(i, 'name', e.target.value)}
                       placeholder={t.step3.zoneName} className="input flex-1 min-w-0" />
                     <input type="number" min="1" max="50" value={zone.tableCount}
@@ -707,13 +707,13 @@ export default function OnboardingPage() {
                 ))}
               </div>
               <button type="button" onClick={addZone}
-                className="flex items-center gap-2 text-amber-600 hover:text-amber-500 text-sm font-semibold transition-colors">
+                className="flex items-center gap-2 text-blue-600 hover:text-blue-500 text-sm font-semibold transition-colors">
                 <Plus className="w-4 h-4" /> {t.step3.addZone}
               </button>
               {totalTables > 0 && (
                 <div className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
                   <span className="text-sm text-slate-500">{t.step3.totalTables}</span>
-                  <span className="text-2xl font-extrabold text-amber-600">{totalTables}</span>
+                  <span className="text-2xl font-extrabold text-blue-600">{totalTables}</span>
                 </div>
               )}
             </StepCard>
@@ -747,7 +747,7 @@ export default function OnboardingPage() {
                 <div className="flex justify-between"><span className="text-slate-500">Type</span><span className="font-medium">{data.tier === 'CAFE' ? '☕ Cafe' : '🍽️ Restaurant'}</span></div>
                 <div className="flex justify-between"><span className="text-slate-500">Name</span><span className="font-medium">{data.businessName}</span></div>
                 <div className="flex justify-between"><span className="text-slate-500">Country</span><span className="font-medium">{selectedEntry?.flag} {selectedEntry?.name.en}</span></div>
-                <div className="flex justify-between"><span className="text-slate-500">Currency</span><span className="font-bold text-amber-600">{data.currency}</span></div>
+                <div className="flex justify-between"><span className="text-slate-500">Currency</span><span className="font-bold text-blue-600">{data.currency}</span></div>
                 <div className="flex justify-between"><span className="text-slate-500">Tables</span><span className="font-medium">{totalTables} / {data.zones.length} zones</span></div>
               </div>
             </StepCard>
@@ -761,10 +761,10 @@ export default function OnboardingPage() {
                   {CATALOG_TYPE_OPTIONS.map(opt => (
                     <button key={opt.value} type="button" onClick={() => setCatalogType(opt.value)}
                       className={`flex flex-col items-center gap-1 p-2.5 rounded-xl border-2 transition-all text-center ${
-                        catalogType === opt.value ? 'border-amber-400 bg-amber-50' : 'border-slate-200 hover:border-slate-300 bg-white'
+                        catalogType === opt.value ? 'border-blue-400 bg-blue-50' : 'border-slate-200 hover:border-slate-300 bg-white'
                       }`}>
                       <span className="text-xl leading-none">{opt.icon}</span>
-                      <span className={`text-xs font-bold ${catalogType === opt.value ? 'text-amber-700' : 'text-slate-600'}`}>{opt.label[lang]}</span>
+                      <span className={`text-xs font-bold ${catalogType === opt.value ? 'text-blue-700' : 'text-slate-600'}`}>{opt.label[lang]}</span>
                     </button>
                   ))}
                 </div>
@@ -772,7 +772,7 @@ export default function OnboardingPage() {
 
               {catalogLoading && (
                 <div className="flex items-center justify-center py-8">
-                  <div className="w-6 h-6 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+                  <div className="w-6 h-6 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
                 </div>
               )}
 
@@ -794,7 +794,7 @@ export default function OnboardingPage() {
                             <span>{category.icon}</span> {nameFor(category, lang)}
                           </span>
                           <button type="button" onClick={() => toggleCategoryAll(category)}
-                            className="text-xs font-semibold text-amber-600 hover:text-amber-700">
+                            className="text-xs font-semibold text-blue-600 hover:text-blue-700">
                             {allSelected ? t.step5.clearAll : t.step5.selectAll}
                           </button>
                         </div>
@@ -804,7 +804,7 @@ export default function OnboardingPage() {
                             return (
                               <label key={product.key} className="flex items-center gap-1.5 text-sm cursor-pointer select-none">
                                 <input type="checkbox" checked={checked} onChange={() => toggleProduct(category.key, product.key)}
-                                  className="w-4 h-4 rounded accent-amber-500" />
+                                  className="w-4 h-4 rounded accent-blue-500" />
                                 <span className={checked ? 'text-slate-800 font-medium' : 'text-slate-500'}>{nameFor(product, lang)}</span>
                               </label>
                             )
@@ -836,13 +836,13 @@ export default function OnboardingPage() {
             )}
             {step < TOTAL_STEPS - 1 ? (
               <button type="button" onClick={handleNext}
-                className="flex items-center gap-2 px-6 py-2.5 bg-amber-500 hover:bg-amber-400 text-white rounded-xl font-bold transition-colors active:scale-95">
+                className="flex items-center gap-2 px-6 py-2.5 bg-blue-500 hover:bg-blue-400 text-white rounded-xl font-bold transition-colors active:scale-95">
                 {t.next}
                 {isRTL ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
               </button>
             ) : (
               <button type="button" onClick={handleSubmit} disabled={saving}
-                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 disabled:opacity-60 text-white rounded-xl font-bold text-base transition-all active:scale-95 shadow-lg shadow-amber-500/30">
+                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 disabled:opacity-60 text-white rounded-xl font-bold text-base transition-all active:scale-95 shadow-lg shadow-blue-500/30">
                 {saving
                   ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />{t.launching}</>
                   : <><Rocket className="w-5 h-5" /> {t.launch}</>}

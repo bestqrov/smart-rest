@@ -115,7 +115,7 @@ export default function StaffPortal() {
       const r = await fetch(`/api/public/cafe/${sub.trim().toLowerCase()}`)
       if (r.ok) {
         const d = await r.json()
-        setCafe({ name: d.businessName || d.name || sub, logoUrl: d.logoUrl ?? null, accentColor: d.accentColor ?? '#059669' })
+        setCafe({ name: d.businessName || d.name || sub, logoUrl: d.logoUrl ?? null, accentColor: d.accentColor ?? '#2563eb' })
       }
     } catch {}
   }
@@ -168,7 +168,7 @@ export default function StaffPortal() {
     }
   }
 
-  const accentHex = cafe?.accentColor ?? '#059669'
+  const accentHex = cafe?.accentColor ?? '#2563eb'
   const isRTL = lang === 'ar'
 
   return (

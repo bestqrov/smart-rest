@@ -274,9 +274,9 @@ function SignupInner() {
 
   if (sent) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-4 py-12 bg-gradient-to-br from-emerald-950 via-emerald-900 to-gray-900" dir={dir}>
+      <div className="min-h-screen flex flex-col items-center justify-center px-4 py-12 bg-gradient-to-br from-blue-950 via-blue-900 to-gray-900" dir={dir}>
         <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden">
-          <div className="bg-gradient-to-r from-amber-400 to-amber-500 px-8 py-8 text-center">
+          <div className="bg-gradient-to-r from-blue-400 to-blue-500 px-8 py-8 text-center">
             <div className="text-6xl mb-3">✉️</div>
             <h1 className="text-xl font-extrabold text-white">{tx('ok_title', lang)}</h1>
           </div>
@@ -285,7 +285,7 @@ function SignupInner() {
             <p className="text-gray-400 text-sm">{tx('ok_spam', lang)}</p>
             <button
               onClick={() => { setSent(false); setError(null) }}
-              className="text-amber-600 hover:text-amber-700 text-sm font-bold underline"
+              className="text-blue-600 hover:text-blue-700 text-sm font-bold underline"
             >
               {tx('ok_back', lang)}
             </button>
@@ -308,21 +308,21 @@ function SignupInner() {
     <div className="h-screen lg:flex overflow-hidden" dir={dir}>
 
       {/* ── Left panel — brand / benefits (hidden on mobile) ──────────────────── */}
-      <aside className="hidden lg:flex lg:w-[44%] xl:w-[40%] h-screen relative flex-col justify-between bg-gradient-to-br from-emerald-950 via-teal-900 to-slate-900 px-10 py-8 overflow-hidden">
+      <aside className="hidden lg:flex lg:w-[44%] xl:w-[40%] h-screen relative flex-col justify-between bg-gradient-to-br from-blue-950 via-indigo-900 to-slate-900 px-10 py-8 overflow-hidden">
         {/* Decorative pattern */}
         <div className="absolute inset-0 pointer-events-none opacity-[0.04]"
           style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 0l30 30-30 30L0 30z' fill='%23ffffff'/%3E%3C/svg%3E")` }}
         />
-        <div className="absolute -top-20 -end-20 w-80 h-80 bg-amber-400/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute top-1/3 -start-24 w-72 h-72 bg-emerald-400/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-28 -end-10 w-80 h-80 bg-teal-400/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -top-20 -end-20 w-80 h-80 bg-blue-400/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute top-1/3 -start-24 w-72 h-72 bg-blue-400/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-28 -end-10 w-80 h-80 bg-indigo-400/10 rounded-full blur-3xl pointer-events-none" />
 
         {/* Brand */}
         <Link href="/landing" className="relative flex items-center gap-2.5 shrink-0">
           <Image src={logoUrl} alt="Smart Resto" width={36} height={36} className="rounded-lg shadow-lg object-contain" unoptimized={!logoUrl.startsWith('/')} />
           <div className="flex flex-col leading-tight">
             <span className="text-white text-base font-extrabold">Smart Resto</span>
-            <span className="text-emerald-300 text-[11px] leading-tight max-w-[220px]">{tx('brand_tagline', lang)}</span>
+            <span className="text-blue-300 text-[11px] leading-tight max-w-[220px]">{tx('brand_tagline', lang)}</span>
           </div>
         </Link>
 
@@ -331,7 +331,7 @@ function SignupInner() {
           <h2 className="text-2xl xl:text-3xl font-extrabold text-white leading-tight mb-3">
             {tx('hero_headline', lang)}
           </h2>
-          <p className="text-emerald-200/90 text-sm leading-relaxed mb-5 max-w-md">
+          <p className="text-blue-200/90 text-sm leading-relaxed mb-5 max-w-md">
             {tx('hero_sub', lang)}
           </p>
 
@@ -339,19 +339,19 @@ function SignupInner() {
             {FEATURES.map(f => (
               <li key={f.key} className="flex items-center gap-2.5">
                 <span className="flex items-center justify-center w-8 h-8 rounded-full bg-white/10 text-base shrink-0">{f.icon}</span>
-                <span className="text-emerald-50 text-sm font-medium">{tx(f.key, lang)}</span>
+                <span className="text-blue-50 text-sm font-medium">{tx(f.key, lang)}</span>
               </li>
             ))}
           </ul>
 
           {/* Testimonial */}
           <div className="mt-5 bg-white/5 border border-white/10 rounded-2xl p-4 backdrop-blur-sm">
-            <div className="text-amber-400 text-xs mb-1.5" dir="ltr">★★★★★</div>
-            <p className="text-emerald-50 text-xs leading-relaxed italic mb-2.5 line-clamp-3">
+            <div className="text-yellow-400 text-xs mb-1.5" dir="ltr">★★★★★</div>
+            <p className="text-blue-50 text-xs leading-relaxed italic mb-2.5 line-clamp-3">
               &ldquo;{tx('quote_text', lang)}&rdquo;
             </p>
             <p className="text-white text-xs font-bold">{tx('quote_name', lang)}</p>
-            <p className="text-emerald-300 text-[11px]">{tx('quote_author', lang)}</p>
+            <p className="text-blue-300 text-[11px]">{tx('quote_author', lang)}</p>
           </div>
         </div>
 
@@ -360,23 +360,23 @@ function SignupInner() {
           <div className="grid grid-cols-3 gap-4 mb-3">
             <div>
               <div className="text-white text-xl font-extrabold">500+</div>
-              <div className="text-emerald-300 text-[11px]">{tx('stat_restaurants', lang)}</div>
+              <div className="text-blue-300 text-[11px]">{tx('stat_restaurants', lang)}</div>
             </div>
             <div>
               <div className="text-white text-xl font-extrabold">6+</div>
-              <div className="text-emerald-300 text-[11px]">{tx('stat_countries', lang)}</div>
+              <div className="text-blue-300 text-[11px]">{tx('stat_countries', lang)}</div>
             </div>
             <div>
               <div className="text-white text-xl font-extrabold">99.9%</div>
-              <div className="text-emerald-300 text-[11px]">{tx('stat_uptime', lang)}</div>
+              <div className="text-blue-300 text-[11px]">{tx('stat_uptime', lang)}</div>
             </div>
           </div>
-          <p className="text-emerald-400/70 text-[11px]">{tx('trust_bar', lang)}</p>
+          <p className="text-blue-400/70 text-[11px]">{tx('trust_bar', lang)}</p>
         </div>
       </aside>
 
       {/* ── Right panel — form ─────────────────────────────────────────────────── */}
-      <main className="flex-1 flex flex-col h-screen overflow-y-auto bg-gradient-to-b from-amber-50/40 via-white to-white">
+      <main className="flex-1 flex flex-col h-screen overflow-y-auto bg-gradient-to-b from-blue-50/40 via-white to-white">
         {/* Top bar */}
         <div className="flex items-center justify-between px-6 sm:px-10 lg:px-14 pt-5 lg:pt-6 shrink-0">
           <Link href="/landing" className="flex items-center gap-2 lg:hidden">
@@ -398,7 +398,7 @@ function SignupInner() {
                 aria-label={l.native}
                 className={`flex items-center justify-center w-8 h-8 rounded-lg text-sm border transition-all ${
                   lang === l.code
-                    ? 'border-amber-400 bg-amber-50'
+                    ? 'border-blue-400 bg-blue-50'
                     : 'border-gray-200 hover:border-gray-300'
                 }`}
               >
@@ -413,7 +413,7 @@ function SignupInner() {
           <div className="w-full max-w-md">
 
             <div className="mb-4">
-              <span className="inline-block text-[11px] font-bold tracking-wide uppercase text-amber-600 bg-amber-50 px-2.5 py-1 rounded-full mb-2">
+              <span className="inline-block text-[11px] font-bold tracking-wide uppercase text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full mb-2">
                 {tx('step_label', lang)}
               </span>
               <h1 className="text-xl sm:text-2xl font-extrabold text-gray-900">{tx('page_title', lang)}</h1>
@@ -437,15 +437,15 @@ function SignupInner() {
                         onClick={() => { setBusinessType(bt.value); setError(null) }}
                         className={`flex flex-col items-center gap-0.5 p-2 rounded-xl border-2 transition-all text-center ${
                           selected
-                            ? 'border-amber-400 bg-amber-50 shadow-sm shadow-amber-100'
+                            ? 'border-blue-400 bg-blue-50 shadow-sm shadow-blue-100'
                             : 'border-gray-200 hover:border-gray-300 bg-white'
                         }`}
                       >
                         <span className="text-2xl leading-none">{bt.icon}</span>
-                        <span className={`text-xs font-bold leading-tight ${selected ? 'text-amber-700' : 'text-gray-700'}`}>
+                        <span className={`text-xs font-bold leading-tight ${selected ? 'text-blue-700' : 'text-gray-700'}`}>
                           {bt.label[lang]}
                         </span>
-                        <span className={`text-[10px] leading-tight hidden sm:block ${selected ? 'text-amber-500' : 'text-gray-400'}`}>
+                        <span className={`text-[10px] leading-tight hidden sm:block ${selected ? 'text-blue-500' : 'text-gray-400'}`}>
                           {bt.desc[lang]}
                         </span>
                       </button>
@@ -454,7 +454,7 @@ function SignupInner() {
                 </div>
                 {/* Traiteur highlight banner */}
                 {businessType === 'TRAITEUR' && (
-                  <div className="mt-3 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl px-4 py-3 text-xs text-amber-800 leading-relaxed">
+                  <div className="mt-3 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl px-4 py-3 text-xs text-blue-800 leading-relaxed">
                     🎉{' '}
                     {lang === 'ar'
                       ? 'ستحصل على Smart Traîteur — لوحة تحكم متكاملة لإدارة الحجوزات والفعاليات والقوائم بشكل احترافي.'
@@ -480,14 +480,14 @@ function SignupInner() {
                   onChange={handleChange}
                   placeholder={tx('ph_cafe', lang)}
                   required
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-amber-400 text-gray-800 placeholder-gray-400 transition-shadow"
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 text-gray-800 placeholder-gray-400 transition-shadow"
                 />
               </div>
 
               {/* Subdomain */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">{tx('label_sub', lang)}</label>
-                <div className={`flex rounded-xl overflow-hidden border border-gray-200 focus-within:ring-2 focus-within:ring-amber-400 focus-within:border-amber-400 transition-shadow ${isRTL ? 'flex-row-reverse' : ''}`}>
+                <div className={`flex rounded-xl overflow-hidden border border-gray-200 focus-within:ring-2 focus-within:ring-blue-400 focus-within:border-blue-400 transition-shadow ${isRTL ? 'flex-row-reverse' : ''}`}>
                   <input
                     type="text"
                     name="subdomain"
@@ -522,7 +522,7 @@ function SignupInner() {
                   placeholder={tx('ph_email', lang)}
                   required
                   dir="ltr"
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-amber-400 text-gray-800 placeholder-gray-400 transition-shadow"
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 text-gray-800 placeholder-gray-400 transition-shadow"
                 />
                 <p className="text-xs text-gray-400 mt-1">{tx('email_hint', lang)}</p>
               </div>
@@ -534,7 +534,7 @@ function SignupInner() {
                   name="country"
                   value={form.country}
                   onChange={handleChange}
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-amber-400 text-gray-800 bg-white transition-shadow"
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 text-gray-800 bg-white transition-shadow"
                 >
                   {COUNTRIES.map(c => (
                     <option key={c.code} value={c.code}>{c.label[lang]}</option>
@@ -544,14 +544,14 @@ function SignupInner() {
 
               {/* Email already taken — show login prompt */}
               {emailTaken && (
-                <div className={`bg-amber-50 border border-amber-300 rounded-xl px-4 py-4 text-sm ${isRTL ? 'text-right' : 'text-left'}`}>
-                  <p className="font-semibold text-amber-800 mb-2">
+                <div className={`bg-blue-50 border border-blue-300 rounded-xl px-4 py-4 text-sm ${isRTL ? 'text-right' : 'text-left'}`}>
+                  <p className="font-semibold text-blue-800 mb-2">
                     {lang === 'ar' ? '⚠️ هذا البريد الإلكتروني مسجل مسبقاً'
                      : lang === 'fr' ? '⚠️ Cet e-mail est déjà enregistré'
                      : lang === 'es' ? '⚠️ Este correo ya está registrado'
                      : '⚠️ This email already has an account'}
                   </p>
-                  <p className="text-amber-700 mb-3">
+                  <p className="text-blue-700 mb-3">
                     {lang === 'ar' ? 'يرجى تسجيل الدخول للوصول إلى لوحة التحكم.'
                      : lang === 'fr' ? 'Veuillez vous connecter pour accéder à votre tableau de bord.'
                      : lang === 'es' ? 'Por favor inicia sesión para acceder a tu panel.'
@@ -559,7 +559,7 @@ function SignupInner() {
                   </p>
                   <Link
                     href={`/login?lang=${lang}`}
-                    className="inline-block bg-amber-500 hover:bg-amber-400 text-white font-bold px-5 py-2 rounded-xl transition-colors text-sm"
+                    className="inline-block bg-blue-500 hover:bg-blue-400 text-white font-bold px-5 py-2 rounded-xl transition-colors text-sm"
                   >
                     {lang === 'ar' ? 'تسجيل الدخول ←'
                      : lang === 'fr' ? 'Se connecter →'
@@ -580,7 +580,7 @@ function SignupInner() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 rounded-xl font-extrabold text-white text-base transition-all active:scale-[0.98] disabled:opacity-60 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 shadow-lg shadow-amber-200/60"
+                className="w-full py-3 rounded-xl font-extrabold text-white text-base transition-all active:scale-[0.98] disabled:opacity-60 bg-gradient-to-r from-blue-400 to-blue-500 hover:from-blue-500 hover:to-blue-600 shadow-lg shadow-blue-200/60"
               >
                 {loading ? tx('btn_sending', lang) : tx('btn_send', lang)}
               </button>
@@ -588,7 +588,7 @@ function SignupInner() {
               {/* Login link */}
               <p className="text-center text-sm text-gray-500">
                 {tx('have_account', lang)}{' '}
-                <Link href={`/login?lang=${lang}`} className="text-amber-600 font-bold hover:underline">
+                <Link href={`/login?lang=${lang}`} className="text-blue-600 font-bold hover:underline">
                   {tx('sign_in', lang)}
                 </Link>
               </p>
@@ -613,8 +613,8 @@ function SignupInner() {
 export default function SignupPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-emerald-950">
-        <div className="w-8 h-8 border-4 border-amber-400 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen flex items-center justify-center bg-blue-950">
+        <div className="w-8 h-8 border-4 border-blue-400 border-t-transparent rounded-full animate-spin" />
       </div>
     }>
       <SignupInner />
