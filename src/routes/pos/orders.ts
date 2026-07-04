@@ -14,6 +14,7 @@ import prisma from '../../prisma'
 import logger from '../../logger'
 import authorizePOS from '../../middleware/authorizePOS'
 import { emitKdsTicket } from '../../services/kds'
+import { autoCheckInReservationForTable } from '../../reservations/ReservationService'
 
 const router = express.Router()
 
@@ -126,6 +127,8 @@ router.post('/api/pos/orders', authorizePOS, async (req: Request, res: Response)
 
     const io = req.app.get('io') as SocketIOServer | undefined
     if (io) await emitKdsTicket(io, order.id)
+
+    await autoCheckInReservationForTable(cafeId, tableId ?? null)
 
     logger.info({ msg: 'POS order created', orderId: order.id, staffId, shiftId })
     return res.status(201).json({ merged: false, order })

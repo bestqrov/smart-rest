@@ -6,6 +6,7 @@ import prisma from '../prisma'
 import { applyOrderFee } from '../services/billing'
 import { emitKdsTicket, emitOrderStatusUpdate } from '../services/kds'
 import { deductInventoryForOrder } from '../services/inventoryDeduction'
+import { autoCheckInReservationForTable } from '../reservations/ReservationService'
 
 const router = express.Router()
 
@@ -185,6 +186,8 @@ router.post('/api/orders', async (req: Request, res: Response) => {
 
     const io = req.app.get('io') as SocketIOServer | undefined
     if (io) await emitKdsTicket(io, result.id)
+
+    await autoCheckInReservationForTable(cafeId, physicalTableId)
 
     return res.status(201).json({ orderId: result.id, totalPrice: total, billingTableId, physicalTableId, seatNumber })
   } catch (err: any) {

@@ -6,6 +6,7 @@
 
 import prisma from '../prisma'
 import { publishStandardEvent } from '../core'
+import logger from '../logger'
 
 // Existing Reservation.status values (String field, no schema enum) were
 // PENDING | ACCEPTED | COMPLETED | CANCELLED — CHECKED_IN and NO_SHOW are new.
@@ -94,6 +95,39 @@ export async function checkInReservation(id: string, cafeId: string) {
   }, 'reservations')
 
   return updated
+}
+
+// ─── Auto check-in on first order ──────────────────────────────────────────
+// Called (best-effort, non-blocking) whenever an order is created for a
+// table — QR or POS manual alike. If that table has a live ACCEPTED
+// reservation within CONFLICT_WINDOW_MINUTES of now, the reservation moves
+// to CHECKED_IN automatically, so staff don't have to do it by hand.
+// Naturally idempotent: once checked in, the status filter below no longer
+// matches, so later orders on the same table are silent no-ops.
+export async function autoCheckInReservationForTable(cafeId: string, tableId: string | null) {
+  if (!tableId) return null
+  try {
+    const table = await prisma.table.findUnique({ where: { id: tableId }, select: { tableNumber: true } })
+    if (!table) return null
+
+    const windowMs = CONFLICT_WINDOW_MINUTES * 60 * 1000
+    const now = new Date()
+    const reservation = await prisma.reservation.findFirst({
+      where: {
+        cafeId,
+        tableNumber: table.tableNumber,
+        status:      'ACCEPTED',
+        date:        { gte: new Date(now.getTime() - windowMs), lte: new Date(now.getTime() + windowMs) },
+      },
+      orderBy: { date: 'asc' },
+    })
+    if (!reservation) return null
+
+    return await checkInReservation(reservation.id, cafeId)
+  } catch (err) {
+    logger.error({ msg: 'autoCheckInReservationForTable failed', err, cafeId, tableId })
+    return null
+  }
 }
 
 // ─── No-show ────────────────────────────────────────────────────────────────
