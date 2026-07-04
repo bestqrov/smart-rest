@@ -35,34 +35,42 @@ const MOROCCO_CAFE: CatalogCategory[] = [
   {
     key: 'hot-drinks', icon: '☕', nameAr: 'مشروبات ساخنة', nameFr: 'Boissons chaudes', nameEn: 'Hot drinks',
     products: [
-      { key: 'cafe-noir',   nameAr: 'قهوة سوداء',    nameFr: 'Café noir',        nameEn: 'Black coffee',  suggestedPrice: 8 },
-      { key: 'cafe-au-lait', nameAr: 'قهوة بالحليب (نص نص)', nameFr: 'Café au lait / Nos-Nos', nameEn: 'Café au lait', suggestedPrice: 10 },
+      { key: 'cafe-creme',  nameAr: 'قهوة كريم (نص نص)', nameFr: 'Café crème (Nos-Nos)', nameEn: 'Café crème',   suggestedPrice: 10 },
+      { key: 'cafe-noir',   nameAr: 'قهوة سوداء / إكسبريس', nameFr: 'Café noir / Express', nameEn: 'Black coffee / Espresso', suggestedPrice: 8 },
+      { key: 'cafe-casse',  nameAr: 'قهوة مهرنسة',   nameFr: 'Café cassé',        nameEn: 'Café cassé',    suggestedPrice: 8 },
+      { key: 'cafe-au-lait', nameAr: 'قهوة بالحليب', nameFr: 'Café au lait', nameEn: 'Café au lait', suggestedPrice: 10 },
       { key: 'cappuccino',  nameAr: 'كابوتشينو',      nameFr: 'Cappuccino',       nameEn: 'Cappuccino',    suggestedPrice: 15 },
-      { key: 'espresso',    nameAr: 'إسبريسو',        nameFr: 'Espresso',         nameEn: 'Espresso',      suggestedPrice: 8 },
       { key: 'the-menthe',  nameAr: 'أتاي بالنعناع',   nameFr: 'Thé à la menthe',  nameEn: 'Mint tea',      suggestedPrice: 8 },
+      { key: 'the-chiba',   nameAr: 'أتاي بالشيبة',   nameFr: 'Thé absinthe / Chiba', nameEn: 'Absinthe tea (winter)', suggestedPrice: 8 },
       { key: 'chocolat-chaud', nameAr: 'شوكولاطة ساخنة', nameFr: 'Chocolat chaud', nameEn: 'Hot chocolate', suggestedPrice: 15 },
+      { key: 'louiza',      nameAr: 'لويزة / أعشاب',  nameFr: 'Verveine / Tisane', nameEn: 'Herbal tea',    suggestedPrice: 8 },
     ],
   },
   {
     key: 'cold-drinks', icon: '🥤', nameAr: 'مشروبات باردة', nameFr: 'Boissons froides', nameEn: 'Cold drinks',
     products: [
-      { key: 'jus-orange',  nameAr: 'عصير برتقال',    nameFr: "Jus d'orange",     nameEn: 'Orange juice',  suggestedPrice: 12 },
-      { key: 'jus-avocat',  nameAr: 'عصير أفوكا',     nameFr: "Jus d'avocat",     nameEn: 'Avocado juice', suggestedPrice: 18 },
+      { key: 'jus-orange',  nameAr: 'عصير برتقال طازج', nameFr: "Jus d'orange frais", nameEn: 'Fresh orange juice', suggestedPrice: 12 },
+      { key: 'jus-avocat',  nameAr: 'عصير أفوكا (نيتير / بالمكسرات)', nameFr: "Jus d'avocat (nature / aux fruits secs)", nameEn: 'Avocado juice', suggestedPrice: 18 },
       { key: 'panache',     nameAr: 'بانشي',          nameFr: 'Panaché',          nameEn: 'Fruit mix juice', suggestedPrice: 18 },
-      { key: 'citronnade',  nameAr: 'عصير الليمون',   nameFr: 'Citronnade',       nameEn: 'Lemonade',      suggestedPrice: 12 },
-      { key: 'soda',        nameAr: 'مشروب غازي',     nameFr: 'Soda',             nameEn: 'Soda',          suggestedPrice: 8 },
-      { key: 'eau-minerale', nameAr: 'ماء معدني',      nameFr: 'Eau minérale',     nameEn: 'Mineral water', suggestedPrice: 5 },
+      { key: 'citronnade',  nameAr: 'عصير الليمون بالنعناع', nameFr: 'Jus de citron / menthe', nameEn: 'Lemon & mint juice', suggestedPrice: 12 },
+      { key: 'eau-minerale', nameAr: 'ماء معدني',      nameFr: 'Eau minérale (petite / grande)', nameEn: 'Mineral water', suggestedPrice: 5 },
+      { key: 'eau-gazeuse', nameAr: 'ماء غازي',       nameFr: 'Eau gazeuse (Oulmès)', nameEn: 'Sparkling water', suggestedPrice: 8 },
+      { key: 'soda',        nameAr: 'مشروب غازي',     nameFr: 'Soda / canette',   nameEn: 'Soda can',      suggestedPrice: 8 },
     ],
   },
   {
     key: 'breakfast', icon: '🥐', nameAr: 'فطور وسناكس', nameFr: 'Petit-déjeuner & snacks', nameEn: 'Breakfast & snacks',
     products: [
+      { key: 'ftour-beldi',  nameAr: 'فطور بلدي', nameFr: 'Ftour beldi (khobz, zit, jben, bessara)', nameEn: 'Traditional breakfast set', suggestedPrice: 35 },
+      { key: 'ftour-continental', nameAr: 'فطور قاري', nameFr: 'Petit-déjeuner continental', nameEn: 'Continental breakfast', suggestedPrice: 30 },
       { key: 'msemen',   nameAr: 'مسمن',   nameFr: 'Msemen',           nameEn: 'Msemen',           suggestedPrice: 5 },
       { key: 'beghrir',  nameAr: 'بغرير',  nameFr: 'Beghrir',          nameEn: 'Beghrir pancakes', suggestedPrice: 8 },
       { key: 'harcha',   nameAr: 'حرشة',   nameFr: 'Harcha',           nameEn: 'Harcha',           suggestedPrice: 5 },
       { key: 'sfenj',    nameAr: 'سفنج',   nameFr: 'Sfenj (beignets)', nameEn: 'Sfenj donuts',     suggestedPrice: 3 },
       { key: 'croissant', nameAr: 'كرواسون', nameFr: 'Croissant',       nameEn: 'Croissant',        suggestedPrice: 6 },
+      { key: 'pain-chocolat', nameAr: 'بان أو شوكولا', nameFr: 'Pain au chocolat', nameEn: 'Chocolate croissant', suggestedPrice: 7 },
       { key: 'omelette', nameAr: 'أومليت', nameFr: 'Omelette',         nameEn: 'Omelette',         suggestedPrice: 15 },
+      { key: 'bid-mghli', nameAr: 'بيض بالخليع / مغلي', nameFr: 'Œufs (khli3 / mghli)', nameEn: 'Eggs (khlii / poached)', suggestedPrice: 15 },
     ],
   },
   {
@@ -74,27 +82,53 @@ const MOROCCO_CAFE: CatalogCategory[] = [
       { key: 'gateau-jour',   nameAr: 'حلوى اليوم',  nameFr: 'Gâteau du jour',    nameEn: "Cake of the day", suggestedPrice: 12 },
     ],
   },
+  {
+    key: 'fast-food', icon: '🥪', nameAr: 'وجبات سريعة وسندويشات', nameFr: 'Sandwichs & fast-food', nameEn: 'Sandwiches & fast food',
+    products: [
+      { key: 'sandwich-thon-oeuf', nameAr: 'سندويش التونة / البيض / البطاطا', nameFr: 'Sandwich thon / œuf / batata', nameEn: 'Tuna / egg / potato sandwich', suggestedPrice: 20 },
+      { key: 'sandwich-bocadillo', nameAr: 'سندويش بوكاديو', nameFr: 'Bocadillo',        nameEn: 'Bocadillo sandwich', suggestedPrice: 22 },
+      { key: 'panini-poulet',     nameAr: 'بانيني دجاج / شاورما', nameFr: 'Panini poulet / chawarma', nameEn: 'Chicken / shawarma panini', suggestedPrice: 25 },
+      { key: 'tacos-marocain',    nameAr: 'تاكوس (بسيط / مضاعف)', nameFr: 'Tacos (simple / double)', nameEn: 'Tacos (simple / double)', suggestedPrice: 28 },
+      { key: 'pizza-margherita',  nameAr: 'بيتزا مارغريتا / دجاج', nameFr: 'Pizza margherita / poulet', nameEn: 'Margherita / chicken pizza', suggestedPrice: 40 },
+      { key: 'burger-classique',  nameAr: 'برجر كلاسيك / تشيز', nameFr: 'Burger classique / cheese', nameEn: 'Classic / cheese burger', suggestedPrice: 30 },
+    ],
+  },
+  {
+    key: 'extras', icon: '➕', nameAr: 'إضافات', nameFr: 'Suppléments / Extras', nameEn: 'Extras / Add-ons',
+    products: [
+      { key: 'extra-zitoun',  nameAr: 'زيتون زايد',   nameFr: 'Supplément olives',   nameEn: 'Extra olives',   suggestedPrice: 3 },
+      { key: 'extra-fromage', nameAr: 'فروماج زايد',  nameFr: 'Supplément fromage',  nameEn: 'Extra cheese',   suggestedPrice: 5 },
+      { key: 'extra-khlii',   nameAr: 'خليع زايد',    nameFr: 'Supplément khli3',    nameEn: 'Extra khlii',    suggestedPrice: 8 },
+      { key: 'extra-mksarat', nameAr: 'مكسرات فالعصير', nameFr: 'Fruits secs (jus)', nameEn: 'Nuts topping (juice)', suggestedPrice: 5 },
+      { key: 'extra-miel',    nameAr: 'عسل زايد',     nameFr: 'Supplément miel',     nameEn: 'Extra honey',    suggestedPrice: 3 },
+    ],
+  },
 ]
 
 const MOROCCO_RESTAURANT: CatalogCategory[] = [
   {
     key: 'starters', icon: '🥗', nameAr: 'مقبلات وشوربات', nameFr: 'Entrées & soupes', nameEn: 'Starters & soups',
     products: [
-      { key: 'harira',   nameAr: 'حريرة',        nameFr: 'Harira',           nameEn: 'Harira soup',   suggestedPrice: 12 },
+      { key: 'harira',   nameAr: 'حريرة',        nameFr: 'Harira marocaine', nameEn: 'Harira soup',   suggestedPrice: 12 },
+      { key: 'soupe-poisson', nameAr: 'شوربة سمك', nameFr: 'Soupe de poissons', nameEn: 'Fish soup', suggestedPrice: 25 },
       { key: 'salade-marocaine', nameAr: 'سلطة مغربية', nameFr: 'Salade marocaine', nameEn: 'Moroccan salad', suggestedPrice: 15 },
-      { key: 'zaalouk',  nameAr: 'زعلوك',        nameFr: 'Zaalouk',          nameEn: 'Zaalouk',       suggestedPrice: 15 },
+      { key: 'zaalouk',  nameAr: 'زعلوك / تكتوكة',  nameFr: 'Zaalouk / Taktouka', nameEn: 'Zaalouk / Taktouka', suggestedPrice: 15 },
+      { key: 'salade-composee', nameAr: 'سلطة سيزار / مشكلة', nameFr: 'Salade César / composée', nameEn: 'Caesar / mixed salad', suggestedPrice: 25 },
       { key: 'briouates', nameAr: 'بريوات',       nameFr: 'Briouates',        nameEn: 'Briouates',     suggestedPrice: 20 },
     ],
   },
   {
     key: 'mains', icon: '🍲', nameAr: 'أطباق رئيسية', nameFr: 'Plats principaux', nameEn: 'Main dishes',
     products: [
-      { key: 'tajine-poulet', nameAr: 'طاجين دجاج بالليمون والزيتون', nameFr: 'Tajine poulet citron-olives', nameEn: 'Chicken tajine, lemon & olives', suggestedPrice: 60 },
-      { key: 'tajine-kefta',  nameAr: 'طاجين كفتة',   nameFr: 'Tajine kefta',      nameEn: 'Kefta tajine',   suggestedPrice: 55 },
-      { key: 'couscous',      nameAr: 'كسكس',         nameFr: 'Couscous',          nameEn: 'Couscous',       suggestedPrice: 65 },
-      { key: 'pastilla',      nameAr: 'بسطيلة',       nameFr: 'Pastilla',          nameEn: 'Pastilla',       suggestedPrice: 70 },
-      { key: 'brochettes',    nameAr: 'مشاوي',         nameFr: 'Brochettes',        nameEn: 'Grilled skewers', suggestedPrice: 50 },
-      { key: 'poisson-grille', nameAr: 'سمك مشوي',     nameFr: 'Poisson grillé',    nameEn: 'Grilled fish',   suggestedPrice: 70 },
+      { key: 'tajine-poulet', nameAr: 'طاجين دجاج (بالبرقوق / الزيتون والحامض)', nameFr: 'Tajine poulet (berqouq / citron-olives)', nameEn: 'Chicken tajine (prune / lemon-olive)', suggestedPrice: 60 },
+      { key: 'tajine-viande', nameAr: 'طاجين لحم (بالبرقوق واللوز / الجلبانة)', nameFr: 'Tajine viande (berqouq-amandes / petits pois)', nameEn: 'Beef tajine (prune-almond / peas)', suggestedPrice: 65 },
+      { key: 'tajine-kefta',  nameAr: 'طاجين كفتة بالبيض والماتيشة',   nameFr: 'Tajine kefta (œuf, tomate)',      nameEn: 'Kefta tajine (egg & tomato)',   suggestedPrice: 55 },
+      { key: 'couscous',      nameAr: 'كسكس (دجاج / لحم / سبع خضاري / تفاية)', nameFr: 'Couscous (poulet / viande / 7 légumes / tfaya)', nameEn: 'Couscous (chicken / beef / veg / tfaya)', suggestedPrice: 65 },
+      { key: 'pastilla',      nameAr: 'بسطيلة (دجاج / مأكولات بحرية)', nameFr: 'Pastilla (poulet / fruits de mer)', nameEn: 'Pastilla (chicken / seafood)', suggestedPrice: 70 },
+      { key: 'rafissa',       nameAr: 'رفيسة بالدجاج البلدي', nameFr: 'Rafissa au poulet beldi', nameEn: 'Rafissa with farm chicken', suggestedPrice: 70 },
+      { key: 'brochettes',    nameAr: 'مشاوي (ديك رومي / كفتة / كبدة)', nameFr: 'Brochettes (dinde / kefta / foie)', nameEn: 'Grilled skewers (turkey / kefta / liver)', suggestedPrice: 50 },
+      { key: 'demi-poulet',   nameAr: 'نصف دجاجة مشوية بالفريت', nameFr: 'Demi-poulet rôti & frites', nameEn: 'Half roast chicken & fries', suggestedPrice: 55 },
+      { key: 'friture-poisson', nameAr: 'فريتور سمك (سردين، كالامار، جمبري، سول)', nameFr: 'Friture de poisson (sardine, calamar, crevettes, sole)', nameEn: 'Fried seafood platter', suggestedPrice: 75 },
       { key: 'tanjia',        nameAr: 'طنجية',         nameFr: 'Tanjia',            nameEn: 'Tanjia',         suggestedPrice: 60 },
     ],
   },
@@ -106,8 +140,18 @@ const MOROCCO_RESTAURANT: CatalogCategory[] = [
       { key: 'frites', nameAr: 'بطاطا مقلية', nameFr: 'Frites',        nameEn: 'French fries',   suggestedPrice: 15 },
     ],
   },
+  {
+    key: 'desserts', icon: '🍮', nameAr: 'حلويات ومثلجات', nameFr: 'Desserts & pâtisseries', nameEn: 'Desserts & pastries',
+    products: [
+      ...MOROCCO_CAFE[3]!.products,
+      { key: 'flan-caramel', nameAr: 'فلان كراميل / سلطة فواكه', nameFr: 'Flan caramel / Salade de fruits', nameEn: 'Caramel flan / fruit salad', suggestedPrice: 18 },
+      { key: 'glace',        nameAr: 'مثلجات (كرات)', nameFr: 'Glaces / sorbets (boules)', nameEn: 'Ice cream / sorbet scoops', suggestedPrice: 15 },
+      { key: 'tarte-chocolat', nameAr: 'تارت ليمون / شوكولاطة', nameFr: 'Tarte au citron / chocolat', nameEn: 'Lemon / chocolate tart', suggestedPrice: 22 },
+    ],
+  },
   { key: 'hot-drinks', ...MOROCCO_CAFE[0]! },
   { key: 'cold-drinks', ...MOROCCO_CAFE[1]! },
+  { key: 'extras', ...MOROCCO_CAFE[5]! },
 ]
 
 const MOROCCO_PASTRY: CatalogCategory[] = [

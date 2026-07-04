@@ -87,8 +87,8 @@ const T = {
     },
     step4: {
       title: 'حساب المدير الرئيسي', sub: 'إنشاء حساب مشرف لتسجيل الدخول عبر POS',
-      managerName: 'اسم المدير', pin: 'الرمز السري (4 إلى 8 أرقام)', pinConfirm: 'تأكيد الرمز السري',
-      pinMismatch: 'الرمزان غير متطابقان', pinInvalid: 'من 4 إلى 8 أرقام',
+      managerName: 'اسم المدير', pin: 'الرمز السري (4 إلى 8 خانات، حروف وأرقام)', pinConfirm: 'تأكيد الرمز السري',
+      pinMismatch: 'الرمزان غير متطابقان', pinInvalid: 'من 4 إلى 8 خانات (حروف وأرقام)',
       showPin: 'إظهار', hidePin: 'إخفاء',
     },
     step5: {
@@ -137,8 +137,8 @@ const T = {
     },
     step4: {
       title: 'Compte gérant principal', sub: 'Accès POS pour le superviseur',
-      managerName: 'Nom du gérant', pin: 'Code PIN (4 à 8 chiffres)', pinConfirm: 'Confirmer le code PIN',
-      pinMismatch: 'Les codes PIN ne correspondent pas', pinInvalid: '4 à 8 chiffres requis',
+      managerName: 'Nom du gérant', pin: 'Code PIN (4 à 8 caractères, lettres et chiffres)', pinConfirm: 'Confirmer le code PIN',
+      pinMismatch: 'Les codes PIN ne correspondent pas', pinInvalid: '4 à 8 caractères requis (lettres et chiffres)',
       showPin: 'Afficher', hidePin: 'Masquer',
     },
     step5: {
@@ -187,8 +187,8 @@ const T = {
     },
     step4: {
       title: 'Main Manager Account', sub: 'Supervisor account for POS login',
-      managerName: 'Manager name', pin: 'PIN Code (4 to 8 digits)', pinConfirm: 'Confirm PIN Code',
-      pinMismatch: 'PIN codes do not match', pinInvalid: '4 to 8 digits required',
+      managerName: 'Manager name', pin: 'PIN Code (4 to 8 characters, letters and digits)', pinConfirm: 'Confirm PIN Code',
+      pinMismatch: 'PIN codes do not match', pinInvalid: '4 to 8 characters required (letters and digits)',
       showPin: 'Show', hidePin: 'Hide',
     },
     step5: {
@@ -237,8 +237,8 @@ const T = {
     },
     step4: {
       title: 'Cuenta del gerente principal', sub: 'Acceso POS para el supervisor',
-      managerName: 'Nombre del gerente', pin: 'Código PIN (4 a 8 dígitos)', pinConfirm: 'Confirmar PIN',
-      pinMismatch: 'Los códigos no coinciden', pinInvalid: 'Se requieren de 4 a 8 dígitos',
+      managerName: 'Nombre del gerente', pin: 'Código PIN (4 a 8 caracteres, letras y números)', pinConfirm: 'Confirmar PIN',
+      pinMismatch: 'Los códigos no coinciden', pinInvalid: 'Se requieren de 4 a 8 caracteres (letras y números)',
       showPin: 'Mostrar', hidePin: 'Ocultar',
     },
     step5: {
@@ -292,6 +292,14 @@ export default function OnboardingPage() {
   const [lang,    setLang]    = useState<Lang>('ar')
   const t     = T[lang]
   const isRTL = lang === 'ar'
+
+  const [brandLogoUrl, setBrandLogoUrl] = useState('/assets/logo.png')
+  useEffect(() => {
+    fetch('/api/public/landing-config')
+      .then(r => r.ok ? r.json() : {})
+      .then((d: any) => { if (d?.logoImageUrl) setBrandLogoUrl(d.logoImageUrl) })
+      .catch(() => {})
+  }, [])
 
   const [step,    setStep]    = useState(0)
   const [saving,  setSaving]  = useState(false)
@@ -414,7 +422,7 @@ export default function OnboardingPage() {
     }
     if (step === 4) {
       if (!data.managerName.trim())          { setStepErr(t.step4.managerName + ' — required'); return false }
-      if (!/^\d{4,8}$/.test(data.managerPin))  { setStepErr(t.step4.pinInvalid); return false }
+      if (!/^[a-zA-Z0-9]{4,8}$/.test(data.managerPin)) { setStepErr(t.step4.pinInvalid); return false }
       if (data.managerPin !== data.pinConfirm) { setStepErr(t.step4.pinMismatch); return false }
     }
     return true
@@ -475,7 +483,10 @@ export default function OnboardingPage() {
 
   return (
     <div dir={isRTL ? 'rtl' : 'ltr'}
-      className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col items-center justify-center px-4 py-10">
+      className="min-h-screen bg-gradient-to-br from-emerald-950 via-slate-900 to-slate-950 flex flex-col items-center justify-center px-4 py-10 relative overflow-hidden">
+
+      <div className="absolute -top-24 -end-24 w-80 h-80 bg-amber-400/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-28 -start-20 w-80 h-80 bg-emerald-400/10 rounded-full blur-3xl pointer-events-none" />
 
       {data.logoUrl && (
         <div className="fixed inset-0 bg-center bg-no-repeat bg-contain opacity-[0.04] pointer-events-none"
@@ -496,7 +507,10 @@ export default function OnboardingPage() {
 
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="text-5xl mb-3">🍽️</div>
+          <div className="relative inline-flex items-center justify-center mb-3">
+            <div className="absolute inset-0 bg-amber-400/30 rounded-2xl blur-xl" />
+            <img src={brandLogoUrl} alt="Smart Resto" className="relative w-16 h-16 rounded-2xl object-contain bg-white/95 p-1.5 shadow-lg" />
+          </div>
           <h1 className="text-2xl font-extrabold text-white">{t.welcome}</h1>
           <p className="text-slate-400 text-sm mt-1">{t.welcomeSub}</p>
         </div>
@@ -524,7 +538,7 @@ export default function OnboardingPage() {
         </div>
 
         {/* Card */}
-        <div className="bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl p-6 sm:p-8 space-y-5">
+        <div className="bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl ring-1 ring-white/10 p-6 sm:p-8 space-y-5">
 
           {/* ── Step 0: Tier Selection ─────────────────────────── */}
           {step === 0 && (
@@ -714,9 +728,9 @@ export default function OnboardingPage() {
               </Field>
               <Field label={`🔐 ${t.step4.pin}`}>
                 <div className="relative">
-                  <input type={showPin ? 'text' : 'password'} inputMode="numeric" maxLength={8}
-                    value={data.managerPin} onChange={e => set('managerPin', e.target.value.replace(/\D/g, '').slice(0,8))}
-                    placeholder="••••" className="input text-center text-2xl tracking-[0.5em] font-bold" />
+                  <input type={showPin ? 'text' : 'password'} maxLength={8}
+                    value={data.managerPin} onChange={e => set('managerPin', e.target.value.replace(/[^a-zA-Z0-9]/g, '').slice(0,8))}
+                    placeholder="••••" className="input text-center text-2xl tracking-[0.4em] font-bold" />
                   <button type="button" onClick={() => setShowPin(p => !p)}
                     className="absolute inset-y-0 end-3 flex items-center text-slate-400 hover:text-slate-600">
                     {showPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -724,9 +738,9 @@ export default function OnboardingPage() {
                 </div>
               </Field>
               <Field label={`🔐 ${t.step4.pinConfirm}`}>
-                <input type={showPin ? 'text' : 'password'} inputMode="numeric" maxLength={8}
-                  value={data.pinConfirm} onChange={e => set('pinConfirm', e.target.value.replace(/\D/g, '').slice(0,8))}
-                  placeholder="••••" className="input text-center text-2xl tracking-[0.5em] font-bold" />
+                <input type={showPin ? 'text' : 'password'} maxLength={8}
+                  value={data.pinConfirm} onChange={e => set('pinConfirm', e.target.value.replace(/[^a-zA-Z0-9]/g, '').slice(0,8))}
+                  placeholder="••••" className="input text-center text-2xl tracking-[0.4em] font-bold" />
               </Field>
               <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-2 text-sm">
                 <p className="font-semibold text-slate-700 mb-2">📋 Summary</p>
