@@ -12,16 +12,16 @@ import { tr, getLang, setLang as saveLang, POS_LANGS, type Lang } from '../../sr
 // ─── Colour palettes ──────────────────────────────────────────────────────────
 
 const PALETTES = [
-  { dot: 'bg-rose-500',    badge: 'bg-rose-500/20 text-rose-300 ring-1 ring-rose-500/30' },
-  { dot: 'bg-sky-500',     badge: 'bg-sky-500/20 text-sky-300 ring-1 ring-sky-500/30' },
-  { dot: 'bg-violet-500',  badge: 'bg-violet-500/20 text-violet-300 ring-1 ring-violet-500/30' },
-  { dot: 'bg-amber-500',   badge: 'bg-amber-500/20 text-amber-300 ring-1 ring-amber-500/30' },
-  { dot: 'bg-emerald-500', badge: 'bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-500/30' },
-  { dot: 'bg-fuchsia-500', badge: 'bg-fuchsia-500/20 text-fuchsia-300 ring-1 ring-fuchsia-500/30' },
-  { dot: 'bg-orange-500',  badge: 'bg-orange-500/20 text-orange-300 ring-1 ring-orange-500/30' },
-  { dot: 'bg-teal-500',    badge: 'bg-teal-500/20 text-teal-300 ring-1 ring-teal-500/30' },
-  { dot: 'bg-indigo-500',  badge: 'bg-indigo-500/20 text-indigo-300 ring-1 ring-indigo-500/30' },
-  { dot: 'bg-pink-500',    badge: 'bg-pink-500/20 text-pink-300 ring-1 ring-pink-500/30' },
+  { dot: 'bg-rose-500',    badge: 'bg-rose-100 text-rose-700 ring-1 ring-rose-300' },
+  { dot: 'bg-sky-500',     badge: 'bg-sky-100 text-sky-700 ring-1 ring-sky-300' },
+  { dot: 'bg-violet-500',  badge: 'bg-violet-100 text-violet-700 ring-1 ring-violet-300' },
+  { dot: 'bg-amber-500',   badge: 'bg-amber-100 text-amber-700 ring-1 ring-amber-300' },
+  { dot: 'bg-emerald-500', badge: 'bg-emerald-100 text-emerald-700 ring-1 ring-emerald-300' },
+  { dot: 'bg-fuchsia-500', badge: 'bg-fuchsia-100 text-fuchsia-700 ring-1 ring-fuchsia-300' },
+  { dot: 'bg-orange-500',  badge: 'bg-orange-100 text-orange-700 ring-1 ring-orange-300' },
+  { dot: 'bg-teal-500',    badge: 'bg-teal-100 text-teal-700 ring-1 ring-teal-300' },
+  { dot: 'bg-indigo-500',  badge: 'bg-indigo-100 text-indigo-700 ring-1 ring-indigo-300' },
+  { dot: 'bg-pink-500',    badge: 'bg-pink-100 text-pink-700 ring-1 ring-pink-300' },
 ] as const
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -411,39 +411,39 @@ export default function WaiterPage() {
         .notif-dot { animation: notif-pulse 1.2s ease-in-out infinite }
       `}</style>
 
-      <div className="h-screen bg-[#0a0a0f] flex flex-col overflow-hidden text-white">
+      <div className="h-screen bg-slate-100 flex flex-col overflow-hidden text-slate-900">
 
         {/* ── Header ─────────────────────────────────────────────────────── */}
-        <header className="shrink-0 bg-[#111118] border-b border-white/5">
+        <header className="shrink-0 bg-white border-b-2 border-emerald-300 shadow-sm">
           <div className="px-4 py-3 flex items-center justify-between">
             {/* Left: cafe logo + name + waiter */}
             <div className="flex items-center gap-3 min-w-0">
-              <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0 overflow-hidden">
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 border-2 border-emerald-200 flex items-center justify-center shrink-0 overflow-hidden">
                 {cafeInfo.logoUrl
                   ? <Image src={cafeInfo.logoUrl} alt="logo" width={40} height={40} className="w-full h-full object-cover" />
-                  : <Utensils className="w-4 h-4 text-emerald-400" />
+                  : <Utensils className="w-4 h-4 text-emerald-600" />
                 }
               </div>
               <div className="min-w-0">
                 {cafeInfo.name && (
-                  <p className="text-[11px] text-gray-500 font-medium truncate leading-none mb-0.5">{cafeInfo.name}</p>
+                  <p className="text-[11px] text-slate-400 font-medium truncate leading-none mb-0.5">{cafeInfo.name}</p>
                 )}
-                <p className="font-bold text-sm text-white leading-none truncate">
+                <p className="font-bold text-sm text-slate-800 leading-none truncate">
                   {staffName || 'Waiter'}
-                  <span className="ml-1.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-white/10 text-gray-400">
+                  <span className="ml-1.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
                     {staffRole}
                   </span>
                 </p>
                 <div className="flex items-center gap-2 mt-0.5">
                   {clockInStr && (
-                    <span className="text-[11px] text-gray-600 flex items-center gap-1">
+                    <span className="text-[11px] text-slate-400 flex items-center gap-1">
                       <Clock className="w-2.5 h-2.5" />
                       {clockInStr} · {shiftDuration(clockInIso)}
                     </span>
                   )}
                   {connected
                     ? <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    : <WifiOff className="w-3 h-3 text-red-400" />
+                    : <WifiOff className="w-3 h-3 text-red-500" />
                   }
                 </div>
               </div>
@@ -454,13 +454,13 @@ export default function WaiterPage() {
               <div className="flex gap-0.5">
                 {POS_LANGS.map(l => (
                   <button key={l.code} onClick={() => { saveLang(l.code); setLangState(l.code) }}
-                    className={`w-7 h-7 rounded-lg text-sm transition-all ${lang === l.code ? 'bg-white/15' : 'text-gray-600 hover:text-gray-400'}`}>
+                    className={`w-7 h-7 rounded-lg text-sm transition-all ${lang === l.code ? 'bg-emerald-100' : 'text-slate-400 hover:text-slate-600'}`}>
                     {l.flag}
                   </button>
                 ))}
               </div>
               <button onClick={logout}
-                className="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center transition-all text-gray-400">
+                className="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 flex items-center justify-center transition-all text-slate-500">
                 <LogOut className="w-4 h-4" />
               </button>
             </div>
@@ -468,9 +468,9 @@ export default function WaiterPage() {
 
           {/* Passation banner — shown after 7h30m on shift */}
           {passation && (
-            <div className="px-4 py-2 bg-amber-500/10 border-t border-amber-500/20 flex items-center gap-2">
+            <div className="px-4 py-2 bg-amber-50 border-t-2 border-amber-200 flex items-center gap-2">
               <span className="text-base shrink-0">⚑</span>
-              <p className="text-xs text-amber-300 font-medium">
+              <p className="text-xs text-amber-700 font-medium">
                 Passation recommandée — {shiftDuration(clockInIso)} de service · Briefer votre collègue avant de partir
               </p>
             </div>
@@ -484,19 +484,20 @@ export default function WaiterPage() {
             {/* ════ ALERTS TAB ════ */}
             {tab === 'alerts' && (
               <>
-                {/* Active notifications — urgent */}
+                {/* Active notifications — urgent (red frame) */}
                 {activeNotifs.length > 0 && (
-                  <div className="space-y-2">
-                    <Label text="Urgent" count={activeNotifs.length} urgent />
+                  <div className="border-2 border-red-200 rounded-2xl overflow-hidden shadow-sm">
+                    <div className="bg-red-500 px-3 py-1.5"><Label text="Urgent" count={activeNotifs.length} light /></div>
+                    <div className="p-2 space-y-2 bg-red-50/50">
                     {activeNotifs.slice(0, 6).map(n => {
                       const m = NOTIF_META[n.type]
                       return (
                         <div key={n.orderId}
-                          className={`bg-[#141420] border border-white/8 border-l-4 ${m.border} rounded-2xl p-4 flex items-center gap-3 shadow-lg ${m.glow}`}>
+                          className={`bg-white border border-slate-200 border-l-4 ${m.border} rounded-2xl p-4 flex items-center gap-3 shadow-sm`}>
                           <span className="notif-dot text-2xl shrink-0">{m.emoji}</span>
                           <div className="flex-1 min-w-0">
-                            <p className="font-bold text-white text-sm">Table {n.tableNumber ?? '?'}</p>
-                            <p className="text-xs text-gray-500 mt-0.5">{m.label} · {elapsed(n.receivedAt)}</p>
+                            <p className="font-bold text-slate-800 text-sm">Table {n.tableNumber ?? '?'}</p>
+                            <p className="text-xs text-slate-400 mt-0.5">{m.label} · {elapsed(n.receivedAt)}</p>
                           </div>
                           <button onClick={() => ackNotification(n.orderId)}
                             className={`shrink-0 ${m.btn} text-white text-xs font-bold px-4 py-2.5 rounded-xl active:scale-95 transition-all`}>
@@ -506,33 +507,35 @@ export default function WaiterPage() {
                       )
                     })}
                     {activeNotifs.length > 6 && (
-                      <p className="text-center text-xs text-gray-600 py-1">+{activeNotifs.length - 6} more notifications</p>
+                      <p className="text-center text-xs text-slate-400 py-1">+{activeNotifs.length - 6} more notifications</p>
                     )}
+                    </div>
                   </div>
                 )}
 
-                {/* Ready to serve */}
+                {/* Ready to serve (green frame) */}
                 {ready.length > 0 && (
-                  <div className="space-y-2">
-                    <Label text="Ready to Serve" count={ready.length} />
+                  <div className="border-2 border-emerald-200 rounded-2xl overflow-hidden shadow-sm">
+                    <div className="bg-emerald-500 px-3 py-1.5"><Label text="Ready to Serve" count={ready.length} light /></div>
+                    <div className="p-2 space-y-2 bg-emerald-50/50">
                     {ready.map(order => {
                       const tableNum = (order.originalTable ?? order.table)?.tableNumber
                       return (
-                        <div key={order.id} className="bg-[#141420] border border-emerald-500/20 rounded-2xl p-4 space-y-3">
+                        <div key={order.id} className="bg-white border border-emerald-200 rounded-2xl p-4 space-y-3 shadow-sm">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                              <ChefHat className="w-4 h-4 text-emerald-400" />
-                              <span className="font-bold text-emerald-300 text-sm">Table {tableNum ?? '?'}</span>
-                              {order.seat && <span className="text-xs text-gray-500">· Seat {order.seat.seatNumber}</span>}
+                              <ChefHat className="w-4 h-4 text-emerald-600" />
+                              <span className="font-bold text-emerald-700 text-sm">Table {tableNum ?? '?'}</span>
+                              {order.seat && <span className="text-xs text-slate-400">· Seat {order.seat.seatNumber}</span>}
                             </div>
-                            <span className="text-xs text-gray-600 flex items-center gap-1">
+                            <span className="text-xs text-slate-400 flex items-center gap-1">
                               <Clock className="w-3 h-3" />{elapsed(order.createdAt)}
                             </span>
                           </div>
                           <ul className="space-y-1">
                             {order.items.map(item => (
-                              <li key={item.id} className="text-sm text-gray-300 flex items-center gap-2">
-                                <span className="text-emerald-500 font-bold">{item.quantity}×</span>
+                              <li key={item.id} className="text-sm text-slate-600 flex items-center gap-2">
+                                <span className="text-emerald-600 font-bold">{item.quantity}×</span>
                                 {item.product.nameEn}
                               </li>
                             ))}
@@ -544,19 +547,21 @@ export default function WaiterPage() {
                         </div>
                       )
                     })}
+                    </div>
                   </div>
                 )}
 
-                {/* New orders */}
+                {/* New orders (sky frame) */}
                 {newOrders.length > 0 && (
-                  <div className="space-y-2">
-                    <Label text="New Orders" count={newOrders.length} />
+                  <div className="border-2 border-sky-200 rounded-2xl overflow-hidden shadow-sm">
+                    <div className="bg-sky-500 px-3 py-1.5"><Label text="New Orders" count={newOrders.length} light /></div>
+                    <div className="p-2 space-y-2 bg-sky-50/50">
                     {newOrders.map(o => (
-                      <div key={o.orderId} className="bg-[#141420] border border-sky-500/20 rounded-2xl p-4 flex items-center gap-3">
+                      <div key={o.orderId} className="bg-white border border-sky-200 rounded-2xl p-4 flex items-center gap-3 shadow-sm">
                         <span className="text-2xl shrink-0">📋</span>
                         <div className="flex-1 min-w-0">
-                          <p className="font-bold text-white text-sm truncate">{o.mergeLabel}</p>
-                          <p className="text-xs text-gray-500 mt-0.5">{o.totalPrice} · {elapsed(o.createdAt)}</p>
+                          <p className="font-bold text-slate-800 text-sm truncate">{o.mergeLabel}</p>
+                          <p className="text-xs text-slate-400 mt-0.5">{o.totalPrice} · {elapsed(o.createdAt)}</p>
                         </div>
                         <button onClick={() => setNewOrders(prev => prev.filter(x => x.orderId !== o.orderId))}
                           className="shrink-0 bg-sky-600 hover:bg-sky-500 active:scale-95 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all">
@@ -564,41 +569,45 @@ export default function WaiterPage() {
                         </button>
                       </div>
                     ))}
+                    </div>
                   </div>
                 )}
 
-                {/* Customer calls */}
+                {/* Customer calls (slate frame) */}
                 {legacyCalls.length > 0 && (
-                  <div className="space-y-2">
-                    <Label text="Customer Calls" count={legacyCalls.length} />
+                  <div className="border-2 border-slate-300 rounded-2xl overflow-hidden shadow-sm">
+                    <div className="bg-slate-500 px-3 py-1.5"><Label text="Customer Calls" count={legacyCalls.length} light /></div>
+                    <div className="p-2 space-y-2 bg-slate-50">
                     {legacyCalls.map(c => (
-                      <div key={c.id} className="bg-[#141420] border border-white/8 rounded-2xl p-4 flex items-center gap-3">
+                      <div key={c.id} className="bg-white border border-slate-200 rounded-2xl p-4 flex items-center gap-3 shadow-sm">
                         <span className="text-2xl shrink-0">
                           {c.type === 'WATER' ? '🧊' : c.type === 'CLEAN' ? '🧹' : '📣'}
                         </span>
                         <div className="flex-1 min-w-0">
-                          <p className="font-bold text-white text-sm">Table {c.tableNumber ?? '?'}</p>
-                          <p className="text-xs text-gray-500 mt-0.5">{c.type}{c.message ? ` · ${c.message}` : ''} · {elapsed(c.createdAt)}</p>
+                          <p className="font-bold text-slate-800 text-sm">Table {c.tableNumber ?? '?'}</p>
+                          <p className="text-xs text-slate-400 mt-0.5">{c.type}{c.message ? ` · ${c.message}` : ''} · {elapsed(c.createdAt)}</p>
                         </div>
                         <button onClick={() => ackLegacyCall(c.id)}
-                          className="shrink-0 bg-gray-700 hover:bg-gray-600 active:scale-95 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all">
+                          className="shrink-0 bg-slate-600 hover:bg-slate-500 active:scale-95 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all">
                           Done ✓
                         </button>
                       </div>
                     ))}
+                    </div>
                   </div>
                 )}
 
-                {/* Bill requests */}
+                {/* Bill requests (violet frame) */}
                 {bills.length > 0 && (
-                  <div className="space-y-2">
-                    <Label text="Bill Requests" count={bills.length} />
+                  <div className="border-2 border-violet-200 rounded-2xl overflow-hidden shadow-sm">
+                    <div className="bg-violet-500 px-3 py-1.5"><Label text="Bill Requests" count={bills.length} light /></div>
+                    <div className="p-2 space-y-2 bg-violet-50/50">
                     {bills.map(b => (
-                      <div key={b.id} className="bg-[#141420] border border-violet-500/20 rounded-2xl p-4 flex items-center gap-3">
+                      <div key={b.id} className="bg-white border border-violet-200 rounded-2xl p-4 flex items-center gap-3 shadow-sm">
                         <span className="text-2xl shrink-0">🧾</span>
                         <div className="flex-1 min-w-0">
-                          <p className="font-bold text-white text-sm">Table {b.tableNumber ?? '?'}</p>
-                          <p className="text-xs text-gray-500 mt-0.5">
+                          <p className="font-bold text-slate-800 text-sm">Table {b.tableNumber ?? '?'}</p>
+                          <p className="text-xs text-slate-400 mt-0.5">
                             {b.payScope === 'SEATS' && b.seatNumbers?.length
                               ? `Seats ${b.seatNumbers.join(', ')}`
                               : 'Whole table'
@@ -611,16 +620,17 @@ export default function WaiterPage() {
                         </button>
                       </div>
                     ))}
+                    </div>
                   </div>
                 )}
 
                 {alertCount === 0 && (
-                  <div className="text-center py-16">
-                    <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-4">
+                  <div className="text-center py-16 bg-white border-2 border-emerald-100 rounded-2xl">
+                    <div className="w-16 h-16 rounded-full bg-emerald-50 flex items-center justify-center mx-auto mb-4">
                       <CheckCircle2 className="w-8 h-8 text-emerald-500" />
                     </div>
-                    <p className="font-bold text-gray-300">All clear</p>
-                    <p className="text-sm text-gray-600 mt-1">No active alerts</p>
+                    <p className="font-bold text-slate-700">All clear</p>
+                    <p className="text-sm text-slate-400 mt-1">No active alerts</p>
                   </div>
                 )}
               </>
@@ -630,24 +640,25 @@ export default function WaiterPage() {
             {tab === 'team' && (
               <>
                 {activeWaiters.length > 0 && (
-                  <div className="space-y-2">
-                    <Label text="On Duty" count={activeWaiters.length} />
+                  <div className="border-2 border-emerald-200 rounded-2xl overflow-hidden shadow-sm">
+                    <div className="bg-emerald-500 px-3 py-1.5"><Label text="On Duty" count={activeWaiters.length} light /></div>
+                    <div className="p-2 space-y-2 bg-emerald-50/40">
                     {activeWaiters.map(w => {
                       const p    = PALETTES[waiters.indexOf(w) % PALETTES.length]
                       const myA  = activeNotifs.filter(n => n.tableId && w.assignedTables.some(t => t.id === n.tableId))
                       const dur  = shiftDuration(w.clockInTime)
                       return (
-                        <div key={w.id} className={`bg-[#141420] border rounded-2xl p-4 space-y-3 ${myA.length > 0 ? 'border-red-500/40' : 'border-white/8'}`}>
+                        <div key={w.id} className={`bg-white border rounded-2xl p-4 space-y-3 shadow-sm ${myA.length > 0 ? 'border-red-300' : 'border-slate-200'}`}>
                           <div className="flex items-center gap-3">
                             <div className={`relative w-10 h-10 rounded-xl ${p.dot} flex items-center justify-center shrink-0`}>
                               <span className="text-white font-black text-xs">{initials(w.name)}</span>
-                              <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-400 border-2 border-[#141420] rounded-full" />
+                              <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-400 border-2 border-white rounded-full" />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="font-bold text-white text-sm truncate">{w.name}</p>
+                              <p className="font-bold text-slate-800 text-sm truncate">{w.name}</p>
                               <div className="flex items-center gap-2 mt-0.5">
                                 <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${p.badge}`}>{w.role}</span>
-                                {dur && <span className="text-[10px] text-gray-600 flex items-center gap-0.5"><Clock className="w-2.5 h-2.5" />{dur}</span>}
+                                {dur && <span className="text-[10px] text-slate-400 flex items-center gap-0.5"><Clock className="w-2.5 h-2.5" />{dur}</span>}
                               </div>
                             </div>
                             {myA.length > 0 && (
@@ -661,47 +672,50 @@ export default function WaiterPage() {
                               {w.assignedTables.map(t => {
                                 const hasA = myA.some(n => n.tableId === t.id)
                                 return (
-                                  <span key={t.id} className={`text-xs font-bold px-2.5 py-1 rounded-lg ${hasA ? 'bg-red-500/20 text-red-300 ring-1 ring-red-500/30' : 'bg-white/8 text-gray-400'}`}>
+                                  <span key={t.id} className={`text-xs font-bold px-2.5 py-1 rounded-lg ${hasA ? 'bg-red-100 text-red-600 ring-1 ring-red-300' : 'bg-slate-100 text-slate-500'}`}>
                                     T{t.tableNumber}{t.zone ? ` · ${t.zone}` : ''}{hasA ? ' 🔔' : ''}
                                   </span>
                                 )
                               })}
                             </div>
                           ) : (
-                            <p className="text-xs text-gray-600 italic">No tables assigned</p>
+                            <p className="text-xs text-slate-400 italic">No tables assigned</p>
                           )}
                         </div>
                       )
                     })}
+                    </div>
                   </div>
                 )}
 
                 {offWaiters.length > 0 && (
-                  <div className="space-y-2">
-                    <Label text="Off Duty" count={offWaiters.length} />
+                  <div className="border-2 border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+                    <div className="bg-slate-400 px-3 py-1.5"><Label text="Off Duty" count={offWaiters.length} light /></div>
+                    <div className="p-2 bg-slate-50">
                     <div className="grid grid-cols-2 gap-2">
                       {offWaiters.map(w => {
                         const p = PALETTES[waiters.indexOf(w) % PALETTES.length]
                         return (
-                          <div key={w.id} className="bg-[#141420] border border-white/5 rounded-2xl p-3 flex items-center gap-2.5 opacity-50">
+                          <div key={w.id} className="bg-white border border-slate-200 rounded-2xl p-3 flex items-center gap-2.5 opacity-70">
                             <div className={`w-8 h-8 rounded-lg ${p.dot} flex items-center justify-center shrink-0`}>
                               <span className="text-white font-black text-[10px]">{initials(w.name)}</span>
                             </div>
                             <div className="min-w-0">
-                              <p className="font-bold text-sm text-white truncate">{w.name}</p>
-                              <p className="text-[10px] text-gray-600">{w.role}</p>
+                              <p className="font-bold text-sm text-slate-700 truncate">{w.name}</p>
+                              <p className="text-[10px] text-slate-400">{w.role}</p>
                             </div>
                           </div>
                         )
                       })}
                     </div>
+                    </div>
                   </div>
                 )}
 
                 {waiters.length === 0 && (
-                  <div className="text-center py-16">
-                    <Users className="w-10 h-10 mx-auto mb-3 text-gray-700" />
-                    <p className="text-gray-500 text-sm">No staff data — log in with POS token</p>
+                  <div className="text-center py-16 bg-white border-2 border-slate-200 rounded-2xl">
+                    <Users className="w-10 h-10 mx-auto mb-3 text-slate-300" />
+                    <p className="text-slate-400 text-sm">No staff data — log in with POS token</p>
                   </div>
                 )}
               </>
@@ -711,21 +725,22 @@ export default function WaiterPage() {
             {tab === 'order' && (
               <>
                 {orderDone ? (
-                  <div className="flex flex-col items-center justify-center py-16 gap-4">
-                    <div className="w-20 h-20 bg-emerald-500/20 rounded-full flex items-center justify-center">
-                      <CheckCircle2 className="w-10 h-10 text-emerald-400" />
+                  <div className="flex flex-col items-center justify-center py-16 gap-4 bg-white border-2 border-emerald-200 rounded-2xl">
+                    <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center">
+                      <CheckCircle2 className="w-10 h-10 text-emerald-500" />
                     </div>
-                    <p className="font-bold text-xl text-emerald-300">{L('order_sent')}</p>
+                    <p className="font-bold text-xl text-emerald-600">{L('order_sent')}</p>
                     <button onClick={() => { setOrderDone(false); setOrderTable(null) }}
                       className="mt-2 px-6 py-3 bg-emerald-600 text-white rounded-xl font-bold text-sm active:scale-95 transition-all">
                       + New Order
                     </button>
                   </div>
                 ) : !orderTable ? (
-                  <div className="space-y-2">
-                    <Label text="Select Table" count={selfTables.length} />
+                  <div className="border-2 border-sky-200 rounded-2xl overflow-hidden shadow-sm">
+                    <div className="bg-sky-500 px-3 py-1.5"><Label text="Select Table" count={selfTables.length} light /></div>
+                    <div className="p-3 bg-sky-50/40">
                     {selfTables.length === 0 ? (
-                      <div className="text-center py-12 text-gray-600">
+                      <div className="text-center py-12 text-slate-400">
                         <p className="text-sm">No tables assigned</p>
                         <p className="text-xs mt-1">Ask your supervisor</p>
                       </div>
@@ -733,21 +748,22 @@ export default function WaiterPage() {
                       <div className="grid grid-cols-4 gap-2">
                         {selfTables.map(t => (
                           <button key={t.id} onClick={() => setOrderTable(t)}
-                            className="bg-[#141420] border border-white/10 hover:border-emerald-500/50 rounded-2xl p-4 flex flex-col items-center gap-1 transition-all active:scale-95">
-                            <span className="text-2xl font-black text-white">{t.tableNumber}</span>
-                            <span className="text-[10px] text-gray-600">Table</span>
+                            className="bg-white border border-sky-200 hover:border-sky-400 rounded-2xl p-4 flex flex-col items-center gap-1 transition-all active:scale-95 shadow-sm">
+                            <span className="text-2xl font-black text-slate-800">{t.tableNumber}</span>
+                            <span className="text-[10px] text-slate-400">Table</span>
                           </button>
                         ))}
                       </div>
                     )}
+                    </div>
                   </div>
                 ) : (
                   <>
                     {/* Table banner */}
-                    <div className="flex items-center justify-between bg-emerald-600/20 border border-emerald-500/30 rounded-2xl px-4 py-3">
-                      <span className="font-black text-emerald-300">Table {orderTable.tableNumber}</span>
+                    <div className="flex items-center justify-between bg-emerald-100 border-2 border-emerald-300 rounded-2xl px-4 py-3">
+                      <span className="font-black text-emerald-700">Table {orderTable.tableNumber}</span>
                       <button onClick={() => { setOrderTable(null); setOrderCart([]) }}
-                        className="text-xs bg-white/10 hover:bg-white/15 px-3 py-1.5 rounded-xl font-bold text-gray-300 transition-all">
+                        className="text-xs bg-white hover:bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl font-bold text-emerald-700 transition-all">
                         ← Change
                       </button>
                     </div>
@@ -760,7 +776,7 @@ export default function WaiterPage() {
                             className={`shrink-0 px-4 py-2 rounded-full text-xs font-bold transition-all ${
                               activeCat === cat.id
                                 ? 'bg-emerald-600 text-white'
-                                : 'bg-white/5 border border-white/10 text-gray-400 hover:text-white'
+                                : 'bg-white border border-slate-200 text-slate-500 hover:text-slate-800'
                             }`}>
                             {lang === 'ar' ? (cat.nameAr || cat.nameEn) : cat.nameEn}
                           </button>
@@ -770,7 +786,7 @@ export default function WaiterPage() {
 
                     {/* Product grid */}
                     {menuCats.length === 0 ? (
-                      <div className="text-center py-8 text-gray-600">
+                      <div className="text-center py-8 text-slate-400">
                         <p className="text-sm">Loading menu…</p>
                       </div>
                     ) : (
@@ -779,14 +795,14 @@ export default function WaiterPage() {
                           const inCart = orderCart.find(c => c.productId === p.id)
                           return (
                             <button key={p.id} onClick={() => addToCart(p)}
-                              className={`bg-[#141420] rounded-2xl border p-3 flex flex-col gap-2 text-left transition-all active:scale-95 ${
-                                inCart ? 'border-emerald-500/50 bg-emerald-500/5' : 'border-white/8 hover:border-white/20'
+                              className={`bg-white rounded-2xl border p-3 flex flex-col gap-2 text-left transition-all active:scale-95 shadow-sm ${
+                                inCart ? 'border-emerald-400 bg-emerald-50' : 'border-slate-200 hover:border-slate-300'
                               }`}>
-                              <p className="font-bold text-white text-xs leading-snug">
+                              <p className="font-bold text-slate-800 text-xs leading-snug">
                                 {lang === 'ar' ? (p.nameAr || p.nameEn) : (p.nameEn || p.nameAr)}
                               </p>
                               <div className="flex items-center justify-between">
-                                <span className="text-xs font-bold text-emerald-400">{p.price} MAD</span>
+                                <span className="text-xs font-bold text-emerald-600">{p.price} MAD</span>
                                 {inCart && (
                                   <span className="bg-emerald-500 text-white text-xs font-black w-5 h-5 rounded-full flex items-center justify-center">
                                     {inCart.qty}
@@ -801,33 +817,33 @@ export default function WaiterPage() {
 
                     {/* Cart */}
                     {orderCart.length > 0 && (
-                      <div className="bg-[#141420] border border-white/10 rounded-2xl p-4 space-y-3">
-                        <p className="font-bold text-sm text-white flex items-center gap-2">
-                          <ShoppingCart className="w-4 h-4 text-emerald-400" />
+                      <div className="bg-white border-2 border-emerald-200 rounded-2xl p-4 space-y-3 shadow-sm">
+                        <p className="font-bold text-sm text-slate-800 flex items-center gap-2">
+                          <ShoppingCart className="w-4 h-4 text-emerald-600" />
                           {cartQty} item{cartQty !== 1 ? 's' : ''} · {cartTotal.toFixed(2)} MAD
                         </p>
                         <div className="space-y-2 max-h-44 overflow-y-auto">
                           {orderCart.map(c => (
                             <div key={c.productId} className="flex items-center gap-2">
                               <div className="flex-1 min-w-0">
-                                <p className="text-sm text-gray-200 truncate">{c.name}</p>
-                                <p className="text-xs text-gray-600">{c.price} × {c.qty} = {(c.price * c.qty).toFixed(2)} MAD</p>
+                                <p className="text-sm text-slate-700 truncate">{c.name}</p>
+                                <p className="text-xs text-slate-400">{c.price} × {c.qty} = {(c.price * c.qty).toFixed(2)} MAD</p>
                               </div>
                               <div className="flex items-center gap-1 shrink-0">
                                 <button onClick={() => updateCartQty(c.productId, -1)}
-                                  className="w-7 h-7 bg-white/5 hover:bg-white/10 rounded-lg flex items-center justify-center active:scale-90 transition-all">
-                                  {c.qty === 1 ? <Trash2 className="w-3.5 h-3.5 text-red-400" /> : <Minus className="w-3.5 h-3.5 text-gray-400" />}
+                                  className="w-7 h-7 bg-slate-100 hover:bg-slate-200 rounded-lg flex items-center justify-center active:scale-90 transition-all">
+                                  {c.qty === 1 ? <Trash2 className="w-3.5 h-3.5 text-red-500" /> : <Minus className="w-3.5 h-3.5 text-slate-500" />}
                                 </button>
-                                <span className="w-6 text-center font-bold text-sm text-white">{c.qty}</span>
+                                <span className="w-6 text-center font-bold text-sm text-slate-800">{c.qty}</span>
                                 <button onClick={() => updateCartQty(c.productId, 1)}
-                                  className="w-7 h-7 bg-emerald-500/20 hover:bg-emerald-500/30 rounded-lg flex items-center justify-center active:scale-90 transition-all">
-                                  <Plus className="w-3.5 h-3.5 text-emerald-400" />
+                                  className="w-7 h-7 bg-emerald-100 hover:bg-emerald-200 rounded-lg flex items-center justify-center active:scale-90 transition-all">
+                                  <Plus className="w-3.5 h-3.5 text-emerald-600" />
                                 </button>
                               </div>
                             </div>
                           ))}
                         </div>
-                        {orderErr && <p className="text-sm text-red-400">{orderErr}</p>}
+                        {orderErr && <p className="text-sm text-red-500">{orderErr}</p>}
                         <button onClick={submitOrder} disabled={orderSubmitting}
                           className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-95">
                           {orderSubmitting
@@ -846,9 +862,9 @@ export default function WaiterPage() {
         </main>
 
         {/* ── Bottom nav ─────────────────────────────────────────────────── */}
-        <nav className="shrink-0 fixed bottom-0 left-0 right-0 bg-[#0f0f18]/95 backdrop-blur border-t border-white/8 flex flex-col safe-bottom">
-          <p className="text-center text-[9px] text-gray-800 font-medium pt-1.5 select-none tracking-wide">
-            Powered by <span className="text-gray-700">SmartRestau</span>
+        <nav className="shrink-0 fixed bottom-0 left-0 right-0 bg-white border-t-2 border-emerald-200 flex flex-col safe-bottom shadow-[0_-2px_8px_rgba(0,0,0,0.05)]">
+          <p className="text-center text-[9px] text-slate-300 font-medium pt-1.5 select-none tracking-wide">
+            Powered by <span className="text-slate-400">SmartRestau</span>
           </p>
           <div className="flex">
           {([
@@ -874,7 +890,7 @@ export default function WaiterPage() {
             <button key={item.id}
               onClick={() => item.id === 'order' ? openOrderTab() : setTab(item.id)}
               className={`flex-1 flex flex-col items-center justify-center gap-1 py-3 transition-all relative ${
-                tab === item.id ? 'text-white' : 'text-gray-600 hover:text-gray-400'
+                tab === item.id ? 'text-emerald-600' : 'text-slate-400 hover:text-slate-600'
               }`}>
               <div className="relative">
                 {item.icon}
@@ -882,7 +898,7 @@ export default function WaiterPage() {
                   <span className={`absolute -top-1.5 -right-2 min-w-[16px] h-4 text-[10px] font-black rounded-full flex items-center justify-center px-1 ${
                     item.id === 'alerts' && alertCount > 0
                       ? 'bg-red-500 text-white animate-pulse'
-                      : 'bg-gray-700 text-gray-300'
+                      : 'bg-slate-300 text-slate-700'
                   }`}>
                     {item.badge > 99 ? '99+' : item.badge}
                   </span>
@@ -890,7 +906,7 @@ export default function WaiterPage() {
               </div>
               <span className="text-[10px] font-semibold">{item.label}</span>
               {tab === item.id && (
-                <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-emerald-400 rounded-full" />
+                <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-emerald-500 rounded-full" />
               )}
             </button>
           ))}
@@ -904,12 +920,22 @@ export default function WaiterPage() {
 
 // ─── Label ────────────────────────────────────────────────────────────────────
 
-function Label({ text, count, urgent }: { text: string; count: number; urgent?: boolean }) {
+function Label({ text, count, urgent, light }: { text: string; count: number; urgent?: boolean; light?: boolean }) {
+  if (light) {
+    return (
+      <div className="flex items-center gap-2">
+        <span className="text-xs font-black uppercase tracking-widest text-white">{text}</span>
+        {count > 0 && (
+          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-white/25 text-white">{count}</span>
+        )}
+      </div>
+    )
+  }
   return (
     <div className="flex items-center gap-2 px-1 mb-1">
-      <span className={`text-xs font-black uppercase tracking-widest ${urgent ? 'text-red-400' : 'text-gray-600'}`}>{text}</span>
+      <span className={`text-xs font-black uppercase tracking-widest ${urgent ? 'text-red-500' : 'text-slate-500'}`}>{text}</span>
       {count > 0 && (
-        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${urgent ? 'bg-red-500/20 text-red-400' : 'bg-white/8 text-gray-500'}`}>
+        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${urgent ? 'bg-red-100 text-red-600' : 'bg-slate-100 text-slate-500'}`}>
           {count}
         </span>
       )}
