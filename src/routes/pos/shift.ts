@@ -43,17 +43,100 @@ async function validatePin(cafeId: string, pinCode: string) {
   return null
 }
 
+// ─── shift helpers — shared by the PIN branch and the demo-mode branch ───────
+
+async function openShiftFor(
+  staffId: string,
+  cafeId: string,
+  initialCash: number,
+  plannedEndTime?: string,
+  notes?: string
+) {
+  const openShift = await prisma.cashierShift.findFirst({
+    where: { staffId, cafeId, status: 'OPEN' }
+  })
+  if (openShift) {
+    const err: any = new Error('A shift is already open for this staff member')
+    err.status = 409
+    err.shiftId = openShift.id
+    throw err
+  }
+
+  let parsedPlannedEndTime: Date | undefined
+  if (plannedEndTime) {
+    parsedPlannedEndTime = new Date(plannedEndTime)
+    if (isNaN(parsedPlannedEndTime.getTime())) {
+      const err: any = new Error('plannedEndTime is not a valid date')
+      err.status = 400
+      throw err
+    }
+  }
+
+  return prisma.cashierShift.create({
+    data: {
+      cafeId,
+      staffId,
+      status:             'OPEN',
+      initialCash:        initialCash ?? 0,
+      totalCollectedCash: 0,
+      plannedEndTime:     parsedPlannedEndTime ?? null,
+      notes:              notes ?? null
+    }
+  })
+}
+
+async function closeShiftFor(staffId: string, cafeId: string, countedCash?: number) {
+  const shift = await prisma.cashierShift.findFirst({
+    where: { staffId, cafeId, status: 'OPEN' }
+  })
+  if (!shift) {
+    const err: any = new Error('No open shift found for this staff member')
+    err.status = 404
+    throw err
+  }
+
+  const cashOrders = await prisma.order.aggregate({
+    where: {
+      cafeId,
+      createdById:   staffId,
+      paymentMethod: 'CASH',
+      isPaid:        true,
+      createdAt:     { gte: shift.startTime }
+    },
+    _sum: { totalPrice: true }
+  })
+  const totalCollectedCash = cashOrders._sum.totalPrice ?? 0
+
+  let discrepancy: number | null = null
+  if (typeof countedCash === 'number' && !isNaN(countedCash)) {
+    discrepancy = countedCash - (shift.initialCash + totalCollectedCash)
+  }
+
+  return prisma.cashierShift.update({
+    where: { id: shift.id },
+    data: {
+      status:             'CLOSED',
+      endTime:            new Date(),
+      totalCollectedCash,
+      countedCash:        typeof countedCash === 'number' ? countedCash : null,
+      discrepancy
+    }
+  })
+}
+
 // ─── POST /api/pos/shift ──────────────────────────────────────────────────────
 
 router.post('/api/pos/shift', async (req: Request, res: Response) => {
   try {
-    const { cafeId: rawCafeId, subdomain, pinCode, action, initialCash, notes } = req.body as {
-      cafeId?:      string
-      subdomain?:   string   // convenience alias — resolved to cafeId below
-      pinCode:      string
-      action:       'login' | 'open' | 'close' | 'status'
-      initialCash?: number
-      notes?:       string
+    const { cafeId: rawCafeId, subdomain, pinCode, action, initialCash, notes, plannedEndTime, countedCash } = req.body as {
+      cafeId?:         string
+      subdomain?:      string   // convenience alias — resolved to cafeId below
+      pinCode:         string
+      action:          'login' | 'open' | 'close' | 'status'
+      initialCash?:    number
+      notes?:          string
+      plannedEndTime?: string   // ISO datetime — staff's declared "sortie prévue"
+      countedCash?:    number   // staff-entered cash count at clôture
     }
 
     if (!action) {
@@ -100,6 +183,28 @@ router.post('/api/pos/shift', async (req: Request, res: Response) => {
         select: { id: true, name: true, role: true },
       })
       if (!demoStaff) return res.status(404).json({ error: 'Staff not found' })
+
+      if (action === 'open') {
+        try {
+          const shift = await openShiftFor(demoStaff.id, cafeId, initialCash ?? 0, plannedEndTime, notes)
+          const token = issueStaffToken(demoStaff.id, cafeId, demoStaff.role as StaffRole, shift.id)
+          return res.status(201).json({ token, staff: demoStaff, shift })
+        } catch (err: any) {
+          return res.status(err.status ?? 500).json({ error: err.message, shiftId: err.shiftId })
+        }
+      }
+
+      if (action === 'close') {
+        try {
+          const closed = await closeShiftFor(demoStaff.id, cafeId, countedCash)
+          return res.json({ shift: closed })
+        } catch (err: any) {
+          return res.status(err.status ?? 500).json({ error: err.message })
+        }
+      }
+
+      // default (login / anything else): same behavior as before — return
+      // a token plus whatever shift is currently open, without creating one.
       const existingShift = await prisma.cashierShift.findFirst({
         where: { staffId: demoStaff.id, cafeId, status: 'OPEN' }
       })
@@ -132,63 +237,25 @@ router.post('/api/pos/shift', async (req: Request, res: Response) => {
 
     // ── "open" — open a new shift ─────────────────────────────────────────────
     if (action === 'open') {
-      const openShift = await prisma.cashierShift.findFirst({
-        where: { staffId: staff.id, cafeId, status: 'OPEN' }
-      })
-      if (openShift) {
-        return res.status(409).json({
-          error:  'A shift is already open for this staff member',
-          shiftId: openShift.id
-        })
+      try {
+        const shift = await openShiftFor(staff.id, cafeId, initialCash ?? 0, plannedEndTime, notes)
+        const token = issueStaffToken(staff.id, cafeId, staff.role as StaffRole, shift.id)
+        logger.info({ msg: 'POS shift opened', shiftId: shift.id, staffId: staff.id })
+        return res.status(201).json({ token, shift })
+      } catch (err: any) {
+        return res.status(err.status ?? 500).json({ error: err.message, shiftId: err.shiftId })
       }
-
-      const shift = await prisma.cashierShift.create({
-        data: {
-          cafeId,
-          staffId:            staff.id,
-          status:             'OPEN',
-          initialCash:        initialCash ?? 0,
-          totalCollectedCash: 0,
-          notes:              notes ?? null
-        }
-      })
-
-      const token = issueStaffToken(staff.id, cafeId, staff.role as StaffRole, shift.id)
-      logger.info({ msg: 'POS shift opened', shiftId: shift.id, staffId: staff.id })
-      return res.status(201).json({ token, shift })
     }
 
     // ── "close" — close the current open shift ────────────────────────────────
     if (action === 'close') {
-      const shift = await prisma.cashierShift.findFirst({
-        where: { staffId: staff.id, cafeId, status: 'OPEN' }
-      })
-      if (!shift) return res.status(404).json({ error: 'No open shift found for this staff member' })
-
-      // Calculate total cash collected: sum of CASH, isPaid orders during this shift
-      const cashOrders = await prisma.order.aggregate({
-        where: {
-          cafeId,
-          createdById:   staff.id,
-          paymentMethod: 'CASH',
-          isPaid:        true,
-          createdAt:     { gte: shift.startTime }
-        },
-        _sum: { totalPrice: true }
-      })
-      const totalCollectedCash = cashOrders._sum.totalPrice ?? 0
-
-      const closed = await prisma.cashierShift.update({
-        where: { id: shift.id },
-        data: {
-          status:             'CLOSED',
-          endTime:            new Date(),
-          totalCollectedCash
-        }
-      })
-
-      logger.info({ msg: 'POS shift closed', shiftId: closed.id, totalCollectedCash })
-      return res.json({ shift: closed })
+      try {
+        const closed = await closeShiftFor(staff.id, cafeId, countedCash)
+        logger.info({ msg: 'POS shift closed', shiftId: closed.id, totalCollectedCash: closed.totalCollectedCash, discrepancy: closed.discrepancy })
+        return res.json({ shift: closed })
+      } catch (err: any) {
+        return res.status(err.status ?? 500).json({ error: err.message })
+      }
     }
 
     return res.status(400).json({ error: `Unknown action: ${action}` })
