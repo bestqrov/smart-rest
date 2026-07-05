@@ -9,6 +9,7 @@ import {
   Printer, Check, Loader2, AlertTriangle, RefreshCw
 } from 'lucide-react'
 import { tr, getLang, setLang as saveLang, isRTL, POS_LANGS, type Lang } from '../../src/lib/posI18n'
+import { printReceipt, type ReceiptItem } from '../../src/lib/posReceipt'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -37,33 +38,7 @@ function beep(ctx: AudioContext, freq = 880, dur = 0.18, vol = 0.4) {
 function alertBeep(ctx: AudioContext) { beep(ctx, 880, 0.15, 0.35); setTimeout(() => beep(ctx, 660, 0.15, 0.35), 200) }
 
 // ─── Receipt ──────────────────────────────────────────────────────────────────
-
-type ReceiptItem = { name: string; quantity: number; unitPrice: number }
-
-function printReceipt(cafeName: string, tableNumber: number, items: ReceiptItem[], total: number, currency: string) {
-  const lines = items.map(i => `<tr>
-    <td>${i.name}</td>
-    <td style="text-align:center">${i.quantity}</td>
-    <td style="text-align:right">${(i.unitPrice * i.quantity).toFixed(2)}</td>
-  </tr>`).join('')
-  const win = window.open('', '_blank', 'width=340,height=600')
-  if (!win) return
-  win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Receipt</title>
-  <style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Courier New',monospace;font-size:12px;width:80mm;padding:8px}
-  .c{text-align:center}.b{font-weight:bold}.d{border-top:1px dashed #000;margin:6px 0}
-  table{width:100%;border-collapse:collapse}th{font-size:10px;text-align:left;border-bottom:1px solid #000;padding:2px 0}
-  td{padding:2px 0;vertical-align:top}.tot td{font-weight:bold;border-top:1px dashed #000;padding-top:4px}
-  @media print{body{width:80mm}@page{margin:0;size:80mm auto}}</style></head>
-  <body><div class="c b" style="font-size:16px">☕ ${cafeName}</div>
-  <div class="c" style="font-size:10px;color:#555">Smart Menu POS</div><div class="d"></div>
-  <div>Table: <b>${tableNumber}</b></div><div>Date: ${new Date().toLocaleString()}</div><div class="d"></div>
-  <table><thead><tr><th>Item</th><th style="text-align:center">Qty</th><th style="text-align:right">Price</th></tr></thead>
-  <tbody>${lines}</tbody>
-  <tfoot><tr class="tot"><td colspan="2">TOTAL</td><td style="text-align:right">${total.toFixed(2)} ${currency}</td></tr></tfoot>
-  </table><div class="d"></div><div class="c" style="font-size:10px">Thank you · شكراً · Merci</div>
-  <script>window.onload=()=>{window.print();window.onafterprint=()=>window.close()}<\/script></body></html>`)
-  win.document.close()
-}
+// printReceipt + ReceiptItem now live in src/lib/posReceipt.ts (shared with /comptoir)
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
