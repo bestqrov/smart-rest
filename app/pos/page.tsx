@@ -10,6 +10,11 @@ import {
 } from 'lucide-react'
 import { tr, getLang, setLang as saveLang, isRTL, POS_LANGS, type Lang } from '../../src/lib/posI18n'
 import { printReceipt, type ReceiptItem } from '../../src/lib/posReceipt'
+import { useCashierShift } from '../../src/hooks/useCashierShift'
+import CaisseDepartScreen from '../../src/components/pos/CaisseDepartScreen'
+import ClotureModal from '../../src/components/pos/ClotureModal'
+import ShiftTimingPill from '../../src/components/pos/ShiftTimingPill'
+import LockedOverlay from '../../src/components/pos/LockedOverlay'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -81,6 +86,8 @@ export default function POSPage() {
   // login
   const [pin,         setPin]         = useState('')
   const [subdomain,   setSubdomain]   = useState('')
+  const cashierShift = useCashierShift(posToken, subdomain)
+  const [showCloture, setShowCloture] = useState(false)
   const [loginErr,    setLoginErr]    = useState('')
   const [logging,     setLogging]     = useState(false)
   const [loadingCafe, setLoadingCafe] = useState(false)
@@ -122,6 +129,7 @@ export default function POSPage() {
   const audioCtxRef = useRef<AudioContext | null>(null)
   const beepRef     = useRef<ReturnType<typeof setInterval> | null>(null)
   const socketRef   = useRef<Socket | null>(null)
+  const lastPinRef  = useRef('')
 
   useEffect(() => { mutedRef.current = muted }, [muted])
 
@@ -185,6 +193,7 @@ export default function POSPage() {
       localStorage.setItem('cafeId', payload.cafeId)
       localStorage.setItem('posLastSubdomain', subdomain.trim())
       localStorage.setItem('staffName', data.staff?.name ?? '')
+      lastPinRef.current = pin.trim()
       setPin('')
       if (data.staff?.role === 'WAITER') { window.location.href = '/waiter'; return }
       setPosToken(data.token); setCafeId(payload.cafeId); setStaff(data.staff)
@@ -411,6 +420,31 @@ export default function POSPage() {
   const activeItems      = menuCats.find(c => c.id === activeCat)?.products ?? []
   const hasOrder         = tableOrders.length > 0 || cart.length > 0
 
+  // ─── Caisse de départ — required before entering the POS once logged in ─────
+  if (posToken && !cashierShift.loading && !cashierShift.shift) {
+    return (
+      <CaisseDepartScreen
+        staffName={staff?.name ?? ''}
+        onSubmit={async ({ initialCash, plannedEndTime }) => {
+          const isDemo = isDemoMode
+          const result = await cashierShift.openShift({
+            pinCode: isDemo ? undefined : lastPinRef.current,
+            demoStaffId: isDemo ? staff?.id : undefined,
+            initialCash,
+            plannedEndTime,
+          })
+          localStorage.setItem('posToken', result.token)
+          setPosToken(result.token)
+        }}
+      />
+    )
+  }
+
+  // ─── Poste verrouillé ────────────────────────────────────────────────────────
+  if (cashierShift.isLocked) {
+    return <LockedOverlay staffName={staff?.name ?? ''} plannedEndTime={cashierShift.shift?.plannedEndTime ?? null} />
+  }
+
   // ─── PIN Login ──────────────────────────────────────────────────────────────
   if (!posToken) {
     return (
@@ -566,6 +600,13 @@ export default function POSPage() {
             className="w-9 h-9 rounded-xl flex items-center justify-center text-gray-500 hover:text-white transition-colors">
             <RefreshCw className={`w-4 h-4 ${loadTables ? 'animate-spin' : ''}`} />
           </button>
+          <ShiftTimingPill timing={cashierShift.timing} />
+          {cashierShift.shift && (
+            <button onClick={() => setShowCloture(true)}
+              className="px-3 py-2 text-xs font-bold text-gray-400 hover:text-white rounded-xl hover:bg-gray-800 transition-colors">
+              Clôture
+            </button>
+          )}
           {/* Lang selector */}
           <div className="hidden sm:flex gap-1">
             {POS_LANGS.map(l => (
@@ -998,6 +1039,23 @@ export default function POSPage() {
             )}
           </div>
         </div>
+      )}
+
+      {/* ── Clôture Modal ──────────────────────────────────────────────────────── */}
+      {showCloture && cashierShift.shift && (
+        <ClotureModal
+          shift={cashierShift.shift}
+          currency={currency}
+          onClose={() => setShowCloture(false)}
+          onConfirm={async (countedCash) => {
+            const isDemo = isDemoMode
+            return await cashierShift.closeShift({
+              pinCode: isDemo ? undefined : lastPinRef.current,
+              demoStaffId: isDemo ? staff?.id : undefined,
+              countedCash,
+            })
+          }}
+        />
       )}
 
       {/* ── Split Bill Modal ──────────────────────────────────────────────────── */}
