@@ -115,6 +115,7 @@ import equipmentRouter from './routes/equipment'
 import supplierInvoicesRouter from './routes/supplierInvoices'
 import requisitionsRouter     from './routes/requisitions'
 import customersRouter        from './routes/customers'
+import shiftAdminRouter       from './routes/pos/shiftAdmin'
 import aiCenterRouter         from './routes/aiCenter'
 import aiJobsRouter           from './routes/aiJobs'
 import { addUsageHook }       from './marketing-brain/providers/UsageTracker'
@@ -318,6 +319,7 @@ async function main() {
   app.use(demoRequestsRouter)
   app.use(zonesRouter)
   app.use(customersRouter)
+  app.use(shiftAdminRouter)
   app.use(aiCenterRouter)
   app.use(aiJobsRouter)
 
