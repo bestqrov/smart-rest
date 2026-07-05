@@ -20,11 +20,50 @@ for this spec — see Roadmap.
 
 ## Roadmap (for context — not part of this spec)
 
-1. **Phase 1 (this spec):** `/comptoir` page + Caisse de départ / Clôture UI.
+1. **Phase 1 (this spec):** `/comptoir` page + Caisse de départ / Clôture UI,
+   including staff shift timing (heure d'entrée / sortie prévue) and the
+   overtime auto-lock (see Addendum below).
 2. **Phase 2:** `DEBITEUR` payment method (customer credit/tab, settled
-   monthly) + new `app/admin/customers` page with an "Encaisser" action.
+   monthly) + new `app/admin/customers` page with an "Encaisser" action +
+   flat-rate loyalty points for Debiteur clients (see Addendum below).
 3. **Phase 3:** Automatic nightly cash report to the owner (23:30) +
    "Comptabilité" section in the admin dashboard.
+
+## Addendum — decisions captured during visual prototyping (not yet detailed)
+
+These were agreed while reviewing HTML prototypes, ahead of writing the
+full implementation plan. Captured here so they aren't lost; each gets
+fleshed out in its phase's own plan.
+
+**Phase 1 — Shift timing + overtime lock:**
+- Staff declare a planned end time ("Sortie prévue") alongside the caisse de
+  départ amount when opening a shift → new `CashierShift.plannedEndTime`.
+- Header shows a live "Timing to out" pill: normal countdown while on time,
+  switches to a pulsing red warning once past `plannedEndTime`.
+- 1 hour past `plannedEndTime` with the shift still open → the staff's POS
+  session locks (both `/pos` and `/comptoir`, same shift) until a
+  superadmin/admin unlocks it. Needs `CashierShift.lockedAt` and an
+  admin-facing unlock action.
+- Candidate refinements to fold in during planning: a warning chime ~15 min
+  before `plannedEndTime` (reusing the existing `/pos` beep pattern), and a
+  "Prolonger" (extend) request the staff can raise before the hard lock
+  hits, subject to admin/supervisor approval.
+
+**Phase 2 — Loyalty points for Debiteur clients only:**
+- Existing loyalty system (`LoyaltyAccount`, `LoyaltyReward`,
+  `src/loyalty/LoyaltyService.ts`) already supports a points ledger and an
+  admin-managed reward catalog (e.g. "Gazoz gratuit — 100 pts") — reused
+  as-is, no changes needed there.
+- Gap: the existing earning rule is amount-based (1 point / 10 currency
+  units) and isn't wired into the POS checkout route at all
+  (`src/routes/pos/checkout.ts` doesn't call `earnPoints`; only the unused
+  `PosOrderService.closeOrder` does).
+- New: a **flat points-per-order** rule, scoped to `DEBITEUR` orders only
+  (cash/card walk-ins do not earn points) — configurable count, default 10,
+  set by the owner in `app/admin/loyalty`. Awarded when the Debiteur order
+  is created (not at monthly settlement, since the visit already happened).
+- Other Comptoir/table-POS payment methods are explicitly out of this
+  addendum's scope — only Debiteur earns, per owner's decision.
 
 ## Goals (Phase 1)
 
