@@ -122,6 +122,7 @@ import { recordUsageEvent }   from './services/aiCenterStats'
 import { registerSocketHandlers } from './socket/handlers'
 import { startWeeklyBillingCron } from './cron/weeklyBilling'
 import { startDailyDebtDetectionCron } from './cron/dailyDebtDetection'
+import { startShiftOvertimeLockCron } from './cron/shiftOvertimeLock'
 import { startNightlyCron } from './cron/nightly'
 import { startCertificationCron } from './cron/certificationEval'
 import { startSubscriptionLifecycleCron } from './cron/subscriptionLifecycle'
@@ -388,6 +389,7 @@ async function main() {
     startWhatsAppSchedulerCron(),
     startEmailSchedulerCron(),
     startSocialSchedulerCron(),
+    startShiftOvertimeLockCron(),
   ]
 
   httpServer.listen(port, '0.0.0.0', () => {
