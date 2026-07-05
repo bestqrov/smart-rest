@@ -44,6 +44,7 @@ import menuAdminRouter from './routes/menuAdmin'
 import superadminRouter from './routes/superadmin'
 import posShiftRouter from './routes/pos/shift'
 import posOrdersRouter from './routes/pos/orders'
+import posCustomersRouter from './routes/pos/customers'
 import posCheckoutRouter from './routes/pos/checkout'
 import supervisorTablesRouter from './routes/pos/supervisorTables'
 import posCheckoutBySeatsRouter from './routes/pos/checkoutBySeats'
@@ -248,6 +249,7 @@ async function main() {
   app.use(superadminRouter)
   app.use(posShiftRouter)
   app.use(posOrdersRouter)
+  app.use(posCustomersRouter)
   app.use(posCheckoutRouter)
   app.use(posCheckoutBySeatsRouter)
   app.use(supervisorTablesRouter)
