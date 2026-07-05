@@ -801,9 +801,24 @@ model CashierShift {
   totalCollectedCash Float @default(0)
   notes      String?
 
+  // Staff-declared time they expect to leave, entered alongside initialCash
+  // when the shift opens. Drives the "Timing to out" UI and the overtime
+  // auto-lock below.
+  plannedEndTime DateTime?
+  // Staff-entered actual cash count at clôture (montant compté).
+  countedCash    Float?
+  // countedCash - (initialCash + totalCollectedCash); positive = surplus,
+  // negative = shortfall. Null until the shift is closed.
+  discrepancy    Float?
+  // Set by the overtime cron (src/cron/shiftOvertimeLock.ts) when the shift
+  // is still OPEN more than 1h past plannedEndTime. Cleared only by an
+  // admin (src/routes/pos/shiftAdmin.ts), never by the staff themselves.
+  lockedAt       DateTime?
+
   @@index([cafeId])
   @@index([staffId])
   @@index([status])
+  @@index([lockedAt])
 }
 
 // ─── Waiter QR Login Tokens ───────────────────────────────────────────────────
