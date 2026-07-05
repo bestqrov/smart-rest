@@ -19,10 +19,14 @@ import dotenv from 'dotenv'
 dotenv.config()
 
 import fetch from 'node-fetch'
+import jwt from 'jsonwebtoken'
 import prisma from '../src/prisma'
+import { runShiftOvertimeLock } from '../src/cron/shiftOvertimeLock'
 
 const SERVER = process.env.SERVER_URL || 'http://localhost:3000'
 const DEMO_SUBDOMAIN = process.env.DEMO_SUBDOMAIN || 'welcome'
+const JWT_SECRET = process.env.JWT_SECRET || 'test-secret'
+const TEST_PHONE = '+212600000001'
 
 let passed = 0
 let failed = 0
@@ -87,9 +91,11 @@ async function main() {
   const cafeId = demoCafe.id
   console.log(`  using demo cafe ${cafeId} (subdomain: ${demoCafe.subdomain}), staff ${demoStaffId}`)
 
-  // Clean up any shift left open by a previous run — ignore the result, an
-  // error here is fine if there was nothing to close.
-  await post('/api/pos/shift', { cafeId, subdomain: DEMO_SUBDOMAIN, action: 'close', demoStaffId, countedCash: 0 })
+  // Clean up any shift left open by a previous run — not asserted, since a
+  // 404 here is expected when there was nothing to close, but logged so a
+  // genuine failure here doesn't masquerade as a misleading downstream error.
+  const { status: precleanStatus } = await post('/api/pos/shift', { cafeId, subdomain: DEMO_SUBDOMAIN, action: 'close', demoStaffId, countedCash: 0 })
+  console.log(`  (pre-run cleanup: close-any-open-shift → ${precleanStatus})`)
 
   console.log('\n── Login ───────────────────────────────────────────────')
   {
@@ -123,14 +129,14 @@ async function main() {
   console.log('\n── POS customers ───────────────────────────────────────')
   const authHeader = { Authorization: `Bearer ${shiftToken}` }
   {
-    const { status } = await post('/api/pos/customers', { phone: '+212600000001', name: 'Test Comptoir Client' }, authHeader)
+    const { status } = await post('/api/pos/customers', { phone: TEST_PHONE, name: 'Test Comptoir Client' }, authHeader)
     ok('POST /api/pos/customers → 201', status === 201)
 
-    const { status: s2, body: b2 } = await get(`/api/pos/customers?search=${encodeURIComponent('+212600000001')}`, authHeader)
+    const { status: s2, body: b2 } = await get(`/api/pos/customers?search=${encodeURIComponent(TEST_PHONE)}`, authHeader)
     ok('GET /api/pos/customers?search= → 200', s2 === 200)
-    ok('items contains the created customer', Array.isArray(b2?.items) && b2.items.some((c: any) => c.phone === '+212600000001'))
+    ok('items contains the created customer', Array.isArray(b2?.items) && b2.items.some((c: any) => c.phone === TEST_PHONE))
 
-    const { status: s3 } = await get(`/api/pos/customers?search=${encodeURIComponent('+212600000001')}`)
+    const { status: s3 } = await get(`/api/pos/customers?search=${encodeURIComponent(TEST_PHONE)}`)
     ok('GET /api/pos/customers without auth → 401', s3 === 401)
   }
 
@@ -153,7 +159,7 @@ async function main() {
     const { status: s2, body: b2 } = await post('/api/pos/orders', {
       items: [{ productId: product.id, quantity: 1 }],
       paymentMethod: 'CASH',
-      customerPhone: '+212600000001',
+      customerPhone: TEST_PHONE,
       orderType: 'TAKEAWAY',
     }, authHeader)
     ok('POST /api/pos/orders → 201', s2 === 201, JSON.stringify(b2))
@@ -180,7 +186,19 @@ async function main() {
 
   console.log('\n── Overtime lock / admin unlock ─────────────────────────')
   {
-    await prisma.cashierShift.update({ where: { id: shiftId }, data: { status: 'OPEN', lockedAt: new Date() } })
+    // Legitimate test setup: put the shift back into a state the cron's own
+    // WHERE-clause should act on (OPEN, plannedEndTime > 1h in the past,
+    // lockedAt null) — then let the real cron function do the locking.
+    await prisma.cashierShift.update({
+      where: { id: shiftId },
+      data: { status: 'OPEN', lockedAt: null, plannedEndTime: new Date(Date.now() - 2 * 60 * 60 * 1000) },
+    })
+
+    const cronResult = await runShiftOvertimeLock()
+    ok('runShiftOvertimeLock() locked >= 1 shift', cronResult.locked >= 1, JSON.stringify(cronResult))
+
+    const lockedShift = await prisma.cashierShift.findUnique({ where: { id: shiftId } })
+    ok('shift.lockedAt is truthy after runShiftOvertimeLock()', !!lockedShift?.lockedAt)
 
     const { status } = await post('/api/pos/orders', {
       items: [], paymentMethod: 'CASH',
@@ -190,9 +208,22 @@ async function main() {
     const { status: s2 } = await patch(`/api/admin/shifts/${shiftId}/unlock`, {})
     ok('PATCH /api/admin/shifts/:id/unlock without admin token → 401', s2 === 401)
 
-    await prisma.cashierShift.update({ where: { id: shiftId }, data: { lockedAt: null, status: 'CLOSED' } })
-    const refetched = await prisma.cashierShift.findUnique({ where: { id: shiftId } })
-    ok('shift cleanup: status === CLOSED && lockedAt === null', refetched?.status === 'CLOSED' && refetched?.lockedAt === null)
+    const adminAuthHeader = { Authorization: `Bearer ${jwt.sign({ userId: 'u1', cafeId, subdomain: 'test' }, JWT_SECRET, { expiresIn: '1h' })}` }
+    const { status: s3, body: b3 } = await patch(`/api/admin/shifts/${shiftId}/unlock`, {}, adminAuthHeader)
+    ok('PATCH /api/admin/shifts/:id/unlock with admin token → 200', s3 === 200, JSON.stringify(b3))
+    ok('unlock response shift.lockedAt === null', b3?.shift?.lockedAt === null)
+  }
+
+  console.log('\n── Cleanup ──────────────────────────────────────────────')
+  try {
+    if (orderId) {
+      await prisma.orderItem.deleteMany({ where: { orderId } })
+      await prisma.order.delete({ where: { id: orderId } })
+    }
+    if (shiftId) await prisma.cashierShift.delete({ where: { id: shiftId } })
+    await prisma.cafeCustomer.deleteMany({ where: { cafeId, phone: TEST_PHONE } })
+  } catch (err) {
+    console.error('Cleanup failed (non-fatal):', err)
   }
 
   console.log('\n── Summary ──────────────────────────────────────────────')
