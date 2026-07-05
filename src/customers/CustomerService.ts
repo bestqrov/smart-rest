@@ -39,6 +39,13 @@ export async function getCustomerProfile(cafeId: string, phone: string) {
 }
 
 // ─── Search ───────────────────────────────────────────────────────────────
+// Escapes regex metacharacters so free-text search terms are matched literally
+// by Prisma's Mongo `contains` (which compiles to a raw regex). Without this,
+// phone numbers stored with a leading `+` (regex quantifier) never match.
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
 export async function searchCustomers(
   cafeId: string,
   filter: { search?: string; tag?: string; page?: number; limit?: number } = {},
@@ -54,7 +61,7 @@ export async function searchCustomers(
     ...(s ? {
       OR: [
         { name:  { contains: s, mode: 'insensitive' as const } },
-        { phone: { contains: s } },
+        { phone: { contains: escapeRegex(s) } },
       ],
     } : {}),
   }
