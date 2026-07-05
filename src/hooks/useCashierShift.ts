@@ -48,7 +48,7 @@ export function computeTimingStatus(shift: CashierShift | null, now: Date): Timi
 
 export function useCashierShift(token: string | null, subdomain: string) {
   const [shift, setShift]     = useState<CashierShift | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [now, setNow]         = useState(() => new Date())
   const tokenRef = useRef(token)
   tokenRef.current = token
