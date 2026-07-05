@@ -8,7 +8,7 @@ interface ClotureModalProps {
   shift: CashierShift
   currency: string
   onClose: () => void
-  onConfirm: (countedCash: number) => Promise<void>
+  onConfirm: (countedCash: number) => Promise<CashierShift>
 }
 
 export default function ClotureModal({ shift, currency, onClose, onConfirm }: ClotureModalProps) {
@@ -25,8 +25,8 @@ export default function ClotureModal({ shift, currency, onClose, onConfirm }: Cl
     if (isNaN(counted) || counted < 0) { setError('Montant invalide'); return }
     setSubmitting(true)
     try {
-      await onConfirm(counted)
-      setResult({ discrepancy: counted - expected })
+      const closedShift = await onConfirm(counted)
+      setResult({ discrepancy: closedShift.discrepancy ?? (counted - expected) })
     } catch (err: any) {
       setError(err.message ?? 'Échec de la clôture')
     } finally {
