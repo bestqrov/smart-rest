@@ -44,6 +44,7 @@ import menuAdminRouter from './routes/menuAdmin'
 import superadminRouter from './routes/superadmin'
 import posShiftRouter from './routes/pos/shift'
 import posOrdersRouter from './routes/pos/orders'
+import posCustomersRouter from './routes/pos/customers'
 import posCheckoutRouter from './routes/pos/checkout'
 import supervisorTablesRouter from './routes/pos/supervisorTables'
 import posCheckoutBySeatsRouter from './routes/pos/checkoutBySeats'
@@ -115,6 +116,7 @@ import equipmentRouter from './routes/equipment'
 import supplierInvoicesRouter from './routes/supplierInvoices'
 import requisitionsRouter     from './routes/requisitions'
 import customersRouter        from './routes/customers'
+import shiftAdminRouter       from './routes/pos/shiftAdmin'
 import aiCenterRouter         from './routes/aiCenter'
 import aiJobsRouter           from './routes/aiJobs'
 import { addUsageHook }       from './marketing-brain/providers/UsageTracker'
@@ -122,6 +124,7 @@ import { recordUsageEvent }   from './services/aiCenterStats'
 import { registerSocketHandlers } from './socket/handlers'
 import { startWeeklyBillingCron } from './cron/weeklyBilling'
 import { startDailyDebtDetectionCron } from './cron/dailyDebtDetection'
+import { startShiftOvertimeLockCron } from './cron/shiftOvertimeLock'
 import { startNightlyCron } from './cron/nightly'
 import { startCertificationCron } from './cron/certificationEval'
 import { startSubscriptionLifecycleCron } from './cron/subscriptionLifecycle'
@@ -246,6 +249,7 @@ async function main() {
   app.use(superadminRouter)
   app.use(posShiftRouter)
   app.use(posOrdersRouter)
+  app.use(posCustomersRouter)
   app.use(posCheckoutRouter)
   app.use(posCheckoutBySeatsRouter)
   app.use(supervisorTablesRouter)
@@ -317,6 +321,7 @@ async function main() {
   app.use(demoRequestsRouter)
   app.use(zonesRouter)
   app.use(customersRouter)
+  app.use(shiftAdminRouter)
   app.use(aiCenterRouter)
   app.use(aiJobsRouter)
 
@@ -388,6 +393,7 @@ async function main() {
     startWhatsAppSchedulerCron(),
     startEmailSchedulerCron(),
     startSocialSchedulerCron(),
+    startShiftOvertimeLockCron(),
   ]
 
   httpServer.listen(port, '0.0.0.0', () => {

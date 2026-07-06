@@ -9,6 +9,12 @@ import {
   Printer, Check, Loader2, AlertTriangle, RefreshCw
 } from 'lucide-react'
 import { tr, getLang, setLang as saveLang, isRTL, POS_LANGS, type Lang } from '../../src/lib/posI18n'
+import { printReceipt, type ReceiptItem } from '../../src/lib/posReceipt'
+import { useCashierShift } from '../../src/hooks/useCashierShift'
+import CaisseDepartScreen from '../../src/components/pos/CaisseDepartScreen'
+import ClotureModal from '../../src/components/pos/ClotureModal'
+import ShiftTimingPill from '../../src/components/pos/ShiftTimingPill'
+import LockedOverlay from '../../src/components/pos/LockedOverlay'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -37,33 +43,7 @@ function beep(ctx: AudioContext, freq = 880, dur = 0.18, vol = 0.4) {
 function alertBeep(ctx: AudioContext) { beep(ctx, 880, 0.15, 0.35); setTimeout(() => beep(ctx, 660, 0.15, 0.35), 200) }
 
 // ─── Receipt ──────────────────────────────────────────────────────────────────
-
-type ReceiptItem = { name: string; quantity: number; unitPrice: number }
-
-function printReceipt(cafeName: string, tableNumber: number, items: ReceiptItem[], total: number, currency: string) {
-  const lines = items.map(i => `<tr>
-    <td>${i.name}</td>
-    <td style="text-align:center">${i.quantity}</td>
-    <td style="text-align:right">${(i.unitPrice * i.quantity).toFixed(2)}</td>
-  </tr>`).join('')
-  const win = window.open('', '_blank', 'width=340,height=600')
-  if (!win) return
-  win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Receipt</title>
-  <style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Courier New',monospace;font-size:12px;width:80mm;padding:8px}
-  .c{text-align:center}.b{font-weight:bold}.d{border-top:1px dashed #000;margin:6px 0}
-  table{width:100%;border-collapse:collapse}th{font-size:10px;text-align:left;border-bottom:1px solid #000;padding:2px 0}
-  td{padding:2px 0;vertical-align:top}.tot td{font-weight:bold;border-top:1px dashed #000;padding-top:4px}
-  @media print{body{width:80mm}@page{margin:0;size:80mm auto}}</style></head>
-  <body><div class="c b" style="font-size:16px">☕ ${cafeName}</div>
-  <div class="c" style="font-size:10px;color:#555">Smart Menu POS</div><div class="d"></div>
-  <div>Table: <b>${tableNumber}</b></div><div>Date: ${new Date().toLocaleString()}</div><div class="d"></div>
-  <table><thead><tr><th>Item</th><th style="text-align:center">Qty</th><th style="text-align:right">Price</th></tr></thead>
-  <tbody>${lines}</tbody>
-  <tfoot><tr class="tot"><td colspan="2">TOTAL</td><td style="text-align:right">${total.toFixed(2)} ${currency}</td></tr></tfoot>
-  </table><div class="d"></div><div class="c" style="font-size:10px">Thank you · شكراً · Merci</div>
-  <script>window.onload=()=>{window.print();window.onafterprint=()=>window.close()}<\/script></body></html>`)
-  win.document.close()
-}
+// printReceipt + ReceiptItem now live in src/lib/posReceipt.ts (shared with /comptoir)
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -106,6 +86,8 @@ export default function POSPage() {
   // login
   const [pin,         setPin]         = useState('')
   const [subdomain,   setSubdomain]   = useState('')
+  const cashierShift = useCashierShift(posToken, subdomain)
+  const [showCloture, setShowCloture] = useState(false)
   const [loginErr,    setLoginErr]    = useState('')
   const [logging,     setLogging]     = useState(false)
   const [loadingCafe, setLoadingCafe] = useState(false)
@@ -147,6 +129,7 @@ export default function POSPage() {
   const audioCtxRef = useRef<AudioContext | null>(null)
   const beepRef     = useRef<ReturnType<typeof setInterval> | null>(null)
   const socketRef   = useRef<Socket | null>(null)
+  const lastPinRef  = useRef('')
 
   useEffect(() => { mutedRef.current = muted }, [muted])
 
@@ -210,6 +193,7 @@ export default function POSPage() {
       localStorage.setItem('cafeId', payload.cafeId)
       localStorage.setItem('posLastSubdomain', subdomain.trim())
       localStorage.setItem('staffName', data.staff?.name ?? '')
+      lastPinRef.current = pin.trim()
       setPin('')
       if (data.staff?.role === 'WAITER') { window.location.href = '/waiter'; return }
       setPosToken(data.token); setCafeId(payload.cafeId); setStaff(data.staff)
@@ -436,6 +420,31 @@ export default function POSPage() {
   const activeItems      = menuCats.find(c => c.id === activeCat)?.products ?? []
   const hasOrder         = tableOrders.length > 0 || cart.length > 0
 
+  // ─── Caisse de départ — required before entering the POS once logged in ─────
+  if (posToken && !cashierShift.loading && !cashierShift.shift) {
+    return (
+      <CaisseDepartScreen
+        staffName={staff?.name ?? ''}
+        onSubmit={async ({ initialCash, plannedEndTime }) => {
+          const isDemo = isDemoMode
+          const result = await cashierShift.openShift({
+            pinCode: isDemo ? undefined : lastPinRef.current,
+            demoStaffId: isDemo ? staff?.id : undefined,
+            initialCash,
+            plannedEndTime,
+          })
+          localStorage.setItem('posToken', result.token)
+          setPosToken(result.token)
+        }}
+      />
+    )
+  }
+
+  // ─── Poste verrouillé ────────────────────────────────────────────────────────
+  if (cashierShift.isLocked) {
+    return <LockedOverlay staffName={staff?.name ?? ''} plannedEndTime={cashierShift.shift?.plannedEndTime ?? null} />
+  }
+
   // ─── PIN Login ──────────────────────────────────────────────────────────────
   if (!posToken) {
     return (
@@ -591,6 +600,13 @@ export default function POSPage() {
             className="w-9 h-9 rounded-xl flex items-center justify-center text-gray-500 hover:text-white transition-colors">
             <RefreshCw className={`w-4 h-4 ${loadTables ? 'animate-spin' : ''}`} />
           </button>
+          <ShiftTimingPill timing={cashierShift.timing} />
+          {cashierShift.shift && (
+            <button onClick={() => setShowCloture(true)}
+              className="px-3 py-2 text-xs font-bold text-gray-400 hover:text-white rounded-xl hover:bg-gray-800 transition-colors">
+              Clôture
+            </button>
+          )}
           {/* Lang selector */}
           <div className="hidden sm:flex gap-1">
             {POS_LANGS.map(l => (
@@ -1023,6 +1039,23 @@ export default function POSPage() {
             )}
           </div>
         </div>
+      )}
+
+      {/* ── Clôture Modal ──────────────────────────────────────────────────────── */}
+      {showCloture && cashierShift.shift && (
+        <ClotureModal
+          shift={cashierShift.shift}
+          currency={currency}
+          onClose={() => setShowCloture(false)}
+          onConfirm={async (countedCash) => {
+            const isDemo = isDemoMode
+            return await cashierShift.closeShift({
+              pinCode: isDemo ? undefined : lastPinRef.current,
+              demoStaffId: isDemo ? staff?.id : undefined,
+              countedCash,
+            })
+          }}
+        />
       )}
 
       {/* ── Split Bill Modal ──────────────────────────────────────────────────── */}
