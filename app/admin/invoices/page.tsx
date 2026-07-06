@@ -48,10 +48,12 @@ const T = {
     all: 'الكل', unpaidTab: 'غير مدفوعة', overdueTab: 'متأخرة', paidTab: 'مدفوعة', cancelledTab: 'ملغاة',
     supplier: 'المورد *', invoiceNum: 'رقم الفاتورة', amount: 'المبلغ *', currency: 'العملة',
     issueDate: 'تاريخ الإصدار *', dueDate: 'تاريخ الاستحقاق', docUrl: 'رابط الوثيقة', notes: 'ملاحظات',
-    status: 'الحالة', markPaid: '✓ مدفوعة', document: 'الوثيقة',
+    status: 'الحالة', document: 'الوثيقة',
     issued: 'صدرت', due: 'استحقاق', empty: 'لا توجد فواتير', emptyFilter: ' في هذا الفلتر',
     deleteConfirm: 'حذف هذه الفاتورة؟',
-    statusLabels: { unpaid: 'غير مدفوعة', overdue: 'متأخرة', paid: 'مدفوعة', cancelled: 'ملغاة' },
+    statusLabels: { unpaid: 'غير مدفوعة', partial: 'مدفوعة جزئياً', overdue: 'متأخرة', paid: 'مدفوعة', cancelled: 'ملغاة' },
+    recordPayment: 'تسجيل الدفعة', noPayments: 'لا توجد مدفوعات مسجلة.',
+    methodCash: 'نقداً', methodCard: 'بطاقة', methodVirement: 'تحويل بنكي',
   },
   fr: {
     title: 'Factures', subtitle: 'Suivez vos factures fournisseurs et paiements',
@@ -61,10 +63,12 @@ const T = {
     all: 'Toutes', unpaidTab: 'Non payées', overdueTab: 'En retard', paidTab: 'Payées', cancelledTab: 'Annulées',
     supplier: 'Fournisseur *', invoiceNum: 'N° Facture', amount: 'Montant *', currency: 'Devise',
     issueDate: 'Date facture *', dueDate: 'Échéance', docUrl: 'URL document', notes: 'Notes',
-    status: 'Statut', markPaid: '✓ Payée', document: 'Document',
+    status: 'Statut', document: 'Document',
     issued: 'Émise', due: 'Échéance', empty: 'Aucune facture', emptyFilter: ' dans ce filtre',
     deleteConfirm: 'Supprimer cette facture ?',
-    statusLabels: { unpaid: 'Non payée', overdue: 'En retard', paid: 'Payée', cancelled: 'Annulée' },
+    statusLabels: { unpaid: 'Non payée', partial: 'Partiellement payée', overdue: 'En retard', paid: 'Payée', cancelled: 'Annulée' },
+    recordPayment: 'Enregistrer le paiement', noPayments: 'Aucun paiement enregistré.',
+    methodCash: 'Cash', methodCard: 'Carte', methodVirement: 'Virement',
   },
   en: {
     title: 'Invoices', subtitle: 'Track your supplier invoices and payments',
@@ -74,10 +78,12 @@ const T = {
     all: 'All', unpaidTab: 'Unpaid', overdueTab: 'Overdue', paidTab: 'Paid', cancelledTab: 'Cancelled',
     supplier: 'Supplier *', invoiceNum: 'Invoice #', amount: 'Amount *', currency: 'Currency',
     issueDate: 'Issue Date *', dueDate: 'Due Date', docUrl: 'Document URL', notes: 'Notes',
-    status: 'Status', markPaid: '✓ Mark Paid', document: 'Document',
+    status: 'Status', document: 'Document',
     issued: 'Issued', due: 'Due', empty: 'No invoices found', emptyFilter: ' for this filter',
     deleteConfirm: 'Delete this invoice?',
-    statusLabels: { unpaid: 'Unpaid', overdue: 'Overdue', paid: 'Paid', cancelled: 'Cancelled' },
+    statusLabels: { unpaid: 'Unpaid', partial: 'Partially Paid', overdue: 'Overdue', paid: 'Paid', cancelled: 'Cancelled' },
+    recordPayment: 'Record Payment', noPayments: 'No payments recorded.',
+    methodCash: 'Cash', methodCard: 'Card', methodVirement: 'Bank Transfer',
   },
   es: {
     title: 'Facturas', subtitle: 'Gestiona tus facturas de proveedores y pagos',
@@ -87,10 +93,12 @@ const T = {
     all: 'Todas', unpaidTab: 'Sin pagar', overdueTab: 'Vencidas', paidTab: 'Pagadas', cancelledTab: 'Canceladas',
     supplier: 'Proveedor *', invoiceNum: 'Nº Factura', amount: 'Monto *', currency: 'Divisa',
     issueDate: 'Fecha factura *', dueDate: 'Vencimiento', docUrl: 'URL documento', notes: 'Notas',
-    status: 'Estado', markPaid: '✓ Pagada', document: 'Documento',
+    status: 'Estado', document: 'Documento',
     issued: 'Emitida', due: 'Vence', empty: 'Sin facturas', emptyFilter: ' en este filtro',
     deleteConfirm: '¿Eliminar esta factura?',
-    statusLabels: { unpaid: 'Sin pagar', overdue: 'Vencida', paid: 'Pagada', cancelled: 'Cancelada' },
+    statusLabels: { unpaid: 'Sin pagar', partial: 'Pagado parcialmente', overdue: 'Vencida', paid: 'Pagada', cancelled: 'Cancelada' },
+    recordPayment: 'Registrar pago', noPayments: 'Sin pagos registrados.',
+    methodCash: 'Efectivo', methodCard: 'Tarjeta', methodVirement: 'Transferencia',
   },
 }
 
@@ -187,15 +195,6 @@ export default function InvoicesPage() {
     } finally {
       setSaving(false)
     }
-  }
-
-  async function quickStatus(id: string, status: InvoiceStatus) {
-    await fetch(`/api/v1/invoices/${id}`, {
-      method: 'PATCH',
-      headers: { ...authHeader(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status }),
-    })
-    await load()
   }
 
   async function del(id: string) {
@@ -477,13 +476,13 @@ export default function InvoicesPage() {
                     />
                     <select value={payMethod} onChange={e => setPayMethod(e.target.value)}
                       className="bg-white/10 border border-white/10 rounded-lg px-2 py-1.5 text-white text-sm">
-                      <option value="cash" className="bg-slate-800">Cash</option>
-                      <option value="card" className="bg-slate-800">Card</option>
-                      <option value="virement" className="bg-slate-800">Virement</option>
+                      <option value="cash" className="bg-slate-800">{t.methodCash}</option>
+                      <option value="card" className="bg-slate-800">{t.methodCard}</option>
+                      <option value="virement" className="bg-slate-800">{t.methodVirement}</option>
                     </select>
                     <button onClick={() => recordPayment(inv.id)} disabled={payBusy}
                       className="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-white text-xs font-semibold">
-                      {payBusy ? <Loader2 size={14} className="animate-spin" /> : 'Enregistrer le paiement'}
+                      {payBusy ? <Loader2 size={14} className="animate-spin" /> : t.recordPayment}
                     </button>
                   </div>
                 )}
@@ -491,7 +490,7 @@ export default function InvoicesPage() {
                 {historyId === inv.id && (
                   <div className="w-full mt-3 pt-3 border-t border-slate-700 space-y-1">
                     {history.length === 0 ? (
-                      <p className="text-xs text-slate-500">Aucun paiement enregistré.</p>
+                      <p className="text-xs text-slate-500">{t.noPayments}</p>
                     ) : history.map(p => (
                       <div key={p.id} className="flex items-center justify-between text-xs text-slate-400">
                         <span>{fmt(p.paidAt)} · {p.method}</span>
