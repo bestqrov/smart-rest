@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   ShoppingCart, Plus, Trash2, Edit3, Loader2, RefreshCw,
   CheckCircle2, Clock, Package, XCircle, ChevronRight
@@ -51,9 +52,10 @@ const URGENCY_META: Record<ReqUrgency, { label: string; color: string; bg: strin
   urgent: { label: 'Urgent',  color: 'text-rose-400',    bg: 'bg-rose-500/15'   },
 }
 
+// 'approved' is handled separately below — it navigates to Purchase Orders
+// to create a real linked PO instead of silently flipping status.
 const NEXT_STATUS: Partial<Record<ReqStatus, { next: ReqStatus; label: string }>> = {
   pending:  { next: 'approved', label: 'Approuver'  },
-  approved: { next: 'ordered',  label: 'Commander'  },
   ordered:  { next: 'received', label: 'Reçu ✓'     },
 }
 
@@ -67,6 +69,18 @@ const EMPTY_FORM = {
 
 export default function RequisitionsPage() {
   const { isRTL } = useLang()
+  const router = useRouter()
+
+  function orderFromRequisition(req: PurchaseRequisition) {
+    const params = new URLSearchParams({
+      fromRequisition: req.id,
+      itemName:        req.itemName,
+      quantity:        String(req.quantity),
+      unit:             req.unit,
+      ...(req.estimatedPrice != null && { estimatedPrice: String(req.estimatedPrice) }),
+    })
+    router.push(`/admin/inventory/purchase-orders?${params.toString()}`)
+  }
 
   const [items,    setItems]    = useState<PurchaseRequisition[]>([])
   const [summary,  setSummary]  = useState<Summary | null>(null)
@@ -331,6 +345,14 @@ export default function RequisitionsPage() {
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0">
+                  {req.status === 'approved' && (
+                    <button
+                      onClick={() => orderFromRequisition(req)}
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-teal-500/15 hover:bg-teal-500/30 text-teal-400 text-xs font-semibold transition-colors"
+                    >
+                      Commander <ChevronRight size={12} />
+                    </button>
+                  )}
                   {nextStep && (
                     <button
                       onClick={() => advanceStatus(req.id, nextStep.next)}
