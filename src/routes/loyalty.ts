@@ -38,7 +38,7 @@ router.get('/api/loyalty/customers', authorizeAdmin, async (req: Request, res: R
         orderBy: { [sortBy]: order },
         skip: (page - 1) * limit,
         take: limit,
-        select: { id: true, phone: true, points: true, createdAt: true, updatedAt: true },
+        select: { id: true, phone: true, points: true, lifetimePoints: true, createdAt: true, updatedAt: true },
       }),
       prisma.loyaltyAccount.count({ where }),
     ])
@@ -47,6 +47,65 @@ router.get('/api/loyalty/customers', authorizeAdmin, async (req: Request, res: R
   } catch (err) {
     logger.error({ msg: 'GET loyalty/customers error', err })
     return res.status(500).json({ error: 'Failed to fetch loyalty customers' })
+  }
+})
+
+// ─── K-Loyalty — Settings (points rate + tier thresholds) ────────────────────
+// Registered before /:phone so the literal "settings" segment isn't swallowed
+// by the dynamic phone-number route below.
+
+router.get('/api/loyalty/settings', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const cafeId = req.admin!.cafeId
+    const cafe = await prisma.cafe.findUnique({
+      where:  { id: cafeId },
+      select: { loyaltyPointsPerCurrency: true, loyaltyTierSilverThreshold: true, loyaltyTierGoldThreshold: true },
+    })
+    return res.json({
+      pointsPerCurrency: cafe?.loyaltyPointsPerCurrency ?? 10,
+      silverThreshold:   cafe?.loyaltyTierSilverThreshold ?? 500,
+      goldThreshold:     cafe?.loyaltyTierGoldThreshold ?? 2000,
+    })
+  } catch (err) {
+    logger.error({ msg: 'GET loyalty settings error', err })
+    return res.status(500).json({ error: 'Failed to fetch settings' })
+  }
+})
+
+router.patch('/api/loyalty/settings', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const cafeId = req.admin!.cafeId
+    const { pointsPerCurrency, silverThreshold, goldThreshold } = req.body as Record<string, any>
+
+    const data: Record<string, any> = {}
+    if (pointsPerCurrency !== undefined) {
+      if (!(Number(pointsPerCurrency) > 0)) return res.status(400).json({ error: 'pointsPerCurrency must be a positive number' })
+      data.loyaltyPointsPerCurrency = Number(pointsPerCurrency)
+    }
+    if (silverThreshold !== undefined) {
+      if (!Number.isInteger(silverThreshold) || silverThreshold < 0) return res.status(400).json({ error: 'silverThreshold must be a non-negative integer' })
+      data.loyaltyTierSilverThreshold = silverThreshold
+    }
+    if (goldThreshold !== undefined) {
+      if (!Number.isInteger(goldThreshold) || goldThreshold < 0) return res.status(400).json({ error: 'goldThreshold must be a non-negative integer' })
+      data.loyaltyTierGoldThreshold = goldThreshold
+    }
+
+    const effectiveSilver = data.loyaltyTierSilverThreshold ?? (await prisma.cafe.findUnique({ where: { id: cafeId }, select: { loyaltyTierSilverThreshold: true } }))?.loyaltyTierSilverThreshold ?? 500
+    const effectiveGold   = data.loyaltyTierGoldThreshold   ?? (await prisma.cafe.findUnique({ where: { id: cafeId }, select: { loyaltyTierGoldThreshold: true } }))?.loyaltyTierGoldThreshold ?? 2000
+    if (effectiveGold <= effectiveSilver) {
+      return res.status(400).json({ error: 'goldThreshold must be greater than silverThreshold' })
+    }
+
+    const cafe = await prisma.cafe.update({ where: { id: cafeId }, data })
+    return res.json({
+      pointsPerCurrency: cafe.loyaltyPointsPerCurrency,
+      silverThreshold:   cafe.loyaltyTierSilverThreshold,
+      goldThreshold:     cafe.loyaltyTierGoldThreshold,
+    })
+  } catch (err) {
+    logger.error({ msg: 'PATCH loyalty settings error', err })
+    return res.status(500).json({ error: 'Failed to update settings' })
   }
 })
 
@@ -62,13 +121,13 @@ router.get('/api/loyalty/:phone', authorizeAdmin, async (req: Request, res: Resp
     })
 
     if (!account) {
-      return res.json({ phone, points: 0, ledger: [] })
+      return res.json({ phone, points: 0, lifetimePoints: 0, ledger: [] })
     }
 
     // Return last 20 entries (newest first) — ledger is append-only in MongoDB
     const recent = [...account.ledger].reverse().slice(0, 20)
 
-    return res.json({ phone, points: account.points, ledger: recent })
+    return res.json({ phone, points: account.points, lifetimePoints: account.lifetimePoints, ledger: recent })
   } catch (err) {
     logger.error({ msg: 'GET loyalty error', err })
     return res.status(500).json({ error: 'Failed to fetch loyalty account' })
