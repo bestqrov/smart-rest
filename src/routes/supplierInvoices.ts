@@ -2,6 +2,7 @@ import express, { Request, Response } from 'express'
 import { authorizeAdmin } from '../middleware/authorizeAdmin'
 import prisma from '../prisma'
 import logger from '../logger'
+import { computeInvoiceStatus } from '../services/supplierInvoiceStatus'
 
 const router = express.Router()
 
@@ -99,9 +100,14 @@ router.patch('/:id', authorizeAdmin, async (req: Request, res: Response) => {
     if (body.currency      !== undefined) data.currency      = body.currency
     if (body.issueDate     !== undefined) data.issueDate     = new Date(body.issueDate)
     if (body.dueDate       !== undefined) data.dueDate       = body.dueDate ? new Date(body.dueDate) : null
-    if (body.status        !== undefined) data.status        = body.status
     if (body.documentUrl   !== undefined) data.documentUrl   = body.documentUrl
     if (body.notes         !== undefined) data.notes         = body.notes
+    if (body.status        !== undefined) {
+      data.status = body.status
+      // The legacy "mark paid" shortcut fully pays the invoice so
+      // amountPaid stays consistent with status for anyone still using it.
+      if (body.status === 'paid') data.amountPaid = body.amount !== undefined ? Number(body.amount) : existing.amount
+    }
 
     const invoice = await prisma.supplierInvoice.update({ where: { id }, data })
     return res.json(invoice)
@@ -121,6 +127,69 @@ router.delete('/:id', authorizeAdmin, async (req: Request, res: Response) => {
     return res.json({ ok: true })
   } catch (err) {
     logger.error({ msg: 'invoice delete error', err })
+    return res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
+// ─── Payments ──────────────────────────────────────────────────────────────
+
+router.get('/:id/payments', authorizeAdmin, async (req: Request, res: Response) => {
+  const { cafeId } = req.admin!
+  const id = req.params.id as string
+  try {
+    const invoice = await prisma.supplierInvoice.findFirst({ where: { id, cafeId } })
+    if (!invoice) return res.status(404).json({ error: 'Invoice not found' })
+    const payments = await prisma.supplierPayment.findMany({
+      where:   { invoiceId: id, cafeId },
+      orderBy: { paidAt: 'desc' },
+    })
+    return res.json({ items: payments })
+  } catch (err) {
+    logger.error({ msg: 'invoice payments list error', err })
+    return res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
+router.post('/:id/payments', authorizeAdmin, async (req: Request, res: Response) => {
+  const { cafeId } = req.admin!
+  const id = req.params.id as string
+  const { amount, method, notes, paidAt } = req.body as Record<string, any>
+
+  if (amount == null || Number(amount) <= 0) {
+    return res.status(400).json({ error: 'amount must be a positive number' })
+  }
+
+  try {
+    const invoice = await prisma.supplierInvoice.findFirst({ where: { id, cafeId } })
+    if (!invoice) return res.status(404).json({ error: 'Invoice not found' })
+
+    const newAmountPaid = invoice.amountPaid + Number(amount)
+    const newStatus = computeInvoiceStatus({
+      amount:     invoice.amount,
+      amountPaid: newAmountPaid,
+      dueDate:    invoice.dueDate,
+    })
+
+    const [payment] = await prisma.$transaction([
+      prisma.supplierPayment.create({
+        data: {
+          invoiceId: id,
+          cafeId,
+          amount:    Number(amount),
+          method:    method ?? 'cash',
+          notes:     notes ?? null,
+          ...(paidAt && { paidAt: new Date(paidAt) }),
+        },
+      }),
+      prisma.supplierInvoice.update({
+        where: { id },
+        data:  { amountPaid: newAmountPaid, status: newStatus },
+      }),
+    ])
+
+    return res.status(201).json({ payment, amountPaid: newAmountPaid, status: newStatus })
+  } catch (err) {
+    logger.error({ msg: 'invoice payment create error', err })
     return res.status(500).json({ error: 'Internal server error' })
   }
 })
