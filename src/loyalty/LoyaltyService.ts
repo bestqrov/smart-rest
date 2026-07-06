@@ -31,7 +31,7 @@ export function calculateEarnedPoints(totalPrice: number, pointsPerCurrency: num
   return Math.floor(totalPrice / pointsPerCurrency)
 }
 
-async function getLoyaltyConfig(cafeId: string) {
+export async function getLoyaltyConfig(cafeId: string) {
   const cafe = await prisma.cafe.findUnique({
     where:  { id: cafeId },
     select: { loyaltyPointsPerCurrency: true, loyaltyTierSilverThreshold: true, loyaltyTierGoldThreshold: true },
@@ -53,11 +53,13 @@ async function getOrCreateAccount(cafeId: string, phone: string) {
 
 // ─── Earn ───────────────────────────────────────────────────────────────────
 export async function earnPoints(cafeId: string, phone: string, totalPrice: number, orderId?: string) {
-  const config = await getLoyaltyConfig(cafeId)
+  const [config, before] = await Promise.all([
+    getLoyaltyConfig(cafeId),
+    getOrCreateAccount(cafeId, phone),
+  ])
   const points = calculateEarnedPoints(totalPrice, config.pointsPerCurrency)
-  if (points <= 0) return getOrCreateAccount(cafeId, phone)
+  if (points <= 0) return before
 
-  const before = await getOrCreateAccount(cafeId, phone)
   const tierBefore = getTier(before.lifetimePoints, config.silverThreshold, config.goldThreshold)
 
   const updated = await prisma.loyaltyAccount.update({
