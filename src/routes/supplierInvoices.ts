@@ -160,34 +160,64 @@ router.post('/:id/payments', authorizeAdmin, async (req: Request, res: Response)
   }
 
   try {
-    const invoice = await prisma.supplierInvoice.findFirst({ where: { id, cafeId } })
-    if (!invoice) return res.status(404).json({ error: 'Invoice not found' })
+    const existing = await prisma.supplierInvoice.findFirst({ where: { id, cafeId } })
+    if (!existing) return res.status(404).json({ error: 'Invoice not found' })
 
-    const newAmountPaid = invoice.amountPaid + Number(amount)
-    const newStatus = computeInvoiceStatus({
-      amount:     invoice.amount,
-      amountPaid: newAmountPaid,
-      dueDate:    invoice.dueDate,
+    // MongoDB's transaction engine detects write conflicts optimistically:
+    // when two of these transactions race on the same invoice document, one
+    // of them is aborted with P2034 rather than allowed to silently clobber
+    // the other. Retry on that specific error so concurrent payments both
+    // land instead of one failing the request.
+    let result!: { payment: unknown; invoice: { amountPaid: number; status: string } }
+    const maxAttempts = 5
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        result = await prisma.$transaction(async (tx) => {
+          const payment = await tx.supplierPayment.create({
+            data: {
+              invoiceId: id,
+              cafeId,
+              amount:    Number(amount),
+              method:    method ?? 'cash',
+              notes:     notes ?? null,
+              ...(paidAt && { paidAt: new Date(paidAt) }),
+            },
+          })
+
+          // Atomic increment (not a read-then-write of a value captured before
+          // the transaction) so concurrent payments on the same invoice can't
+          // lose each other's updates.
+          const afterIncrement = await tx.supplierInvoice.update({
+            where: { id },
+            data:  { amountPaid: { increment: Number(amount) } },
+          })
+
+          const newStatus = computeInvoiceStatus({
+            amount:     afterIncrement.amount,
+            amountPaid: afterIncrement.amountPaid,
+            dueDate:    afterIncrement.dueDate,
+          })
+
+          const invoice = await tx.supplierInvoice.update({
+            where: { id },
+            data:  { status: newStatus },
+          })
+
+          return { payment, invoice }
+        })
+        break
+      } catch (txErr: any) {
+        const isWriteConflict = txErr?.code === 'P2034'
+        if (isWriteConflict && attempt < maxAttempts) continue
+        throw txErr
+      }
+    }
+
+    return res.status(201).json({
+      payment:    result.payment,
+      amountPaid: result.invoice.amountPaid,
+      status:     result.invoice.status,
     })
-
-    const [payment] = await prisma.$transaction([
-      prisma.supplierPayment.create({
-        data: {
-          invoiceId: id,
-          cafeId,
-          amount:    Number(amount),
-          method:    method ?? 'cash',
-          notes:     notes ?? null,
-          ...(paidAt && { paidAt: new Date(paidAt) }),
-        },
-      }),
-      prisma.supplierInvoice.update({
-        where: { id },
-        data:  { amountPaid: newAmountPaid, status: newStatus },
-      }),
-    ])
-
-    return res.status(201).json({ payment, amountPaid: newAmountPaid, status: newStatus })
   } catch (err) {
     logger.error({ msg: 'invoice payment create error', err })
     return res.status(500).json({ error: 'Internal server error' })
