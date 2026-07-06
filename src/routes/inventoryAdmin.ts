@@ -46,7 +46,7 @@ const router = express.Router()
 
 // ── Feature gate middleware ───────────────────────────────────────────────────
 
-async function requireInventory(req: Request, res: Response, next: Function) {
+export async function requireInventory(req: Request, res: Response, next: Function) {
   try {
     const cafeId = req.admin!.cafeId
     const cafe   = await prisma.cafe.findUnique({
@@ -358,10 +358,11 @@ router.get('/api/v1/inventory/purchase-orders/:id', authorizeAdmin, requireInven
 router.post('/api/v1/inventory/purchase-orders', authorizeAdmin, requireInventory, async (req: Request, res: Response) => {
   try {
     const cafeId = req.admin!.cafeId
-    const { supplierId, notes, items } = req.body as {
-      supplierId: string
-      notes?:     string
-      items:      { stockItemName: string; unit: string; quantityOrdered: number; unitCost: number }[]
+    const { supplierId, notes, items, requisitionId } = req.body as {
+      supplierId:     string
+      notes?:         string
+      items:          { stockItemName: string; unit: string; quantityOrdered: number; unitCost: number }[]
+      requisitionId?: string
     }
 
     if (!supplierId) return res.status(400).json({ error: 'supplierId is required' })
@@ -370,21 +371,37 @@ router.post('/api/v1/inventory/purchase-orders', authorizeAdmin, requireInventor
     const supplier = await prisma.inventorySupplier.findFirst({ where: { id: supplierId, cafeId } })
     if (!supplier) return res.status(404).json({ error: 'Supplier not found' })
 
+    let requisition = null
+    if (requisitionId) {
+      requisition = await prisma.purchaseRequisition.findFirst({ where: { id: requisitionId, cafeId } })
+      if (!requisition) return res.status(404).json({ error: 'Requisition not found' })
+    }
+
     const enrichedItems = items.map(item => ({
       ...item,
       totalCost: item.quantityOrdered * item.unitCost
     }))
     const totalCost = enrichedItems.reduce((sum, i) => sum + i.totalCost, 0)
 
-    const po = await prisma.purchaseOrder.create({
-      data: {
-        cafeId,
-        supplierId,
-        notes:    notes ?? '',
-        items:    enrichedItems,
-        totalCost
-      },
-      include: { supplier: { select: { id: true, name: true, phone: true, email: true } } }
+    const po = await prisma.$transaction(async (tx) => {
+      const created = await tx.purchaseOrder.create({
+        data: {
+          cafeId,
+          supplierId,
+          notes:    notes ?? '',
+          items:    enrichedItems,
+          totalCost,
+          ...(requisition && { requisitionId: requisition.id })
+        },
+        include: { supplier: { select: { id: true, name: true, phone: true, email: true } } }
+      })
+      if (requisition) {
+        await tx.purchaseRequisition.update({
+          where: { id: requisition.id },
+          data:  { status: 'ordered', purchaseOrderId: created.id }
+        })
+      }
+      return created
     })
     return res.status(201).json(po)
   } catch (err) {
