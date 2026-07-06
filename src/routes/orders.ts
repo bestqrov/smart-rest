@@ -6,6 +6,7 @@ import prisma from '../prisma'
 import { applyOrderFee } from '../services/billing'
 import { emitKdsTicket, emitOrderStatusUpdate } from '../services/kds'
 import { deductInventoryForOrder } from '../services/inventoryDeduction'
+import { earnPoints } from '../loyalty/LoyaltyService'
 import { autoCheckInReservationForTable } from '../reservations/ReservationService'
 
 const router = express.Router()
@@ -238,30 +239,16 @@ router.patch('/api/orders/:orderId/status', authorizeAdmin, async (req: Request,
 
         // Deduct inventory stock for each recipe ingredient consumed
         await deductInventoryForOrder(tx, cafeId, orderId)
-
-        // Award loyalty points: 10 MAD = 1 point, rounded down
-        if (order.customerPhone) {
-          const earned = Math.floor(order.totalPrice / 10)
-          if (earned > 0) {
-            await tx.loyaltyAccount.upsert({
-              where:  { cafeId_phone: { cafeId, phone: order.customerPhone } },
-              create: {
-                cafeId,
-                phone:  order.customerPhone,
-                points: earned,
-                ledger: [{ type: 'EARN', points: earned, orderId, note: `Order completed`, createdAt: new Date() }],
-              },
-              update: {
-                points: { increment: earned },
-                ledger: {
-                  push: { type: 'EARN', points: earned, orderId, note: `Order completed`, createdAt: new Date() }
-                }
-              }
-            })
-          }
-        }
       }
     })
+
+    // Award loyalty points via the shared service (outside the transaction —
+    // earnPoints does its own prisma call and previously this block bypassed
+    // LoyaltyService entirely with a duplicated, out-of-sync copy that never
+    // updated lifetimePoints, silently breaking tier progression).
+    if (status === 'COMPLETED' && order.status !== 'COMPLETED' && order.customerPhone) {
+      await earnPoints(cafeId, order.customerPhone, order.totalPrice, orderId)
+    }
 
     const io = req.app.get('io') as SocketIOServer | undefined
     if (io) emitOrderStatusUpdate(io, cafeId, orderId, status, order.tableId ?? null)
