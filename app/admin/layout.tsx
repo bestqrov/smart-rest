@@ -32,6 +32,7 @@ const NAV = [
   { href: '/admin/equipment',  icon: Wrench,          key: 'equipment'  },
   { href: '/admin/invoices',      icon: Receipt,        key: 'invoices'      },
   { href: '/admin/requisitions',  icon: ShoppingCart,   key: 'requisitions'  },
+  { href: '/admin/achats',        icon: Package,        key: 'achats'        },
   { href: '/admin/reservations',   icon: CalendarDays,   key: 'reservations'  },
   { href: '/admin/loyalty',        icon: Gift,           key: 'loyalty'        },
   { href: '/admin/certification',  icon: ShieldCheck,    key: 'certification'  },
