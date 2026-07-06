@@ -240,8 +240,8 @@ export async function closeOrder(
   }
 
   // Same best-effort posture: awarding points must not undo a completed,
-  // already-paid order. Same 10-unit-per-point rule already used by
-  // routes/orders.ts's own COMPLETED handler (untouched, separate code path).
+  // already-paid order. Same 10-unit-per-point rule used by routes/orders.ts's
+  // own COMPLETED handler, which now also calls this same shared earnPoints().
   if (order.customerPhone) {
     try {
       await earnPoints(cafeId, order.customerPhone, totals.totalPrice, orderId)

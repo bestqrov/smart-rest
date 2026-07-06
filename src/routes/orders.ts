@@ -246,8 +246,15 @@ router.patch('/api/orders/:orderId/status', authorizeAdmin, async (req: Request,
     // earnPoints does its own prisma call and previously this block bypassed
     // LoyaltyService entirely with a duplicated, out-of-sync copy that never
     // updated lifetimePoints, silently breaking tier progression).
+    // Best-effort posture: awarding points must not undo a completed,
+    // already-paid order, so a loyalty-service failure here is logged and
+    // swallowed rather than turning a genuinely completed order into a 500.
     if (status === 'COMPLETED' && order.status !== 'COMPLETED' && order.customerPhone) {
-      await earnPoints(cafeId, order.customerPhone, order.totalPrice, orderId)
+      try {
+        await earnPoints(cafeId, order.customerPhone, order.totalPrice, orderId)
+      } catch (err) {
+        logger.error({ msg: 'PATCH order status: loyalty earn failed', orderId, cafeId, err })
+      }
     }
 
     const io = req.app.get('io') as SocketIOServer | undefined
