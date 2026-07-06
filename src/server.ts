@@ -115,6 +115,7 @@ import zonesRouter from './routes/zones'
 import equipmentRouter from './routes/equipment'
 import supplierInvoicesRouter from './routes/supplierInvoices'
 import requisitionsRouter     from './routes/requisitions'
+import achatsReportRouter     from './routes/achatsReport'
 import customersRouter        from './routes/customers'
 import shiftAdminRouter       from './routes/pos/shiftAdmin'
 import aiCenterRouter         from './routes/aiCenter'
@@ -281,6 +282,7 @@ async function main() {
   app.use('/api/v1/equipment', equipmentRouter)
   app.use('/api/v1/invoices',     supplierInvoicesRouter)
   app.use('/api/v1/requisitions', requisitionsRouter)
+  app.use(achatsReportRouter)
   app.use(traiteurRouter)
   app.use(loyaltyRouter)
   app.use(adminCertificationRouter)
