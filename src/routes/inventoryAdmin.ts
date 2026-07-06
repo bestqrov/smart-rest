@@ -431,8 +431,13 @@ router.patch('/api/v1/inventory/purchase-orders/:id', authorizeAdmin, requireInv
       return res.status(400).json({ error: `status must be one of: ${validStatuses.join(', ')}` })
     }
 
-    // When marking as received, auto-restock the inventory quantities
+    // When marking as received, auto-restock the inventory quantities,
+    // auto-generate the supplier invoice, and mark the linked requisition received.
     if (status === 'received' && existing.status !== 'received') {
+      const receivedAt = new Date()
+      const dueDate = new Date(receivedAt)
+      dueDate.setDate(dueDate.getDate() + 30)
+
       await prisma.$transaction(async (tx) => {
         for (const item of existing.items as any[]) {
           const stockItem = await tx.stockItem.findUnique({
@@ -456,12 +461,34 @@ router.patch('/api/v1/inventory/purchase-orders/:id', authorizeAdmin, requireInv
           data:  { status, ...(notes !== undefined && { notes }) }
         })
 
+        const supplier = await tx.inventorySupplier.findUnique({ where: { id: existing.supplierId }, select: { name: true } })
+
+        await tx.supplierInvoice.create({
+          data: {
+            cafeId,
+            supplierName: supplier?.name ?? 'Supplier',
+            amount:       existing.totalCost,
+            currency:     'MAD',
+            issueDate:    receivedAt,
+            dueDate,
+            status:       'unpaid',
+            purchaseOrderId: id,
+          }
+        })
+
+        if (existing.requisitionId) {
+          await tx.purchaseRequisition.update({
+            where: { id: existing.requisitionId },
+            data:  { status: 'received' }
+          })
+        }
+
         await tx.systemNotification.create({
           data: {
             cafeId,
             type:    'PO_RECEIVED',
             title:   `Purchase Order Received`,
-            body:    `Stock levels updated for ${existing.items.length} item(s). PO from ${(await tx.inventorySupplier.findUnique({ where: { id: existing.supplierId }, select: { name: true } }))?.name ?? 'supplier'}.`,
+            body:    `Stock levels updated for ${existing.items.length} item(s). PO from ${supplier?.name ?? 'supplier'}.`,
             refId:   id,
             refType: 'purchase_order'
           }
