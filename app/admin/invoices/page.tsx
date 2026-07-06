@@ -205,6 +205,7 @@ export default function InvoicesPage() {
   }
 
   async function recordPayment(id: string) {
+    if (payBusy) return
     if (!payAmount || Number(payAmount) <= 0) return
     setPayBusy(true)
     try {
@@ -387,6 +388,9 @@ export default function InvoicesPage() {
           {items.map(inv => {
             const late      = isOverdue(inv.dueDate, inv.status)
             const effStatus = late ? 'overdue' : inv.status
+            // Invoices created before amountPaid existed (pre-migration) have
+            // no amountPaid field at all — default to 0 to avoid NaN.
+            const paidAmount = inv.amountPaid ?? 0
             const { color, bg } = STATUS_COLORS[effStatus] ?? STATUS_COLORS.unpaid
             const StatusIcon    = STATUS_ICONS[effStatus]   ?? Clock
 
@@ -402,8 +406,8 @@ export default function InvoicesPage() {
                   </div>
                   <div className="flex items-center gap-3 mt-1 flex-wrap">
                     <span className="text-sm font-bold text-white">{inv.amount.toLocaleString('fr-FR')} {inv.currency}</span>
-                    {inv.amountPaid > 0 && inv.amountPaid < inv.amount && (
-                      <span className="text-xs text-sky-400">({inv.amountPaid.toFixed(2)} payé)</span>
+                    {paidAmount > 0 && paidAmount < inv.amount && (
+                      <span className="text-xs text-sky-400">({paidAmount.toFixed(2)} payé)</span>
                     )}
                     <span className="text-xs text-slate-400">{t.issued}: {fmt(inv.issueDate)}</span>
                     {inv.dueDate && (
@@ -423,10 +427,10 @@ export default function InvoicesPage() {
                 <div className="flex items-center gap-2 shrink-0">
                   {inv.status !== 'paid' && inv.status !== 'cancelled' && (
                     <button
-                      onClick={() => { setPayingId(payingId === inv.id ? null : inv.id); setPayAmount(String((inv.amount - inv.amountPaid).toFixed(2))) }}
+                      onClick={() => { setPayingId(payingId === inv.id ? null : inv.id); setPayAmount(String((inv.amount - paidAmount).toFixed(2))) }}
                       className="px-3 py-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/30 text-emerald-400 text-xs font-semibold transition-colors"
                     >
-                      💵 {(inv.amount - inv.amountPaid).toFixed(2)} {inv.currency}
+                      💵 {(inv.amount - paidAmount).toFixed(2)} {inv.currency}
                     </button>
                   )}
                   <button
