@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { Suspense, useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { useSearchParams, useRouter } from 'next/navigation'
 import {
@@ -407,7 +407,7 @@ function POCard({
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
-export default function PurchaseOrdersPage() {
+function PurchaseOrdersPageContent() {
   const { lang } = useLang()
   const isAr     = lang === 'ar'
   const isFr     = lang === 'fr'
@@ -607,5 +607,13 @@ export default function PurchaseOrdersPage() {
         />
       )}
     </div>
+  )
+}
+
+export default function PurchaseOrdersPage() {
+  return (
+    <Suspense fallback={<div className="p-6"><Loader2 className="w-6 h-6 animate-spin text-emerald-500" /></div>}>
+      <PurchaseOrdersPageContent />
+    </Suspense>
   )
 }
