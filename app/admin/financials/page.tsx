@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import Link from 'next/link'
 import { useLang } from '../lang-context'
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip,
@@ -66,6 +67,8 @@ const T = {
     workingDays: 'أيام العمل',
     noStaff: 'لا يوجد موظفون',
     active: 'نشط', offDuty: 'خارج الوردية',
+    achatsTitle: 'المشتريات — حسابات الموردين', achatsSub: 'مستحق للموردين / مصاريف الفترة',
+    achatsUnpaid: 'غير مدفوع', achatsSpent: 'المصروف',
   },
   fr: {
     title: 'Finances & Rapports',
@@ -92,6 +95,8 @@ const T = {
     workingDays: 'Jours ouvrés',
     noStaff: 'Aucun employé',
     active: 'Actif', offDuty: 'Hors service',
+    achatsTitle: 'Achats — Comptes fournisseurs', achatsSub: 'Dû aux fournisseurs / dépenses de la période',
+    achatsUnpaid: 'Non payé', achatsSpent: 'Dépensé',
   },
   en: {
     title: 'Finances & Reports',
@@ -118,6 +123,8 @@ const T = {
     workingDays: 'Working Days',
     noStaff: 'No staff found',
     active: 'Active', offDuty: 'Off Duty',
+    achatsTitle: 'Purchases — Accounts Payable', achatsSub: 'Owed to suppliers / spend this period',
+    achatsUnpaid: 'Unpaid', achatsSpent: 'Spent',
   },
   es: {
     title: 'Finanzas e Informes',
@@ -144,6 +151,8 @@ const T = {
     workingDays: 'Días laborables',
     noStaff: 'Sin empleados',
     active: 'Activo', offDuty: 'Fuera de turno',
+    achatsTitle: 'Compras — Cuentas por pagar', achatsSub: 'Adeudado a proveedores / gasto del período',
+    achatsUnpaid: 'Sin pagar', achatsSpent: 'Gastado',
   },
 }
 
@@ -178,6 +187,7 @@ export default function FinancialsPage() {
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [loadingReport, setLoadingReport] = useState(true)
   const [loadingExp,    setLoadingExp]    = useState(true)
+  const [achatsSummary, setAchatsSummary] = useState<{ unpaidTotal: number; spendThisPeriod: number } | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ amount: '', category: 'supplies', description: '', date: new Date().toISOString().slice(0,10) })
   const [saving, setSaving]   = useState(false)
@@ -215,6 +225,15 @@ export default function FinancialsPage() {
   }, [period, customFrom, customTo])
 
   useEffect(() => { fetchReport(); fetchExpenses() }, [fetchReport, fetchExpenses])
+
+  useEffect(() => {
+    fetch(`/api/admin/achats/report?period=${period === 'today' ? 'week' : period === 'custom' ? 'month' : period}`, {
+      headers: authHeader(),
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setAchatsSummary(d.totals) })
+      .catch(() => {})
+  }, [period])
 
   // ── Fetch payroll ───────────────────────────────────────────────────────────
   const fetchPayroll = useCallback(async () => {
@@ -363,6 +382,27 @@ export default function FinancialsPage() {
                   <p className={`text-3xl font-extrabold ${profitColor}`}>{fmt(report.netProfit, currency)}</p>
                 </div>
               </div>
+
+              {achatsSummary && (
+                <Link href="/admin/achats" className="block bg-white rounded-2xl p-5 shadow-sm border border-slate-100 hover:border-violet-300 transition-colors">
+                  <div className="flex items-center justify-between flex-wrap gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-600 mb-1">{t.achatsTitle}</p>
+                      <p className="text-xs text-slate-400">{t.achatsSub}</p>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        <p className="text-xs text-slate-400">{t.achatsUnpaid}</p>
+                        <p className="font-bold text-amber-600">{fmt(achatsSummary.unpaidTotal, currency)}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-slate-400">{t.achatsSpent}</p>
+                        <p className="font-bold text-slate-800">{fmt(achatsSummary.spendThisPeriod, currency)}</p>
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              )}
 
               {report.chart.length > 0 ? (
                 <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">

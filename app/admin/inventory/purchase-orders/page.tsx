@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { Suspense, useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
+import { useSearchParams, useRouter } from 'next/navigation'
 import {
   ClipboardList, Plus, ArrowLeft, X, CheckCircle2,
   Clock, Package, Truck, Loader2, ChevronDown,
@@ -70,18 +71,19 @@ function POStatusBadge({ status }: { status: string }) {
 // ── Create PO Modal ───────────────────────────────────────────────────────────
 
 function CreatePOModal({
-  suppliers, stockItems, onClose, onSave, lang
+  suppliers, stockItems, onClose, onSave, lang, prefillLine
 }: {
   suppliers:  Supplier[]
   stockItems: StockItem[]
   onClose:    () => void
   onSave:     (data: { supplierId: string; notes: string; items: Omit<POItem, 'totalCost'>[] }) => Promise<void>
   lang:       string
+  prefillLine?: { stockItemName: string; unit: string; quantityOrdered: number; unitCost: number }
 }) {
   const [supplierId, setSupplierId] = useState(suppliers[0]?.id ?? '')
   const [notes,      setNotes]      = useState('')
   const [lines, setLines] = useState<{ stockItemName: string; unit: string; quantityOrdered: number; unitCost: number }[]>([
-    { stockItemName: '', unit: 'kg', quantityOrdered: 1, unitCost: 0 }
+    prefillLine ?? { stockItemName: '', unit: 'kg', quantityOrdered: 1, unitCost: 0 }
   ])
   const [loading, setLoading] = useState(false)
   const [error,   setError]   = useState('')
@@ -405,12 +407,15 @@ function POCard({
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
-export default function PurchaseOrdersPage() {
+function PurchaseOrdersPageContent() {
   const { lang } = useLang()
   const isAr     = lang === 'ar'
   const isFr     = lang === 'fr'
   const L = (ar: string, fr: string, en: string) =>
     isAr ? ar : isFr ? fr : en
+
+  const searchParams = useSearchParams()
+  const router = useRouter()
 
   const [orders,     setOrders]     = useState<PurchaseOrder[]>([])
   const [suppliers,  setSuppliers]  = useState<Supplier[]>([])
@@ -418,6 +423,20 @@ export default function PurchaseOrdersPage() {
   const [loading,    setLoading]    = useState(true)
   const [showCreate, setShowCreate] = useState(false)
   const [statusFilter, setStatusFilter] = useState('')
+
+  const fromRequisitionId = searchParams.get('fromRequisition')
+  const prefillLine = fromRequisitionId ? {
+    stockItemName:   searchParams.get('itemName') ?? '',
+    unit:            searchParams.get('unit') ?? 'kg',
+    quantityOrdered: Number(searchParams.get('quantity') ?? '1'),
+    unitCost:        searchParams.get('estimatedPrice') && searchParams.get('quantity')
+      ? Number(searchParams.get('estimatedPrice')) / Number(searchParams.get('quantity'))
+      : 0,
+  } : undefined
+
+  useEffect(() => {
+    if (fromRequisitionId) setShowCreate(true)
+  }, [fromRequisitionId])
 
   function auth() {
     return { Authorization: `Bearer ${localStorage.getItem('token')}` }
@@ -446,9 +465,10 @@ export default function PurchaseOrdersPage() {
     const res = await fetch('/api/v1/inventory/purchase-orders', {
       method:  'POST',
       headers: { ...auth(), 'Content-Type': 'application/json' },
-      body:    JSON.stringify(data)
+      body:    JSON.stringify({ ...data, ...(fromRequisitionId && { requisitionId: fromRequisitionId }) })
     })
     if (!res.ok) { const e = await res.json(); throw new Error(e.error) }
+    if (fromRequisitionId) router.replace('/admin/inventory/purchase-orders')
     await fetchAll()
   }
 
@@ -581,10 +601,19 @@ export default function PurchaseOrdersPage() {
           suppliers={suppliers}
           stockItems={stockItems}
           lang={lang}
-          onClose={() => setShowCreate(false)}
+          prefillLine={prefillLine}
+          onClose={() => { setShowCreate(false); if (fromRequisitionId) router.replace('/admin/inventory/purchase-orders') }}
           onSave={handleCreate}
         />
       )}
     </div>
+  )
+}
+
+export default function PurchaseOrdersPage() {
+  return (
+    <Suspense fallback={<div className="p-6"><Loader2 className="w-6 h-6 animate-spin text-emerald-500" /></div>}>
+      <PurchaseOrdersPageContent />
+    </Suspense>
   )
 }
