@@ -1582,6 +1582,10 @@ model PurchaseOrder {
   items     PurchaseOrderItem[]
   totalCost Float    @default(0)
 
+  // Optional link back to the requisition this PO was created from.
+  // Null when the PO was created directly (no requisition involved).
+  requisitionId String? @db.ObjectId
+
   // Set when the PO is sent via WhatsApp/n8n webhook
   sentViaWhatsApp Boolean  @default(false)
   sentAt          DateTime?
@@ -1593,6 +1597,7 @@ model PurchaseOrder {
   @@index([supplierId])
   @@index([status])
   @@index([createdAt])
+  @@index([requisitionId])
 }
 
 // ─── Demo Requests — inbound leads from /demo page ───────────────────────────
@@ -1797,9 +1802,21 @@ model SupplierInvoice {
   currency      String   @default("MAD")
   issueDate     DateTime
   dueDate       DateTime?
+  // unpaid | partial | paid | overdue — recomputed whenever a payment is
+  // recorded (see src/services/supplierInvoiceStatus.ts). Still a plain
+  // stored field (not a Prisma computed field) so existing reads/filters
+  // keep working unchanged.
   status        String   @default("unpaid")
   documentUrl   String?
   notes         String?
+
+  // Optional link back to the PO this invoice was auto-generated from.
+  // Null for manual/standalone invoices (today's only flow).
+  purchaseOrderId String? @db.ObjectId
+  // Running total of payments recorded against this invoice.
+  amountPaid      Float   @default(0)
+
+  payments      SupplierPayment[]
 
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -1808,6 +1825,26 @@ model SupplierInvoice {
   @@index([cafeId])
   @@index([cafeId, status])
   @@index([dueDate])
+  @@index([purchaseOrderId])
+}
+
+// One payment (partial or full) recorded against a SupplierInvoice.
+model SupplierPayment {
+  id        String          @id @default(auto()) @map("_id") @db.ObjectId
+  invoiceId String          @db.ObjectId
+  invoice   SupplierInvoice @relation(fields: [invoiceId], references: [id])
+  cafeId    String          @db.ObjectId
+
+  amount    Float
+  paidAt    DateTime @default(now())
+  // cash | card | virement
+  method    String   @default("cash")
+  notes     String?
+
+  createdAt DateTime @default(now())
+
+  @@index([invoiceId])
+  @@index([cafeId])
 }
 
 // ─── Purchase Requisitions (I7tiyajat) ────────────────────────────────────────
@@ -1826,6 +1863,9 @@ model PurchaseRequisition {
   notes          String?
   status         String   @default("pending")
 
+  // Set once a PurchaseOrder is created from this requisition.
+  purchaseOrderId String? @db.ObjectId
+
   approvedAt     DateTime?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -1833,6 +1873,7 @@ model PurchaseRequisition {
   @@index([cafeId])
   @@index([cafeId, status])
   @@index([cafeId, urgency])
+  @@index([purchaseOrderId])
 }
 
 // ─── WhatsApp Re-engagement Customers ────────────────────────────────────────
