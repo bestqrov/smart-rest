@@ -14,14 +14,20 @@ const DEFAULT_WINDOW_DAYS = 180
 export async function computeCustomerMetrics(tenantId: string, windowDays = DEFAULT_WINDOW_DAYS): Promise<CustomerMetric[]> {
   const since = new Date(Date.now() - windowDays * 24 * 60 * 60 * 1000)
 
-  const [customers, orders, loyaltyAccounts] = await Promise.all([
+  const [customers, orders, loyaltyAccounts, cafe] = await Promise.all([
     prisma.cafeCustomer.findMany({ where: { cafeId: tenantId } }),
     prisma.order.findMany({
       where:  { cafeId: tenantId, isPaid: true, createdAt: { gte: since }, customerPhone: { not: null } },
       select: { customerPhone: true, totalPrice: true },
     }),
     prisma.loyaltyAccount.findMany({ where: { cafeId: tenantId }, select: { phone: true, lifetimePoints: true } }),
+    prisma.cafe.findUnique({
+      where:  { id: tenantId },
+      select: { loyaltyTierSilverThreshold: true, loyaltyTierGoldThreshold: true },
+    }),
   ])
+  const silverThreshold = cafe?.loyaltyTierSilverThreshold ?? 500
+  const goldThreshold = cafe?.loyaltyTierGoldThreshold ?? 2000
 
   const spendByPhone = new Map<string, { totalSpend: number; orderCount: number }>()
   for (const order of orders) {
@@ -42,7 +48,7 @@ export async function computeCustomerMetrics(tenantId: string, windowDays = DEFA
       createdAt: customer.createdAt, lastVisit: customer.lastVisit,
       daysSinceLastVisit: Math.floor((now - customer.lastVisit.getTime()) / (24 * 60 * 60 * 1000)),
       totalSpend: spend.totalSpend, orderCount: spend.orderCount,
-      loyaltyTier: getTier(loyaltyByPhone.get(customer.phone) ?? 0),
+      loyaltyTier: getTier(loyaltyByPhone.get(customer.phone) ?? 0, silverThreshold, goldThreshold),
     }
   })
 }

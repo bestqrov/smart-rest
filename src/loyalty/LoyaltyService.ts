@@ -11,22 +11,36 @@ import { publishStandardEvent } from '../core'
 
 export type MembershipTier = 'BRONZE' | 'SILVER' | 'GOLD'
 
-// Thresholds on lifetime points earned (never lowered by redemption).
-const TIER_THRESHOLDS: { tier: MembershipTier; min: number }[] = [
-  { tier: 'GOLD',   min: 2000 },
-  { tier: 'SILVER', min: 500 },
-  { tier: 'BRONZE', min: 0 },
-]
-
-export function getTier(lifetimePoints: number): MembershipTier {
-  return TIER_THRESHOLDS.find(t => lifetimePoints >= t.min)!.tier
+// Thresholds are now per-cafe (Cafe.loyaltyTierSilverThreshold /
+// loyaltyTierGoldThreshold), configurable via the Settings tab in
+// /admin/loyalty. This function takes them as parameters instead of a
+// hardcoded array so callers stay explicit about which cafe's config
+// they're using.
+export function getTier(lifetimePoints: number, silverThreshold: number, goldThreshold: number): MembershipTier {
+  if (lifetimePoints >= goldThreshold)   return 'GOLD'
+  if (lifetimePoints >= silverThreshold) return 'SILVER'
+  return 'BRONZE'
 }
 
-// Default earning rule: 10 currency units = 1 point, rounded down — same
-// rate already hardcoded in routes/orders.ts's COMPLETED handler (reused
-// as the canonical default here, not diverging from it).
-export function calculateEarnedPoints(totalPrice: number): number {
-  return Math.floor(totalPrice / 10)
+// Earning rule: `pointsPerCurrency` currency units = 1 point, rounded down.
+// Now per-cafe (Cafe.loyaltyPointsPerCurrency, default 10), configurable via
+// the Settings tab in /admin/loyalty — was previously a hardcoded `10` here
+// AND separately hardcoded again (and never kept in sync) in
+// routes/orders.ts, which is the bug Task 3 fixes.
+export function calculateEarnedPoints(totalPrice: number, pointsPerCurrency: number): number {
+  return Math.floor(totalPrice / pointsPerCurrency)
+}
+
+async function getLoyaltyConfig(cafeId: string) {
+  const cafe = await prisma.cafe.findUnique({
+    where:  { id: cafeId },
+    select: { loyaltyPointsPerCurrency: true, loyaltyTierSilverThreshold: true, loyaltyTierGoldThreshold: true },
+  })
+  return {
+    pointsPerCurrency: cafe?.loyaltyPointsPerCurrency ?? 10,
+    silverThreshold:   cafe?.loyaltyTierSilverThreshold ?? 500,
+    goldThreshold:     cafe?.loyaltyTierGoldThreshold ?? 2000,
+  }
 }
 
 async function getOrCreateAccount(cafeId: string, phone: string) {
@@ -39,11 +53,12 @@ async function getOrCreateAccount(cafeId: string, phone: string) {
 
 // ─── Earn ───────────────────────────────────────────────────────────────────
 export async function earnPoints(cafeId: string, phone: string, totalPrice: number, orderId?: string) {
-  const points = calculateEarnedPoints(totalPrice)
+  const config = await getLoyaltyConfig(cafeId)
+  const points = calculateEarnedPoints(totalPrice, config.pointsPerCurrency)
   if (points <= 0) return getOrCreateAccount(cafeId, phone)
 
   const before = await getOrCreateAccount(cafeId, phone)
-  const tierBefore = getTier(before.lifetimePoints)
+  const tierBefore = getTier(before.lifetimePoints, config.silverThreshold, config.goldThreshold)
 
   const updated = await prisma.loyaltyAccount.update({
     where: { cafeId_phone: { cafeId, phone } },
@@ -58,10 +73,23 @@ export async function earnPoints(cafeId: string, phone: string, totalPrice: numb
     tenantId: cafeId, resourceId: updated.id, metadata: { phone, points, orderId },
   }, 'loyalty')
 
-  const tierAfter = getTier(updated.lifetimePoints)
+  const tierAfter = getTier(updated.lifetimePoints, config.silverThreshold, config.goldThreshold)
   if (tierAfter !== tierBefore) {
     publishStandardEvent('LoyaltyTierChanged', {
       tenantId: cafeId, resourceId: updated.id, metadata: { phone, from: tierBefore, to: tierAfter },
+    }, 'loyalty')
+  }
+
+  // Newly-eligible rewards: active rewards whose pointsCost the customer just
+  // crossed with this earn (was below before.points, now at or above the new
+  // balance). WhatsAppEngine listens for this event and sends one message
+  // covering every reward that became reachable in this single earn.
+  const activeRewards = await prisma.loyaltyReward.findMany({ where: { cafeId, isActive: true } })
+  const newlyEligible = activeRewards.filter(r => before.points < r.pointsCost && r.pointsCost <= updated.points)
+  if (newlyEligible.length > 0) {
+    publishStandardEvent('LoyaltyRewardEligible', {
+      tenantId: cafeId, resourceId: updated.id,
+      metadata: { phone, rewardNames: newlyEligible.map(r => r.name), currentPoints: updated.points },
     }, 'loyalty')
   }
 
@@ -93,10 +121,18 @@ export async function redeemPoints(cafeId: string, phone: string, points: number
 }
 
 export async function getTierInfo(cafeId: string, phone: string) {
-  const account = await prisma.loyaltyAccount.findUnique({ where: { cafeId_phone: { cafeId, phone } } })
+  const [account, config] = await Promise.all([
+    prisma.loyaltyAccount.findUnique({ where: { cafeId_phone: { cafeId, phone } } }),
+    getLoyaltyConfig(cafeId),
+  ])
   const lifetimePoints = account?.lifetimePoints ?? 0
-  const tier = getTier(lifetimePoints)
-  const next = TIER_THRESHOLDS.filter(t => t.min > lifetimePoints).sort((a, b) => a.min - b.min)[0]
+  const tier = getTier(lifetimePoints, config.silverThreshold, config.goldThreshold)
+
+  const thresholds: { tier: MembershipTier; min: number }[] = [
+    { tier: 'GOLD',   min: config.goldThreshold },
+    { tier: 'SILVER', min: config.silverThreshold },
+  ]
+  const next = thresholds.filter(t => t.min > lifetimePoints).sort((a, b) => a.min - b.min)[0]
 
   return {
     tier,
