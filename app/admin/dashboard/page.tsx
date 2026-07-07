@@ -32,6 +32,7 @@ export default function DashboardPage() {
     recentPurchases: Array<{ id: string; orderNumber: string; status: string; total: number; createdAt: string }>
   } | null>(null)
   const socketRef = useRef<Socket | null>(null)
+  const reloadTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   function authHeader() {
     return { Authorization: `Bearer ${localStorage.getItem('token')}` }
@@ -41,6 +42,14 @@ export default function DashboardPage() {
     fetch('/api/admin/stats', { headers: authHeader() })
       .then(r => r.ok ? r.json() : null)
       .then(s => { if (s) { setStats(s); setLoading(false) } })
+  }
+
+  // Real-time analytics: socket events trigger a full stats reload (chart,
+  // revenue, top products, recent orders — not just the counters), debounced
+  // so a rush of orders coalesces into one request.
+  function scheduleStatsReload() {
+    if (reloadTimer.current) clearTimeout(reloadTimer.current)
+    reloadTimer.current = setTimeout(loadStats, 1500)
   }
 
   useEffect(() => {
@@ -81,9 +90,11 @@ export default function DashboardPage() {
     socket.on('waiter_called',       (p: WaiterCall) => setCalls(c => [p, ...c]))
     socket.on('waiter_acknowledged', (p: any)        => setCalls(c => c.filter(x => x.id !== p.id)))
 
-    // Real-time stats updates
+    // Real-time stats updates: bump the counters instantly for feedback,
+    // then pull fresh analytics so revenue/chart/recent orders follow live.
     socket.on('new_order', () => {
       setStats((s: any) => s ? { ...s, activeOrders: (s.activeOrders ?? 0) + 1 } : s)
+      scheduleStatsReload()
     })
     socket.on('order_status_update', ({ status }: { status: string }) => {
       if (status === 'COMPLETED') {
@@ -92,12 +103,18 @@ export default function DashboardPage() {
           activeOrders:     Math.max(0, (s.activeOrders ?? 0) - 1),
           ordersCountToday: (s.ordersCountToday ?? 0) + 1,
         } : s)
+        scheduleStatsReload()
       } else if (status === 'CANCELLED') {
         setStats((s: any) => s ? { ...s, activeOrders: Math.max(0, (s.activeOrders ?? 0) - 1) } : s)
+        scheduleStatsReload()
       }
     })
 
-    return () => { socket.disconnect(); clearInterval(refreshId) }
+    return () => {
+      socket.disconnect()
+      clearInterval(refreshId)
+      if (reloadTimer.current) clearTimeout(reloadTimer.current)
+    }
   }, [])
 
   function ackCall(c: WaiterCall) {

@@ -907,7 +907,10 @@ export default function LandingPage() {
 
   return (
     <main dir={isRtl ? 'rtl' : 'ltr'} data-theme={theme} className="min-h-screen font-sans overflow-x-hidden" style={{ background: 'var(--cb)', color: 'var(--ct)' }}>
-      <style>{`
+      {/* dangerouslySetInnerHTML: as a JSX text child, the server HTML-escapes
+          the quotes in main[data-theme="…"] (&quot;) while the client doesn't,
+          which throws a hydration "text content does not match" error. */}
+      <style dangerouslySetInnerHTML={{ __html: `
         @keyframes heroFadeUp {
           from { opacity: 0; transform: translateY(22px); }
           to   { opacity: 1; transform: translateY(0);    }
@@ -943,7 +946,7 @@ export default function LandingPage() {
           --cbr: #bfdbfe;
           --ct: #0f172a; --ctm: #475569;
         }
-      `}</style>
+      ` }} />
 
       <CookieBanner lang={lang} t={t} />
 
