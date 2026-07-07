@@ -62,6 +62,7 @@ export const A = {
     kitchenKds:    'شاشة المطبخ',
     waiterView:    'شاشة النادل',
     miniPos:       'Mini POS',
+    comptoirPos:   'كاسة الكونطوار',
 
     // Billing status
     statusTrial:   'تجريبي',
@@ -239,6 +240,7 @@ export const A = {
     kitchenKds:    'Kitchen KDS',
     waiterView:    'Waiter View',
     miniPos:       'Mini POS',
+    comptoirPos:   'Comptoir POS',
 
     statusTrial:   'Trial',
     statusActive:  'Active',
@@ -405,6 +407,7 @@ export const A = {
     kitchenKds:    'Cuisine KDS',
     waiterView:    'Vue serveur',
     miniPos:       'Mini POS',
+    comptoirPos:   'Caisse comptoir',
 
     statusTrial:   'Essai',
     statusActive:  'Actif',
@@ -571,6 +574,7 @@ export const A = {
     kitchenKds:    'Cocina KDS',
     waiterView:    'Vista mesero',
     miniPos:       'Mini POS',
+    comptoirPos:   'Caja mostrador',
 
     statusTrial:   'Prueba',
     statusActive:  'Activo',

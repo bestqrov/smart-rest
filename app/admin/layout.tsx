@@ -19,9 +19,10 @@ import AdminSidebarNav from './AdminSidebarNav'
 // AdminSidebarNav.tsx — shared by the desktop sidebar and the mobile drawer.
 
 const STAFF_LINKS = [
-  { href: '/kitchen', icon: ChefHat,  key: 'kitchenKds' },
-  { href: '/waiter',  icon: Bell,     key: 'waiterView'  },
-  { href: '/pos',     icon: Monitor,  key: 'miniPos'     },
+  { href: '/kitchen',  icon: ChefHat,  key: 'kitchenKds'  },
+  { href: '/waiter',   icon: Bell,     key: 'waiterView'   },
+  { href: '/pos',      icon: Monitor,  key: 'miniPos'      },
+  { href: '/comptoir', icon: Banknote, key: 'comptoirPos'  },
 ] as const
 
 // ── Types ─────────────────────────────────────────────────────────────────────
