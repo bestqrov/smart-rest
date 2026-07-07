@@ -47,6 +47,21 @@ existing, battle-tested code** into the shared service; do not rebuild.
 | Home | **New standalone git repo**, own Docker container on Coolify, own MongoDB database |
 | Provider API keys | **Platform-owned** (env vars of the service). Per-product/per-tenant quotas. No BYOK in Phase 1 |
 
+### Amendments (2026-07-07, user-directed at implementation kickoff)
+
+- **ODM: Mongoose (@nestjs/mongoose), not Prisma.** The user's implementation
+  brief asked for "MongoDB schemas + NestJS best practices" with the
+  schema/DTO/repository/service decomposition — the canonical
+  @nestjs/mongoose stack. Supersedes this spec's earlier Prisma preference.
+- **Database layer scope expanded beyond Phase 1.** The implemented data
+  layer covers 6 entities: AiProvider, AiUsage (Phase 1), plus
+  PromptTemplate, BusinessContext, AutomationRule, AutomationExecution
+  (Phase 2 data models, built early at the user's request). Phase 2
+  *behavior* (prompt-resolution endpoints, the automation dispatcher/
+  executor) remains future work; only the schemas/services exist.
+- Repo created at `smartsuite-ai-core` (sibling directory; remote to be
+  created on GitHub when ready to push).
+
 ## 1. Requirements analysis
 
 ### Functional (Phase 1)
