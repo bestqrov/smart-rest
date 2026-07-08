@@ -9,6 +9,7 @@ import {
   AlertTriangle, Loader2, Zap, ChefHat, Bell, Monitor, Gift,
   Copy, Check, ExternalLink, Building2,
   Banknote, Wallet, Languages,
+  Cloud, CloudRain, CloudSnow, CloudLightning, CloudFog, Sun,
 } from 'lucide-react'
 import { AdminLangProvider, useLang, type AdminLang } from './lang-context'
 import { A, type AdminT } from '@/lib/adminI18n'
@@ -19,10 +20,10 @@ import AdminSidebarNav from './AdminSidebarNav'
 // AdminSidebarNav.tsx — shared by the desktop sidebar and the mobile drawer.
 
 const STAFF_LINKS = [
-  { href: '/kitchen',  icon: ChefHat,  key: 'kitchenKds'  },
-  { href: '/waiter',   icon: Bell,     key: 'waiterView'   },
-  { href: '/pos',      icon: Monitor,  key: 'miniPos'      },
-  { href: '/comptoir', icon: Banknote, key: 'comptoirPos'  },
+  { href: '/kitchen',  icon: ChefHat,  key: 'kitchenKds',  color: 'text-orange-500 bg-orange-50 hover:bg-orange-100'  },
+  { href: '/waiter',   icon: Bell,     key: 'waiterView',  color: 'text-violet-500 bg-violet-50 hover:bg-violet-100'  },
+  { href: '/pos',      icon: Monitor,  key: 'miniPos',     color: 'text-blue-500 bg-blue-50 hover:bg-blue-100'        },
+  { href: '/comptoir', icon: Banknote, key: 'comptoirPos', color: 'text-emerald-500 bg-emerald-50 hover:bg-emerald-100' },
 ] as const
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -542,20 +543,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
           />
         </nav>
 
-        <div className="px-3 pb-3 border-t border-[#243460] pt-3">
-          <p className="text-xs text-gray-600 uppercase tracking-widest px-2 mb-2">{t.staffScreens}</p>
-          {STAFF_LINKS.map(item => (
-            <a key={item.href} href={item.href} target="_blank" rel="noopener noreferrer"
-              className="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-400 hover:bg-[#243460] hover:text-white transition-colors group mb-1">
-              <item.icon className="w-4 h-4 shrink-0" />
-              <span className="text-xs font-medium flex-1">{t[item.key as keyof AdminT]}</span>
-              <span className="text-gray-700 text-xs group-hover:text-gray-500">↗</span>
-            </a>
-          ))}
-        </div>
-
         <div className="px-3 py-3 border-t border-[#243460] space-y-1">
-          <LangSwitcherSidebar />
           <button onClick={logout}
             className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-gray-400 hover:bg-[#243460] hover:text-red-400 transition-colors">
             <LogOut className="w-5 h-5" />
@@ -638,20 +626,40 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
         </div>
       )}
 
-      {/* ── Page content ──────────────────────────────────────────── */}
-      <main className="flex-1 overflow-y-auto pt-14 md:pt-0 relative">
-        {/* Watermark — cafe logo at 5% opacity fixed behind all content */}
-        {cafe?.logoUrl && (
-          <div
-            aria-hidden
-            className="pointer-events-none fixed inset-0 z-0 bg-center bg-no-repeat bg-contain opacity-[0.05]"
-            style={{ backgroundImage: `url(${cafe.logoUrl})` }}
-          />
-        )}
-        <div className="relative z-10 h-full">
-          {children}
-        </div>
-      </main>
+      {/* ── Right column: desktop topbar + page content ─────────────── */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+
+        {/* ── Desktop topbar ─────────────────────────────────────────── */}
+        <header className="hidden md:flex items-center justify-end gap-3 px-5 py-2 bg-white border-b border-gray-200 shrink-0">
+          <AdminWeatherWidget authHeader={authHeader} />
+          <div className="w-px h-6 bg-gray-200" />
+          <div className="flex items-center gap-1.5">
+            {STAFF_LINKS.map(item => (
+              <a key={item.href} href={item.href} target="_blank" rel="noopener noreferrer"
+                title={t[item.key as keyof AdminT]}
+                className={`p-2 rounded-lg transition-colors ${item.color}`}>
+                <item.icon className="w-4 h-4" />
+              </a>
+            ))}
+          </div>
+          <div className="w-px h-6 bg-gray-200" />
+          <TopbarLangSwitcher />
+        </header>
+
+        <main className="flex-1 overflow-y-auto pt-14 md:pt-0 relative">
+          {/* Watermark — cafe logo at 5% opacity fixed behind all content */}
+          {cafe?.logoUrl && (
+            <div
+              aria-hidden
+              className="pointer-events-none fixed inset-0 z-0 bg-center bg-no-repeat bg-contain opacity-[0.05]"
+              style={{ backgroundImage: `url(${cafe.logoUrl})` }}
+            />
+          )}
+          <div className="relative z-10 h-full">
+            {children}
+          </div>
+        </main>
+      </div>
 
       {/* ── Payment Gate overlay ──────────────────────────────────── */}
       {showPaymentGate && cafe && (
@@ -697,6 +705,74 @@ function LangSwitcherSidebar() {
           </button>
         ))}
       </div>
+    </div>
+  )
+}
+
+// ── TopbarLangSwitcher ──────────────────────────────────────────────────────────
+
+function TopbarLangSwitcher() {
+  const { lang, setLang } = useLang()
+  const LANGS: { code: AdminLang; flag: string }[] = [
+    { code: 'ar', flag: '🇲🇦' },
+    { code: 'en', flag: '🇬🇧' },
+    { code: 'fr', flag: '🇫🇷' },
+    { code: 'es', flag: '🇪🇸' },
+  ]
+  return (
+    <div className="flex items-center gap-1">
+      {LANGS.map(({ code, flag }) => (
+        <button
+          key={code}
+          onClick={() => setLang(code)}
+          title={code.toUpperCase()}
+          className={`px-2 py-1.5 rounded-lg text-sm transition-all ${
+            lang === code ? 'bg-blue-50 ring-1 ring-blue-300' : 'hover:bg-gray-100 opacity-60 hover:opacity-100'
+          }`}
+        >
+          {flag}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+// ── AdminWeatherWidget ───────────────────────────────────────────────────────────
+
+type WeatherData = { available: boolean; city?: string; tempC?: number; condition?: string; icon?: string }
+
+function weatherIcon(condition?: string) {
+  switch (condition) {
+    case 'Rain':
+    case 'Drizzle':      return CloudRain
+    case 'Snow':          return CloudSnow
+    case 'Thunderstorm':  return CloudLightning
+    case 'Clear':          return Sun
+    case 'Mist':
+    case 'Fog':
+    case 'Haze':          return CloudFog
+    default:               return Cloud
+  }
+}
+
+function AdminWeatherWidget({ authHeader }: { authHeader: () => Record<string, string> }) {
+  const [data, setData] = useState<WeatherData | null>(null)
+
+  useEffect(() => {
+    fetch('/api/admin/weather', { headers: authHeader() })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => setData(d))
+      .catch(() => setData({ available: false }))
+  }, [])
+
+  if (!data?.available) return null
+
+  const Icon = weatherIcon(data.condition)
+  return (
+    <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-blue-50 text-blue-700">
+      <Icon className="w-4 h-4 text-blue-500" />
+      <span className="text-sm font-bold">{typeof data.tempC === 'number' ? `${data.tempC}°` : '—'}</span>
+      {data.city && <span className="text-xs text-blue-600 hidden lg:inline">{data.city}</span>}
     </div>
   )
 }

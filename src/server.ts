@@ -36,6 +36,7 @@ import authRouter from './routes/auth'
 import ordersRouter from './routes/orders'
 import billRequestsRouter from './routes/billRequests'
 import adminStatsRouter from './routes/adminStats'
+import adminWeatherRouter from './routes/adminWeather'
 import clientMenuRouter from './routes/clientMenu'
 import waiterCallsRouter from './routes/waiterCalls'
 import financeRouter from './routes/finance'
@@ -242,6 +243,7 @@ async function main() {
   app.use(ordersRouter)
   app.use(billRequestsRouter)
   app.use(adminStatsRouter)
+  app.use(adminWeatherRouter)
   app.use(clientMenuRouter)
   app.use(waiterCallsRouter)
   app.use(financeRouter)

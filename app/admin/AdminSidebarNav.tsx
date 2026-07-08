@@ -109,50 +109,61 @@ export default function AdminSidebarNav({
               <button
                 type="button"
                 onClick={() => setExpanded(isOpen ? null : g.group)}
-                className="w-full flex items-center justify-between px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-gray-300"
+                className="w-full flex items-center justify-between px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-gray-400 hover:text-gray-200"
               >
                 <span>{label}</span>
-                <ChevronDown className={`w-3 h-3 transition-transform ${isOpen ? 'rotate-0' : (isRTL ? 'rotate-90' : '-rotate-90')}`} />
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${isOpen ? 'rotate-0' : (isRTL ? 'rotate-90' : '-rotate-90')}`} />
               </button>
             )}
-            {(isSingleItem || isOpen) && g.items.map(item => {
-              const active = pathname === item.href || pathname.startsWith(item.href + '/')
-              return (
-                <Link key={item.href} href={item.href} onClick={onNavigate} className={linkClass(active)}>
-                  <item.icon className="w-5 h-5 shrink-0" />
-                  <span className="font-medium flex-1">{t[item.key]}</span>
-                  {item.href === '/admin/marketing' && (
-                    <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-violet-500/20 text-violet-400 border border-violet-500/30">
-                      <Sparkles className="w-2.5 h-2.5" />
-                      PRO
-                    </span>
+            {isSingleItem ? g.items.map(item => (
+              <Link key={item.href} href={item.href} onClick={onNavigate} className={linkClass(pathname === item.href || pathname.startsWith(item.href + '/'))}>
+                <item.icon className="w-5 h-5 shrink-0" />
+                <span className="font-medium flex-1">{t[item.key]}</span>
+              </Link>
+            )) : (
+              <div className={`grid transition-all duration-300 ease-in-out ${isOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
+                <div className="overflow-hidden">
+                  {g.items.map(item => {
+                    const active = pathname === item.href || pathname.startsWith(item.href + '/')
+                    return (
+                      <Link key={item.href} href={item.href} onClick={onNavigate} className={linkClass(active)}>
+                        <item.icon className="w-5 h-5 shrink-0" />
+                        <span className="font-medium flex-1">{t[item.key]}</span>
+                        {item.href === '/admin/marketing' && (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-violet-500/20 text-violet-400 border border-violet-500/30">
+                            <Sparkles className="w-2.5 h-2.5" />
+                            PRO
+                          </span>
+                        )}
+                        {active && <ChevronRight className={`w-4 h-4 opacity-70 ${!isRTL ? 'rotate-180' : ''}`} />}
+                      </Link>
+                    )
+                  })}
+                  {g.group === 'growth' && marketplaceEnabled && (
+                    <Link href="/admin/marketplace" onClick={onNavigate}
+                      className={linkClass(pathname.startsWith('/admin/marketplace'))}>
+                      <Store className="w-5 h-5 shrink-0" />
+                      <span className="font-medium flex-1">{lang === 'ar' ? 'المتجر' : 'Marketplace'}</span>
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">AI</span>
+                    </Link>
                   )}
-                  {active && <ChevronRight className={`w-4 h-4 opacity-70 ${!isRTL ? 'rotate-180' : ''}`} />}
-                </Link>
-              )
-            })}
-            {g.group === 'growth' && isOpen && marketplaceEnabled && (
-              <Link href="/admin/marketplace" onClick={onNavigate}
-                className={linkClass(pathname.startsWith('/admin/marketplace'))}>
-                <Store className="w-5 h-5 shrink-0" />
-                <span className="font-medium flex-1">{lang === 'ar' ? 'المتجر' : 'Marketplace'}</span>
-                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">AI</span>
-              </Link>
-            )}
-            {g.group === 'settingsGroup' && cafeInventoryEnabled !== null && (
-              <Link href="/admin/inventory" onClick={onNavigate}
-                className={linkClass(pathname.startsWith('/admin/inventory')) + ' relative'}>
-                <Package className="w-5 h-5 shrink-0" />
-                <span className="font-medium flex-1">
-                  {lang === 'ar' ? 'المخزون' : lang === 'fr' ? 'Inventaire' : 'Inventory'}
-                </span>
-                {!cafeInventoryEnabled && (
-                  <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
-                    <Lock className="w-2.5 h-2.5" />
-                    PRO
-                  </span>
-                )}
-              </Link>
+                  {g.group === 'settingsGroup' && cafeInventoryEnabled !== null && (
+                    <Link href="/admin/inventory" onClick={onNavigate}
+                      className={linkClass(pathname.startsWith('/admin/inventory')) + ' relative'}>
+                      <Package className="w-5 h-5 shrink-0" />
+                      <span className="font-medium flex-1">
+                        {lang === 'ar' ? 'المخزون' : lang === 'fr' ? 'Inventaire' : 'Inventory'}
+                      </span>
+                      {!cafeInventoryEnabled && (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                          <Lock className="w-2.5 h-2.5" />
+                          PRO
+                        </span>
+                      )}
+                    </Link>
+                  )}
+                </div>
+              </div>
             )}
           </div>
         )

@@ -200,7 +200,7 @@ export default function DashboardPage() {
       {/* ── Section 1 — KPI small-boxes (AdminLTE gradient style) ────────── */}
       <div className="shrink-0 grid grid-cols-2 lg:grid-cols-4 gap-3">
         <SmallBox
-          gradient="from-sky-500 to-blue-600" icon={TrendingUp}
+          gradient="from-blue-500 via-blue-600 to-indigo-700" icon={TrendingUp}
           value={`${Number(stats.revenue.today).toFixed(0)} ${currency}`}
           label={t.revenue} sub={`${t.week}: ${Number(stats.revenue.week).toFixed(0)}`}
           href="/admin/financials" moreInfo={t.moreInfo} isRTL={isRTL}
