@@ -280,6 +280,7 @@ export type PlatformEventName =
   | 'LoyaltyTierChanged'
   | 'LoyaltyRewardCreated'
   | 'LoyaltyRewardRedeemed'
+  | 'LoyaltyRewardEligible'
   // Reviews & Reputation
   | 'ReviewSubmitted'
   | 'ReviewFlaggedNegative'

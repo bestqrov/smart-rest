@@ -12,11 +12,12 @@ import { useLang } from '../lang-context'
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface LoyaltyCustomer {
-  id:        string
-  phone:     string
-  points:    number
-  createdAt: string
-  updatedAt: string
+  id:             string
+  phone:          string
+  points:         number
+  lifetimePoints: number
+  createdAt:      string
+  updatedAt:      string
 }
 
 interface LedgerEntry {
@@ -28,9 +29,10 @@ interface LedgerEntry {
 }
 
 interface CustomerDetail {
-  phone:   string
-  points:  number
-  ledger:  LedgerEntry[]
+  phone:          string
+  points:         number
+  lifetimePoints: number
+  ledger:         LedgerEntry[]
 }
 
 interface CustomersResponse {
@@ -39,15 +41,6 @@ interface CustomersResponse {
   page:     number
   pages:    number
 }
-
-// ─── Static reward tiers ──────────────────────────────────────────────────────
-
-const REWARDS = [
-  { id: 'r1', pts: 50,  icon: '☕', label: { ar: 'مشروب مجاني',    fr: 'Boisson offerte',     en: 'Free drink',       es: 'Bebida gratis'    } },
-  { id: 'r2', pts: 100, icon: '🍰', label: { ar: 'حلوى مجانية',    fr: 'Dessert offert',      en: 'Free dessert',     es: 'Postre gratis'    } },
-  { id: 'r3', pts: 200, icon: '🍽️', label: { ar: 'طبق رئيسي مجاني', fr: 'Plat offert',         en: 'Free main dish',   es: 'Plato gratis'     } },
-  { id: 'r4', pts: 500, icon: '🎉', label: { ar: 'وجبة كاملة للاثنين', fr: 'Repas complet ×2',  en: 'Full meal for 2',  es: 'Comida completa ×2' } },
-]
 
 // ─── i18n ─────────────────────────────────────────────────────────────────────
 
@@ -89,6 +82,22 @@ const T = {
     rewardSub:     'الجوائز المتاحة للزبائن عند استبدال نقاطهم',
     rewardPoints:  'نقطة',
     redeem:        'استبدل',
+    rewardName:        'اسم الجائزة',
+    rewardDescription: 'الوصف (اختياري)',
+    rewardCost:        'التكلفة بالنقط',
+    createReward:      'إضافة جائزة',
+    deactivate:        'إلغاء',
+    noRewards:         'لا توجد جوائز بعد — أضف واحدة',
+    tabView:           'العرض',
+    tabSettings:      'الإعدادات',
+    settingsTitle:    'إعدادات نظام النقط',
+    settingsSub:      'حدد معدل الكسب وعتبات المستويات لهاد المطعم',
+    pointsPerCurrency:'المبلغ مقابل نقطة واحدة',
+    silverThreshold:  'عتبة المستوى الفضي (نقط)',
+    goldThreshold:    'عتبة المستوى الذهبي (نقط)',
+    settingsSave:     'حفظ الإعدادات',
+    settingsSaved:    'تم الحفظ بنجاح',
+    settingsError:    'فشل الحفظ',
     tier:          'المستوى',
     bronze:        'برونز',
     silver:        'فضي',
@@ -136,6 +145,22 @@ const T = {
     rewardSub:     'Récompenses disponibles pour vos clients',
     rewardPoints:  'pts',
     redeem:        'Échanger',
+    rewardName:        'Nom de la récompense',
+    rewardDescription: 'Description (optionnel)',
+    rewardCost:        'Coût en points',
+    createReward:      'Ajouter une récompense',
+    deactivate:        'Désactiver',
+    noRewards:         'Aucune récompense — ajoutez-en une',
+    tabView:           'Vue',
+    tabSettings:      'Paramètres',
+    settingsTitle:    'Paramètres du programme de points',
+    settingsSub:      'Définissez le taux de gain et les seuils de niveau pour ce restaurant',
+    pointsPerCurrency:'Montant pour 1 point',
+    silverThreshold:  'Seuil niveau Argent (points)',
+    goldThreshold:    'Seuil niveau Or (points)',
+    settingsSave:     'Enregistrer',
+    settingsSaved:    'Enregistré avec succès',
+    settingsError:    'Échec de l\'enregistrement',
     tier:          'Niveau',
     bronze:        'Bronze',
     silver:        'Argent',
@@ -183,6 +208,22 @@ const T = {
     rewardSub:     'Available rewards for your customers',
     rewardPoints:  'pts',
     redeem:        'Redeem',
+    rewardName:        'Reward name',
+    rewardDescription: 'Description (optional)',
+    rewardCost:        'Cost in points',
+    createReward:      'Add reward',
+    deactivate:        'Deactivate',
+    noRewards:         'No rewards yet — add one',
+    tabView:           'View',
+    tabSettings:      'Settings',
+    settingsTitle:    'Points Program Settings',
+    settingsSub:      'Set the earning rate and tier thresholds for this restaurant',
+    pointsPerCurrency:'Amount for 1 point',
+    silverThreshold:  'Silver Tier Threshold (points)',
+    goldThreshold:    'Gold Tier Threshold (points)',
+    settingsSave:     'Save Settings',
+    settingsSaved:    'Saved successfully',
+    settingsError:    'Failed to save',
     tier:          'Tier',
     bronze:        'Bronze',
     silver:        'Silver',
@@ -230,6 +271,22 @@ const T = {
     rewardSub:     'Recompensas disponibles para tus clientes',
     rewardPoints:  'pts',
     redeem:        'Canjear',
+    rewardName:        'Nombre de la recompensa',
+    rewardDescription: 'Descripción (opcional)',
+    rewardCost:        'Costo en puntos',
+    createReward:      'Añadir recompensa',
+    deactivate:        'Desactivar',
+    noRewards:         'Sin recompensas — añade una',
+    tabView:           'Vista',
+    tabSettings:      'Ajustes',
+    settingsTitle:    'Ajustes del programa de puntos',
+    settingsSub:      'Define la tasa de ganancia y los umbrales de nivel para este restaurante',
+    pointsPerCurrency:'Monto por 1 punto',
+    silverThreshold:  'Umbral nivel Plata (puntos)',
+    goldThreshold:    'Umbral nivel Oro (puntos)',
+    settingsSave:     'Guardar ajustes',
+    settingsSaved:    'Guardado con éxito',
+    settingsError:    'Error al guardar',
     tier:          'Nivel',
     bronze:        'Bronce',
     silver:        'Plata',
@@ -244,11 +301,18 @@ const T = {
 
 type Lang = keyof typeof T
 
-function getTier(pts: number, t: typeof T[Lang]) {
-  if (pts >= 1000) return { label: t.platinum, color: 'text-cyan-400',   bg: 'bg-cyan-500/15',   ring: 'ring-cyan-500/30'   }
-  if (pts >= 500)  return { label: t.gold,     color: 'text-amber-400',  bg: 'bg-amber-500/15',  ring: 'ring-amber-500/30'  }
-  if (pts >= 200)  return { label: t.silver,   color: 'text-slate-300',  bg: 'bg-slate-500/15',  ring: 'ring-slate-500/30'  }
-  return                  { label: t.bronze,   color: 'text-orange-400', bg: 'bg-orange-500/15', ring: 'ring-orange-500/30' }
+interface LoyaltySettings {
+  pointsPerCurrency: number
+  silverThreshold:   number
+  goldThreshold:     number
+}
+
+function getTierBadge(lifetimePoints: number, thresholds: LoyaltySettings | null, t: typeof T[Lang]) {
+  const gold   = thresholds?.goldThreshold   ?? 2000
+  const silver = thresholds?.silverThreshold ?? 500
+  if (lifetimePoints >= gold)   return { label: t.gold,   color: 'text-amber-400',  bg: 'bg-amber-500/15',  ring: 'ring-amber-500/30'  }
+  if (lifetimePoints >= silver) return { label: t.silver, color: 'text-slate-300',  bg: 'bg-slate-500/15',  ring: 'ring-slate-500/30'  }
+  return                        { label: t.bronze, color: 'text-orange-400', bg: 'bg-orange-500/15', ring: 'ring-orange-500/30' }
 }
 
 function fmtDate(iso: string, lang: string) {
@@ -287,12 +351,23 @@ export default function LoyaltyPage() {
   const [profile,        setProfile]        = useState<CustomerDetail | null>(null)
   const [profileLoading, setProfileLoading] = useState(false)
   const [showProfile,    setShowProfile]    = useState(false)
+  const [settings,       setSettings]       = useState<LoyaltySettings | null>(null)
 
   // ── Redeem state ───────────────────────────────────────────────────────────
   const [showRedeem,     setShowRedeem]     = useState(false)
   const [redeemPts,      setRedeemPts]      = useState('')
   const [redeemLoading,  setRedeemLoading]  = useState(false)
   const [redeemMsg,      setRedeemMsg]      = useState<{ ok: boolean; text: string } | null>(null)
+
+  // ── View switcher + rewards catalog state ──────────────────────────────────
+  const [view, setView] = useState<'customers' | 'rewards' | 'settings'>('customers')
+  const [settingsForm,   setSettingsForm]   = useState({ pointsPerCurrency: '10', silverThreshold: '500', goldThreshold: '2000' })
+  const [settingsSaving, setSettingsSaving] = useState(false)
+  const [settingsMsg,    setSettingsMsg]    = useState<{ ok: boolean; text: string } | null>(null)
+  interface LoyaltyRewardRow { id: string; name: string; description: string | null; pointsCost: number; isActive: boolean }
+  const [rewards,        setRewards]        = useState<LoyaltyRewardRow[]>([])
+  const [rewardForm,     setRewardForm]     = useState({ name: '', description: '', pointsCost: '' })
+  const [rewardSaving,   setRewardSaving]   = useState(false)
 
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
   const h = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
@@ -313,6 +388,66 @@ export default function LoyaltyPage() {
   }, [search, page, sortBy, order])
 
   useEffect(() => { loadCustomers() }, [page, sortBy, order])
+
+  const loadRewards = useCallback(async () => {
+    const res = await fetch('/api/loyalty/rewards', { headers: h })
+    if (res.ok) setRewards((await res.json()).rewards ?? [])
+  }, [])
+
+  useEffect(() => { loadRewards() }, [loadRewards])
+
+  async function createNewReward() {
+    if (!rewardForm.name.trim() || !rewardForm.pointsCost) return
+    setRewardSaving(true)
+    try {
+      const res = await fetch('/api/loyalty/rewards', {
+        method: 'POST', headers: h,
+        body: JSON.stringify({
+          name: rewardForm.name.trim(),
+          description: rewardForm.description.trim() || undefined,
+          pointsCost: Number(rewardForm.pointsCost),
+        }),
+      })
+      if (res.ok) { setRewardForm({ name: '', description: '', pointsCost: '' }); await loadRewards() }
+    } finally {
+      setRewardSaving(false)
+    }
+  }
+
+  async function deactivateReward(id: string) {
+    await fetch(`/api/loyalty/rewards/${id}/deactivate`, { method: 'PATCH', headers: h })
+    await loadRewards()
+  }
+
+  useEffect(() => {
+    fetch('/api/loyalty/settings', { headers: h }).then(r => r.ok ? r.json() : null).then(d => {
+      if (d) {
+        setSettings(d)
+        setSettingsForm({ pointsPerCurrency: String(d.pointsPerCurrency), silverThreshold: String(d.silverThreshold), goldThreshold: String(d.goldThreshold) })
+      }
+    })
+  }, [])
+
+  async function saveSettings() {
+    setSettingsSaving(true); setSettingsMsg(null)
+    try {
+      const res = await fetch('/api/loyalty/settings', {
+        method: 'PATCH', headers: h,
+        body: JSON.stringify({
+          pointsPerCurrency: Number(settingsForm.pointsPerCurrency),
+          silverThreshold:   Number(settingsForm.silverThreshold),
+          goldThreshold:     Number(settingsForm.goldThreshold),
+        }),
+      })
+      const data = await res.json()
+      if (res.ok) { setSettings(data); setSettingsMsg({ ok: true, text: t.settingsSaved }) }
+      else        { setSettingsMsg({ ok: false, text: data.error ?? t.settingsError }) }
+    } catch {
+      setSettingsMsg({ ok: false, text: t.settingsError })
+    } finally {
+      setSettingsSaving(false)
+    }
+  }
 
   // debounced search
   useEffect(() => {
@@ -382,7 +517,24 @@ export default function LoyaltyPage() {
         </button>
       </div>
 
+      {/* ════════════════ VIEW SWITCHER ════════════════ */}
+      <div className="flex gap-2">
+        <button onClick={() => setView('customers')}
+          className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${view === 'customers' ? 'bg-violet-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white border border-slate-700'}`}>
+          {t.tabCustomers}
+        </button>
+        <button onClick={() => setView('rewards')}
+          className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${view === 'rewards' ? 'bg-violet-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white border border-slate-700'}`}>
+          {t.tabRewards}
+        </button>
+        <button onClick={() => setView('settings')}
+          className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${view === 'settings' ? 'bg-violet-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white border border-slate-700'}`}>
+          {t.tabSettings}
+        </button>
+      </div>
+
       {/* ════════════════ CUSTOMERS ════════════════ */}
+      {view === 'customers' && (
       <div className="space-y-4">
 
           {/* Controls */}
@@ -442,7 +594,7 @@ export default function LoyaltyPage() {
               </div>
 
               {customers.map((c, i) => {
-                const tier = getTier(c.points, t)
+                const tier = getTierBadge(c.lifetimePoints, settings, t)
                 return (
                   <button key={c.id} onClick={() => openProfile(c.phone)}
                     className={`w-full grid grid-cols-1 md:grid-cols-[1fr_120px_160px_140px] items-center gap-3 px-5 py-4 text-left hover:bg-slate-800/60 active:bg-slate-700/60 transition-colors ${i !== 0 ? 'border-t border-slate-700/60' : ''}`}>
@@ -495,9 +647,93 @@ export default function LoyaltyPage() {
             </div>
           )}
         </div>
+      )}
+
+      {/* ════════════════ REWARDS CATALOG ════════════════ */}
+      {view === 'rewards' && (
+        <div className="space-y-4">
+          <div>
+            <h2 className="text-white font-bold">{t.rewardTitle}</h2>
+            <p className="text-slate-400 text-sm">{t.rewardSub}</p>
+          </div>
+
+          <div className="rounded-2xl border border-slate-700 bg-slate-800/40 p-4 space-y-3 max-w-md">
+            <input value={rewardForm.name} onChange={e => setRewardForm(f => ({ ...f, name: e.target.value }))}
+              placeholder={t.rewardName}
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-violet-500" />
+            <input value={rewardForm.description} onChange={e => setRewardForm(f => ({ ...f, description: e.target.value }))}
+              placeholder={t.rewardDescription}
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-violet-500" />
+            <input type="number" min={1} value={rewardForm.pointsCost} onChange={e => setRewardForm(f => ({ ...f, pointsCost: e.target.value }))}
+              placeholder={t.rewardCost}
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-violet-500" />
+            <button onClick={createNewReward} disabled={rewardSaving || !rewardForm.name.trim() || !rewardForm.pointsCost}
+              className="w-full py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white text-sm font-bold transition-colors">
+              {rewardSaving ? <Loader2 size={14} className="animate-spin mx-auto" /> : t.createReward}
+            </button>
+          </div>
+
+          {rewards.length === 0 ? (
+            <div className="rounded-2xl border border-slate-700 bg-slate-800/40 p-10 text-center text-slate-500 text-sm">{t.noRewards}</div>
+          ) : (
+            <div className="space-y-2">
+              {rewards.map(r => (
+                <div key={r.id} className="flex items-center justify-between rounded-2xl border border-slate-700 bg-slate-800/50 px-4 py-3">
+                  <div>
+                    <p className="text-white font-semibold text-sm">{r.name}</p>
+                    {r.description && <p className="text-slate-500 text-xs mt-0.5">{r.description}</p>}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-violet-400 font-bold text-sm">{r.pointsCost} {t.rewardPoints}</span>
+                    <button onClick={() => deactivateReward(r.id)}
+                      className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-700 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors">
+                      {t.deactivate}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ════════════════ SETTINGS ════════════════ */}
+      {view === 'settings' && (
+        <div className="rounded-2xl border border-slate-700 bg-slate-800/40 p-6 space-y-4 max-w-md">
+          <div>
+            <h3 className="text-white font-semibold">{t.settingsTitle}</h3>
+            <p className="text-slate-400 text-sm">{t.settingsSub}</p>
+          </div>
+          <div>
+            <label className="block text-xs text-slate-400 mb-1">{t.pointsPerCurrency}</label>
+            <input type="number" min={0.01} step={0.5} value={settingsForm.pointsPerCurrency}
+              onChange={e => setSettingsForm(f => ({ ...f, pointsPerCurrency: e.target.value }))}
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white text-sm" />
+          </div>
+          <div>
+            <label className="block text-xs text-slate-400 mb-1">{t.silverThreshold}</label>
+            <input type="number" min={0} step={1} value={settingsForm.silverThreshold}
+              onChange={e => setSettingsForm(f => ({ ...f, silverThreshold: e.target.value }))}
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white text-sm" />
+          </div>
+          <div>
+            <label className="block text-xs text-slate-400 mb-1">{t.goldThreshold}</label>
+            <input type="number" min={0} step={1} value={settingsForm.goldThreshold}
+              onChange={e => setSettingsForm(f => ({ ...f, goldThreshold: e.target.value }))}
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white text-sm" />
+          </div>
+          {settingsMsg && (
+            <p className={`text-sm ${settingsMsg.ok ? 'text-emerald-400' : 'text-rose-400'}`}>{settingsMsg.text}</p>
+          )}
+          <button onClick={saveSettings} disabled={settingsSaving}
+            className="px-5 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white text-sm font-semibold">
+            {settingsSaving ? '…' : t.settingsSave}
+          </button>
+        </div>
+      )}
 
       {/* ════════════════ CUSTOMER PROFILE PANEL ════════════════ */}
-      {showProfile && (
+      {view === 'customers' && showProfile && (
         <>
           {/* Backdrop */}
           <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm" onClick={() => setShowProfile(false)} />
@@ -535,7 +771,7 @@ export default function LoyaltyPage() {
                       <p className="text-sm text-violet-300">{t.rewardPoints}</p>
                     </div>
                     <div className={`mb-1 ${isRTL ? 'mr-auto' : 'ml-auto'}`}>
-                      {(() => { const tier = getTier(profile.points, t); return (
+                      {(() => { const tier = getTierBadge(profile.lifetimePoints, settings, t); return (
                         <span className={`px-3 py-1.5 rounded-full text-sm font-bold ring-1 ${tier.color} ${tier.bg} ${tier.ring}`}>
                           {tier.label}
                         </span>
@@ -591,7 +827,7 @@ export default function LoyaltyPage() {
       )}
 
       {/* ════════════════ REDEEM MODAL ════════════════ */}
-      {showRedeem && profile && (
+      {view === 'customers' && showRedeem && profile && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" dir={isRTL ? 'rtl' : 'ltr'}>
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowRedeem(false)} />
           <div className="relative bg-slate-900 rounded-2xl border border-slate-700 p-6 w-full max-w-sm shadow-2xl space-y-5">
@@ -615,14 +851,14 @@ export default function LoyaltyPage() {
                 placeholder={`${t.redeemMax}: ${profile.points}`}
                 className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white text-lg font-bold placeholder-slate-600 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/40 transition-colors"
               />
-              {/* Quick-select reward buttons */}
+              {/* Quick-select reward buttons — real catalog, not a static list */}
               <div className="flex flex-wrap gap-2 pt-1">
-                {REWARDS.filter(r => r.pts <= profile.points).map(r => (
-                  <button key={r.id} onClick={() => setRedeemPts(String(r.pts))}
+                {rewards.filter(r => r.pointsCost <= profile.points).map(r => (
+                  <button key={r.id} onClick={() => setRedeemPts(String(r.pointsCost))}
                     className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors ${
-                      redeemPts === String(r.pts) ? 'bg-violet-600 text-white' : 'bg-slate-700 text-slate-400 hover:text-white'
+                      redeemPts === String(r.pointsCost) ? 'bg-violet-600 text-white' : 'bg-slate-700 text-slate-400 hover:text-white'
                     }`}>
-                    {r.icon} {r.pts}
+                    🎁 {r.name} · {r.pointsCost}
                   </button>
                 ))}
               </div>

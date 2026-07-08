@@ -6,7 +6,7 @@
 // K52/K60 already use), and K20's getTier for loyalty tier.
 
 import prisma from '../../prisma'
-import { getTier } from '../../loyalty/LoyaltyService'
+import { getTier, getLoyaltyConfig } from '../../loyalty/LoyaltyService'
 import type { CustomerMetric } from './types'
 
 const DEFAULT_WINDOW_DAYS = 180
@@ -14,14 +14,17 @@ const DEFAULT_WINDOW_DAYS = 180
 export async function computeCustomerMetrics(tenantId: string, windowDays = DEFAULT_WINDOW_DAYS): Promise<CustomerMetric[]> {
   const since = new Date(Date.now() - windowDays * 24 * 60 * 60 * 1000)
 
-  const [customers, orders, loyaltyAccounts] = await Promise.all([
+  const [customers, orders, loyaltyAccounts, config] = await Promise.all([
     prisma.cafeCustomer.findMany({ where: { cafeId: tenantId } }),
     prisma.order.findMany({
       where:  { cafeId: tenantId, isPaid: true, createdAt: { gte: since }, customerPhone: { not: null } },
       select: { customerPhone: true, totalPrice: true },
     }),
     prisma.loyaltyAccount.findMany({ where: { cafeId: tenantId }, select: { phone: true, lifetimePoints: true } }),
+    getLoyaltyConfig(tenantId),
   ])
+  const silverThreshold = config.silverThreshold
+  const goldThreshold = config.goldThreshold
 
   const spendByPhone = new Map<string, { totalSpend: number; orderCount: number }>()
   for (const order of orders) {
@@ -42,7 +45,7 @@ export async function computeCustomerMetrics(tenantId: string, windowDays = DEFA
       createdAt: customer.createdAt, lastVisit: customer.lastVisit,
       daysSinceLastVisit: Math.floor((now - customer.lastVisit.getTime()) / (24 * 60 * 60 * 1000)),
       totalSpend: spend.totalSpend, orderCount: spend.orderCount,
-      loyaltyTier: getTier(loyaltyByPhone.get(customer.phone) ?? 0),
+      loyaltyTier: getTier(loyaltyByPhone.get(customer.phone) ?? 0, silverThreshold, goldThreshold),
     }
   })
 }

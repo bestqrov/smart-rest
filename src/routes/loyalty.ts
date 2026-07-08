@@ -38,7 +38,7 @@ router.get('/api/loyalty/customers', authorizeAdmin, async (req: Request, res: R
         orderBy: { [sortBy]: order },
         skip: (page - 1) * limit,
         take: limit,
-        select: { id: true, phone: true, points: true, createdAt: true, updatedAt: true },
+        select: { id: true, phone: true, points: true, lifetimePoints: true, createdAt: true, updatedAt: true },
       }),
       prisma.loyaltyAccount.count({ where }),
     ])
@@ -50,67 +50,68 @@ router.get('/api/loyalty/customers', authorizeAdmin, async (req: Request, res: R
   }
 })
 
-// ─── GET /api/loyalty/:phone ──────────────────────────────────────────────────
+// ─── K-Loyalty — Settings (points rate + tier thresholds) ────────────────────
+// Registered before /:phone so the literal "settings" segment isn't swallowed
+// by the dynamic phone-number route below.
 
-router.get('/api/loyalty/:phone', authorizeAdmin, async (req: Request, res: Response) => {
+router.get('/api/loyalty/settings', authorizeAdmin, async (req: Request, res: Response) => {
   try {
-    const phone  = req.params.phone as string
     const cafeId = req.admin!.cafeId
-
-    const account = await prisma.loyaltyAccount.findUnique({
-      where: { cafeId_phone: { cafeId, phone } }
+    const cafe = await prisma.cafe.findUnique({
+      where:  { id: cafeId },
+      select: { loyaltyPointsPerCurrency: true, loyaltyTierSilverThreshold: true, loyaltyTierGoldThreshold: true },
     })
-
-    if (!account) {
-      return res.json({ phone, points: 0, ledger: [] })
-    }
-
-    // Return last 20 entries (newest first) — ledger is append-only in MongoDB
-    const recent = [...account.ledger].reverse().slice(0, 20)
-
-    return res.json({ phone, points: account.points, ledger: recent })
+    return res.json({
+      pointsPerCurrency: cafe?.loyaltyPointsPerCurrency ?? 10,
+      silverThreshold:   cafe?.loyaltyTierSilverThreshold ?? 500,
+      goldThreshold:     cafe?.loyaltyTierGoldThreshold ?? 2000,
+    })
   } catch (err) {
-    logger.error({ msg: 'GET loyalty error', err })
-    return res.status(500).json({ error: 'Failed to fetch loyalty account' })
+    logger.error({ msg: 'GET loyalty settings error', err })
+    return res.status(500).json({ error: 'Failed to fetch settings' })
   }
 })
 
-// ─── POST /api/loyalty/redeem ─────────────────────────────────────────────────
-// Admin redeems points for a customer at checkout.
-// Body: { phone, points }  (points must be > 0 and <= current balance)
-
-router.post('/api/loyalty/redeem', authorizeAdmin, async (req: Request, res: Response) => {
+router.patch('/api/loyalty/settings', authorizeAdmin, async (req: Request, res: Response) => {
   try {
-    const { phone, points: rawPoints } = req.body as { phone: string; points: number }
     const cafeId = req.admin!.cafeId
+    const { pointsPerCurrency, silverThreshold, goldThreshold } = req.body as Record<string, any>
 
-    const points = Number(rawPoints)
-    if (!phone || !Number.isInteger(points) || points <= 0) {
-      return res.status(400).json({ error: 'phone and a positive integer points are required' })
+    const data: Record<string, any> = {}
+    if (pointsPerCurrency !== undefined) {
+      if (!(Number(pointsPerCurrency) > 0)) return res.status(400).json({ error: 'pointsPerCurrency must be a positive number' })
+      data.loyaltyPointsPerCurrency = Number(pointsPerCurrency)
+    }
+    if (silverThreshold !== undefined) {
+      if (!Number.isInteger(silverThreshold) || silverThreshold < 0) return res.status(400).json({ error: 'silverThreshold must be a non-negative integer' })
+      data.loyaltyTierSilverThreshold = silverThreshold
+    }
+    if (goldThreshold !== undefined) {
+      if (!Number.isInteger(goldThreshold) || goldThreshold < 0) return res.status(400).json({ error: 'goldThreshold must be a non-negative integer' })
+      data.loyaltyTierGoldThreshold = goldThreshold
     }
 
-    const updated = await redeemPoints(cafeId, phone, points)
-    return res.json({ phone, pointsRedeemed: points, newBalance: updated.points })
-  } catch (err: any) {
-    logger.error({ msg: 'POST loyalty redeem error', err })
-    return res.status(400).json({ error: err.message ?? 'Failed to redeem points' })
-  }
-})
+    const effectiveSilver = data.loyaltyTierSilverThreshold ?? (await prisma.cafe.findUnique({ where: { id: cafeId }, select: { loyaltyTierSilverThreshold: true } }))?.loyaltyTierSilverThreshold ?? 500
+    const effectiveGold   = data.loyaltyTierGoldThreshold   ?? (await prisma.cafe.findUnique({ where: { id: cafeId }, select: { loyaltyTierGoldThreshold: true } }))?.loyaltyTierGoldThreshold ?? 2000
+    if (effectiveGold <= effectiveSilver) {
+      return res.status(400).json({ error: 'goldThreshold must be greater than silverThreshold' })
+    }
 
-// ─── K20 — Membership tier ────────────────────────────────────────────────────
-
-router.get('/api/loyalty/:phone/tier', authorizeAdmin, async (req: Request, res: Response) => {
-  try {
-    const cafeId = req.admin!.cafeId
-    const info = await getTierInfo(cafeId, req.params.phone as string)
-    return res.json(info)
+    const cafe = await prisma.cafe.update({ where: { id: cafeId }, data })
+    return res.json({
+      pointsPerCurrency: cafe.loyaltyPointsPerCurrency,
+      silverThreshold:   cafe.loyaltyTierSilverThreshold,
+      goldThreshold:     cafe.loyaltyTierGoldThreshold,
+    })
   } catch (err) {
-    logger.error({ msg: 'GET loyalty tier error', err })
-    return res.status(500).json({ error: 'Failed to fetch tier info' })
+    logger.error({ msg: 'PATCH loyalty settings error', err })
+    return res.status(500).json({ error: 'Failed to update settings' })
   }
 })
 
 // ─── K20 — Reward catalog ─────────────────────────────────────────────────────
+// Registered before /:phone so the literal "rewards" segment isn't swallowed
+// by the dynamic phone-number route below (same reasoning as the /settings fix).
 
 router.get('/api/loyalty/rewards', authorizeAdmin, async (req: Request, res: Response) => {
   try {
@@ -160,6 +161,66 @@ router.post('/api/loyalty/rewards/:id/redeem', authorizeAdmin, async (req: Reque
   } catch (err: any) {
     logger.error({ msg: 'POST loyalty reward redeem error', err })
     return res.status(400).json({ error: err.message ?? 'Failed to redeem reward' })
+  }
+})
+
+// ─── GET /api/loyalty/:phone ──────────────────────────────────────────────────
+
+router.get('/api/loyalty/:phone', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const phone  = req.params.phone as string
+    const cafeId = req.admin!.cafeId
+
+    const account = await prisma.loyaltyAccount.findUnique({
+      where: { cafeId_phone: { cafeId, phone } }
+    })
+
+    if (!account) {
+      return res.json({ phone, points: 0, lifetimePoints: 0, ledger: [] })
+    }
+
+    // Return last 20 entries (newest first) — ledger is append-only in MongoDB
+    const recent = [...account.ledger].reverse().slice(0, 20)
+
+    return res.json({ phone, points: account.points, lifetimePoints: account.lifetimePoints, ledger: recent })
+  } catch (err) {
+    logger.error({ msg: 'GET loyalty error', err })
+    return res.status(500).json({ error: 'Failed to fetch loyalty account' })
+  }
+})
+
+// ─── POST /api/loyalty/redeem ─────────────────────────────────────────────────
+// Admin redeems points for a customer at checkout.
+// Body: { phone, points }  (points must be > 0 and <= current balance)
+
+router.post('/api/loyalty/redeem', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const { phone, points: rawPoints } = req.body as { phone: string; points: number }
+    const cafeId = req.admin!.cafeId
+
+    const points = Number(rawPoints)
+    if (!phone || !Number.isInteger(points) || points <= 0) {
+      return res.status(400).json({ error: 'phone and a positive integer points are required' })
+    }
+
+    const updated = await redeemPoints(cafeId, phone, points)
+    return res.json({ phone, pointsRedeemed: points, newBalance: updated.points })
+  } catch (err: any) {
+    logger.error({ msg: 'POST loyalty redeem error', err })
+    return res.status(400).json({ error: err.message ?? 'Failed to redeem points' })
+  }
+})
+
+// ─── K20 — Membership tier ────────────────────────────────────────────────────
+
+router.get('/api/loyalty/:phone/tier', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const cafeId = req.admin!.cafeId
+    const info = await getTierInfo(cafeId, req.params.phone as string)
+    return res.json(info)
+  } catch (err) {
+    logger.error({ msg: 'GET loyalty tier error', err })
+    return res.status(500).json({ error: 'Failed to fetch tier info' })
   }
 })
 

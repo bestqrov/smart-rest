@@ -300,6 +300,12 @@ model Cafe {
   certificationMetrics   CertificationMetrics?
   certifiedAt            DateTime?
 
+  // ── Loyalty program configuration (admin-configurable, see /admin/loyalty) ──
+  // Currency units required to earn 1 point (e.g. 10 means "10 MAD = 1 point").
+  loyaltyPointsPerCurrency    Float @default(10)
+  loyaltyTierSilverThreshold  Int   @default(500)
+  loyaltyTierGoldThreshold    Int   @default(2000)
+
   categories      Category[]
   tables          Table[]
   seats           Seat[]
@@ -1895,6 +1901,11 @@ model CafeCustomer {
   tags               String[] @default([])
   notes              String?
   favoriteProductIds String[] @default([])
+
+  // Loyalty self-service profile (customer-entered via app/[subdomain]/loyalty)
+  instagramHandle String?
+  facebookHandle  String?
+  tiktokHandle    String?
 
   @@unique([cafeId, phone])
   @@index([cafeId, lastVisit])
