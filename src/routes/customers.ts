@@ -4,6 +4,7 @@ import { authorizeAdmin } from '../middleware/authorizeAdmin'
 import {
   getCustomerProfile, searchCustomers, addTag, removeTag, setNotes, addFavorite, removeFavorite,
 } from '../customers/CustomerService'
+import { getTierInfo } from '../loyalty/LoyaltyService'
 
 const router = express.Router()
 
@@ -124,6 +125,70 @@ router.get('/api/n8n/inactive-customers', async (req: Request, res: Response) =>
     return res.json({ count: result.length, customers: result })
   } catch (err) {
     return res.status(500).json({ error: 'Failed' })
+  }
+})
+
+// ─── Public (no-auth) loyalty self-service profile ───────────────────────────
+// Used by app/[subdomain]/loyalty/page.tsx — a customer looks themselves up
+// by phone and can edit their own name + social handles. No admin auth: the
+// phone number itself is the access control (same trust model as the
+// existing /api/customers/optin route above).
+
+router.get('/api/public/loyalty/:subdomain/:phone', async (req: Request, res: Response) => {
+  try {
+    const subdomain = (req.params.subdomain as string).trim().toLowerCase()
+    const phone     = req.params.phone as string
+
+    const cafe = await prisma.cafe.findUnique({ where: { subdomain }, select: { id: true, isActive: true } })
+    if (!cafe || !cafe.isActive) return res.status(404).json({ error: 'Cafe not found' })
+
+    const [tierInfo, customer] = await Promise.all([
+      getTierInfo(cafe.id, phone),
+      prisma.cafeCustomer.findUnique({
+        where:  { cafeId_phone: { cafeId: cafe.id, phone } },
+        select: { name: true, instagramHandle: true, facebookHandle: true, tiktokHandle: true },
+      }),
+    ])
+
+    return res.json({
+      ...tierInfo,
+      customer: customer ?? { name: null, instagramHandle: null, facebookHandle: null, tiktokHandle: null },
+    })
+  } catch (err) {
+    return res.status(500).json({ error: 'Server error' })
+  }
+})
+
+router.patch('/api/public/loyalty/:subdomain/:phone', async (req: Request, res: Response) => {
+  try {
+    const subdomain = (req.params.subdomain as string).trim().toLowerCase()
+    const phone     = req.params.phone as string
+    const { name, instagramHandle, facebookHandle, tiktokHandle } = req.body as Record<string, any>
+
+    const cafe = await prisma.cafe.findUnique({ where: { subdomain }, select: { id: true, isActive: true } })
+    if (!cafe || !cafe.isActive) return res.status(404).json({ error: 'Cafe not found' })
+
+    const customer = await prisma.cafeCustomer.upsert({
+      where: { cafeId_phone: { cafeId: cafe.id, phone } },
+      create: {
+        cafeId: cafe.id, phone,
+        name: name?.trim() || null,
+        instagramHandle: instagramHandle?.trim() || null,
+        facebookHandle:  facebookHandle?.trim()  || null,
+        tiktokHandle:    tiktokHandle?.trim()     || null,
+      },
+      update: {
+        ...(name             !== undefined && { name:             name?.trim()             || null }),
+        ...(instagramHandle  !== undefined && { instagramHandle:  instagramHandle?.trim()  || null }),
+        ...(facebookHandle   !== undefined && { facebookHandle:   facebookHandle?.trim()   || null }),
+        ...(tiktokHandle     !== undefined && { tiktokHandle:     tiktokHandle?.trim()     || null }),
+      },
+      select: { name: true, instagramHandle: true, facebookHandle: true, tiktokHandle: true },
+    })
+
+    return res.json({ ok: true, customer })
+  } catch (err) {
+    return res.status(500).json({ error: 'Server error' })
   }
 })
 
