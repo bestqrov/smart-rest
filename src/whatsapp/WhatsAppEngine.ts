@@ -160,5 +160,30 @@ export function initWhatsAppEngine(): void {
     }
   })
 
-  logger.info({ msg: '[WhatsAppEngine] initialized — subscribed to SupportTicketEscalated' })
+  // Sends the customer's OWN WhatsApp number a notification when they
+  // become eligible for a loyalty reward — distinct from the
+  // SupportTicketEscalated handler above, which notifies the restaurant's
+  // own WhatsApp number. Gated on CafeCustomer.optIn so we never message a
+  // customer who hasn't consented to WhatsApp contact.
+  eventBus.subscribe('LoyaltyRewardEligible', async (event: any) => {
+    try {
+      const { tenantId: cafeId, metadata } = event.payload as {
+        tenantId: string
+        metadata: { phone: string; rewardNames: string[]; currentPoints: number }
+      }
+      const customer = await prisma.cafeCustomer.findUnique({
+        where:  { cafeId_phone: { cafeId, phone: metadata.phone } },
+        select: { optIn: true },
+      })
+      if (!customer?.optIn) return
+
+      const rewardList = metadata.rewardNames.join(', ')
+      await sendMessage(cafeId, metadata.phone,
+        `🎁 You've earned enough points (${metadata.currentPoints}) for: ${rewardList}! Ask your server to redeem it on your next visit.`)
+    } catch (err) {
+      logger.error({ msg: '[WhatsAppEngine] LoyaltyRewardEligible handler failed', err })
+    }
+  })
+
+  logger.info({ msg: '[WhatsAppEngine] initialized — subscribed to SupportTicketEscalated, LoyaltyRewardEligible' })
 }
