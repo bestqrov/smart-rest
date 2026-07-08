@@ -389,12 +389,50 @@ router.post('/api/admin/menu-gen/publish-draft', authorizeAdmin, async (req: Req
 
     const status = publishNow ? 'published' : 'draft'
 
-    // Replace mode: wipe existing menu first
+    // Replace mode: wipe existing menu first. A product that's been
+    // ordered before is referenced by OrderItem.productId (a required
+    // relation) — deleting it would either violate that FK or destroy
+    // historical order data, so only products with zero order history are
+    // hard-deleted; the rest are hidden (isAvailable: false) instead of
+    // removed. A category is only deleted once every one of its products
+    // is actually gone.
     if (mode === 'replace') {
       const oldCats = await prisma.category.findMany({ where: { cafeId }, select: { id: true } })
       if (oldCats.length) {
-        await prisma.product.deleteMany({ where: { categoryId: { in: oldCats.map(c => c.id) } } })
-        await prisma.category.deleteMany({ where: { cafeId } })
+        const oldCatIds = oldCats.map(c => c.id)
+        const oldProducts = await prisma.product.findMany({
+          where: { categoryId: { in: oldCatIds } },
+          select: { id: true, categoryId: true },
+        })
+        const orderedProductIds = new Set(
+          (await prisma.orderItem.findMany({
+            where: { productId: { in: oldProducts.map(p => p.id) } },
+            select: { productId: true },
+            distinct: ['productId'],
+          })).map(o => o.productId),
+        )
+        const deletableIds = oldProducts.filter(p => !orderedProductIds.has(p.id)).map(p => p.id)
+        const keptCategoryIds = new Set(
+          oldProducts.filter(p => orderedProductIds.has(p.id)).map(p => p.categoryId),
+        )
+
+        if (deletableIds.length) {
+          await prisma.product.deleteMany({ where: { id: { in: deletableIds } } })
+        }
+        if (orderedProductIds.size) {
+          await prisma.product.updateMany({
+            where: { id: { in: [...orderedProductIds] } },
+            data: { isAvailable: false },
+          })
+          logger.info({
+            msg: 'menu-gen replace: kept products with order history (hidden instead of deleted)',
+            cafeId, count: orderedProductIds.size,
+          })
+        }
+        const categoriesToDelete = oldCatIds.filter(id => !keptCategoryIds.has(id))
+        if (categoriesToDelete.length) {
+          await prisma.category.deleteMany({ where: { id: { in: categoriesToDelete } } })
+        }
       }
     }
 
