@@ -12,11 +12,12 @@ import { useLang } from '../lang-context'
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface LoyaltyCustomer {
-  id:        string
-  phone:     string
-  points:    number
-  createdAt: string
-  updatedAt: string
+  id:             string
+  phone:          string
+  points:         number
+  lifetimePoints: number
+  createdAt:      string
+  updatedAt:      string
 }
 
 interface LedgerEntry {
@@ -28,9 +29,10 @@ interface LedgerEntry {
 }
 
 interface CustomerDetail {
-  phone:   string
-  points:  number
-  ledger:  LedgerEntry[]
+  phone:          string
+  points:         number
+  lifetimePoints: number
+  ledger:         LedgerEntry[]
 }
 
 interface CustomersResponse {
@@ -244,11 +246,18 @@ const T = {
 
 type Lang = keyof typeof T
 
-function getTier(pts: number, t: typeof T[Lang]) {
-  if (pts >= 1000) return { label: t.platinum, color: 'text-cyan-400',   bg: 'bg-cyan-500/15',   ring: 'ring-cyan-500/30'   }
-  if (pts >= 500)  return { label: t.gold,     color: 'text-amber-400',  bg: 'bg-amber-500/15',  ring: 'ring-amber-500/30'  }
-  if (pts >= 200)  return { label: t.silver,   color: 'text-slate-300',  bg: 'bg-slate-500/15',  ring: 'ring-slate-500/30'  }
-  return                  { label: t.bronze,   color: 'text-orange-400', bg: 'bg-orange-500/15', ring: 'ring-orange-500/30' }
+interface LoyaltySettings {
+  pointsPerCurrency: number
+  silverThreshold:   number
+  goldThreshold:     number
+}
+
+function getTierBadge(lifetimePoints: number, thresholds: LoyaltySettings | null, t: typeof T[Lang]) {
+  const gold   = thresholds?.goldThreshold   ?? 2000
+  const silver = thresholds?.silverThreshold ?? 500
+  if (lifetimePoints >= gold)   return { label: t.gold,   color: 'text-amber-400',  bg: 'bg-amber-500/15',  ring: 'ring-amber-500/30'  }
+  if (lifetimePoints >= silver) return { label: t.silver, color: 'text-slate-300',  bg: 'bg-slate-500/15',  ring: 'ring-slate-500/30'  }
+  return                        { label: t.bronze, color: 'text-orange-400', bg: 'bg-orange-500/15', ring: 'ring-orange-500/30' }
 }
 
 function fmtDate(iso: string, lang: string) {
@@ -287,6 +296,7 @@ export default function LoyaltyPage() {
   const [profile,        setProfile]        = useState<CustomerDetail | null>(null)
   const [profileLoading, setProfileLoading] = useState(false)
   const [showProfile,    setShowProfile]    = useState(false)
+  const [settings,       setSettings]       = useState<LoyaltySettings | null>(null)
 
   // ── Redeem state ───────────────────────────────────────────────────────────
   const [showRedeem,     setShowRedeem]     = useState(false)
@@ -313,6 +323,10 @@ export default function LoyaltyPage() {
   }, [search, page, sortBy, order])
 
   useEffect(() => { loadCustomers() }, [page, sortBy, order])
+
+  useEffect(() => {
+    fetch('/api/loyalty/settings', { headers: h }).then(r => r.ok ? r.json() : null).then(d => { if (d) setSettings(d) })
+  }, [])
 
   // debounced search
   useEffect(() => {
@@ -442,7 +456,7 @@ export default function LoyaltyPage() {
               </div>
 
               {customers.map((c, i) => {
-                const tier = getTier(c.points, t)
+                const tier = getTierBadge(c.lifetimePoints, settings, t)
                 return (
                   <button key={c.id} onClick={() => openProfile(c.phone)}
                     className={`w-full grid grid-cols-1 md:grid-cols-[1fr_120px_160px_140px] items-center gap-3 px-5 py-4 text-left hover:bg-slate-800/60 active:bg-slate-700/60 transition-colors ${i !== 0 ? 'border-t border-slate-700/60' : ''}`}>
@@ -535,7 +549,7 @@ export default function LoyaltyPage() {
                       <p className="text-sm text-violet-300">{t.rewardPoints}</p>
                     </div>
                     <div className={`mb-1 ${isRTL ? 'mr-auto' : 'ml-auto'}`}>
-                      {(() => { const tier = getTier(profile.points, t); return (
+                      {(() => { const tier = getTierBadge(profile.lifetimePoints, settings, t); return (
                         <span className={`px-3 py-1.5 rounded-full text-sm font-bold ring-1 ${tier.color} ${tier.bg} ${tier.ring}`}>
                           {tier.label}
                         </span>
