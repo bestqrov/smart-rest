@@ -109,6 +109,61 @@ router.patch('/api/loyalty/settings', authorizeAdmin, async (req: Request, res: 
   }
 })
 
+// ─── K20 — Reward catalog ─────────────────────────────────────────────────────
+// Registered before /:phone so the literal "rewards" segment isn't swallowed
+// by the dynamic phone-number route below (same reasoning as the /settings fix).
+
+router.get('/api/loyalty/rewards', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const cafeId = req.admin!.cafeId
+    const rewards = await listRewards(cafeId, req.query.all !== 'true')
+    return res.json({ rewards })
+  } catch (err) {
+    logger.error({ msg: 'GET loyalty rewards error', err })
+    return res.status(500).json({ error: 'Failed to fetch rewards' })
+  }
+})
+
+router.post('/api/loyalty/rewards', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const cafeId = req.admin!.cafeId
+    const { name, description, pointsCost } = req.body as { name?: string; description?: string; pointsCost?: number }
+    if (!name?.trim() || !Number.isInteger(pointsCost) || (pointsCost as number) <= 0) {
+      return res.status(400).json({ error: 'name and a positive integer pointsCost are required' })
+    }
+    const reward = await createReward(cafeId, { name: name.trim(), description, pointsCost: pointsCost as number })
+    return res.status(201).json({ reward })
+  } catch (err: any) {
+    logger.error({ msg: 'POST loyalty rewards error', err })
+    return res.status(400).json({ error: err.message ?? 'Failed to create reward' })
+  }
+})
+
+router.patch('/api/loyalty/rewards/:id/deactivate', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const cafeId = req.admin!.cafeId
+    const reward = await deactivateReward(cafeId, req.params.id as string)
+    return res.json({ reward })
+  } catch (err: any) {
+    logger.error({ msg: 'PATCH loyalty reward deactivate error', err })
+    return res.status(400).json({ error: err.message ?? 'Failed to deactivate reward' })
+  }
+})
+
+router.post('/api/loyalty/rewards/:id/redeem', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const cafeId = req.admin!.cafeId
+    const { phone } = req.body as { phone?: string }
+    if (!phone) return res.status(400).json({ error: 'phone is required' })
+
+    const account = await redeemReward(cafeId, phone, req.params.id as string)
+    return res.json({ phone, newBalance: account.points })
+  } catch (err: any) {
+    logger.error({ msg: 'POST loyalty reward redeem error', err })
+    return res.status(400).json({ error: err.message ?? 'Failed to redeem reward' })
+  }
+})
+
 // ─── GET /api/loyalty/:phone ──────────────────────────────────────────────────
 
 router.get('/api/loyalty/:phone', authorizeAdmin, async (req: Request, res: Response) => {
@@ -166,59 +221,6 @@ router.get('/api/loyalty/:phone/tier', authorizeAdmin, async (req: Request, res:
   } catch (err) {
     logger.error({ msg: 'GET loyalty tier error', err })
     return res.status(500).json({ error: 'Failed to fetch tier info' })
-  }
-})
-
-// ─── K20 — Reward catalog ─────────────────────────────────────────────────────
-
-router.get('/api/loyalty/rewards', authorizeAdmin, async (req: Request, res: Response) => {
-  try {
-    const cafeId = req.admin!.cafeId
-    const rewards = await listRewards(cafeId, req.query.all !== 'true')
-    return res.json({ rewards })
-  } catch (err) {
-    logger.error({ msg: 'GET loyalty rewards error', err })
-    return res.status(500).json({ error: 'Failed to fetch rewards' })
-  }
-})
-
-router.post('/api/loyalty/rewards', authorizeAdmin, async (req: Request, res: Response) => {
-  try {
-    const cafeId = req.admin!.cafeId
-    const { name, description, pointsCost } = req.body as { name?: string; description?: string; pointsCost?: number }
-    if (!name?.trim() || !Number.isInteger(pointsCost) || (pointsCost as number) <= 0) {
-      return res.status(400).json({ error: 'name and a positive integer pointsCost are required' })
-    }
-    const reward = await createReward(cafeId, { name: name.trim(), description, pointsCost: pointsCost as number })
-    return res.status(201).json({ reward })
-  } catch (err: any) {
-    logger.error({ msg: 'POST loyalty rewards error', err })
-    return res.status(400).json({ error: err.message ?? 'Failed to create reward' })
-  }
-})
-
-router.patch('/api/loyalty/rewards/:id/deactivate', authorizeAdmin, async (req: Request, res: Response) => {
-  try {
-    const cafeId = req.admin!.cafeId
-    const reward = await deactivateReward(cafeId, req.params.id as string)
-    return res.json({ reward })
-  } catch (err: any) {
-    logger.error({ msg: 'PATCH loyalty reward deactivate error', err })
-    return res.status(400).json({ error: err.message ?? 'Failed to deactivate reward' })
-  }
-})
-
-router.post('/api/loyalty/rewards/:id/redeem', authorizeAdmin, async (req: Request, res: Response) => {
-  try {
-    const cafeId = req.admin!.cafeId
-    const { phone } = req.body as { phone?: string }
-    if (!phone) return res.status(400).json({ error: 'phone is required' })
-
-    const account = await redeemReward(cafeId, phone, req.params.id as string)
-    return res.json({ phone, newBalance: account.points })
-  } catch (err: any) {
-    logger.error({ msg: 'POST loyalty reward redeem error', err })
-    return res.status(400).json({ error: err.message ?? 'Failed to redeem reward' })
   }
 })
 
