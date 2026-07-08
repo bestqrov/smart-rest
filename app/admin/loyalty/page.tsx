@@ -42,15 +42,6 @@ interface CustomersResponse {
   pages:    number
 }
 
-// ─── Static reward tiers ──────────────────────────────────────────────────────
-
-const REWARDS = [
-  { id: 'r1', pts: 50,  icon: '☕', label: { ar: 'مشروب مجاني',    fr: 'Boisson offerte',     en: 'Free drink',       es: 'Bebida gratis'    } },
-  { id: 'r2', pts: 100, icon: '🍰', label: { ar: 'حلوى مجانية',    fr: 'Dessert offert',      en: 'Free dessert',     es: 'Postre gratis'    } },
-  { id: 'r3', pts: 200, icon: '🍽️', label: { ar: 'طبق رئيسي مجاني', fr: 'Plat offert',         en: 'Free main dish',   es: 'Plato gratis'     } },
-  { id: 'r4', pts: 500, icon: '🎉', label: { ar: 'وجبة كاملة للاثنين', fr: 'Repas complet ×2',  en: 'Full meal for 2',  es: 'Comida completa ×2' } },
-]
-
 // ─── i18n ─────────────────────────────────────────────────────────────────────
 
 const T = {
@@ -91,6 +82,13 @@ const T = {
     rewardSub:     'الجوائز المتاحة للزبائن عند استبدال نقاطهم',
     rewardPoints:  'نقطة',
     redeem:        'استبدل',
+    rewardName:        'اسم الجائزة',
+    rewardDescription: 'الوصف (اختياري)',
+    rewardCost:        'التكلفة بالنقط',
+    createReward:      'إضافة جائزة',
+    deactivate:        'إلغاء',
+    noRewards:         'لا توجد جوائز بعد — أضف واحدة',
+    tabView:           'العرض',
     tier:          'المستوى',
     bronze:        'برونز',
     silver:        'فضي',
@@ -138,6 +136,13 @@ const T = {
     rewardSub:     'Récompenses disponibles pour vos clients',
     rewardPoints:  'pts',
     redeem:        'Échanger',
+    rewardName:        'Nom de la récompense',
+    rewardDescription: 'Description (optionnel)',
+    rewardCost:        'Coût en points',
+    createReward:      'Ajouter une récompense',
+    deactivate:        'Désactiver',
+    noRewards:         'Aucune récompense — ajoutez-en une',
+    tabView:           'Vue',
     tier:          'Niveau',
     bronze:        'Bronze',
     silver:        'Argent',
@@ -185,6 +190,13 @@ const T = {
     rewardSub:     'Available rewards for your customers',
     rewardPoints:  'pts',
     redeem:        'Redeem',
+    rewardName:        'Reward name',
+    rewardDescription: 'Description (optional)',
+    rewardCost:        'Cost in points',
+    createReward:      'Add reward',
+    deactivate:        'Deactivate',
+    noRewards:         'No rewards yet — add one',
+    tabView:           'View',
     tier:          'Tier',
     bronze:        'Bronze',
     silver:        'Silver',
@@ -232,6 +244,13 @@ const T = {
     rewardSub:     'Recompensas disponibles para tus clientes',
     rewardPoints:  'pts',
     redeem:        'Canjear',
+    rewardName:        'Nombre de la recompensa',
+    rewardDescription: 'Descripción (opcional)',
+    rewardCost:        'Costo en puntos',
+    createReward:      'Añadir recompensa',
+    deactivate:        'Desactivar',
+    noRewards:         'Sin recompensas — añade una',
+    tabView:           'Vista',
     tier:          'Nivel',
     bronze:        'Bronce',
     silver:        'Plata',
@@ -304,6 +323,13 @@ export default function LoyaltyPage() {
   const [redeemLoading,  setRedeemLoading]  = useState(false)
   const [redeemMsg,      setRedeemMsg]      = useState<{ ok: boolean; text: string } | null>(null)
 
+  // ── View switcher + rewards catalog state ──────────────────────────────────
+  const [view, setView] = useState<'customers' | 'rewards'>('customers')
+  interface LoyaltyRewardRow { id: string; name: string; description: string | null; pointsCost: number; isActive: boolean }
+  const [rewards,        setRewards]        = useState<LoyaltyRewardRow[]>([])
+  const [rewardForm,     setRewardForm]     = useState({ name: '', description: '', pointsCost: '' })
+  const [rewardSaving,   setRewardSaving]   = useState(false)
+
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
   const h = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
 
@@ -323,6 +349,36 @@ export default function LoyaltyPage() {
   }, [search, page, sortBy, order])
 
   useEffect(() => { loadCustomers() }, [page, sortBy, order])
+
+  const loadRewards = useCallback(async () => {
+    const res = await fetch('/api/loyalty/rewards', { headers: h })
+    if (res.ok) setRewards((await res.json()).rewards ?? [])
+  }, [])
+
+  useEffect(() => { loadRewards() }, [loadRewards])
+
+  async function createNewReward() {
+    if (!rewardForm.name.trim() || !rewardForm.pointsCost) return
+    setRewardSaving(true)
+    try {
+      const res = await fetch('/api/loyalty/rewards', {
+        method: 'POST', headers: h,
+        body: JSON.stringify({
+          name: rewardForm.name.trim(),
+          description: rewardForm.description.trim() || undefined,
+          pointsCost: Number(rewardForm.pointsCost),
+        }),
+      })
+      if (res.ok) { setRewardForm({ name: '', description: '', pointsCost: '' }); await loadRewards() }
+    } finally {
+      setRewardSaving(false)
+    }
+  }
+
+  async function deactivateReward(id: string) {
+    await fetch(`/api/loyalty/rewards/${id}/deactivate`, { method: 'PATCH', headers: h })
+    await loadRewards()
+  }
 
   useEffect(() => {
     fetch('/api/loyalty/settings', { headers: h }).then(r => r.ok ? r.json() : null).then(d => { if (d) setSettings(d) })
@@ -396,7 +452,20 @@ export default function LoyaltyPage() {
         </button>
       </div>
 
+      {/* ════════════════ VIEW SWITCHER ════════════════ */}
+      <div className="flex gap-2">
+        <button onClick={() => setView('customers')}
+          className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${view === 'customers' ? 'bg-violet-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white border border-slate-700'}`}>
+          {t.tabCustomers}
+        </button>
+        <button onClick={() => setView('rewards')}
+          className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${view === 'rewards' ? 'bg-violet-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white border border-slate-700'}`}>
+          {t.tabRewards}
+        </button>
+      </div>
+
       {/* ════════════════ CUSTOMERS ════════════════ */}
+      {view === 'customers' && (
       <div className="space-y-4">
 
           {/* Controls */}
@@ -509,6 +578,55 @@ export default function LoyaltyPage() {
             </div>
           )}
         </div>
+      )}
+
+      {/* ════════════════ REWARDS CATALOG ════════════════ */}
+      {view === 'rewards' && (
+        <div className="space-y-4">
+          <div>
+            <h2 className="text-white font-bold">{t.rewardTitle}</h2>
+            <p className="text-slate-400 text-sm">{t.rewardSub}</p>
+          </div>
+
+          <div className="rounded-2xl border border-slate-700 bg-slate-800/40 p-4 space-y-3 max-w-md">
+            <input value={rewardForm.name} onChange={e => setRewardForm(f => ({ ...f, name: e.target.value }))}
+              placeholder={t.rewardName}
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-violet-500" />
+            <input value={rewardForm.description} onChange={e => setRewardForm(f => ({ ...f, description: e.target.value }))}
+              placeholder={t.rewardDescription}
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-violet-500" />
+            <input type="number" min={1} value={rewardForm.pointsCost} onChange={e => setRewardForm(f => ({ ...f, pointsCost: e.target.value }))}
+              placeholder={t.rewardCost}
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-violet-500" />
+            <button onClick={createNewReward} disabled={rewardSaving || !rewardForm.name.trim() || !rewardForm.pointsCost}
+              className="w-full py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white text-sm font-bold transition-colors">
+              {rewardSaving ? <Loader2 size={14} className="animate-spin mx-auto" /> : t.createReward}
+            </button>
+          </div>
+
+          {rewards.length === 0 ? (
+            <div className="rounded-2xl border border-slate-700 bg-slate-800/40 p-10 text-center text-slate-500 text-sm">{t.noRewards}</div>
+          ) : (
+            <div className="space-y-2">
+              {rewards.map(r => (
+                <div key={r.id} className="flex items-center justify-between rounded-2xl border border-slate-700 bg-slate-800/50 px-4 py-3">
+                  <div>
+                    <p className="text-white font-semibold text-sm">{r.name}</p>
+                    {r.description && <p className="text-slate-500 text-xs mt-0.5">{r.description}</p>}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-violet-400 font-bold text-sm">{r.pointsCost} {t.rewardPoints}</span>
+                    <button onClick={() => deactivateReward(r.id)}
+                      className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-700 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors">
+                      {t.deactivate}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ════════════════ CUSTOMER PROFILE PANEL ════════════════ */}
       {showProfile && (
@@ -629,14 +747,14 @@ export default function LoyaltyPage() {
                 placeholder={`${t.redeemMax}: ${profile.points}`}
                 className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white text-lg font-bold placeholder-slate-600 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/40 transition-colors"
               />
-              {/* Quick-select reward buttons */}
+              {/* Quick-select reward buttons — real catalog, not a static list */}
               <div className="flex flex-wrap gap-2 pt-1">
-                {REWARDS.filter(r => r.pts <= profile.points).map(r => (
-                  <button key={r.id} onClick={() => setRedeemPts(String(r.pts))}
+                {rewards.filter(r => r.pointsCost <= profile.points).map(r => (
+                  <button key={r.id} onClick={() => setRedeemPts(String(r.pointsCost))}
                     className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors ${
-                      redeemPts === String(r.pts) ? 'bg-violet-600 text-white' : 'bg-slate-700 text-slate-400 hover:text-white'
+                      redeemPts === String(r.pointsCost) ? 'bg-violet-600 text-white' : 'bg-slate-700 text-slate-400 hover:text-white'
                     }`}>
-                    {r.icon} {r.pts}
+                    🎁 {r.name} · {r.pointsCost}
                   </button>
                 ))}
               </div>
