@@ -143,6 +143,10 @@ router.post('/api/superadmin/demo-requests/:id/activate', requireSuperAdmin, asy
           trialEndsAt,
           billingStatus: 'GRACE_PERIOD',
           isActive:     true,
+          // Carry the lead's WhatsApp/email over so superadmin can reach the
+          // owner (reminders, retargeting) without re-asking for contact info.
+          ownerPhone:   demo.phone,
+          ownerEmail:   demo.email,
         },
       })
 

@@ -99,6 +99,11 @@ async function runNightlyJobs(): Promise<void> {
     where: { expiresAt: { lt: new Date() } }
   })
 
+  // 6. Reset demo cafe staff — public demo accounts (e.g. "plage" used from
+  // smartrestau.com/login) accumulate ad-hoc Staff rows as visitors try the
+  // admin Staff page. Keep only the 3 fixed demo staff and clear their shift.
+  const demoStaffReset = await resetDemoCafeStaff()
+
   // ─── Tenant Lifecycle maintenance ─────────────────────────────────────────
   try {
     const {
@@ -126,7 +131,56 @@ async function runNightlyJobs(): Promise<void> {
     qrScansCleared,
     sessionsExpired,
     refreshTokensPurged,
+    demoStaffReset,
   })
+}
+
+// ─── Demo cafe staff reset ─────────────────────────────────────────────────
+
+const DEMO_STAFF_NAMES = ['Demo Cashier', 'Demo Supervisor', 'Demo Waiter']
+
+export async function resetDemoCafeStaff(): Promise<number> {
+  const demoCafes = await prisma.cafe.findMany({ where: { isDemo: true }, select: { id: true } })
+  if (demoCafes.length === 0) return 0
+
+  const cafeIds = demoCafes.map(c => c.id)
+
+  const allStaff = await prisma.staff.findMany({
+    where:   { cafeId: { in: cafeIds } },
+    select:  { id: true, cafeId: true, name: true },
+    orderBy: { createdAt: 'asc' },
+  })
+
+  // Staff bootstrapping races (concurrent demo logins) can create several
+  // rows with the exact same canonical name — keep only the oldest per
+  // (cafe, name); anything with a non-canonical name is stale too.
+  const seen = new Set<string>()
+  const staleIds: string[] = []
+  for (const s of allStaff) {
+    const key = `${s.cafeId}:${s.name}`
+    const isCanonical = DEMO_STAFF_NAMES.includes(s.name)
+    if (isCanonical && !seen.has(key)) { seen.add(key); continue }
+    staleIds.push(s.id)
+  }
+  if (staleIds.length === 0) return 0
+
+  // Required relations (CashierShift/WaiterShift) block deletion until cleared.
+  // Optional references (Table.assignedWaiter, Order.createdBy/assignedWaiter)
+  // are left as-is — fine for demo/history data.
+  await prisma.cashierShift.deleteMany({ where: { staffId: { in: staleIds } } })
+  await prisma.waiterShift.deleteMany({ where: { staffId: { in: staleIds } } })
+
+  const { count: deleted } = await prisma.staff.deleteMany({
+    where: { id: { in: staleIds } },
+  })
+
+  await prisma.staff.updateMany({
+    where: { cafeId: { in: cafeIds }, name: { in: DEMO_STAFF_NAMES } },
+    data:  { shiftStatus: 'OFF_DUTY', clockInTime: null },
+  })
+
+  if (deleted > 0) logger.info({ msg: '[CRON] Demo cafe staff reset', deleted, cafes: cafeIds.length })
+  return deleted
 }
 
 // ─── Scheduler ────────────────────────────────────────────────────────────────
