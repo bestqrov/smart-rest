@@ -70,6 +70,7 @@ const NAV = [
   {
     section: 'Administration',
     items: [
+      { href: '/superadmin/credentials', icon: KeyRound,   label: 'Credentials' },
       { href: '/superadmin/users',       icon: Users,      label: 'Users' },
       { href: '/superadmin/activity',    icon: Activity,   label: 'Activity Log' },
       { href: '/superadmin/settings',    icon: Settings,   label: 'Settings' },
