@@ -4,7 +4,7 @@ import {
   Loader2, RefreshCw, Filter, Ban, CheckCircle, Edit3, Trash2,
   ChevronDown, Play, CalendarPlus, Package, Globe, TrendingUp,
   Flame, LayoutDashboard, Store, BarChart3, Map, AlertTriangle,
-  Activity, ChevronRight, Wallet, Gem,
+  Activity, ChevronRight, ChevronLeft, Wallet, Gem,
 } from 'lucide-react'
 import type { ThemeProps } from '../types'
 import KpiCards from '../analytics/KpiCards'
@@ -67,6 +67,7 @@ function SectionHeading({ icon, title, subtitle }: { icon: React.ReactNode; titl
 
 export default function ThemeA(p: ThemeProps) {
   const [search, setSearch] = useState('')
+  const [navCollapsed, setNavCollapsed] = useState(false)
 
   const filtered = p.tenants.filter(t =>
     !search || t.businessName?.toLowerCase().includes(search.toLowerCase()) || t.subdomain.includes(search.toLowerCase())
@@ -77,49 +78,60 @@ export default function ThemeA(p: ThemeProps) {
     <div className="flex h-screen overflow-hidden bg-slate-100">
 
       {/* ════════════════ SIDEBAR ════════════════ */}
-      <aside className="w-56 bg-[#1e2d3d] flex-shrink-0 flex flex-col overflow-y-auto">
+      {/* This is an in-page anchor nav for the dashboard sections below — it
+          duplicates the app's global sidebar, so it collapses to a slim rail
+          to give the page more width. */}
+      <aside className={`${navCollapsed ? 'w-14' : 'w-56'} bg-[#1e2d3d] flex-shrink-0 flex flex-col overflow-y-auto transition-all duration-200`}>
 
-        {/* Logo */}
-        <div className="px-5 py-5 border-b border-white/10">
-          <div className="flex items-center gap-3">
+        {/* Logo + collapse toggle */}
+        <div className="px-3 py-5 border-b border-white/10 flex items-center justify-between">
+          <div className="flex items-center gap-3 min-w-0">
             <div className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center shrink-0">
               <TrendingUp className="w-4 h-4 text-white" />
             </div>
-            <div>
-              <p className="text-white font-extrabold text-sm leading-none">SmartRestau</p>
-              <p className="text-slate-400 text-[10px] mt-0.5 font-medium">Superadmin Console</p>
-            </div>
+            {!navCollapsed && (
+              <div className="min-w-0">
+                <p className="text-white font-extrabold text-sm leading-none truncate">SmartRestau</p>
+                <p className="text-slate-400 text-[10px] mt-0.5 font-medium truncate">Superadmin Console</p>
+              </div>
+            )}
           </div>
+          <button onClick={() => setNavCollapsed(v => !v)}
+            title={navCollapsed ? 'Expand' : 'Collapse'}
+            className="shrink-0 w-6 h-6 rounded-md text-slate-400 hover:text-white hover:bg-white/10 flex items-center justify-center transition-colors">
+            {navCollapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
+          </button>
         </div>
 
         {/* Nav */}
         <nav className="flex-1 px-3 py-4 space-y-0.5">
-          <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest px-3 py-2">Navigation</p>
+          {!navCollapsed && (
+            <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest px-3 py-2">Navigation</p>
+          )}
           {NAV.map(item => (
-            <a key={item.href} href={item.href}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-300 hover:bg-white/10 hover:text-white transition-colors group text-sm font-medium">
+            <a key={item.href} href={item.href} title={item.label}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-300 hover:bg-white/10 hover:text-white transition-colors group text-sm font-medium ${navCollapsed ? 'justify-center' : ''}`}>
               <item.icon className="w-4 h-4 shrink-0 text-slate-400 group-hover:text-emerald-400 transition-colors" />
-              {item.label}
-              <ChevronRight className="w-3 h-3 ml-auto opacity-0 group-hover:opacity-50 transition-opacity" />
+              {!navCollapsed && <>{item.label}<ChevronRight className="w-3 h-3 ml-auto opacity-0 group-hover:opacity-50 transition-opacity" /></>}
             </a>
           ))}
         </nav>
 
         {/* Bottom actions */}
         <div className="px-3 py-4 border-t border-white/10 space-y-1">
-          <a href="/superadmin/landing"
-            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors text-sm font-medium">
-            <Globe className="w-4 h-4" /> Landing Page
+          <a href="/superadmin/landing" title="Landing Page"
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors text-sm font-medium ${navCollapsed ? 'justify-center' : ''}`}>
+            <Globe className="w-4 h-4 shrink-0" /> {!navCollapsed && 'Landing Page'}
           </a>
-          <button onClick={p.onRunSweep} disabled={p.sweeping}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors text-sm font-medium">
-            {p.sweeping ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
-            Run Sweep
+          <button onClick={p.onRunSweep} disabled={p.sweeping} title="Run Sweep"
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors text-sm font-medium ${navCollapsed ? 'justify-center' : ''}`}>
+            {p.sweeping ? <Loader2 className="w-4 h-4 animate-spin shrink-0" /> : <Play className="w-4 h-4 shrink-0" />}
+            {!navCollapsed && 'Run Sweep'}
           </button>
           {p.onOpenPurge && (
-            <button onClick={p.onOpenPurge}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-red-400 hover:text-red-300 hover:bg-red-900/30 transition-colors text-sm font-medium">
-              <Flame className="w-4 h-4" /> Purge Test Data
+            <button onClick={p.onOpenPurge} title="Purge Test Data"
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-red-400 hover:text-red-300 hover:bg-red-900/30 transition-colors text-sm font-medium ${navCollapsed ? 'justify-center' : ''}`}>
+              <Flame className="w-4 h-4 shrink-0" /> {!navCollapsed && 'Purge Test Data'}
             </button>
           )}
         </div>
