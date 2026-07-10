@@ -1256,6 +1256,8 @@ router.get('/api/superadmin/credentials-directory', requireSuperAdmin, async (re
         { name:         { contains: q, mode: 'insensitive' as const } },
         { businessName: { contains: q, mode: 'insensitive' as const } },
         { subdomain:    { contains: q, mode: 'insensitive' as const } },
+        { ownerPhone:   { contains: q, mode: 'insensitive' as const } },
+        { ownerEmail:   { contains: q, mode: 'insensitive' as const } },
         { users: { some: { email: { contains: q, mode: 'insensitive' as const } } } },
       ],
     } : {}
@@ -1269,7 +1271,8 @@ router.get('/api/superadmin/credentials-directory', requireSuperAdmin, async (re
         take: limit,
         select: {
           id: true, name: true, businessName: true, subdomain: true,
-          country: true, billingStatus: true, isDemo: true,
+          country: true, city: true, billingStatus: true, isDemo: true,
+          ownerPhone: true, ownerEmail: true,
           users: { select: { id: true, email: true, forcePasswordChange: true } },
         },
       }),

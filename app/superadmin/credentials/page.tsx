@@ -1,13 +1,14 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { KeyRound, Search, Loader2, Mail, ShieldAlert, Send, CheckCircle2 } from 'lucide-react'
+import { KeyRound, Search, Loader2, Mail, MessageCircle, ShieldAlert, Send, CheckCircle2 } from 'lucide-react'
 import { useSAAuth } from '../context'
 
 type DirUser = { id: string; email: string; forcePasswordChange: boolean }
 type DirCafe = {
   id: string; name: string; businessName: string; subdomain: string
-  country: string; billingStatus: string; isDemo: boolean
+  country: string; city: string; billingStatus: string; isDemo: boolean
+  ownerPhone: string; ownerEmail: string
   users: DirUser[]
 }
 
@@ -78,7 +79,7 @@ export default function CredentialsPage() {
         <Search className="w-4 h-4 text-zinc-600 absolute left-3.5 top-1/2 -translate-y-1/2" />
         <input
           value={q} onChange={e => setQ(e.target.value)}
-          placeholder="قلب على رستوران، subdomain، ولا إيميل…"
+          placeholder="قلب على رستوران، subdomain، إيميل ولا رقم هاتف…"
           className="w-full bg-zinc-900 border border-zinc-800 rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-purple-500"
         />
       </div>
@@ -95,12 +96,31 @@ export default function CredentialsPage() {
                 <div className="flex items-center justify-between gap-3 mb-2">
                   <div className="min-w-0">
                     <p className="text-white font-bold text-sm truncate">{cafe.businessName || cafe.name}</p>
-                    <p className="text-zinc-500 text-xs">{cafe.subdomain} · {cafe.country}{cafe.isDemo ? ' · DEMO' : ''}</p>
+                    <p className="text-zinc-500 text-xs">
+                      {cafe.subdomain} · {cafe.city ? `${cafe.city}, ` : ''}{cafe.country}{cafe.isDemo ? ' · DEMO' : ''}
+                    </p>
                   </div>
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-400 shrink-0">
                     {cafe.billingStatus}
                   </span>
                 </div>
+
+                {(cafe.ownerPhone || cafe.ownerEmail) && (
+                  <div className="flex flex-wrap items-center gap-3 mb-2">
+                    {cafe.ownerPhone && (
+                      <a href={`https://wa.me/${cafe.ownerPhone.replace(/[^0-9]/g, '')}`} target="_blank" rel="noreferrer"
+                        className="flex items-center gap-1.5 text-emerald-400 hover:text-emerald-300 text-xs">
+                        <MessageCircle className="w-3.5 h-3.5" /> {cafe.ownerPhone}
+                      </a>
+                    )}
+                    {cafe.ownerEmail && (
+                      <span className="flex items-center gap-1.5 text-zinc-400 text-xs">
+                        <Mail className="w-3.5 h-3.5" /> {cafe.ownerEmail}
+                      </span>
+                    )}
+                  </div>
+                )}
+
                 {cafe.users.length === 0 ? (
                   <p className="text-zinc-700 text-xs italic">لا يوجد مستخدم مرتبط</p>
                 ) : (
