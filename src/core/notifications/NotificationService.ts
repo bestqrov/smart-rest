@@ -1,4 +1,5 @@
 import prisma from '../../prisma'
+import { publishStandardEvent } from '../events/StandardEvent'
 import type {
   Notification, NotificationLevel,
   CreateNotificationInput, NotificationFilter, PagedResult,
@@ -46,7 +47,15 @@ export async function createNotification(
       metadata: serialize(input.metadata),
     },
   })
-  return toNotif(row)
+  const notif = toNotif(row)
+
+  publishStandardEvent('NotificationCreated', {
+    tenantId:   input.targetId ?? 'unknown',
+    resourceId: notif.id,
+    metadata:   { level: input.level, module: input.module, title: input.title },
+  }, 'notifications')
+
+  return notif
 }
 
 export async function getNotifications(

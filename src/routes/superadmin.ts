@@ -40,6 +40,9 @@ async function deleteCafeCascade(id: string) {
   await prisma.printerLog.deleteMany({ where: { cafeId: id } })
   await prisma.onlinePayment.deleteMany({ where: { cafeId: id } })
   await prisma.paymentRequest.deleteMany({ where: { cafeId: id } })
+  await prisma.billingInvoice.deleteMany({ where: { cafeId: id } })
+  await prisma.systemNotification.deleteMany({ where: { cafeId: id } })
+  await prisma.loyaltyReward.deleteMany({ where: { cafeId: id } })
   await prisma.billRequest.deleteMany({ where: { cafeId: id } })
   await prisma.waiterCall.deleteMany({ where: { cafeId: id } })
   await prisma.reservation.deleteMany({ where: { cafeId: id } })
@@ -833,42 +836,7 @@ router.delete('/api/superadmin/tenants/:id', requireSuperAdmin, async (req: Requ
     })
     if (!cafe) return res.status(404).json({ error: 'Cafe not found' })
 
-    // Delete in dependency order (children before parents)
-    await prisma.walletLog.deleteMany({ where: { cafeId: id } })
-    await prisma.fraudAlert.deleteMany({ where: { cafeId: id } })
-    await prisma.feedback.deleteMany({ where: { cafeId: id } })
-    await prisma.qrScan.deleteMany({ where: { cafeId: id } })
-    await prisma.printerLog.deleteMany({ where: { cafeId: id } })
-    await prisma.onlinePayment.deleteMany({ where: { cafeId: id } })
-    await prisma.paymentRequest.deleteMany({ where: { cafeId: id } })
-    await prisma.billRequest.deleteMany({ where: { cafeId: id } })
-    await prisma.waiterCall.deleteMany({ where: { cafeId: id } })
-    await prisma.reservation.deleteMany({ where: { cafeId: id } })
-    await prisma.expense.deleteMany({ where: { cafeId: id } })
-    await prisma.stockItem.deleteMany({ where: { cafeId: id } })
-    await prisma.recipe.deleteMany({ where: { cafeId: id } })
-    // OrderItems via orders
-    const orderIds = (await prisma.order.findMany({ where: { cafeId: id }, select: { id: true } })).map(o => o.id)
-    if (orderIds.length > 0) {
-      await prisma.orderItem.deleteMany({ where: { orderId: { in: orderIds } } })
-    }
-    await prisma.order.deleteMany({ where: { cafeId: id } })
-    await prisma.cashierShift.deleteMany({ where: { cafeId: id } })
-    await prisma.waiterShift.deleteMany({ where: { cafeId: id } })
-    await prisma.waiterQRToken.deleteMany({ where: { cafeId: id } })
-    await prisma.billingTier.deleteMany({ where: { cafeId: id } })
-    await prisma.staff.deleteMany({ where: { cafeId: id } })
-    // Seats before tables
-    await prisma.seat.deleteMany({ where: { cafeId: id } })
-    await prisma.table.deleteMany({ where: { cafeId: id } })
-    // Products before categories
-    const catIds = (await prisma.category.findMany({ where: { cafeId: id }, select: { id: true } })).map(c => c.id)
-    if (catIds.length > 0) {
-      await prisma.product.deleteMany({ where: { categoryId: { in: catIds } } })
-    }
-    await prisma.category.deleteMany({ where: { cafeId: id } })
-    await prisma.user.deleteMany({ where: { cafeId: id } })
-    await prisma.cafe.delete({ where: { id } })
+    await deleteCafeCascade(id)
 
     logger.warn({ msg: 'SuperAdmin permanently deleted cafe', cafeId: id, subdomain: cafe.subdomain })
     return res.json({ deleted: true, cafeId: id, subdomain: cafe.subdomain })
@@ -945,39 +913,7 @@ router.delete('/api/superadmin/users/by-email', requireSuperAdmin, async (req: R
 
     // 3. If user has a cafe, cascade-delete the whole tenant
     if (cafeId) {
-      // reuse the same cascade order as DELETE /api/superadmin/tenants/:id
-      await prisma.walletLog.deleteMany({ where: { cafeId } })
-      await prisma.fraudAlert.deleteMany({ where: { cafeId } })
-      await prisma.feedback.deleteMany({ where: { cafeId } })
-      await prisma.qrScan.deleteMany({ where: { cafeId } })
-      await prisma.printerLog.deleteMany({ where: { cafeId } })
-      await prisma.onlinePayment.deleteMany({ where: { cafeId } })
-      await prisma.paymentRequest.deleteMany({ where: { cafeId } })
-      await prisma.billRequest.deleteMany({ where: { cafeId } })
-      await prisma.waiterCall.deleteMany({ where: { cafeId } })
-      await prisma.systemNotification.deleteMany({ where: { cafeId } })
-      await prisma.reviewGallery.deleteMany({ where: { cafeId } })
-      await prisma.reservation.deleteMany({ where: { cafeId } })
-      await prisma.expense.deleteMany({ where: { cafeId } })
-      await prisma.purchaseOrder.deleteMany({ where: { cafeId } })
-      await prisma.inventorySupplier.deleteMany({ where: { cafeId } })
-      await prisma.stockItem.deleteMany({ where: { cafeId } })
-      await prisma.recipe.deleteMany({ where: { cafeId } })
-      const orderIds = (await prisma.order.findMany({ where: { cafeId }, select: { id: true } })).map(o => o.id)
-      if (orderIds.length) await prisma.orderItem.deleteMany({ where: { orderId: { in: orderIds } } })
-      await prisma.order.deleteMany({ where: { cafeId } })
-      await prisma.cashierShift.deleteMany({ where: { cafeId } })
-      await prisma.waiterShift.deleteMany({ where: { cafeId } })
-      await prisma.waiterQRToken.deleteMany({ where: { cafeId } })
-      await prisma.billingTier.deleteMany({ where: { cafeId } })
-      await prisma.staff.deleteMany({ where: { cafeId } })
-      await prisma.seat.deleteMany({ where: { cafeId } })
-      await prisma.table.deleteMany({ where: { cafeId } })
-      const catIds = (await prisma.category.findMany({ where: { cafeId }, select: { id: true } })).map(c => c.id)
-      if (catIds.length) await prisma.product.deleteMany({ where: { categoryId: { in: catIds } } })
-      await prisma.category.deleteMany({ where: { cafeId } })
-      await prisma.user.deleteMany({ where: { cafeId } })
-      await prisma.cafe.delete({ where: { id: cafeId } })
+      await deleteCafeCascade(cafeId)
     } else {
       // User with no cafe — just delete the user record
       await prisma.user.delete({ where: { id: user.id } })
@@ -1163,6 +1099,42 @@ router.get('/api/superadmin/password-reset-requests', requireSuperAdmin, async (
   }
 })
 
+// Generates + emails a 10-minute temp password for a user. Shared by the
+// request-approval flow and the direct superadmin-initiated reset below.
+async function sendTempPassword(userId: string, email: string): Promise<Date> {
+  const tempPassword = crypto.randomBytes(4).toString('hex').toUpperCase()
+  const tempHash = await bcrypt.hash(tempPassword, 10)
+  const expiry = new Date(Date.now() + 10 * 60 * 1000) // 10 minutes
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      tempPasswordHash:   tempHash,
+      tempPasswordExpiry: expiry,
+      forcePasswordChange: true,
+    },
+  })
+
+  const html = `
+    <div style="font-family:sans-serif;max-width:480px;margin:auto">
+      <h2 style="color:#1e293b">SmartRestau — Mot de passe temporaire</h2>
+      <p>Bonjour,</p>
+      <p>Voici votre mot de passe temporaire pour vous connecter :</p>
+      <div style="font-size:28px;font-weight:bold;letter-spacing:4px;color:#7c3aed;
+        background:#f5f3ff;padding:16px 24px;border-radius:8px;text-align:center;margin:20px 0">
+        ${tempPassword}
+      </div>
+      <p style="color:#ef4444;font-weight:600">⚠️ Valable 10 minutes uniquement.</p>
+      <p>Après connexion, vous serez invité à définir un nouveau mot de passe.</p>
+      <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0">
+      <p style="font-size:12px;color:#94a3b8">SmartRestau SaaS</p>
+    </div>`
+
+  await sendEmail(email, 'Votre mot de passe temporaire — SmartRestau', html)
+  logger.info({ msg: 'temp password sent', email, expiry })
+  return expiry
+}
+
 // ─── POST /api/superadmin/password-reset-requests/:id/approve ─────────────────
 
 router.post('/api/superadmin/password-reset-requests/:id/approve', requireSuperAdmin, async (req: Request, res: Response) => {
@@ -1175,45 +1147,13 @@ router.post('/api/superadmin/password-reset-requests/:id/approve', requireSuperA
       return res.status(400).json({ error: 'Request already resolved' })
     }
 
-    // Generate 8-char readable temp password
-    const tempPassword = crypto.randomBytes(4).toString('hex').toUpperCase()
-    const tempHash = await bcrypt.hash(tempPassword, 10)
-    const expiry = new Date(Date.now() + 10 * 60 * 1000) // 10 minutes
-
-    await prisma.user.update({
-      where: { id: request.userId },
-      data: {
-        tempPasswordHash:   tempHash,
-        tempPasswordExpiry: expiry,
-        forcePasswordChange: true,
-      },
-    })
+    const expiry = await sendTempPassword(request.userId, request.email)
 
     await (prisma as any).passwordResetRequest.update({
       where: { id: request.id },
       data: { status: 'SENT' },
     })
 
-    // Send email to restaurant owner
-    const html = `
-      <div style="font-family:sans-serif;max-width:480px;margin:auto">
-        <h2 style="color:#1e293b">SmartRestau — Mot de passe temporaire</h2>
-        <p>Bonjour,</p>
-        <p>Votre demande de réinitialisation a été approuvée.<br>
-        Utilisez ce mot de passe temporaire pour vous connecter :</p>
-        <div style="font-size:28px;font-weight:bold;letter-spacing:4px;color:#7c3aed;
-          background:#f5f3ff;padding:16px 24px;border-radius:8px;text-align:center;margin:20px 0">
-          ${tempPassword}
-        </div>
-        <p style="color:#ef4444;font-weight:600">⚠️ Valable 10 minutes uniquement.</p>
-        <p>Après connexion, vous serez invité à définir un nouveau mot de passe.</p>
-        <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0">
-        <p style="font-size:12px;color:#94a3b8">SmartRestau SaaS</p>
-      </div>`
-
-    await sendEmail(request.email, 'Votre mot de passe temporaire — SmartRestau', html)
-
-    logger.info({ msg: 'temp password sent', email: request.email, expiry })
     return res.json({ ok: true, expiry })
   } catch (err) {
     logger.error({ msg: 'approve reset request error', err })
@@ -1232,6 +1172,68 @@ router.post('/api/superadmin/password-reset-requests/:id/reject', requireSuperAd
     return res.json({ ok: true })
   } catch (err) {
     logger.error({ msg: 'reject reset request error', err })
+    return res.status(500).json({ error: 'Server error' })
+  }
+})
+
+// ─── GET /api/superadmin/credentials-directory ─────────────────────────────────
+// Searchable directory of every restaurant/client account — business name,
+// subdomain, country, and owner login email(s). No password material is ever
+// returned (passwords are one-way hashed); resets go through the endpoint below.
+
+router.get('/api/superadmin/credentials-directory', requireSuperAdmin, async (req: Request, res: Response) => {
+  try {
+    const q     = (req.query['q'] as string | undefined)?.trim()
+    const page  = Math.max(1, Number(req.query['page'])  || 1)
+    const limit = Math.min(100, Number(req.query['limit']) || 50)
+
+    const where = q ? {
+      OR: [
+        { name:         { contains: q, mode: 'insensitive' as const } },
+        { businessName: { contains: q, mode: 'insensitive' as const } },
+        { subdomain:    { contains: q, mode: 'insensitive' as const } },
+        { ownerPhone:   { contains: q, mode: 'insensitive' as const } },
+        { ownerEmail:   { contains: q, mode: 'insensitive' as const } },
+        { users: { some: { email: { contains: q, mode: 'insensitive' as const } } } },
+      ],
+    } : {}
+
+    const [total, cafes] = await Promise.all([
+      prisma.cafe.count({ where }),
+      prisma.cafe.findMany({
+        where,
+        orderBy: { name: 'asc' },
+        skip: (page - 1) * limit,
+        take: limit,
+        select: {
+          id: true, name: true, businessName: true, subdomain: true,
+          country: true, city: true, billingStatus: true, isDemo: true,
+          ownerPhone: true, ownerEmail: true,
+          users: { select: { id: true, email: true, forcePasswordChange: true } },
+        },
+      }),
+    ])
+
+    return res.json({ total, page, pages: Math.ceil(total / limit), cafes })
+  } catch (err) {
+    logger.error({ msg: 'credentials-directory error', err })
+    return res.status(500).json({ error: 'Server error' })
+  }
+})
+
+// ─── POST /api/superadmin/users/:id/reset-password ─────────────────────────────
+// Directly issue a temp password for a given user, without requiring the
+// client to have filed a PasswordResetRequest first.
+
+router.post('/api/superadmin/users/:id/reset-password', requireSuperAdmin, async (req: Request, res: Response) => {
+  try {
+    const user = await prisma.user.findUnique({ where: { id: req.params.id as string } })
+    if (!user) return res.status(404).json({ error: 'User not found' })
+
+    const expiry = await sendTempPassword(user.id, user.email)
+    return res.json({ ok: true, expiry })
+  } catch (err) {
+    logger.error({ msg: 'direct reset-password error', err })
     return res.status(500).json({ error: 'Server error' })
   }
 })

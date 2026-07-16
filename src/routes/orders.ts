@@ -6,6 +6,8 @@ import prisma from '../prisma'
 import { applyOrderFee } from '../services/billing'
 import { emitKdsTicket, emitOrderStatusUpdate } from '../services/kds'
 import { deductInventoryForOrder } from '../services/inventoryDeduction'
+import { earnPoints } from '../loyalty/LoyaltyService'
+import { autoCheckInReservationForTable } from '../reservations/ReservationService'
 
 const router = express.Router()
 
@@ -186,6 +188,8 @@ router.post('/api/orders', async (req: Request, res: Response) => {
     const io = req.app.get('io') as SocketIOServer | undefined
     if (io) await emitKdsTicket(io, result.id)
 
+    await autoCheckInReservationForTable(cafeId, physicalTableId)
+
     return res.status(201).json({ orderId: result.id, totalPrice: total, billingTableId, physicalTableId, seatNumber })
   } catch (err: any) {
     logger.error({ msg: 'Create order error', err })
@@ -235,30 +239,23 @@ router.patch('/api/orders/:orderId/status', authorizeAdmin, async (req: Request,
 
         // Deduct inventory stock for each recipe ingredient consumed
         await deductInventoryForOrder(tx, cafeId, orderId)
-
-        // Award loyalty points: 10 MAD = 1 point, rounded down
-        if (order.customerPhone) {
-          const earned = Math.floor(order.totalPrice / 10)
-          if (earned > 0) {
-            await tx.loyaltyAccount.upsert({
-              where:  { cafeId_phone: { cafeId, phone: order.customerPhone } },
-              create: {
-                cafeId,
-                phone:  order.customerPhone,
-                points: earned,
-                ledger: [{ type: 'EARN', points: earned, orderId, note: `Order completed`, createdAt: new Date() }],
-              },
-              update: {
-                points: { increment: earned },
-                ledger: {
-                  push: { type: 'EARN', points: earned, orderId, note: `Order completed`, createdAt: new Date() }
-                }
-              }
-            })
-          }
-        }
       }
     })
+
+    // Award loyalty points via the shared service (outside the transaction —
+    // earnPoints does its own prisma call and previously this block bypassed
+    // LoyaltyService entirely with a duplicated, out-of-sync copy that never
+    // updated lifetimePoints, silently breaking tier progression).
+    // Best-effort posture: awarding points must not undo a completed,
+    // already-paid order, so a loyalty-service failure here is logged and
+    // swallowed rather than turning a genuinely completed order into a 500.
+    if (status === 'COMPLETED' && order.status !== 'COMPLETED' && order.customerPhone) {
+      try {
+        await earnPoints(cafeId, order.customerPhone, order.totalPrice, orderId)
+      } catch (err) {
+        logger.error({ msg: 'PATCH order status: loyalty earn failed', orderId, cafeId, err })
+      }
+    }
 
     const io = req.app.get('io') as SocketIOServer | undefined
     if (io) emitOrderStatusUpdate(io, cafeId, orderId, status, order.tableId ?? null)

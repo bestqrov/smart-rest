@@ -275,12 +275,23 @@ model Cafe {
   reEngagementMessage String?  // template — use {{name}} and {{cafe}} as placeholders
   reEngagementDays    Int?     @default(7)  // days of inactivity before sending
 
+  // K21 — Google Business review link, shown to customers after a high (>=4) rating
+  googleReviewLink String?
+
   // ── Social media credentials (per-cafe, filled when owner connects accounts) ─
   fbPageId          String @default("")  // Facebook Page numeric ID
   fbAccessToken     String @default("")  // long-lived FB page token (~60 days)
   igUserId          String @default("")  // Instagram Business account ID
   tiktokAccessToken String @default("")  // TikTok OAuth2 access token
   snapAccessToken   String @default("")  // Snapchat OAuth2 access token
+  linkedinAccessToken String @default("") // K27 — LinkedIn OAuth2 access token
+  xAccessToken        String @default("") // K27 — X (Twitter) OAuth2 access token
+
+  // ── Google Business Profile (K29) ─────────────────────────────────────────
+  googleBusinessProfileId    String?   // GBP location id
+  googleBusinessAccessToken  String?   // OAuth2 access token
+  gbpSyncEnabled              Boolean  @default(false)
+  gbpLastSyncedAt             DateTime?
 
   // ── Smart Resto Certified ─────────────────────────────────────────────────
   ownerPhone             String              @default("")
@@ -288,6 +299,12 @@ model Cafe {
   certificationStatus    CertificationStatus @default(PENDING)
   certificationMetrics   CertificationMetrics?
   certifiedAt            DateTime?
+
+  // ── Loyalty program configuration (admin-configurable, see /admin/loyalty) ──
+  // Currency units required to earn 1 point (e.g. 10 means "10 MAD = 1 point").
+  loyaltyPointsPerCurrency    Float @default(10)
+  loyaltyTierSilverThreshold  Int   @default(500)
+  loyaltyTierGoldThreshold    Int   @default(2000)
 
   categories      Category[]
   tables          Table[]
@@ -317,6 +334,7 @@ model Cafe {
   events             Event[]
   guests             Guest[]
   loyaltyAccounts    LoyaltyAccount[]
+  loyaltyRewards     LoyaltyReward[]
   // Smart Inventory module relations
   inventorySuppliers   InventorySupplier[]
   purchaseOrders       PurchaseOrder[]
@@ -333,12 +351,22 @@ model Cafe {
   cafeCustomers        CafeCustomer[]
   billingInvoices      BillingInvoice[]
 
+  // Multi-Branch Operations (K18) — flat self-relation, same pattern as
+  // Table.mergedIntoTableId/mergedTables. Null = standalone cafe (default,
+  // covers every existing row). Every other model (Product, StockItem,
+  // Staff, ...) already scopes by cafeId, so branch-level menu/inventory/
+  // staff isolation is already guaranteed — this only adds the grouping.
+  parentCafeId String? @db.ObjectId
+  parentCafe   Cafe?   @relation("CafeBranches", fields: [parentCafeId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  branches     Cafe[]  @relation("CafeBranches")
+
   // Indexes for geo-targeting, package segmentation, and n8n campaign queries
   @@index([country])
   @@index([city])
   @@index([packageType])
   @@index([certificationStatus])
   @@index([billingStatus])
+  @@index([parentCafeId])
 
 }
 
@@ -352,6 +380,10 @@ model Table {
   qrToken     String  @unique
   isActive    Boolean @default(true)
   zone        String?
+  // K14 — explicit override for states not derivable from active orders
+  // (RESERVED | CLEANING). Null = status is computed from orders (AVAILABLE/OCCUPIED),
+  // same logic already used by routes/pos/tablesStatus.ts.
+  manualStatus String?
 
   // Waiter currently serving this table (cleared when bill is closed)
   assignedWaiterId String? @db.ObjectId
@@ -475,6 +507,13 @@ model Order {
   orderSource     OrderSource @default(QR_CODE)
   billStatus      BillStatus  @default(OPENED)
   totalCommission Float       @default(0)
+  // POS Core (K11) — order-level discount, applied on top of item subtotal
+  discountAmount  Float?
+  // Order Management Core (K11) — DINE_IN | TAKEAWAY | DELIVERY (defaults to DINE_IN in code when absent)
+  orderType       String?
+  // POS Advanced (K16) — order-level notes, and hold/resume timestamp (null = not held)
+  notes           String?
+  heldAt          DateTime?
   // staff member who entered the order manually (null for QR orders)
   createdById  String? @db.ObjectId
   createdBy    Staff?  @relation("OrderCreatedBy", fields: [createdById], references: [id])
@@ -533,6 +572,28 @@ model OrderItem {
 
   @@index([orderId])
   @@index([productId])
+}
+
+// ─── Kitchen Display System (K12 Foundation) ─────────────────────────────────
+// One ticket per order, tracked independently of Order.status (which stays
+// untouched) — kitchen-side workflow: PENDING → ACCEPTED → PREPARING → READY
+// → SERVED, with CANCELLED reachable up to PREPARING.
+model KitchenTicket {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  orderId     String    @unique @db.ObjectId
+  cafeId      String    @db.ObjectId
+  status      String    @default("PENDING")
+  station     String?
+  acceptedAt  DateTime?
+  preparingAt DateTime?
+  readyAt     DateTime?
+  servedAt    DateTime?
+  cancelledAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([cafeId, status])
+  @@map("kitchen_tickets")
 }
 
 // ─── Billing ──────────────────────────────────────────────────────────────────
@@ -746,9 +807,24 @@ model CashierShift {
   totalCollectedCash Float @default(0)
   notes      String?
 
+  // Staff-declared time they expect to leave, entered alongside initialCash
+  // when the shift opens. Drives the "Timing to out" UI and the overtime
+  // auto-lock below.
+  plannedEndTime DateTime?
+  // Staff-entered actual cash count at clôture (montant compté).
+  countedCash    Float?
+  // countedCash - (initialCash + totalCollectedCash); positive = surplus,
+  // negative = shortfall. Null until the shift is closed.
+  discrepancy    Float?
+  // Set by the overtime cron (src/cron/shiftOvertimeLock.ts) when the shift
+  // is still OPEN more than 1h past plannedEndTime. Cleared only by an
+  // admin (src/routes/pos/shiftAdmin.ts), never by the staff themselves.
+  lockedAt       DateTime?
+
   @@index([cafeId])
   @@index([staffId])
   @@index([status])
+  @@index([lockedAt])
 }
 
 // ─── Waiter QR Login Tokens ───────────────────────────────────────────────────
@@ -841,7 +917,7 @@ model Reservation {
   tableNumber Int?     // physical table number (optional, set by staff on confirmation)
   date        DateTime
   notes       String   @default("")
-  // PENDING | ACCEPTED | COMPLETED | CANCELLED
+  // PENDING | ACCEPTED | COMPLETED | CANCELLED | CHECKED_IN | NO_SHOW (K15)
   // COMPLETED triggers n8n review-request flow and gamification counter increment
   status      String   @default("PENDING")
   // Pre-order snapshot captured at reservation or updated by waiter during visit
@@ -1037,6 +1113,100 @@ model Feedback {
   @@index([createdAt])
 }
 
+// K23 — Customer Feedback Automation: support ticket auto-created for low
+// (<=2) feedback scores. No formal relation to Feedback — same denormalized
+// cafeId + sourceId convention already used elsewhere (e.g. PaymentTransaction).
+model SupportTicket {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId      String    @db.ObjectId
+  source      String    @default("FEEDBACK") // FEEDBACK | REVIEW
+  sourceId    String
+  phone       String?
+  subject     String
+  status      String    @default("OPEN")     // OPEN | IN_PROGRESS | ESCALATED | RESOLVED
+  priority    String    @default("NORMAL")   // NORMAL | HIGH | URGENT
+  createdAt   DateTime  @default(now())
+  escalatedAt DateTime?
+  resolvedAt  DateTime?
+
+  @@index([cafeId, status])
+  @@index([sourceId])
+}
+
+// K25 — WhatsApp Automation Engine. Delivery reuses the existing Evolution
+// API sender (routes/antiFraud.ts sendWhatsApp) — this is the log/queue on
+// top of it, not a second provider integration.
+model WhatsAppMessage {
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId       String    @db.ObjectId
+  phone        String
+  direction    String    @default("OUTBOUND") // OUTBOUND | INBOUND
+  templateKey  String?
+  body         String
+  status       String    @default("PENDING")  // PENDING | SENT | FAILED | SKIPPED
+  retryCount   Int       @default(0)
+  error        String?
+  scheduledFor DateTime?
+  sentAt       DateTime?
+  createdAt    DateTime  @default(now())
+
+  @@index([cafeId, status])
+  @@index([cafeId, phone])
+  @@index([status, scheduledFor])
+}
+
+model WhatsAppTemplate {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId    String   @db.ObjectId
+  key       String   // e.g. "review_request", "low_stock_alert" — same idea as
+                      // the existing Cafe.reEngagementMessage, generalized
+  body      String   // supports {{placeholders}}
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([cafeId, key])
+}
+
+// K26 — Email Automation Engine. Delivery reuses the existing Resend sender
+// (services/email.ts sendEmail) — this is the log/queue/tracking on top of
+// it, not a second provider integration. Mirrors WhatsAppMessage/Template.
+model EmailMessage {
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId       String    @db.ObjectId
+  to           String
+  providerId   String?   // Resend message id, used to correlate webhook events
+  templateKey  String?
+  subject      String
+  body         String
+  status       String    @default("PENDING") // PENDING | SENT | FAILED | SKIPPED | DELIVERED | OPENED | CLICKED | BOUNCED
+  retryCount   Int       @default(0)
+  error        String?
+  scheduledFor DateTime?
+  sentAt       DateTime?
+  openedAt     DateTime?
+  clickedAt    DateTime?
+  bouncedAt    DateTime?
+  createdAt    DateTime  @default(now())
+
+  @@index([cafeId, status])
+  @@index([providerId])
+  @@index([status, scheduledFor])
+}
+
+model EmailTemplate {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId    String   @db.ObjectId
+  key       String
+  subject   String
+  body      String   // supports {{placeholders}}
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([cafeId, key])
+}
+
 // ─── Online Payment Sessions (Gulf Stripe / Africa Mobile Money) ─────────────
 
 model OnlinePayment {
@@ -1228,6 +1398,33 @@ model MarketingCampaign {
   @@index([createdAt])
 }
 
+// K27 — Social Media Automation Engine. Publishing reuses the existing n8n
+// marketing webhook (same N8N_MARKETING_WEBHOOK_URL / Upload-Post.com
+// pipeline already used by MarketingCampaign's video flow) — this is the
+// generalized queue/schedule/retry layer on top of it, not a second
+// per-platform integration. sourceCampaignId links back to an existing
+// MarketingCampaign when the post is that campaign's video (no formal
+// relation, same denormalized-id convention used elsewhere in this schema).
+model SocialPost {
+  id               String    @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId           String    @db.ObjectId
+  platform         String    // facebook | instagram | tiktok | snapchat | linkedin | x
+  contentType      String    @default("TEXT") // VIDEO | IMAGE | TEXT
+  caption          String    @default("")
+  mediaUrl         String?
+  sourceCampaignId String?
+  status           String    @default("QUEUED") // QUEUED | SCHEDULED | PUBLISHING | PUBLISHED | FAILED
+  scheduledFor     DateTime?
+  retryCount       Int       @default(0)
+  error            String?
+  externalPostId   String?
+  publishedAt      DateTime?
+  createdAt        DateTime  @default(now())
+
+  @@index([cafeId, status])
+  @@index([status, scheduledFor])
+}
+
 // ─── SmartTraiteur — Events & Catering ───────────────────────────────────────
 
 model Event {
@@ -1308,6 +1505,10 @@ model LoyaltyAccount {
   // Accumulated points (never goes negative)
   points  Int    @default(0)
 
+  // K20 — increment-only total ever earned, used for membership tier
+  // (unlike `points`, redemption never lowers this)
+  lifetimePoints Int @default(0)
+
   // Running ledger — each entry is immutable
   ledger  LoyaltyEntry[]
 
@@ -1317,6 +1518,21 @@ model LoyaltyAccount {
   @@unique([cafeId, phone])
   @@index([cafeId])
   @@index([phone])
+}
+
+// K20 — Loyalty Reward Catalog
+model LoyaltyReward {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId      String   @db.ObjectId
+  cafe        Cafe     @relation(fields: [cafeId], references: [id])
+  name        String
+  description String?
+  pointsCost  Int
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([cafeId, isActive])
 }
 
 // Embedded ledger entry — appended on earn or redeem, never mutated
@@ -1372,6 +1588,10 @@ model PurchaseOrder {
   items     PurchaseOrderItem[]
   totalCost Float    @default(0)
 
+  // Optional link back to the requisition this PO was created from.
+  // Null when the PO was created directly (no requisition involved).
+  requisitionId String? @db.ObjectId
+
   // Set when the PO is sent via WhatsApp/n8n webhook
   sentViaWhatsApp Boolean  @default(false)
   sentAt          DateTime?
@@ -1383,6 +1603,7 @@ model PurchaseOrder {
   @@index([supplierId])
   @@index([status])
   @@index([createdAt])
+  @@index([requisitionId])
 }
 
 // ─── Demo Requests — inbound leads from /demo page ───────────────────────────
@@ -1587,9 +1808,21 @@ model SupplierInvoice {
   currency      String   @default("MAD")
   issueDate     DateTime
   dueDate       DateTime?
+  // unpaid | partial | paid | overdue — recomputed whenever a payment is
+  // recorded (see src/services/supplierInvoiceStatus.ts). Still a plain
+  // stored field (not a Prisma computed field) so existing reads/filters
+  // keep working unchanged.
   status        String   @default("unpaid")
   documentUrl   String?
   notes         String?
+
+  // Optional link back to the PO this invoice was auto-generated from.
+  // Null for manual/standalone invoices (today's only flow).
+  purchaseOrderId String? @db.ObjectId
+  // Running total of payments recorded against this invoice.
+  amountPaid      Float   @default(0)
+
+  payments      SupplierPayment[]
 
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -1598,6 +1831,26 @@ model SupplierInvoice {
   @@index([cafeId])
   @@index([cafeId, status])
   @@index([dueDate])
+  @@index([purchaseOrderId])
+}
+
+// One payment (partial or full) recorded against a SupplierInvoice.
+model SupplierPayment {
+  id        String          @id @default(auto()) @map("_id") @db.ObjectId
+  invoiceId String          @db.ObjectId
+  invoice   SupplierInvoice @relation(fields: [invoiceId], references: [id])
+  cafeId    String          @db.ObjectId
+
+  amount    Float
+  paidAt    DateTime @default(now())
+  // cash | card | virement
+  method    String   @default("cash")
+  notes     String?
+
+  createdAt DateTime @default(now())
+
+  @@index([invoiceId])
+  @@index([cafeId])
 }
 
 // ─── Purchase Requisitions (I7tiyajat) ────────────────────────────────────────
@@ -1616,6 +1869,9 @@ model PurchaseRequisition {
   notes          String?
   status         String   @default("pending")
 
+  // Set once a PurchaseOrder is created from this requisition.
+  purchaseOrderId String? @db.ObjectId
+
   approvedAt     DateTime?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -1623,6 +1879,7 @@ model PurchaseRequisition {
   @@index([cafeId])
   @@index([cafeId, status])
   @@index([cafeId, urgency])
+  @@index([purchaseOrderId])
 }
 
 // ─── WhatsApp Re-engagement Customers ────────────────────────────────────────
@@ -1639,9 +1896,21 @@ model CafeCustomer {
   visits    Int      @default(1)
   createdAt DateTime @default(now())
 
+  // CRM Foundation (K19) — visit/order history is derived from Order.customerPhone
+  // (not duplicated here); tags/notes/favorites are genuinely new.
+  tags               String[] @default([])
+  notes              String?
+  favoriteProductIds String[] @default([])
+
+  // Loyalty self-service profile (customer-entered via app/[subdomain]/loyalty)
+  instagramHandle String?
+  facebookHandle  String?
+  tiktokHandle    String?
+
   @@unique([cafeId, phone])
   @@index([cafeId, lastVisit])
   @@index([cafeId, optIn])
+  @@index([cafeId, tags])
 }
 
 // ─── AI Center ────────────────────────────────────────────────────────────────
@@ -1694,6 +1963,7 @@ model AuditEntry {
 
   @@index([module])
   @@index([entityId])
+  @@index([action])
   @@index([performedBy])
   @@index([timestamp])
   @@map("core_audit_entries")
@@ -2149,6 +2419,79 @@ model BillingPlatformInvoice {
   @@map("billing_platform_invoices")
 }
 
+// K28 — Referral & Affiliate Platform. Conversion detection reuses the
+// existing BillingEvents 'InvoicePaid' event (billing platform, K5/K11) via
+// eventBus.subscribe — no separate payment-watching logic. referredCafeId is
+// a plain denormalized id (same convention as PaymentTransaction.tenantId
+// and other K18+ models), no formal relation.
+model AffiliateAccount {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  name             String
+  email            String   @unique
+  phone            String?
+  referralCode     String   @unique
+  status           String   @default("ACTIVE")  // ACTIVE | SUSPENDED
+  commissionType   String   @default("PERCENT")  // PERCENT | FIXED
+  commissionValue  Float    @default(10)         // 10 = 10% if PERCENT, or a flat amount if FIXED
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([status])
+}
+
+// One row per referred tenant — doubles as the tracking record, the
+// conversion record, and the commission ledger entry (payout-ready via
+// commissionStatus), rather than three separate models for one lifecycle.
+model ReferralConversion {
+  id               String    @id @default(auto()) @map("_id") @db.ObjectId
+  affiliateId      String    @db.ObjectId
+  referralCode     String
+  referredCafeId   String    @db.ObjectId
+  status           String    @default("TRACKED")  // TRACKED | CONVERTED | REJECTED
+  commissionAmount Float?
+  commissionStatus String    @default("PENDING")  // PENDING | APPROVED | PAID
+  convertedAt      DateTime?
+  paidAt           DateTime?
+  createdAt        DateTime  @default(now())
+
+  @@unique([referredCafeId])
+  @@index([affiliateId, commissionStatus])
+  @@index([referralCode])
+}
+
+// K29 — Local SEO & Google Business Automation. Review monitoring/analytics
+// reuse the existing ReviewService (K21) and FeedbackService (K23) — this
+// model only tracks directory listing status ("citation hooks"), not an
+// automated scanner (no such integration exists to scan against).
+model SeoCitation {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId        String    @db.ObjectId
+  source        String    // GOOGLE | YELP | TRIPADVISOR | FACEBOOK | OTHER
+  url           String?
+  status        String    @default("MISSING") // LISTED | MISSING | INCONSISTENT
+  lastCheckedAt DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@unique([cafeId, source])
+  @@index([cafeId, status])
+}
+
+// AI-assisted reply suggestions for reviews/feedback. Tracked as its own
+// record (Order/Feedback aren't touched) and via the existing AIJobService
+// (services/aiJobService.ts) rather than a second job-tracking mechanism.
+model SeoReviewReply {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId         String   @db.ObjectId
+  sourceType     String   // FEEDBACK | ORDER_REVIEW
+  sourceId       String
+  suggestedReply String
+  aiJobId        String?
+  status         String   @default("SUGGESTED") // SUGGESTED | APPROVED | SENT
+  createdAt      DateTime @default(now())
+
+  @@index([cafeId, sourceType, sourceId])
+}
+
 // ─── Billing Platform — Event Log ─────────────────────────────────────────────
 
 model BillingEventLog {
@@ -2163,6 +2506,212 @@ model BillingEventLog {
   @@index([type])
   @@index([createdAt])
   @@map("billing_event_logs")
+}
+
+// K31 — Smart Intelligence Event Hub. Cross-domain persistence for every
+// platform event (billing/pos/kitchen/inventory/tables/reservations/orders/
+// branches/crm/loyalty/reviews/feedback/whatsapp/email/social/affiliate/seo/
+// tenant/marketplace/...), not just one module — distinct purpose from
+// BillingEventLog above, which stays billing-only and untouched. Backs
+// event replay support.
+model IntelligenceEventLog {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  eventId    String
+  eventName  String
+  module     String
+  tenantId   String?
+  actor      String?
+  resourceId String?
+  source     String
+  metadata   String?  // JSON string
+  timestamp  DateTime
+  createdAt  DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([eventName])
+  @@index([module])
+  @@index([source])
+  @@index([timestamp])
+  @@map("intelligence_event_logs")
+}
+
+// K35 — Recommendation Engine Foundation. One row per (tenantId, ruleId) —
+// re-running the engine updates score/priority in place rather than
+// duplicating, so a rule always has at most one live recommendation per
+// tenant. Status is the NEW → ACTIVE → DISMISSED → COMPLETED lifecycle.
+model Recommendation {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId    String
+  ruleId      String
+  category    String
+  title       String
+  description String
+  priority    String    @default("MEDIUM") // LOW | MEDIUM | HIGH | URGENT
+  score       Float
+  status      String    @default("NEW")    // NEW | ACTIVE | DISMISSED | COMPLETED
+  metadata    String?   // JSON string
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  dismissedAt DateTime?
+  completedAt DateTime?
+
+  @@unique([tenantId, ruleId])
+  @@index([tenantId, status])
+  @@index([category])
+  @@map("intelligence_recommendations")
+}
+
+// K36 — Insight Engine. Distinct from Recommendation above: an insight is an
+// observation at a point in time (event-triggered), so every trigger
+// creates a new row — no unique(tenantId, ruleId) upsert like
+// Recommendation, which represents one standing actionable item per rule.
+model Insight {
+  id             String    @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId       String
+  ruleId         String
+  category       String
+  severity       String    @default("INFO") // INFO | WARNING | CRITICAL
+  title          String
+  description    String
+  status         String    @default("NEW")  // NEW | ACKNOWLEDGED | RESOLVED | DISMISSED
+  sourceEventId  String?                    // NormalizedIntelligenceEvent.eventId that triggered this
+  metadata       String?                    // JSON string
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  acknowledgedAt DateTime?
+  resolvedAt     DateTime?
+
+  @@index([tenantId, status])
+  @@index([category])
+  @@index([severity])
+  @@map("intelligence_insights")
+}
+
+// K37 — Action Engine. Distinct from AIJobService's AIJob model (used by
+// K29 for AI-specific work) — this is the generic queue for any registered
+// action executor, business-agnostic. Execution is always explicit
+// (enqueueAction/runAction called directly): the `mode` field records
+// intent (MANUAL vs AUTOMATIC) but nothing in this codebase auto-triggers
+// AUTOMATIC-mode actions yet — that wiring is out of scope by design.
+model Action {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId      String
+  executorId    String
+  category      String
+  mode          String    @default("MANUAL") // MANUAL | AUTOMATIC
+  status        String    @default("QUEUED")  // QUEUED | RUNNING | COMPLETED | FAILED | CANCELLED
+  input         String?   // JSON string
+  resultSuccess Boolean?
+  resultMessage String?
+  resultData    String?   // JSON string
+  createdAt     DateTime  @default(now())
+  startedAt     DateTime?
+  completedAt   DateTime?
+
+  @@index([tenantId, status])
+  @@index([executorId])
+  @@map("intelligence_actions")
+}
+
+// K38 — Decision Engine Foundation. Synthesizes Recommendation (K35) +
+// Insight (K36) records into a decision; EXECUTED only ever means "queued
+// an Action (K37) via enqueueAction" — never that a business action
+// actually ran, since Action Engine itself requires a separate explicit
+// runAction call. Every lifecycle transition is also written to the
+// existing AuditService (core) rather than a second audit table.
+model Decision {
+  id                        String    @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId                  String
+  ruleId                    String
+  category                  String
+  title                     String
+  description               String
+  priority                  String    @default("MEDIUM") // LOW | MEDIUM | HIGH | URGENT
+  confidence                Float                          // 0-1
+  status                    String    @default("PENDING")  // PENDING | APPROVED | REJECTED | EXECUTED
+  suggestedActionExecutorId String?
+  suggestedActionInput      String?   // JSON string
+  linkedActionId            String?   // Action.id, set once executeDecision queues it
+  metadata                  String?   // JSON string
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
+  decidedAt                 DateTime?
+  executedAt                DateTime?
+
+  @@index([tenantId, status])
+  @@index([category])
+  @@map("intelligence_decisions")
+}
+
+// K39 — Knowledge Engine. Versioned business facts, one table (append-only
+// history + isCurrent flag for fast lookup) rather than a separate current-
+// value table plus a separate history table — no duplicate storage. No
+// vectors/embeddings; retrieval is by (tenantId, key), not similarity.
+model KnowledgeEntry {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId   String
+  key        String                     // namespaced, e.g. "billing.mrr", "business.peakHours"
+  value      String                     // JSON-stringified string|number|boolean|null
+  sourceType String                     // MANUAL | DATA_HUB | INSIGHT | DECISION | SYSTEM
+  sourceId   String?
+  confidence Float?
+  version    Int      @default(1)
+  isCurrent  Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  @@index([tenantId, key, isCurrent])
+  @@index([tenantId, sourceType])
+  @@map("intelligence_knowledge_entries")
+}
+
+// K41 — Rule Engine. Distinct from the RecommendationRule/InsightRule/
+// DecisionRule registries (K35/K36/K38): those hold TypeScript functions
+// (code, in-memory, one global behavior). This holds DECLARATIVE rules —
+// conditions + an action binding, as data — so they're persisted,
+// versioned, and can be overridden per tenant without a deploy. Same
+// versioning shape as KnowledgeEntry (K39): isCurrent flag + version
+// counter in one table, no separate history table.
+model IntelRule {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  key          String                     // stable id across versions, e.g. "low-mrr-alert"
+  tenantId     String?                    // null = platform default; set = tenant-specific override
+  name         String
+  category     String
+  version      Int      @default(1)
+  isCurrent    Boolean  @default(true)
+  isActive     Boolean  @default(true)
+  conditions   String                     // JSON RuleConditionGroup
+  actionType   String                     // ACTION | DECISION
+  actionConfig String                     // JSON RuleActionBinding
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([key, tenantId, version])
+  @@index([key, tenantId, isCurrent])
+  @@index([category])
+  @@map("intelligence_rules")
+}
+
+// K43 — Prompt Engine. Generic, tenant-agnostic template storage (distinct
+// from marketing-brain's MessageTemplate, which is domain-specific to
+// campaign generation). Same versioning shape as KnowledgeEntry (K39) /
+// IntelRule (K41): isCurrent flag + version counter, one table.
+model IntelPromptTemplate {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  key          String                     // stable id across versions, e.g. "seo-tip-summary"
+  name         String
+  category     String
+  version      Int      @default(1)
+  isCurrent    Boolean  @default(true)
+  systemPrompt String
+  userPrompt   String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([key, version])
+  @@index([key, isCurrent])
+  @@index([category])
+  @@map("intelligence_prompt_templates")
 }
 
 // ─── Billing Platform — Plans (DB-backed, managed by SuperAdmin) ───────────────

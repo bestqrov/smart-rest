@@ -13,20 +13,23 @@ import { Server as SocketIOServer } from 'socket.io'
 import prisma from '../../prisma'
 import logger from '../../logger'
 import authorizePOS from '../../middleware/authorizePOS'
+import requireUnlockedShift from '../../middleware/requireUnlockedShift'
 import { emitKdsTicket } from '../../services/kds'
+import { autoCheckInReservationForTable } from '../../reservations/ReservationService'
 
 const router = express.Router()
 
 type ItemInput = { productId: string; quantity: number; notes?: string }
 
-router.post('/api/pos/orders', authorizePOS, async (req: Request, res: Response) => {
+router.post('/api/pos/orders', authorizePOS, requireUnlockedShift, async (req: Request, res: Response) => {
   try {
     const { staffId, cafeId, shiftId } = req.staff!
-    const { tableId, items, paymentMethod, customerPhone } = req.body as {
+    const { tableId, items, paymentMethod, customerPhone, orderType } = req.body as {
       tableId?:       string
       items:          ItemInput[]
       paymentMethod:  'CASH' | 'CARD' | 'ONLINE'
       customerPhone?: string
+      orderType?:     'DINE_IN' | 'TAKEAWAY'
     }
 
     if (!items?.length || !paymentMethod) {
@@ -116,6 +119,7 @@ router.post('/api/pos/orders', authorizePOS, async (req: Request, res: Response)
         totalPrice:      orderTotal,
         totalCommission,
         customerPhone:   customerPhone ?? null,
+        orderType:       orderType ?? null,
         createdById:     staffId,
         items: {
           create: lineItems
@@ -126,6 +130,8 @@ router.post('/api/pos/orders', authorizePOS, async (req: Request, res: Response)
 
     const io = req.app.get('io') as SocketIOServer | undefined
     if (io) await emitKdsTicket(io, order.id)
+
+    await autoCheckInReservationForTable(cafeId, tableId ?? null)
 
     logger.info({ msg: 'POS order created', orderId: order.id, staffId, shiftId })
     return res.status(201).json({ merged: false, order })

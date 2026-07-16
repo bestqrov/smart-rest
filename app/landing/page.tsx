@@ -6,7 +6,7 @@ import { useState, useEffect, type ElementType } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   QrCode, Zap, BarChart3, Star, CheckCircle, Menu, X,
-  MessageCircle, ArrowRight, Loader2, ChefHat, Crown, Monitor,
+  MessageCircle, ArrowRight, Loader2, ChefHat,
   CreditCard, Bell, Languages, Layers, TrendingUp,
   Shield, Phone, Mail, MapPin, ChevronDown, ChevronUp,
   Utensils, Coffee, Building2, ShoppingBag, Package,
@@ -783,10 +783,10 @@ export default function LandingPage() {
 
   const LANDING_DEMO_CAFE = { subdomain: 'welcome' }
   const LANDING_DEMO_ROLES = [
-    { role: 'BOSS',       icon: Crown,   color: 'amber',   label: { en: 'Admin',       fr: 'Gérant',    ar: 'المدير'  }, sub: { en: 'Full dashboard', fr: 'Tableau de bord',  ar: 'لوحة التحكم' }, pin: null,   dest: '/admin/dashboard' },
-    { role: 'CASHIER',    icon: Monitor, color: 'sky',     label: { en: 'Cashier/POS', fr: 'Caisse POS', ar: 'الكاشير' }, sub: { en: 'Point of sale',  fr: 'Terminal de vente', ar: 'نقطة البيع'  }, dest: '/pos'             },
-    { role: 'SUPERVISOR', icon: ChefHat, color: 'emerald', label: { en: 'Kitchen',     fr: 'Cuisine',    ar: 'المطبخ'  }, sub: { en: 'Live orders',    fr: 'Écran commandes',   ar: 'شاشة الطلبات'}, dest: '/kitchen'          },
-    { role: 'WAITER',     icon: Bell,    color: 'violet',  label: { en: 'Waiter',      fr: 'Serveur',    ar: 'النادل'  }, sub: { en: 'Table service',  fr: 'Service tables',    ar: 'خدمة الطاولات'}, dest: '/waiter'           },
+    { role: 'BOSS',       color: 'amber',   label: { en: 'Admin',       fr: 'Gérant',    ar: 'المدير'  }, sub: { en: 'Full dashboard', fr: 'Tableau de bord',  ar: 'لوحة التحكم' }, pin: null,   dest: '/admin/dashboard' },
+    { role: 'CASHIER',    color: 'sky',     label: { en: 'Cashier/POS', fr: 'Caisse POS', ar: 'الكاشير' }, sub: { en: 'Point of sale',  fr: 'Terminal de vente', ar: 'نقطة البيع'  }, dest: '/pos'             },
+    { role: 'SUPERVISOR', color: 'emerald', label: { en: 'Kitchen',     fr: 'Cuisine',    ar: 'المطبخ'  }, sub: { en: 'Live orders',    fr: 'Écran commandes',   ar: 'شاشة الطلبات'}, dest: '/kitchen'          },
+    { role: 'WAITER',     color: 'violet',  label: { en: 'Waiter',      fr: 'Serveur',    ar: 'النادل'  }, sub: { en: 'Table service',  fr: 'Service tables',    ar: 'خدمة الطاولات'}, dest: '/waiter'           },
   ] as const
 
   async function loginAsRoleLanding(r: typeof LANDING_DEMO_ROLES[number]) {
@@ -907,7 +907,10 @@ export default function LandingPage() {
 
   return (
     <main dir={isRtl ? 'rtl' : 'ltr'} data-theme={theme} className="min-h-screen font-sans overflow-x-hidden" style={{ background: 'var(--cb)', color: 'var(--ct)' }}>
-      <style>{`
+      {/* dangerouslySetInnerHTML: as a JSX text child, the server HTML-escapes
+          the quotes in main[data-theme="…"] (&quot;) while the client doesn't,
+          which throws a hydration "text content does not match" error. */}
+      <style dangerouslySetInnerHTML={{ __html: `
         @keyframes heroFadeUp {
           from { opacity: 0; transform: translateY(22px); }
           to   { opacity: 1; transform: translateY(0);    }
@@ -943,7 +946,7 @@ export default function LandingPage() {
           --cbr: #bfdbfe;
           --ct: #0f172a; --ctm: #475569;
         }
-      `}</style>
+      ` }} />
 
       <CookieBanner lang={lang} t={t} />
 
@@ -1097,17 +1100,15 @@ export default function LandingPage() {
               </p>
               <div className="grid grid-cols-2 gap-2">
                 {LANDING_DEMO_ROLES.map(r => {
-                  const Icon = r.icon
                   const isLoading = demoRoleLoading === r.role
-                  const bg: Record<string,string> = { amber:'bg-amber-500', sky:'bg-sky-500', emerald:'bg-emerald-500', violet:'bg-violet-500' }
                   const ring: Record<string,string> = { amber:'ring-amber-500/20 hover:ring-amber-500/40', sky:'ring-sky-500/20 hover:ring-sky-500/40', emerald:'ring-emerald-500/20 hover:ring-emerald-500/40', violet:'ring-violet-500/20 hover:ring-violet-500/40' }
                   return (
                     <button key={r.role} onClick={() => loginAsRoleLanding(r)} disabled={demoRoleLoading !== null}
                       className={`group bg-white/4 hover:bg-white/7 ring-1 ${ring[r.color]} rounded-2xl p-3.5 text-left transition-all active:scale-[0.98] disabled:opacity-60`}>
-                      <div className={`w-8 h-8 rounded-xl ${bg[r.color]} flex items-center justify-center mb-2.5 shadow-lg`}>
-                        {isLoading ? <Loader2 className="w-3.5 h-3.5 text-white animate-spin" /> : <Icon className="w-3.5 h-3.5 text-white" />}
-                      </div>
-                      <p className="font-bold text-white text-xs leading-snug">{r.label[lang as 'en'|'fr'|'ar']}</p>
+                      <p className="font-bold text-white text-xs leading-snug flex items-center gap-1.5">
+                        {r.label[lang as 'en'|'fr'|'ar']}
+                        {isLoading && <Loader2 className="w-3 h-3 animate-spin" />}
+                      </p>
                       <p className="text-gray-600 text-[10px] mt-0.5">{r.sub[lang as 'en'|'fr'|'ar']}</p>
                     </button>
                   )

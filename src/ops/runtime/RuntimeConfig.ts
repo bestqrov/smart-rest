@@ -35,6 +35,26 @@ const SETTING_DEFS: Record<string, SettingDef> = {
     type: 'number', default: 7, category: 'billing',
     description: 'Days before PAST_DUE account becomes SUSPENDED',
   },
+  'billing.trial_duration_days': {
+    type: 'number', default: 14, category: 'billing',
+    description: 'Default number of days for a new trial subscription',
+  },
+  'billing.default_auto_renew': {
+    type: 'boolean', default: true, category: 'billing',
+    description: 'Whether subscriptions auto-renew on payment by default',
+  },
+  'billing.currency': {
+    type: 'string', default: 'MAD', category: 'billing',
+    description: 'Fallback billing currency when no per-country price is set',
+  },
+  'billing.invoice_prefix': {
+    type: 'string', default: 'BIL', category: 'billing',
+    description: 'Prefix used when generating platform invoice numbers',
+  },
+  'billing.webhook_secret': {
+    type: 'string', default: '', category: 'billing',
+    description: 'Shared secret used to verify inbound billing webhooks',
+  },
   'certification.validity_days': {
     type: 'number', default: 90, category: 'certification',
     description: 'Default number of days a certification remains valid',

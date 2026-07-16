@@ -26,23 +26,30 @@ function norm(s: string): string {
 }
 
 // ─── Send Evolution API WhatsApp message ─────────────────────────────────────
+// Exported (K23) so FeedbackService can reuse it for multi-channel delivery
+// instead of duplicating the Evolution API call. No behavior change.
 
-async function sendWhatsApp(to: string, message: string): Promise<void> {
+// Returns true if the message was actually dispatched (HTTP 2xx), false if
+// skipped (not configured) or the API responded with an error — added for
+// K25's delivery status tracking; existing callers ignoring the return
+// value are unaffected (it was Promise<void> before, now Promise<boolean>).
+export async function sendWhatsApp(to: string, message: string): Promise<boolean> {
   const base     = process.env.EVOLUTION_API_URL
   const instance = process.env.EVOLUTION_INSTANCE
   const apiKey   = process.env.EVOLUTION_API_KEY
 
   if (!base || !instance || !apiKey) {
     logger.warn({ msg: 'Evolution API not configured — skipping WhatsApp send' })
-    return
+    return false
   }
 
   const number = to.replace(/\D/g, '')
-  await fetch(`${base}/message/sendText/${instance}`, {
+  const res = await fetch(`${base}/message/sendText/${instance}`, {
     method:  'POST',
     headers: { 'Content-Type': 'application/json', apikey: apiKey },
     body:    JSON.stringify({ number, text: message })
   })
+  return res.ok
 }
 
 // ─── Deduct ingredients from stock ───────────────────────────────────────────

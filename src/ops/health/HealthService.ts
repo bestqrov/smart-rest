@@ -1,4 +1,5 @@
 import os from 'os'
+import { checkIntelligenceHealth } from '../../intelligence/observability'
 import type { ModuleHealth, SystemHealth, HealthStatus } from '../types'
 
 // ─── Individual module health checks ─────────────────────────────────────────
@@ -273,6 +274,7 @@ export async function getSystemHealth(): Promise<SystemHealth> {
     checkAnalytics(),
     checkN8N(),
     checkStorage(),
+    checkIntelligenceHealth(),
   ])
 
   return {

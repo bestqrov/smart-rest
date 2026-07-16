@@ -1,5 +1,5 @@
 node_modules/
-logs/
+/logs/
 .env
 /.next
 dist/
@@ -7,3 +7,4 @@ coverage/
 *.log
 npm-debug.log*
 .DS_Store
+.superpowers/

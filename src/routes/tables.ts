@@ -5,6 +5,7 @@ import { authorizeAdmin } from '../middleware/authorizeAdmin'
 import { validateSeatQR } from '../middleware/validateSeatQR'
 import logger from '../logger'
 import prisma from '../prisma'
+import { publishStandardEvent } from '../core'
 
 const router = express.Router()
 
@@ -240,6 +241,9 @@ router.post('/api/tables/merge', authorizeAdmin, async (req: Request, res: Respo
     }
 
     logger.info({ msg: 'Tables merged', cafeId, targetTableId, sourceTableIds })
+    publishStandardEvent('TableMerged', {
+      tenantId: cafeId, resourceId: targetTableId, metadata: { sourceTableIds },
+    }, 'tables')
     return res.json({
       message: `Tables ${sourceNumbers.join(', ')} merged into Table ${target.tableNumber}`,
       targetTableId,
@@ -304,6 +308,9 @@ router.post('/api/tables/unmerge', authorizeAdmin, async (req: Request, res: Res
     }
 
     logger.info({ msg: 'Tables unmerged', cafeId, targetTableId, sourceIds })
+    publishStandardEvent('TableUnmerged', {
+      tenantId: cafeId, resourceId: targetTableId, metadata: { sourceTableIds: sourceIds },
+    }, 'tables')
     return res.json({
       message: `Tables ${sourceNumbers.join(', ')} are now independent from Table ${target.tableNumber}`,
       targetTableId,

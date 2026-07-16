@@ -5,47 +5,26 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import {
-  LayoutDashboard, UtensilsCrossed, QrCode, Share2,
-  CreditCard, LogOut, ChevronRight, Menu, X,
-  AlertTriangle, Loader2, Gift, Zap, ChefHat, Bell, Monitor,
-  Users, BarChart3, Copy, Check, ExternalLink, Building2,
-  Banknote, Wallet, CalendarClock, Sparkles, Settings, Languages, TrendingUp, Film,
-  Package, Lock, LayoutGrid, Wrench, Receipt, ShoppingCart, CalendarDays, Radio, ShieldCheck,
-  Store
+  LogOut, Menu, X,
+  AlertTriangle, Loader2, Zap, ChefHat, Bell, Monitor, Gift,
+  Copy, Check, ExternalLink, Building2,
+  Banknote, Wallet, Languages,
+  Cloud, CloudRain, CloudSnow, CloudLightning, CloudFog, Sun,
 } from 'lucide-react'
 import { AdminLangProvider, useLang, type AdminLang } from './lang-context'
 import { A, type AdminT } from '@/lib/adminI18n'
+import AdminSidebarNav from './AdminSidebarNav'
 
 // ── Nav ───────────────────────────────────────────────────────────────────────
-
-const NAV = [
-  { href: '/admin/dashboard',  icon: LayoutDashboard, key: 'dashboard'  },
-  { href: '/admin/menu-gen',   icon: Sparkles,        key: 'menuAI'     },
-  { href: '/admin/menu',       icon: UtensilsCrossed, key: 'menu'       },
-  { href: '/admin/tables',     icon: QrCode,          key: 'tables'     },
-  { href: '/admin/zones',      icon: LayoutGrid,      key: 'zones'      },
-  { href: '/admin/staff',      icon: Users,           key: 'staff'      },
-  { href: '/admin/control',    icon: Radio,           key: 'control'    },
-  { href: '/admin/attendance', icon: CalendarClock,   key: 'attendance' },
-  { href: '/admin/financials', icon: BarChart3,       key: 'financials' },
-  { href: '/admin/margins',   icon: TrendingUp,      key: 'margins'    },
-  { href: '/admin/equipment',  icon: Wrench,          key: 'equipment'  },
-  { href: '/admin/invoices',      icon: Receipt,        key: 'invoices'      },
-  { href: '/admin/requisitions',  icon: ShoppingCart,   key: 'requisitions'  },
-  { href: '/admin/reservations',   icon: CalendarDays,   key: 'reservations'  },
-  { href: '/admin/loyalty',        icon: Gift,           key: 'loyalty'        },
-  { href: '/admin/certification',  icon: ShieldCheck,    key: 'certification'  },
-  { href: '/admin/marketing',     icon: Film,           key: 'marketing'     },
-  { href: '/admin/social',     icon: Share2,          key: 'social'     },
-  { href: '/admin/billing',    icon: CreditCard,      key: 'billing'    },
-  { href: '/admin/billing/subscription', icon: Wallet, key: 'subscription' },
-  { href: '/admin/settings',   icon: Settings,        key: 'settings'   },
-] as const
+// The grouped accordion nav (big sections → sub-links) lives in
+// AdminSidebarNav.tsx — shared by the desktop sidebar and the mobile drawer.
+// The Subscription entry (K2) is registered there, in the 'finance' group.
 
 const STAFF_LINKS = [
-  { href: '/kitchen', icon: ChefHat,  key: 'kitchenKds' },
-  { href: '/waiter',  icon: Bell,     key: 'waiterView'  },
-  { href: '/pos',     icon: Monitor,  key: 'miniPos'     },
+  { href: '/kitchen',  icon: ChefHat,  key: 'kitchenKds',  color: 'text-orange-500 bg-orange-50 hover:bg-orange-100'  },
+  { href: '/waiter',   icon: Bell,     key: 'waiterView',  color: 'text-violet-500 bg-violet-50 hover:bg-violet-100'  },
+  { href: '/pos',      icon: Monitor,  key: 'miniPos',     color: 'text-blue-500 bg-blue-50 hover:bg-blue-100'        },
+  { href: '/comptoir', icon: Banknote, key: 'comptoirPos', color: 'text-emerald-500 bg-emerald-50 hover:bg-emerald-100' },
 ] as const
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -554,88 +533,18 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
           </div>
         )}
 
-        <nav className="flex-1 px-3 py-4 space-y-1">
-          {NAV.map((item) => {
-            const active      = pathname === item.href
-            const isMarketing = item.href === '/admin/marketing'
-            return (
-              <Link key={item.href} href={item.href}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors group ${
-                  active ? 'bg-emerald-600 text-white' : 'text-gray-400 hover:bg-[#243460] hover:text-white'
-                }`}>
-                <item.icon className="w-5 h-5 shrink-0" />
-                <span className="text-sm font-medium flex-1">{t[item.key as keyof AdminT]}</span>
-                {isMarketing && (
-                  <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-violet-500/20 text-violet-400 border border-violet-500/30">
-                    <Sparkles className="w-2.5 h-2.5" />
-                    PRO
-                  </span>
-                )}
-                {active && <ChevronRight className={`w-4 h-4 opacity-70 ${!isRTL ? 'rotate-180' : ''}`} />}
-              </Link>
-            )
-          })}
-
-          {/* ── Marketplace (feature flag gated) ────────────────────── */}
-          {marketplaceEnabled && (
-            <Link href="/admin/marketplace"
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors group ${
-                pathname.startsWith('/admin/marketplace')
-                  ? 'bg-emerald-600 text-white'
-                  : 'text-gray-400 hover:bg-[#243460] hover:text-white'
-              }`}>
-              <Store className="w-5 h-5 shrink-0" />
-              <span className="text-sm font-medium flex-1">
-                {lang === 'ar' ? 'المتجر' : 'Marketplace'}
-              </span>
-              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                AI
-              </span>
-              {pathname.startsWith('/admin/marketplace') && (
-                <ChevronRight className={`w-4 h-4 opacity-70 ${!isRTL ? 'rotate-180' : ''}`} />
-              )}
-            </Link>
-          )}
-
-          {/* ── Smart Inventory (premium gated item) ────────────────── */}
-          {cafe && (
-            <Link href="/admin/inventory"
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors group relative ${
-                pathname.startsWith('/admin/inventory')
-                  ? 'bg-emerald-600 text-white'
-                  : 'text-gray-400 hover:bg-[#243460] hover:text-white'
-              }`}>
-              <Package className="w-5 h-5 shrink-0" />
-              <span className="text-sm font-medium flex-1">
-                {lang === 'ar' ? 'المخزون' : lang === 'fr' ? 'Inventaire' : 'Inventory'}
-              </span>
-              {!cafe.isSmartInventoryEnabled && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
-                  <Lock className="w-2.5 h-2.5" />
-                  PRO
-                </span>
-              )}
-              {pathname.startsWith('/admin/inventory') && (
-                <ChevronRight className={`w-4 h-4 opacity-70 ${!isRTL ? 'rotate-180' : ''}`} />
-              )}
-            </Link>
-          )}
+        <nav className="flex-1 px-3 py-4 overflow-y-auto">
+          <AdminSidebarNav
+            pathname={pathname}
+            lang={lang}
+            isRTL={isRTL}
+            t={t}
+            marketplaceEnabled={marketplaceEnabled}
+            cafeInventoryEnabled={cafe ? cafe.isSmartInventoryEnabled : null}
+          />
         </nav>
 
-        <div className="px-3 pb-3 border-t border-[#243460] pt-3">
-          <p className="text-xs text-gray-600 uppercase tracking-widest px-2 mb-2">{t.staffScreens}</p>
-          {STAFF_LINKS.map(item => (
-            <a key={item.href} href={item.href} target="_blank" rel="noopener noreferrer"
-              className="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-400 hover:bg-[#243460] hover:text-white transition-colors group mb-1">
-              <item.icon className="w-4 h-4 shrink-0" />
-              <span className="text-xs font-medium flex-1">{t[item.key as keyof AdminT]}</span>
-              <span className="text-gray-700 text-xs group-hover:text-gray-500">↗</span>
-            </a>
-          ))}
-        </div>
-
         <div className="px-3 py-3 border-t border-[#243460] space-y-1">
-          <LangSwitcherSidebar />
           <button onClick={logout}
             className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-gray-400 hover:bg-[#243460] hover:text-red-400 transition-colors">
             <LogOut className="w-5 h-5" />
@@ -691,60 +600,17 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
                 </span>
               </div>
             )}
-            <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-              {NAV.map((item) => {
-                const active      = pathname === item.href
-                const isMarketing = item.href === '/admin/marketing'
-                return (
-                  <Link key={item.href} href={item.href} onClick={() => setOpen(false)}
-                    className={`flex items-center gap-3 px-3 py-3 rounded-xl ${
-                      active ? 'bg-emerald-600 text-white' : 'text-gray-400 hover:bg-[#243460] hover:text-white'
-                    }`}>
-                    <item.icon className="w-5 h-5 shrink-0" />
-                    <span className="font-medium flex-1">{t[item.key as keyof AdminT]}</span>
-                    {isMarketing && (
-                      <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-violet-500/20 text-violet-400 border border-violet-500/30">
-                        <Sparkles className="w-2.5 h-2.5" />
-                        PRO
-                      </span>
-                    )}
-                  </Link>
-                )
-              })}
-
-              {/* Marketplace (feature flag gated) */}
-              {marketplaceEnabled && (
-                <Link href="/admin/marketplace" onClick={() => setOpen(false)}
-                  className={`flex items-center gap-3 px-3 py-3 rounded-xl ${
-                    pathname.startsWith('/admin/marketplace')
-                      ? 'bg-emerald-600 text-white'
-                      : 'text-gray-400 hover:bg-[#243460] hover:text-white'
-                  }`}>
-                  <Store className="w-5 h-5" />
-                  <span className="font-medium flex-1">
-                    {lang === 'ar' ? 'المتجر' : 'Marketplace'}
-                  </span>
-                  <span className="text-[10px] font-bold text-emerald-400">AI</span>
-                </Link>
-              )}
-
-              {/* Smart Inventory (gated) */}
-              {cafe && (
-                <Link href="/admin/inventory" onClick={() => setOpen(false)}
-                  className={`flex items-center gap-3 px-3 py-3 rounded-xl ${
-                    pathname.startsWith('/admin/inventory')
-                      ? 'bg-emerald-600 text-white'
-                      : 'text-gray-400 hover:bg-[#243460] hover:text-white'
-                  }`}>
-                  <Package className="w-5 h-5" />
-                  <span className="font-medium flex-1">
-                    {lang === 'ar' ? 'المخزون' : lang === 'fr' ? 'Inventaire' : 'Inventory'}
-                  </span>
-                  {!cafe.isSmartInventoryEnabled && (
-                    <Lock className="w-3.5 h-3.5 text-amber-400" />
-                  )}
-                </Link>
-              )}
+            <nav className="flex-1 px-3 py-4 overflow-y-auto">
+              <AdminSidebarNav
+                pathname={pathname}
+                lang={lang}
+                isRTL={isRTL}
+                t={t}
+                marketplaceEnabled={marketplaceEnabled}
+                cafeInventoryEnabled={cafe ? cafe.isSmartInventoryEnabled : null}
+                onNavigate={() => setOpen(false)}
+                itemClassName="px-3 py-3 rounded-xl"
+              />
             </nav>
             <div className="px-3 py-4 border-t border-[#243460] space-y-1">
               <LangSwitcherSidebar />
@@ -761,20 +627,40 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
         </div>
       )}
 
-      {/* ── Page content ──────────────────────────────────────────── */}
-      <main className="flex-1 overflow-y-auto pt-14 md:pt-0 relative">
-        {/* Watermark — cafe logo at 5% opacity fixed behind all content */}
-        {cafe?.logoUrl && (
-          <div
-            aria-hidden
-            className="pointer-events-none fixed inset-0 z-0 bg-center bg-no-repeat bg-contain opacity-[0.05]"
-            style={{ backgroundImage: `url(${cafe.logoUrl})` }}
-          />
-        )}
-        <div className="relative z-10">
-          {children}
-        </div>
-      </main>
+      {/* ── Right column: desktop topbar + page content ─────────────── */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+
+        {/* ── Desktop topbar ─────────────────────────────────────────── */}
+        <header className="hidden md:flex items-center justify-end gap-3 px-5 py-2 bg-white border-b border-gray-200 shrink-0">
+          <AdminWeatherWidget authHeader={authHeader} />
+          <div className="w-px h-6 bg-gray-200" />
+          <div className="flex items-center gap-1.5">
+            {STAFF_LINKS.map(item => (
+              <a key={item.href} href={item.href} target="_blank" rel="noopener noreferrer"
+                title={t[item.key as keyof AdminT]}
+                className={`p-2 rounded-lg transition-colors ${item.color}`}>
+                <item.icon className="w-4 h-4" />
+              </a>
+            ))}
+          </div>
+          <div className="w-px h-6 bg-gray-200" />
+          <TopbarLangSwitcher />
+        </header>
+
+        <main className="flex-1 overflow-y-auto pt-14 md:pt-0 relative">
+          {/* Watermark — cafe logo at 5% opacity fixed behind all content */}
+          {cafe?.logoUrl && (
+            <div
+              aria-hidden
+              className="pointer-events-none fixed inset-0 z-0 bg-center bg-no-repeat bg-contain opacity-[0.05]"
+              style={{ backgroundImage: `url(${cafe.logoUrl})` }}
+            />
+          )}
+          <div className="relative z-10 h-full">
+            {children}
+          </div>
+        </main>
+      </div>
 
       {/* ── Payment Gate overlay ──────────────────────────────────── */}
       {showPaymentGate && cafe && (
@@ -820,6 +706,74 @@ function LangSwitcherSidebar() {
           </button>
         ))}
       </div>
+    </div>
+  )
+}
+
+// ── TopbarLangSwitcher ──────────────────────────────────────────────────────────
+
+function TopbarLangSwitcher() {
+  const { lang, setLang } = useLang()
+  const LANGS: { code: AdminLang; flag: string }[] = [
+    { code: 'ar', flag: '🇲🇦' },
+    { code: 'en', flag: '🇬🇧' },
+    { code: 'fr', flag: '🇫🇷' },
+    { code: 'es', flag: '🇪🇸' },
+  ]
+  return (
+    <div className="flex items-center gap-1">
+      {LANGS.map(({ code, flag }) => (
+        <button
+          key={code}
+          onClick={() => setLang(code)}
+          title={code.toUpperCase()}
+          className={`px-2 py-1.5 rounded-lg text-sm transition-all ${
+            lang === code ? 'bg-blue-50 ring-1 ring-blue-300' : 'hover:bg-gray-100 opacity-60 hover:opacity-100'
+          }`}
+        >
+          {flag}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+// ── AdminWeatherWidget ───────────────────────────────────────────────────────────
+
+type WeatherData = { available: boolean; city?: string; tempC?: number; condition?: string; icon?: string }
+
+function weatherIcon(condition?: string) {
+  switch (condition) {
+    case 'Rain':
+    case 'Drizzle':      return CloudRain
+    case 'Snow':          return CloudSnow
+    case 'Thunderstorm':  return CloudLightning
+    case 'Clear':          return Sun
+    case 'Mist':
+    case 'Fog':
+    case 'Haze':          return CloudFog
+    default:               return Cloud
+  }
+}
+
+function AdminWeatherWidget({ authHeader }: { authHeader: () => Record<string, string> }) {
+  const [data, setData] = useState<WeatherData | null>(null)
+
+  useEffect(() => {
+    fetch('/api/admin/weather', { headers: authHeader() })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => setData(d))
+      .catch(() => setData({ available: false }))
+  }, [])
+
+  if (!data?.available) return null
+
+  const Icon = weatherIcon(data.condition)
+  return (
+    <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-blue-50 text-blue-700">
+      <Icon className="w-4 h-4 text-blue-500" />
+      <span className="text-sm font-bold">{typeof data.tempC === 'number' ? `${data.tempC}°` : '—'}</span>
+      {data.city && <span className="text-xs text-blue-600 hidden lg:inline">{data.city}</span>}
     </div>
   )
 }

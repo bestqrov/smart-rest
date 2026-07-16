@@ -10,6 +10,12 @@ import express, { Request, Response } from 'express'
 import { authorizeAdmin } from '../middleware/authorizeAdmin'
 import logger from '../logger'
 import prisma from '../prisma'
+import { publishStandardEvent } from '../core'
+import {
+  requestFeedback, getSatisfactionScore, createSupportTicketForFeedback,
+  escalateTicket, resolveTicket, listTickets,
+} from '../feedback/FeedbackService'
+import type { FeedbackChannel } from '../feedback/FeedbackService'
 
 const router = express.Router()
 
@@ -71,6 +77,14 @@ router.post('/api/v1/public/feedback', async (req: Request, res: Response) => {
         })
       }
     } catch { /* non-critical */ }
+
+    publishStandardEvent('FeedbackSubmitted', { tenantId: cafeId, resourceId: feedback.id, metadata: { score } }, 'feedback')
+
+    // K23 — auto-create (and, for score=1, auto-escalate) a support ticket for low scores
+    if (score <= 2) {
+      await createSupportTicketForFeedback(cafeId, feedback.id, null, score, feedback.comment)
+        .catch(err => logger.warn({ msg: 'createSupportTicketForFeedback failed', err }))
+    }
 
     return res.status(201).json({ ok: true, feedbackId: feedback.id })
 
@@ -145,6 +159,66 @@ router.get('/api/v1/feedbacks/summary', authorizeAdmin, async (req: Request, res
   } catch (err) {
     logger.error({ msg: 'GET /api/v1/feedbacks/summary error', err })
     return res.status(500).json({ error: 'Failed to compute summary' })
+  }
+})
+
+// ─── K23 — admin endpoints ────────────────────────────────────────────────────
+
+// GET /api/admin/feedback/csat?since=
+router.get('/api/admin/feedback/csat', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const cafeId = req.admin!.cafeId
+    const since  = req.query.since ? new Date(req.query.since as string) : undefined
+    const score  = await getSatisfactionScore(cafeId, since)
+    return res.json(score)
+  } catch (err) {
+    logger.error({ msg: 'GET /api/admin/feedback/csat error', err })
+    return res.status(500).json({ error: 'Failed to compute CSAT' })
+  }
+})
+
+// POST /api/admin/feedback/request — body: { channel, to, link, orderId? }
+router.post('/api/admin/feedback/request', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const cafeId = req.admin!.cafeId
+    const { channel, to, link, orderId } = req.body as { channel?: FeedbackChannel; to?: string; link?: string; orderId?: string }
+    if (!channel || !to || !link) return res.status(400).json({ error: 'channel, to, and link are required' })
+
+    await requestFeedback(cafeId, channel, to, link, orderId)
+    return res.json({ ok: true })
+  } catch (err) {
+    logger.error({ msg: 'POST /api/admin/feedback/request error', err })
+    return res.status(500).json({ error: 'Failed to send feedback request' })
+  }
+})
+
+// GET /api/admin/support-tickets?status=
+router.get('/api/admin/support-tickets', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const cafeId = req.admin!.cafeId
+    const tickets = await listTickets(cafeId, req.query.status as string | undefined)
+    return res.json({ tickets })
+  } catch (err) {
+    logger.error({ msg: 'GET /api/admin/support-tickets error', err })
+    return res.status(500).json({ error: 'Failed to fetch tickets' })
+  }
+})
+
+router.patch('/api/admin/support-tickets/:id/escalate', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const ticket = await escalateTicket(req.admin!.cafeId, req.params.id as string)
+    return res.json({ ticket })
+  } catch (err: any) {
+    return res.status(400).json({ error: err.message ?? 'Failed to escalate ticket' })
+  }
+})
+
+router.patch('/api/admin/support-tickets/:id/resolve', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const ticket = await resolveTicket(req.admin!.cafeId, req.params.id as string)
+    return res.json({ ticket })
+  } catch (err: any) {
+    return res.status(400).json({ error: err.message ?? 'Failed to resolve ticket' })
   }
 })
 

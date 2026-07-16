@@ -1,5 +1,10 @@
 import express, { Request, Response } from 'express'
 import prisma from '../prisma'
+import { authorizeAdmin } from '../middleware/authorizeAdmin'
+import {
+  getCustomerProfile, searchCustomers, addTag, removeTag, setNotes, addFavorite, removeFavorite,
+} from '../customers/CustomerService'
+import { getTierInfo } from '../loyalty/LoyaltyService'
 
 const router = express.Router()
 
@@ -123,6 +128,70 @@ router.get('/api/n8n/inactive-customers', async (req: Request, res: Response) =>
   }
 })
 
+// ─── Public (no-auth) loyalty self-service profile ───────────────────────────
+// Used by app/[subdomain]/loyalty/page.tsx — a customer looks themselves up
+// by phone and can edit their own name + social handles. No admin auth: the
+// phone number itself is the access control (same trust model as the
+// existing /api/customers/optin route above).
+
+router.get('/api/public/loyalty/:subdomain/:phone', async (req: Request, res: Response) => {
+  try {
+    const subdomain = (req.params.subdomain as string).trim().toLowerCase()
+    const phone     = req.params.phone as string
+
+    const cafe = await prisma.cafe.findUnique({ where: { subdomain }, select: { id: true, isActive: true } })
+    if (!cafe || !cafe.isActive) return res.status(404).json({ error: 'Cafe not found' })
+
+    const [tierInfo, customer] = await Promise.all([
+      getTierInfo(cafe.id, phone),
+      prisma.cafeCustomer.findUnique({
+        where:  { cafeId_phone: { cafeId: cafe.id, phone } },
+        select: { name: true, instagramHandle: true, facebookHandle: true, tiktokHandle: true },
+      }),
+    ])
+
+    return res.json({
+      ...tierInfo,
+      customer: customer ?? { name: null, instagramHandle: null, facebookHandle: null, tiktokHandle: null },
+    })
+  } catch (err) {
+    return res.status(500).json({ error: 'Server error' })
+  }
+})
+
+router.patch('/api/public/loyalty/:subdomain/:phone', async (req: Request, res: Response) => {
+  try {
+    const subdomain = (req.params.subdomain as string).trim().toLowerCase()
+    const phone     = req.params.phone as string
+    const { name, instagramHandle, facebookHandle, tiktokHandle } = req.body as Record<string, any>
+
+    const cafe = await prisma.cafe.findUnique({ where: { subdomain }, select: { id: true, isActive: true } })
+    if (!cafe || !cafe.isActive) return res.status(404).json({ error: 'Cafe not found' })
+
+    const customer = await prisma.cafeCustomer.upsert({
+      where: { cafeId_phone: { cafeId: cafe.id, phone } },
+      create: {
+        cafeId: cafe.id, phone,
+        name: name?.trim() || null,
+        instagramHandle: instagramHandle?.trim() || null,
+        facebookHandle:  facebookHandle?.trim()  || null,
+        tiktokHandle:    tiktokHandle?.trim()     || null,
+      },
+      update: {
+        ...(name             !== undefined && { name:             name?.trim()             || null }),
+        ...(instagramHandle  !== undefined && { instagramHandle:  instagramHandle?.trim()  || null }),
+        ...(facebookHandle   !== undefined && { facebookHandle:   facebookHandle?.trim()   || null }),
+        ...(tiktokHandle     !== undefined && { tiktokHandle:     tiktokHandle?.trim()     || null }),
+      },
+      select: { name: true, instagramHandle: true, facebookHandle: true, tiktokHandle: true },
+    })
+
+    return res.json({ ok: true, customer })
+  } catch (err) {
+    return res.status(500).json({ error: 'Server error' })
+  }
+})
+
 // ─── DELETE /api/customers/optout ─────────────────────────────────────────────
 // Customer can unsubscribe. Called if they tap "إلغاء الاشتراك" in a future flow.
 
@@ -138,6 +207,82 @@ router.delete('/api/customers/optout', async (req: Request, res: Response) => {
     return res.json({ ok: true })
   } catch (err) {
     return res.status(500).json({ error: 'Failed' })
+  }
+})
+
+// ─── K19 CRM Foundation — admin-facing endpoints ─────────────────────────────
+
+// GET /api/admin/customers?search=&tag=&page=&limit=
+router.get('/api/admin/customers', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const cafeId = req.admin!.cafeId
+    const { search, tag, page, limit } = req.query as Record<string, string>
+    const result = await searchCustomers(cafeId, {
+      search, tag,
+      page:  page  ? Number(page)  : undefined,
+      limit: limit ? Number(limit) : undefined,
+    })
+    return res.json(result)
+  } catch (err) {
+    return res.status(500).json({ error: 'Failed' })
+  }
+})
+
+// GET /api/admin/customers/:phone — full profile (identity, order/visit history, loyalty)
+router.get('/api/admin/customers/:phone', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const cafeId = req.admin!.cafeId
+    const profile = await getCustomerProfile(cafeId, req.params.phone as string)
+    return res.json(profile)
+  } catch (err: any) {
+    return res.status(404).json({ error: err.message ?? 'Not found' })
+  }
+})
+
+// PATCH /api/admin/customers/:phone/tags — body: { action: 'add'|'remove', tag }
+router.patch('/api/admin/customers/:phone/tags', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const cafeId = req.admin!.cafeId
+    const phone  = req.params.phone as string
+    const { action, tag } = req.body as { action?: string; tag?: string }
+    if (!tag?.trim()) return res.status(400).json({ error: 'tag is required' })
+
+    const updated = action === 'remove'
+      ? await removeTag(cafeId, phone, tag.trim())
+      : await addTag(cafeId, phone, tag.trim())
+    return res.json({ ok: true, customer: updated })
+  } catch (err: any) {
+    return res.status(400).json({ error: err.message ?? 'Failed' })
+  }
+})
+
+// PATCH /api/admin/customers/:phone/notes — body: { notes }
+router.patch('/api/admin/customers/:phone/notes', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const cafeId = req.admin!.cafeId
+    const phone  = req.params.phone as string
+    const { notes } = req.body as { notes?: string }
+    const updated = await setNotes(cafeId, phone, notes ?? '')
+    return res.json({ ok: true, customer: updated })
+  } catch (err: any) {
+    return res.status(400).json({ error: err.message ?? 'Failed' })
+  }
+})
+
+// PATCH /api/admin/customers/:phone/favorites — body: { action: 'add'|'remove', productId }
+router.patch('/api/admin/customers/:phone/favorites', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const cafeId = req.admin!.cafeId
+    const phone  = req.params.phone as string
+    const { action, productId } = req.body as { action?: string; productId?: string }
+    if (!productId) return res.status(400).json({ error: 'productId is required' })
+
+    const updated = action === 'remove'
+      ? await removeFavorite(cafeId, phone, productId)
+      : await addFavorite(cafeId, phone, productId)
+    return res.json({ ok: true, customer: updated })
+  } catch (err: any) {
+    return res.status(400).json({ error: err.message ?? 'Failed' })
   }
 })
 

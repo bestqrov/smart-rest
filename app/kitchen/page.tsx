@@ -406,49 +406,49 @@ export default function KitchenPage() {
   const pendingRes     = reservations.filter(r => r.status === 'PENDING')
 
   if (loading) return (
-    <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-      <div className="text-center"><div className="text-5xl mb-3 animate-bounce">🍳</div><p className="text-gray-400">{tr.loading}</p></div>
+    <div className="min-h-screen bg-orange-50 flex items-center justify-center">
+      <div className="text-center"><div className="text-5xl mb-3 animate-bounce">🍳</div><p className="text-slate-500">{tr.loading}</p></div>
     </div>
   )
 
   return (
-    <div className="min-h-screen bg-[#1e2229] text-white flex flex-col" dir={isRTL ? 'rtl' : 'ltr'} style={{ fontFamily: 'system-ui, sans-serif' }}>
+    <div className="min-h-screen bg-slate-100 text-slate-900 flex flex-col" dir={isRTL ? 'rtl' : 'ltr'} style={{ fontFamily: 'system-ui, sans-serif' }}>
 
       {/* ── Top bar ── */}
-      <header className="h-12 bg-[#161a1f] border-b border-[#2a2f38] flex items-center justify-between px-4 shrink-0 z-20">
+      <header className="h-14 bg-white border-b-2 border-amber-300 flex items-center justify-between px-4 shrink-0 z-20 shadow-sm">
         <div className="flex items-center gap-2.5">
           {cafeLogoUrl
-            ? <img src={cafeLogoUrl} alt={cafeName} className="w-8 h-8 rounded-lg object-contain bg-white/10 border border-white/10" />
-            : <ChefHat className="w-5 h-5 text-amber-400" />
+            ? <img src={cafeLogoUrl} alt={cafeName} className="w-9 h-9 rounded-xl object-contain bg-amber-50 border-2 border-amber-200" />
+            : <div className="w-9 h-9 rounded-xl bg-amber-100 border-2 border-amber-200 flex items-center justify-center"><ChefHat className="w-5 h-5 text-amber-600" /></div>
           }
           <div className="flex flex-col leading-tight">
             <div className="flex items-center gap-1.5">
-              {cafeName && <span className="font-extrabold text-sm tracking-wide">{cafeName}</span>}
-              <span className="bg-amber-500 text-gray-950 text-[10px] font-black px-1.5 py-0.5 rounded-md tracking-widest uppercase">
+              {cafeName && <span className="font-extrabold text-sm tracking-wide text-slate-800">{cafeName}</span>}
+              <span className="bg-amber-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-md tracking-widest uppercase">
                 🍳 {tr.title}
               </span>
             </div>
-            <span className="text-[9px] text-gray-500 font-medium">Powered by SmartMenu</span>
+            <span className="text-[9px] text-slate-400 font-medium">Powered by SmartMenu</span>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
           {/* Counters */}
-          <span className="flex items-center gap-1 bg-emerald-500/15 text-emerald-400 px-2.5 py-1 rounded-full text-xs font-bold">
+          <span className="flex items-center gap-1 bg-emerald-100 text-emerald-700 border border-emerald-300 px-2.5 py-1 rounded-full text-xs font-bold">
             <CheckCheck className="w-3.5 h-3.5" /> {completedToday} {tr.completedToday}
           </span>
-          <span className="flex items-center gap-1 bg-red-500/15 text-red-400 px-2.5 py-1 rounded-full text-xs font-bold">
+          <span className="flex items-center gap-1 bg-red-100 text-red-700 border border-red-300 px-2.5 py-1 rounded-full text-xs font-bold">
             <XCircle className="w-3.5 h-3.5" /> {cancelledToday} {tr.cancelledToday}
           </span>
 
           {/* Tab switcher */}
-          <div className="flex items-center gap-0.5 bg-[#2a2f38] rounded-lg p-0.5">
+          <div className="flex items-center gap-0.5 bg-slate-100 border border-slate-200 rounded-lg p-0.5">
             <button onClick={() => setActiveTab('orders')}
-              className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all ${activeTab === 'orders' ? 'bg-amber-500 text-gray-950' : 'text-gray-400 hover:text-white'}`}>
+              className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all ${activeTab === 'orders' ? 'bg-amber-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>
               🍳 Orders {allTickets.length > 0 && <span className="ml-1 bg-red-500 text-white rounded-full px-1 text-xs">{allTickets.length}</span>}
             </button>
             <button onClick={() => { setActiveTab('reservations'); setNewReservationAlert(false) }}
-              className={`relative px-2.5 py-1 rounded-md text-xs font-bold transition-all ${activeTab === 'reservations' ? 'bg-violet-500 text-white' : 'text-gray-400 hover:text-white'}`}>
+              className={`relative px-2.5 py-1 rounded-md text-xs font-bold transition-all ${activeTab === 'reservations' ? 'bg-violet-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>
               <CalendarClock className="w-3 h-3 inline mr-1" />
               {tr.reservations}
               {pendingRes.length > 0 && <span className={`ml-1 rounded-full px-1 text-white text-xs ${newReservationAlert ? 'bg-red-500 animate-pulse' : 'bg-violet-600'}`}>{pendingRes.length}</span>}
@@ -457,15 +457,15 @@ export default function KitchenPage() {
 
           {/* Mute */}
           <button onClick={() => setMuted(m => !m)}
-            className={`p-1.5 rounded-lg transition-all ${muted ? 'bg-[#2a2f38] text-gray-500' : 'bg-[#2a2f38] text-amber-400'}`}>
+            className={`p-1.5 rounded-lg border transition-all ${muted ? 'bg-slate-100 border-slate-200 text-slate-400' : 'bg-amber-50 border-amber-200 text-amber-500'}`}>
             {muted ? <BellOff className="w-4 h-4" /> : <Bell className="w-4 h-4" />}
           </button>
 
           {/* Lang */}
-          <div className="flex items-center gap-0.5 bg-[#2a2f38] rounded-lg px-1.5 py-1">
+          <div className="flex items-center gap-0.5 bg-slate-100 border border-slate-200 rounded-lg px-1.5 py-1">
             {(['ar','en','fr','es'] as Lang[]).map(l => (
               <button key={l} onClick={() => { setLang(l); localStorage.setItem('sm_lang', l) }}
-                className={`text-xs font-bold px-1.5 py-0.5 rounded-md transition-all ${lang === l ? 'bg-amber-500 text-gray-950' : 'text-gray-500 hover:text-white'}`}>
+                className={`text-xs font-bold px-1.5 py-0.5 rounded-md transition-all ${lang === l ? 'bg-amber-500 text-white' : 'text-slate-400 hover:text-slate-700'}`}>
                 {l.toUpperCase()}
               </button>
             ))}
@@ -475,13 +475,16 @@ export default function KitchenPage() {
 
       {/* ── Main body ── */}
       {activeTab === 'orders' ? (
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-1 overflow-hidden gap-3 p-3">
 
-          {/* ── LEFT: ticket list ── */}
-          <div className="w-56 lg:w-64 bg-[#252930] border-r border-[#2a2f38] flex flex-col overflow-hidden shrink-0">
+          {/* ── LEFT: ticket list (blue frame) ── */}
+          <div className="w-56 lg:w-64 bg-white border-2 border-sky-200 rounded-2xl flex flex-col overflow-hidden shrink-0 shadow-sm">
+            <div className="bg-sky-500 px-4 py-2 shrink-0">
+              <span className="text-white text-xs font-black uppercase tracking-widest">🎫 Tickets</span>
+            </div>
             <div className="overflow-y-auto flex-1" style={{touchAction:'pan-y'}}>
               {allTickets.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full text-gray-600 gap-2 py-16">
+                <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-2 py-16">
                   <span className="text-3xl">✅</span>
                   <p className="text-xs text-center px-4">{tr.noNew}</p>
                 </div>
@@ -496,26 +499,26 @@ export default function KitchenPage() {
                   <button
                     key={t.orderId}
                     onClick={() => setSelectedId(isSel ? null : t.orderId)}
-                    className={`w-full text-left px-4 py-4 border-b border-[#2a2f38] transition-all flex items-center justify-between gap-2
+                    className={`w-full text-left px-4 py-4 border-b border-slate-100 transition-all flex items-center justify-between gap-2
                       ${isSel
-                        ? 'bg-[#1e2229] border-l-2 border-l-amber-400'
+                        ? 'bg-sky-50 border-l-4 border-l-sky-500'
                         : hasAlert && isPend
-                          ? 'bg-red-950/50 border-l-2 border-l-red-500 hover:bg-red-950/70'
-                          : 'hover:bg-[#2d333d]'}
+                          ? 'bg-red-50 border-l-4 border-l-red-500 hover:bg-red-100'
+                          : 'hover:bg-slate-50 border-l-4 border-l-transparent'}
                     `}
                   >
                     <div className="flex flex-col gap-1.5 min-w-0">
                       {/* Status label */}
                       <span className={`text-[11px] font-black tracking-widest uppercase
-                        ${isPend ? 'text-red-400' : 'text-amber-400'}
+                        ${isPend ? 'text-red-500' : 'text-amber-600'}
                         ${hasAlert && isPend ? 'animate-pulse' : ''}
                       `}>
                         {isPend ? tr.newOrders : tr.cooking}
                       </span>
                       {/* Table */}
-                      <span className="text-2xl font-black text-white leading-none">{t.mergeLabel}</span>
+                      <span className="text-2xl font-black text-slate-800 leading-none">{t.mergeLabel}</span>
                       {/* Item count */}
-                      <span className="text-xs text-gray-500">
+                      <span className="text-xs text-slate-400">
                         {t.seatGroups.flatMap(sg => sg.items).reduce((s, i) => s + i.quantity, 0)} items · {min === 0 ? tr.justNow : tr.minAgo(min)}
                       </span>
                     </div>
@@ -524,7 +527,7 @@ export default function KitchenPage() {
                     <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${
                       tier === 'critical' ? 'bg-red-500 animate-pulse' :
                       tier === 'warning'  ? 'bg-orange-400' :
-                      tier === 'caution'  ? 'bg-yellow-400' : 'bg-gray-600'
+                      tier === 'caution'  ? 'bg-yellow-400' : 'bg-slate-300'
                     }`} />
                   </button>
                 )
@@ -532,13 +535,13 @@ export default function KitchenPage() {
             </div>
           </div>
 
-          {/* ── RIGHT: detail panel ── */}
-          <div className="flex-1 flex flex-col overflow-hidden bg-[#1e2229]">
+          {/* ── RIGHT: detail panel (amber frame) ── */}
+          <div className="flex-1 flex flex-col overflow-hidden bg-white border-2 border-amber-200 rounded-2xl shadow-sm">
             {!selectedTicket ? (
-              <div className="flex-1 flex flex-col items-center justify-center text-gray-600 gap-3">
-                <ChefHat className="w-16 h-16 opacity-20" />
-                <p className="text-lg font-bold opacity-40">{tr.selectOrder}</p>
-                <p className="text-sm opacity-25">{tr.selectOrderSub}</p>
+              <div className="flex-1 flex flex-col items-center justify-center text-slate-300 gap-3">
+                <ChefHat className="w-16 h-16 opacity-40" />
+                <p className="text-lg font-bold text-slate-400">{tr.selectOrder}</p>
+                <p className="text-sm text-slate-300">{tr.selectOrderSub}</p>
               </div>
             ) : (() => {
               const min   = elapsedMin(selectedTicket.createdAt)
@@ -550,23 +553,23 @@ export default function KitchenPage() {
                 <div className="flex-1 flex flex-col overflow-hidden">
 
                   {/* Detail header */}
-                  <div className={`px-8 py-5 border-b border-[#2a2f38] flex items-center justify-between
-                    ${tier === 'critical' ? 'bg-red-950/30' : tier === 'warning' ? 'bg-orange-950/20' : 'bg-[#252930]'}
+                  <div className={`px-8 py-5 border-b-2 flex items-center justify-between rounded-t-xl
+                    ${tier === 'critical' ? 'bg-red-50 border-red-200' : tier === 'warning' ? 'bg-orange-50 border-orange-200' : 'bg-amber-50 border-amber-200'}
                   `}>
                     <div>
                       <div className={`text-xs font-black tracking-widest uppercase mb-1
-                        ${isPend ? 'text-red-400' : 'text-amber-400'}
+                        ${isPend ? 'text-red-500' : 'text-amber-600'}
                       `}>
                         {isPend ? tr.newOrders : tr.cooking}
                       </div>
-                      <div className="text-5xl font-black text-white">{selectedTicket.mergeLabel}</div>
+                      <div className="text-5xl font-black text-slate-800">{selectedTicket.mergeLabel}</div>
                     </div>
 
                     {/* Digital timer */}
                     <div className="text-right">
                       <DigitalTimer iso={selectedTicket.createdAt} tier={tier} />
                       {tier === 'critical' && (
-                        <div className="flex items-center justify-end gap-1 mt-1 text-red-400 text-xs font-bold animate-pulse">
+                        <div className="flex items-center justify-end gap-1 mt-1 text-red-500 text-xs font-bold animate-pulse">
                           <AlertTriangle className="w-3.5 h-3.5" /> {tr.urgent}
                         </div>
                       )}
@@ -574,19 +577,19 @@ export default function KitchenPage() {
                   </div>
 
                   {/* Items list */}
-                  <div className="flex-1 overflow-y-auto px-6 py-4 space-y-2" style={{touchAction:'pan-y'}}>
+                  <div className="flex-1 overflow-y-auto px-6 py-4 space-y-2 bg-slate-50" style={{touchAction:'pan-y'}}>
                     {items.map((item, i) => (
-                      <div key={i} className="flex items-start gap-4 bg-[#252930] rounded-xl px-5 py-4">
+                      <div key={i} className="flex items-start gap-4 bg-white border border-slate-200 rounded-xl px-5 py-4 shadow-sm">
                         {/* Qty badge */}
                         <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl font-black shrink-0
-                          ${tier === 'critical' ? 'bg-red-800 text-red-100' : tier === 'warning' ? 'bg-orange-800 text-orange-100' : 'bg-[#2a2f38] text-white'}
+                          ${tier === 'critical' ? 'bg-red-100 text-red-600' : tier === 'warning' ? 'bg-orange-100 text-orange-600' : 'bg-amber-100 text-amber-700'}
                         `}>
                           {item.quantity}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-lg font-bold text-white leading-tight">{item.productName}</p>
+                          <p className="text-lg font-bold text-slate-800 leading-tight">{item.productName}</p>
                           {item.notes && (
-                            <p className="text-sm text-amber-400 mt-1 font-medium flex items-center gap-1">
+                            <p className="text-sm text-amber-600 mt-1 font-medium flex items-center gap-1">
                               <AlertTriangle className="w-3.5 h-3.5 shrink-0" /> {item.notes}
                             </p>
                           )}
@@ -596,11 +599,11 @@ export default function KitchenPage() {
                   </div>
 
                   {/* Action button — full width at bottom */}
-                  <div className="px-6 pb-6 pt-3 shrink-0">
+                  <div className="px-6 pb-6 pt-3 shrink-0 bg-slate-50">
                     {isPend ? (
                       <button
                         onClick={() => accept(selectedTicket.orderId)}
-                        className="w-full py-5 rounded-2xl font-black text-xl tracking-wider bg-amber-500 hover:bg-amber-400 active:scale-[0.98] text-gray-950 transition-all flex items-center justify-center gap-3 shadow-lg shadow-amber-500/20"
+                        className="w-full py-5 rounded-2xl font-black text-xl tracking-wider bg-amber-500 hover:bg-amber-400 active:scale-[0.98] text-white transition-all flex items-center justify-center gap-3 shadow-lg shadow-amber-500/30"
                       >
                         <CheckCircle2 className="w-7 h-7" />
                         {tr.accept}
@@ -608,8 +611,7 @@ export default function KitchenPage() {
                     ) : (
                       <button
                         onClick={() => markReady(selectedTicket.orderId)}
-                        className="w-full py-5 rounded-2xl font-black text-2xl tracking-widest bg-[#22c55e] hover:bg-[#16a34a] active:scale-[0.98] text-white transition-all flex items-center justify-center gap-3 shadow-lg shadow-green-500/25"
-                        style={{ boxShadow: '0 4px 32px rgba(34,197,94,0.25)' }}
+                        className="w-full py-5 rounded-2xl font-black text-2xl tracking-widest bg-[#22c55e] hover:bg-[#16a34a] active:scale-[0.98] text-white transition-all flex items-center justify-center gap-3 shadow-lg shadow-green-500/30"
                       >
                         <Check className="w-8 h-8 stroke-[3]" />
                         {tr.ready}
@@ -623,58 +625,60 @@ export default function KitchenPage() {
         </div>
 
       ) : (
-        /* ── Reservations ── */
-        <div className="flex-1 overflow-y-auto" style={{touchAction:'pan-y'}}>
-          <div className="sticky top-0 bg-violet-950/80 backdrop-blur px-4 py-2 border-b border-violet-900/40">
-            <h2 className="font-bold text-violet-300 text-sm flex items-center gap-2">
-              <CalendarClock className="w-4 h-4" /> {tr.reservations} — {pendingRes.length}
-            </h2>
-          </div>
-          <div className="p-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-            {pendingRes.length === 0 && (
-              <div className="col-span-3 text-center py-16 text-gray-600">
-                <p className="text-3xl mb-2">📅</p><p className="text-xs">{tr.noReservations}</p>
-              </div>
-            )}
-            {pendingRes.map(r => {
-              const date    = new Date(r.date)
-              const dateStr = date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
-              const timeStr = date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
-              return (
-                <div key={r.id} className="rounded-2xl border border-violet-700/40 bg-[#252930] p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5 text-violet-300">
-                      <CalendarClock className="w-4 h-4 shrink-0" />
-                      <span className="font-bold text-sm">{dateStr}</span>
-                      <span className="text-xs text-violet-400">{timeStr}</span>
-                    </div>
-                    <div className="flex items-center gap-1 text-violet-400 text-xs font-bold">
-                      <Users className="w-3.5 h-3.5" /> {r.guests} {tr.guests}
-                    </div>
-                  </div>
-                  <div>
-                    <p className="font-bold text-white text-sm">{r.name}</p>
-                    <p className="flex items-center gap-1 text-gray-400 text-xs mt-0.5"><Phone className="w-3 h-3" />{r.phone}</p>
-                  </div>
-                  {r.notes && <p className="text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">⚠ {r.notes}</p>}
-                  <div className="flex gap-2">
-                    <button onClick={() => handleReservation(r.id, 'accept')}
-                      className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-white font-bold text-sm py-2.5 rounded-xl transition-all">
-                      <Check className="w-4 h-4" /> {tr.resAccept}
-                    </button>
-                    <button onClick={() => handleReservation(r.id, 'cancel')}
-                      className="flex-1 flex items-center justify-center gap-1.5 bg-red-600 hover:bg-red-500 active:scale-95 text-white font-bold text-sm py-2.5 rounded-xl transition-all">
-                      <X className="w-4 h-4" /> {tr.resCancel}
-                    </button>
-                  </div>
+        /* ── Reservations (violet frame) ── */
+        <div className="flex-1 overflow-y-auto p-3" style={{touchAction:'pan-y'}}>
+          <div className="bg-white border-2 border-violet-200 rounded-2xl overflow-hidden shadow-sm">
+            <div className="bg-violet-500 px-4 py-2.5">
+              <h2 className="font-black text-white text-sm flex items-center gap-2">
+                <CalendarClock className="w-4 h-4" /> {tr.reservations} — {pendingRes.length}
+              </h2>
+            </div>
+            <div className="p-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 bg-violet-50/40">
+              {pendingRes.length === 0 && (
+                <div className="col-span-3 text-center py-16 text-slate-400">
+                  <p className="text-3xl mb-2">📅</p><p className="text-xs">{tr.noReservations}</p>
                 </div>
-              )
-            })}
+              )}
+              {pendingRes.map(r => {
+                const date    = new Date(r.date)
+                const dateStr = date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
+                const timeStr = date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+                return (
+                  <div key={r.id} className="rounded-2xl border-2 border-violet-200 bg-white p-4 space-y-3 shadow-sm">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 text-violet-600">
+                        <CalendarClock className="w-4 h-4 shrink-0" />
+                        <span className="font-bold text-sm">{dateStr}</span>
+                        <span className="text-xs text-violet-400">{timeStr}</span>
+                      </div>
+                      <div className="flex items-center gap-1 text-violet-500 text-xs font-bold">
+                        <Users className="w-3.5 h-3.5" /> {r.guests} {tr.guests}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="font-bold text-slate-800 text-sm">{r.name}</p>
+                      <p className="flex items-center gap-1 text-slate-400 text-xs mt-0.5"><Phone className="w-3 h-3" />{r.phone}</p>
+                    </div>
+                    {r.notes && <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">⚠ {r.notes}</p>}
+                    <div className="flex gap-2">
+                      <button onClick={() => handleReservation(r.id, 'accept')}
+                        className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-white font-bold text-sm py-2.5 rounded-xl transition-all">
+                        <Check className="w-4 h-4" /> {tr.resAccept}
+                      </button>
+                      <button onClick={() => handleReservation(r.id, 'cancel')}
+                        className="flex-1 flex items-center justify-center gap-1.5 bg-red-500 hover:bg-red-400 active:scale-95 text-white font-bold text-sm py-2.5 rounded-xl transition-all">
+                        <X className="w-4 h-4" /> {tr.resCancel}
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
           </div>
         </div>
       )}
-      <footer className="text-center py-2 border-t border-[#2a2f38]">
-        <p className="text-[10px] text-gray-600 opacity-40 select-none">© 2026 Smart Restau</p>
+      <footer className="text-center py-2 border-t border-slate-200 bg-white">
+        <p className="text-[10px] text-slate-400 select-none">© 2026 Smart Restau</p>
       </footer>
     </div>
   )

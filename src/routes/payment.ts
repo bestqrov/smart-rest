@@ -31,6 +31,7 @@ import { authorizeAdmin } from '../middleware/authorizeAdmin'
 import { buildMobileMoneyPayloads } from '../services/mobileMoneyQR'
 import { emitKdsTicket } from '../services/kds'
 import { applyOrderFee } from '../services/billing'
+import { autoCheckInReservationForTable } from '../reservations/ReservationService'
 import { OnlinePaymentMethod, OnlinePaymentStatus } from '@prisma/client'
 
 const router = express.Router()
@@ -190,6 +191,8 @@ async function confirmAndCreateOrder(opts: {
   }
 
   if (io) await emitKdsTicket(io, order.id)
+
+  await autoCheckInReservationForTable(cafeId, physicalTableId)
 
   return order
 }

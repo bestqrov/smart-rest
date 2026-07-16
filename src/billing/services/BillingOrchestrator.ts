@@ -14,6 +14,7 @@ import {
   notifyInvoiceGenerated,
   notifyInvoicePaid,
 }                         from '../notifications/BillingNotifications'
+import { getBillingCurrency } from '../settings/BillingSettingsService'
 import type { Plan }      from '../../tenant/types'
 import type { PlatformInvoice } from '../types'
 
@@ -34,9 +35,12 @@ export async function generateInvoice(input: {
   dueDate:     Date
   notes?:      string
 }): Promise<PlatformInvoice> {
+  const existing = await Invoices.findByPeriod(input.tenantId, input.module, input.periodStart, input.periodEnd)
+  if (existing) return existing
+
   const pricing  = await PlanCatalog.getPriceForTenant(input.plan, input.country)
   const subtotal = pricing?.price ?? 0
-  const currency = pricing?.currency ?? 'MAD'
+  const currency = pricing?.currency ?? await getBillingCurrency()
   const taxType  = Taxes.detectTaxType(input.country)
   const tax      = Taxes.calculateTax(subtotal, currency, input.country, taxType)
 
@@ -75,7 +79,9 @@ export async function recordPayment(
   module:    string,
 ): Promise<PlatformInvoice> {
   const paid = await Invoices.markPaid(invoiceId)
-  await emitInvoicePaid({ tenantId, module, invoiceId }).catch(() => undefined)
+  // K28 — total/currency added to metadata so referral commission calculation
+  // (AffiliateService, subscribed to InvoicePaid) doesn't need a second query.
+  await emitInvoicePaid({ tenantId, module, invoiceId, metadata: { total: paid.total, currency: paid.currency } }).catch(() => undefined)
   await notifyInvoicePaid(tenantId, paid.invoiceNumber).catch(() => undefined)
   return paid
 }

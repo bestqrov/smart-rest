@@ -57,6 +57,7 @@ export interface AuditFilter extends PageOptions {
   module?:      string
   entity?:      string
   entityId?:    string
+  action?:      string
   performedBy?: string
   from?:        Date
   to?:          Date
@@ -229,6 +230,150 @@ export type PlatformEventName =
   | 'SubscriptionSuspended'
   | 'SubscriptionExpired'
   | 'PlanChanged'
+  // POS Core Engine
+  | 'PosOrderOpened'
+  | 'PosOrderItemAdded'
+  | 'PosOrderItemUpdated'
+  | 'PosOrderItemRemoved'
+  | 'PosOrderClosed'
+  // Notifications
+  | 'NotificationCreated'
+  // Order Management Core
+  | 'OrderCreated'
+  | 'OrderUpdated'
+  | 'OrderCompleted'
+  | 'OrderCancelled'
+  // Kitchen Display System
+  | 'KitchenOrderAccepted'
+  | 'KitchenOrderPreparing'
+  | 'KitchenOrderReady'
+  | 'KitchenOrderServed'
+  // Inventory Intelligence (restaurant recipe/stock — distinct from marketplace InventoryUpdated)
+  | 'StockLevelChanged'
+  | 'StockLow'
+  // Tables Management
+  | 'TableStatusChanged'
+  | 'TableTransferred'
+  | 'TableMerged'
+  | 'TableUnmerged'
+  // Reservation Management
+  | 'ReservationCreated'
+  | 'ReservationUpdated'
+  | 'ReservationConfirmed'
+  | 'ReservationCancelled'
+  | 'ReservationCheckedIn'
+  | 'ReservationNoShow'
+  // POS Advanced
+  | 'PosOrderHeld'
+  | 'PosOrderResumed'
+  | 'PosOrderSplit'
+  | 'PosOrdersMerged'
+  | 'PosReceiptReprinted'
+  | 'PosOrderNotesUpdated'
+  // Multi-Branch Operations
+  | 'BranchAdded'
+  | 'BranchRemoved'
+  // CRM Foundation
+  | 'CustomerTagged'
+  | 'CustomerUntagged'
+  | 'CustomerNoteUpdated'
+  | 'CustomerFavoriteAdded'
+  | 'CustomerFavoriteRemoved'
+  // Loyalty & Rewards
+  | 'LoyaltyPointsEarned'
+  | 'LoyaltyPointsRedeemed'
+  | 'LoyaltyTierChanged'
+  | 'LoyaltyRewardCreated'
+  | 'LoyaltyRewardRedeemed'
+  | 'LoyaltyRewardEligible'
+  // Reviews & Reputation
+  | 'ReviewSubmitted'
+  | 'ReviewFlaggedNegative'
+  | 'GoogleReviewLinkUpdated'
+  // Customer Feedback Automation
+  | 'FeedbackRequested'
+  | 'FeedbackSubmitted'
+  | 'SupportTicketCreated'
+  | 'SupportTicketEscalated'
+  | 'SupportTicketResolved'
+  // WhatsApp Automation Engine
+  | 'WhatsAppMessageQueued'
+  | 'WhatsAppMessageSent'
+  | 'WhatsAppMessageFailed'
+  | 'WhatsAppBroadcastCompleted'
+  // Email Automation Engine
+  | 'EmailMessageQueued'
+  | 'EmailMessageSent'
+  | 'EmailMessageFailed'
+  | 'EmailMessageOpened'
+  | 'EmailMessageClicked'
+  | 'EmailMessageBounced'
+  | 'EmailBroadcastCompleted'
+  // Social Media Automation Engine
+  | 'SocialPostQueued'
+  | 'SocialPostPublished'
+  | 'SocialPostFailed'
+  // Referral & Affiliate Platform
+  | 'AffiliateCreated'
+  | 'ReferralTracked'
+  | 'ReferralConverted'
+  | 'CommissionEarned'
+  | 'CommissionApproved'
+  | 'CommissionPaid'
+  // Local SEO & Google Business Automation
+  | 'GbpProfileSynced'
+  | 'GbpSyncFailed'
+  | 'ReviewReplyGenerated'
+  | 'SeoScoreCalculated'
+  | 'CitationChecked'
+  // Smart Intelligence — Recommendation Engine (K35). "Intel" prefix avoids
+  // colliding with the existing marketplace Recommendation* events above,
+  // which are a different domain (product recommendations, not
+  // business-intelligence recommendations for tenant owners).
+  | 'IntelRecommendationCreated'
+  | 'IntelRecommendationActivated'
+  | 'IntelRecommendationDismissed'
+  | 'IntelRecommendationCompleted'
+  // Smart Intelligence — Insight Engine (K36)
+  | 'IntelInsightCreated'
+  | 'IntelInsightAcknowledged'
+  | 'IntelInsightResolved'
+  | 'IntelInsightDismissed'
+  // Smart Intelligence — Action Engine (K37)
+  | 'IntelActionQueued'
+  | 'IntelActionStarted'
+  | 'IntelActionCompleted'
+  | 'IntelActionFailed'
+  | 'IntelActionCancelled'
+  // Smart Intelligence — Decision Engine Foundation (K38)
+  | 'IntelDecisionCreated'
+  | 'IntelDecisionApproved'
+  | 'IntelDecisionRejected'
+  | 'IntelDecisionExecuted'
+  // Smart Intelligence — Knowledge Engine (K39)
+  | 'IntelKnowledgeRecorded'
+  // Smart Intelligence — Agent Framework (K40)
+  | 'IntelAgentRegistered'
+  | 'IntelAgentStatusChanged'
+  | 'IntelAgentError'
+  | 'IntelAgentMessage'
+  // Smart Intelligence — Rule Engine (K41)
+  | 'IntelRuleDefined'
+  | 'IntelRuleTriggered'
+  // Smart Intelligence — AI Provider Layer (K42)
+  | 'IntelAIUsageRecorded'
+  // Smart Intelligence — Prompt Engine (K43)
+  | 'IntelPromptDefined'
+  | 'IntelPromptExecuted'
+  // Smart Intelligence — Agent Runtime (K45)
+  | 'IntelAgentScheduledRun'
+  // Smart Intelligence — Business Advisor Foundation (K46)
+  | 'IntelAdvisorRequested'
+  | 'IntelAdvisorResponded'
+  // Smart Intelligence — Orchestrator (K48)
+  | 'IntelWorkflowStarted'
+  | 'IntelWorkflowStepDispatched'
+  | 'IntelWorkflowCompleted'
 
 export interface PlatformEvent<T = unknown> {
   name:      PlatformEventName
@@ -236,4 +381,17 @@ export interface PlatformEvent<T = unknown> {
   source:    string
   timestamp: Date
   traceId?:  string
+}
+
+// ── Standard Event Payload (K11: Platform Event Standardization) ──────────────
+// Shared payload shape for Subscriptions/Billing/Payments/Notifications
+// events published via eventBus.publish — see core/events/StandardEvent.ts.
+export interface StandardEventPayload {
+  eventId:    string
+  eventName:  PlatformEventName
+  tenantId:   string
+  actor:      string
+  timestamp:  Date
+  resourceId: string
+  metadata?:  Record<string, unknown>
 }

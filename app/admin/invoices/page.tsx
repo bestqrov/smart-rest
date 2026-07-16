@@ -8,19 +8,28 @@ import {
 } from 'lucide-react'
 import { useLang } from '../lang-context'
 
-type InvoiceStatus = 'unpaid' | 'paid' | 'overdue' | 'cancelled'
+type InvoiceStatus = 'unpaid' | 'partial' | 'paid' | 'overdue' | 'cancelled'
 
 interface SupplierInvoice {
   id:            string
   supplierName:  string
   invoiceNumber: string | null
   amount:        number
+  amountPaid:    number
   currency:      string
   issueDate:     string
   dueDate:       string | null
   status:        InvoiceStatus
   documentUrl:   string | null
   notes:         string | null
+}
+
+interface SupplierPayment {
+  id:       string
+  amount:   number
+  paidAt:   string
+  method:   string
+  notes:    string | null
 }
 
 interface Summary {
@@ -39,10 +48,12 @@ const T = {
     all: 'الكل', unpaidTab: 'غير مدفوعة', overdueTab: 'متأخرة', paidTab: 'مدفوعة', cancelledTab: 'ملغاة',
     supplier: 'المورد *', invoiceNum: 'رقم الفاتورة', amount: 'المبلغ *', currency: 'العملة',
     issueDate: 'تاريخ الإصدار *', dueDate: 'تاريخ الاستحقاق', docUrl: 'رابط الوثيقة', notes: 'ملاحظات',
-    status: 'الحالة', markPaid: '✓ مدفوعة', document: 'الوثيقة',
+    status: 'الحالة', document: 'الوثيقة',
     issued: 'صدرت', due: 'استحقاق', empty: 'لا توجد فواتير', emptyFilter: ' في هذا الفلتر',
     deleteConfirm: 'حذف هذه الفاتورة؟',
-    statusLabels: { unpaid: 'غير مدفوعة', overdue: 'متأخرة', paid: 'مدفوعة', cancelled: 'ملغاة' },
+    statusLabels: { unpaid: 'غير مدفوعة', partial: 'مدفوعة جزئياً', overdue: 'متأخرة', paid: 'مدفوعة', cancelled: 'ملغاة' },
+    recordPayment: 'تسجيل الدفعة', noPayments: 'لا توجد مدفوعات مسجلة.',
+    methodCash: 'نقداً', methodCard: 'بطاقة', methodVirement: 'تحويل بنكي',
   },
   fr: {
     title: 'Factures', subtitle: 'Suivez vos factures fournisseurs et paiements',
@@ -52,10 +63,12 @@ const T = {
     all: 'Toutes', unpaidTab: 'Non payées', overdueTab: 'En retard', paidTab: 'Payées', cancelledTab: 'Annulées',
     supplier: 'Fournisseur *', invoiceNum: 'N° Facture', amount: 'Montant *', currency: 'Devise',
     issueDate: 'Date facture *', dueDate: 'Échéance', docUrl: 'URL document', notes: 'Notes',
-    status: 'Statut', markPaid: '✓ Payée', document: 'Document',
+    status: 'Statut', document: 'Document',
     issued: 'Émise', due: 'Échéance', empty: 'Aucune facture', emptyFilter: ' dans ce filtre',
     deleteConfirm: 'Supprimer cette facture ?',
-    statusLabels: { unpaid: 'Non payée', overdue: 'En retard', paid: 'Payée', cancelled: 'Annulée' },
+    statusLabels: { unpaid: 'Non payée', partial: 'Partiellement payée', overdue: 'En retard', paid: 'Payée', cancelled: 'Annulée' },
+    recordPayment: 'Enregistrer le paiement', noPayments: 'Aucun paiement enregistré.',
+    methodCash: 'Cash', methodCard: 'Carte', methodVirement: 'Virement',
   },
   en: {
     title: 'Invoices', subtitle: 'Track your supplier invoices and payments',
@@ -65,10 +78,12 @@ const T = {
     all: 'All', unpaidTab: 'Unpaid', overdueTab: 'Overdue', paidTab: 'Paid', cancelledTab: 'Cancelled',
     supplier: 'Supplier *', invoiceNum: 'Invoice #', amount: 'Amount *', currency: 'Currency',
     issueDate: 'Issue Date *', dueDate: 'Due Date', docUrl: 'Document URL', notes: 'Notes',
-    status: 'Status', markPaid: '✓ Mark Paid', document: 'Document',
+    status: 'Status', document: 'Document',
     issued: 'Issued', due: 'Due', empty: 'No invoices found', emptyFilter: ' for this filter',
     deleteConfirm: 'Delete this invoice?',
-    statusLabels: { unpaid: 'Unpaid', overdue: 'Overdue', paid: 'Paid', cancelled: 'Cancelled' },
+    statusLabels: { unpaid: 'Unpaid', partial: 'Partially Paid', overdue: 'Overdue', paid: 'Paid', cancelled: 'Cancelled' },
+    recordPayment: 'Record Payment', noPayments: 'No payments recorded.',
+    methodCash: 'Cash', methodCard: 'Card', methodVirement: 'Bank Transfer',
   },
   es: {
     title: 'Facturas', subtitle: 'Gestiona tus facturas de proveedores y pagos',
@@ -78,10 +93,12 @@ const T = {
     all: 'Todas', unpaidTab: 'Sin pagar', overdueTab: 'Vencidas', paidTab: 'Pagadas', cancelledTab: 'Canceladas',
     supplier: 'Proveedor *', invoiceNum: 'Nº Factura', amount: 'Monto *', currency: 'Divisa',
     issueDate: 'Fecha factura *', dueDate: 'Vencimiento', docUrl: 'URL documento', notes: 'Notas',
-    status: 'Estado', markPaid: '✓ Pagada', document: 'Documento',
+    status: 'Estado', document: 'Documento',
     issued: 'Emitida', due: 'Vence', empty: 'Sin facturas', emptyFilter: ' en este filtro',
     deleteConfirm: '¿Eliminar esta factura?',
-    statusLabels: { unpaid: 'Sin pagar', overdue: 'Vencida', paid: 'Pagada', cancelled: 'Cancelada' },
+    statusLabels: { unpaid: 'Sin pagar', partial: 'Pagado parcialmente', overdue: 'Vencida', paid: 'Pagada', cancelled: 'Cancelada' },
+    recordPayment: 'Registrar pago', noPayments: 'Sin pagos registrados.',
+    methodCash: 'Efectivo', methodCard: 'Tarjeta', methodVirement: 'Transferencia',
   },
 }
 
@@ -90,16 +107,17 @@ function authHeader() {
 }
 
 const STATUS_ICONS: Record<InvoiceStatus, React.ElementType> = {
-  unpaid: Clock, overdue: AlertCircle, paid: CheckCircle2, cancelled: XCircle,
+  unpaid: Clock, partial: Wallet, overdue: AlertCircle, paid: CheckCircle2, cancelled: XCircle,
 }
 const STATUS_COLORS: Record<InvoiceStatus, { color: string; bg: string }> = {
   unpaid:    { color: 'text-amber-400',   bg: 'bg-amber-500/15'   },
+  partial:   { color: 'text-sky-400',     bg: 'bg-sky-500/15'     },
   overdue:   { color: 'text-rose-400',    bg: 'bg-rose-500/15'    },
   paid:      { color: 'text-emerald-400', bg: 'bg-emerald-500/15' },
   cancelled: { color: 'text-slate-500',   bg: 'bg-slate-500/15'   },
 }
 
-const STATUSES: InvoiceStatus[] = ['unpaid', 'overdue', 'paid', 'cancelled']
+const STATUSES: InvoiceStatus[] = ['unpaid', 'partial', 'overdue', 'paid', 'cancelled']
 
 function fmt(date: string | null) {
   if (!date) return '—'
@@ -131,6 +149,13 @@ export default function InvoicesPage() {
   const [editItem, setEditItem] = useState<SupplierInvoice | null>(null)
   const [form,     setForm]     = useState({ ...EMPTY_FORM })
   const [saving,   setSaving]   = useState(false)
+
+  const [payingId,  setPayingId]  = useState<string | null>(null)
+  const [payAmount, setPayAmount] = useState('')
+  const [payMethod, setPayMethod] = useState('cash')
+  const [payBusy,   setPayBusy]   = useState(false)
+  const [historyId, setHistoryId] = useState<string | null>(null)
+  const [history,   setHistory]   = useState<SupplierPayment[]>([])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -172,19 +197,33 @@ export default function InvoicesPage() {
     }
   }
 
-  async function quickStatus(id: string, status: InvoiceStatus) {
-    await fetch(`/api/v1/invoices/${id}`, {
-      method: 'PATCH',
-      headers: { ...authHeader(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status }),
-    })
-    await load()
-  }
-
   async function del(id: string) {
     if (!confirm(t.deleteConfirm)) return
     await fetch(`/api/v1/invoices/${id}`, { method: 'DELETE', headers: authHeader() })
     await load()
+  }
+
+  async function recordPayment(id: string) {
+    if (payBusy) return
+    if (!payAmount || Number(payAmount) <= 0) return
+    setPayBusy(true)
+    try {
+      const res = await fetch(`/api/v1/invoices/${id}/payments`, {
+        method: 'POST',
+        headers: { ...authHeader(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: Number(payAmount), method: payMethod }),
+      })
+      if (res.ok) { setPayingId(null); setPayAmount(''); await load() }
+    } finally {
+      setPayBusy(false)
+    }
+  }
+
+  async function toggleHistory(id: string) {
+    if (historyId === id) { setHistoryId(null); return }
+    setHistoryId(id)
+    const res = await fetch(`/api/v1/invoices/${id}/payments`, { headers: authHeader() })
+    if (res.ok) setHistory((await res.json()).items ?? [])
   }
 
   const FILTER_TABS: { key: FilterTab; label: string }[] = [
@@ -348,11 +387,14 @@ export default function InvoicesPage() {
           {items.map(inv => {
             const late      = isOverdue(inv.dueDate, inv.status)
             const effStatus = late ? 'overdue' : inv.status
+            // Invoices created before amountPaid existed (pre-migration) have
+            // no amountPaid field at all — default to 0 to avoid NaN.
+            const paidAmount = inv.amountPaid ?? 0
             const { color, bg } = STATUS_COLORS[effStatus] ?? STATUS_COLORS.unpaid
             const StatusIcon    = STATUS_ICONS[effStatus]   ?? Clock
 
             return (
-              <div key={inv.id} className="rounded-2xl border border-slate-700 bg-slate-800/50 p-4 flex items-center gap-4 hover:border-slate-600 transition-colors">
+              <div key={inv.id} className="rounded-2xl border border-slate-700 bg-slate-800/50 p-4 flex items-center gap-4 flex-wrap hover:border-slate-600 transition-colors">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-semibold text-white">{inv.supplierName}</span>
@@ -363,6 +405,9 @@ export default function InvoicesPage() {
                   </div>
                   <div className="flex items-center gap-3 mt-1 flex-wrap">
                     <span className="text-sm font-bold text-white">{inv.amount.toLocaleString('fr-FR')} {inv.currency}</span>
+                    {paidAmount > 0 && paidAmount < inv.amount && (
+                      <span className="text-xs text-sky-400">({paidAmount.toFixed(2)} payé)</span>
+                    )}
                     <span className="text-xs text-slate-400">{t.issued}: {fmt(inv.issueDate)}</span>
                     {inv.dueDate && (
                       <span className={`text-xs ${late ? 'text-rose-400 font-medium' : 'text-slate-400'}`}>
@@ -381,12 +426,18 @@ export default function InvoicesPage() {
                 <div className="flex items-center gap-2 shrink-0">
                   {inv.status !== 'paid' && inv.status !== 'cancelled' && (
                     <button
-                      onClick={() => quickStatus(inv.id, 'paid')}
+                      onClick={() => { setPayingId(payingId === inv.id ? null : inv.id); setPayAmount(String((inv.amount - paidAmount).toFixed(2))) }}
                       className="px-3 py-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/30 text-emerald-400 text-xs font-semibold transition-colors"
                     >
-                      {t.markPaid}
+                      💵 {(inv.amount - paidAmount).toFixed(2)} {inv.currency}
                     </button>
                   )}
+                  <button
+                    onClick={() => toggleHistory(inv.id)}
+                    className="px-2 py-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-slate-400 hover:text-white text-xs transition-colors"
+                  >
+                    {historyId === inv.id ? '▲' : '▼'}
+                  </button>
                   <button
                     onClick={() => {
                       setEditItem(inv)
@@ -414,6 +465,40 @@ export default function InvoicesPage() {
                     <Trash2 size={14} />
                   </button>
                 </div>
+
+                {payingId === inv.id && (
+                  <div className="w-full mt-3 pt-3 border-t border-slate-700 flex items-center gap-2 flex-wrap">
+                    <input
+                      type="number" min={0} step={0.01}
+                      value={payAmount}
+                      onChange={e => setPayAmount(e.target.value)}
+                      className="w-28 bg-white/10 border border-white/10 rounded-lg px-2 py-1.5 text-white text-sm"
+                    />
+                    <select value={payMethod} onChange={e => setPayMethod(e.target.value)}
+                      className="bg-white/10 border border-white/10 rounded-lg px-2 py-1.5 text-white text-sm">
+                      <option value="cash" className="bg-slate-800">{t.methodCash}</option>
+                      <option value="card" className="bg-slate-800">{t.methodCard}</option>
+                      <option value="virement" className="bg-slate-800">{t.methodVirement}</option>
+                    </select>
+                    <button onClick={() => recordPayment(inv.id)} disabled={payBusy}
+                      className="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-white text-xs font-semibold">
+                      {payBusy ? <Loader2 size={14} className="animate-spin" /> : t.recordPayment}
+                    </button>
+                  </div>
+                )}
+
+                {historyId === inv.id && (
+                  <div className="w-full mt-3 pt-3 border-t border-slate-700 space-y-1">
+                    {history.length === 0 ? (
+                      <p className="text-xs text-slate-500">{t.noPayments}</p>
+                    ) : history.map(p => (
+                      <div key={p.id} className="flex items-center justify-between text-xs text-slate-400">
+                        <span>{fmt(p.paidAt)} · {p.method}</span>
+                        <span className="font-mono text-white">{p.amount.toFixed(2)} {inv.currency}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )
           })}

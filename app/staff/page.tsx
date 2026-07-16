@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
-import { ChefHat, Monitor, Bell, Crown, Delete, ArrowLeft, Loader2, AlertCircle } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { ChefHat, Monitor, Bell, Crown, ArrowLeft, Loader2, AlertCircle, Eye, EyeOff } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -35,6 +35,7 @@ const T = {
     back:       'رجوع',
     cafeSub:    'أدخل الاسم المختصر للمقهى',
     cafeLabel:  'المقهى',
+    login:      'دخول',
   },
   fr: {
     welcome: 'Bienvenue',
@@ -53,6 +54,7 @@ const T = {
     back:       'Retour',
     cafeSub:    'Entrez le sous-domaine du café',
     cafeLabel:  'Café',
+    login:      'Connexion',
   },
   en: {
     welcome: 'Welcome',
@@ -71,6 +73,7 @@ const T = {
     back:       'Back',
     cafeSub:    'Enter cafe subdomain',
     cafeLabel:  'Cafe',
+    login:      'Log in',
   },
 } as const
 
@@ -94,6 +97,7 @@ export default function StaffPortal() {
   const [cafe,      setCafe]      = useState<CafeInfo | null>(null)
   const [error,     setError]     = useState('')
   const [loading,   setLoading]   = useState(false)
+  const [showPin,   setShowPin]   = useState(false)
 
   const t = T[lang]
   const MAX_PIN = 8
@@ -111,7 +115,7 @@ export default function StaffPortal() {
       const r = await fetch(`/api/public/cafe/${sub.trim().toLowerCase()}`)
       if (r.ok) {
         const d = await r.json()
-        setCafe({ name: d.businessName || d.name || sub, logoUrl: d.logoUrl ?? null, accentColor: d.accentColor ?? '#059669' })
+        setCafe({ name: d.businessName || d.name || sub, logoUrl: d.logoUrl ?? null, accentColor: d.accentColor ?? '#2563eb' })
       }
     } catch {}
   }
@@ -122,21 +126,11 @@ export default function StaffPortal() {
     setRole(r); setStep('pin'); setPin(''); setError('')
   }
 
-  // ── PIN keypad ──────────────────────────────────────────────────────────────
-  function pressDigit(d: string) {
-    if (pin.length >= MAX_PIN) return
-    setPin(p => p + d)
+  // ── PIN input ────────────────────────────────────────────────────────────────
+  function handlePinChange(v: string) {
+    setPin(v.replace(/[^a-zA-Z0-9]/g, '').slice(0, MAX_PIN))
+    setError('')
   }
-  function pressDelete() { setPin(p => p.slice(0, -1)) }
-
-  // Auto-submit when PIN reaches likely length and user stopped typing
-  const submitTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
-  useEffect(() => {
-    if (pin.length < 4) return
-    if (submitTimeout.current) clearTimeout(submitTimeout.current)
-    submitTimeout.current = setTimeout(() => { if (pin.length >= 4) handleLogin() }, 600)
-    return () => { if (submitTimeout.current) clearTimeout(submitTimeout.current) }
-  }, [pin])
 
   // ── Login ───────────────────────────────────────────────────────────────────
   async function handleLogin() {
@@ -174,7 +168,7 @@ export default function StaffPortal() {
     }
   }
 
-  const accentHex = cafe?.accentColor ?? '#059669'
+  const accentHex = cafe?.accentColor ?? '#2563eb'
   const isRTL = lang === 'ar'
 
   return (
@@ -275,19 +269,25 @@ export default function StaffPortal() {
                 </p>
               </div>
 
-              {/* PIN dots */}
+              {/* PIN input */}
               <div>
                 <p className="text-white/40 text-xs text-center mb-3 font-semibold uppercase tracking-widest">{t.enterPin}</p>
-                <div className="flex items-center justify-center gap-2">
-                  {Array.from({ length: Math.max(pin.length + 1, 4) }, (_, i) => (
-                    <div key={i} className={`w-4 h-4 rounded-full transition-all ${
-                      i < pin.length
-                        ? 'scale-110 shadow-lg'
-                        : 'bg-white/15'
-                    }`}
-                      style={i < pin.length ? { backgroundColor: accentHex } : {}}
-                    />
-                  ))}
+                <div className="relative">
+                  <input
+                    type={showPin ? 'text' : 'password'}
+                    value={pin}
+                    autoFocus
+                    disabled={loading}
+                    onChange={e => handlePinChange(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') handleLogin() }}
+                    placeholder="••••"
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-4 text-center text-2xl tracking-[0.4em] font-bold text-white placeholder-white/20 focus:outline-none focus:ring-2 focus:border-transparent disabled:opacity-50"
+                    style={{ '--tw-ring-color': accentHex } as any}
+                  />
+                  <button type="button" onClick={() => setShowPin(p => !p)}
+                    className="absolute inset-y-0 end-3 flex items-center text-white/40 hover:text-white/70">
+                    {showPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
               </div>
 
@@ -298,31 +298,12 @@ export default function StaffPortal() {
                 </div>
               )}
 
-              {/* Keypad */}
-              <div className="grid grid-cols-3 gap-2.5">
-                {['1','2','3','4','5','6','7','8','9','','0','⌫'].map((k, i) => {
-                  if (k === '') return <div key={i} />
-                  if (k === '⌫') return (
-                    <button key={i} onClick={pressDelete}
-                      className="h-14 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 active:scale-95 transition-all flex items-center justify-center text-white/50">
-                      <Delete className="w-5 h-5" />
-                    </button>
-                  )
-                  return (
-                    <button key={i} onClick={() => pressDigit(k)} disabled={loading}
-                      className="h-14 rounded-2xl bg-white/8 border border-white/10 hover:bg-white/15 active:scale-95 transition-all text-white text-xl font-bold disabled:opacity-50">
-                      {k}
-                    </button>
-                  )
-                })}
-              </div>
-
               {/* Submit */}
-              {loading && (
-                <div className="flex items-center justify-center gap-2 text-white/50 text-sm">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                </div>
-              )}
+              <button onClick={handleLogin} disabled={pin.length < 4 || loading}
+                className="w-full h-14 rounded-2xl bg-gradient-to-br text-white font-bold flex items-center justify-center gap-2 active:scale-95 transition-all disabled:opacity-40"
+                style={{ backgroundImage: `linear-gradient(to bottom right, ${accentHex}, ${accentHex}cc)` }}>
+                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : t.login}
+              </button>
             </div>
           )
         })()}

@@ -1,13 +1,13 @@
 'use client'
 
-import { useState, ReactNode } from 'react'
+import { useState, useEffect, useRef, ReactNode } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Store, FileText, CreditCard, Megaphone,
   Brain, Zap, Workflow, ShieldCheck, BarChart3, Map,
   Users, Activity, Settings, AlertTriangle, LogOut,
-  ChevronDown, Menu, X, KeyRound, HeartPulse,
+  ChevronDown, ChevronLeft, ChevronRight, Menu, X, KeyRound, HeartPulse,
   ShoppingBag, Tag, Package, Truck, ClipboardList, Warehouse,
 } from 'lucide-react'
 import { SAAuthProvider, useSAAuth } from './context'
@@ -70,6 +70,7 @@ const NAV = [
   {
     section: 'Administration',
     items: [
+      { href: '/superadmin/credentials', icon: KeyRound,   label: 'Credentials' },
       { href: '/superadmin/users',       icon: Users,      label: 'Users' },
       { href: '/superadmin/activity',    icon: Activity,   label: 'Activity Log' },
       { href: '/superadmin/settings',    icon: Settings,   label: 'Settings' },
@@ -143,9 +144,26 @@ function LoginWall() {
 
 // ─── Sidebar ──────────────────────────────────────────────────────────────────
 
+// Routes whose own page already renders a second in-page sidebar (e.g. the
+// restaurants dashboard) — entering them auto-collapses this global sidebar
+// to a slim rail so the two don't fight for width. The user can still
+// re-expand it manually via the toggle next to the logo.
+const AUTO_COLLAPSE_ROUTES = ['/superadmin/restaurants']
+
 function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
   const pathname = usePathname()
   const { email, logout } = useSAAuth()
+  const [collapsed, setCollapsed] = useState(() => AUTO_COLLAPSE_ROUTES.some(r => pathname.startsWith(r)))
+  const prevPathname = useRef(pathname)
+
+  useEffect(() => {
+    if (prevPathname.current === pathname) return
+    const entering = AUTO_COLLAPSE_ROUTES.some(r => pathname.startsWith(r))
+    const wasIn    = AUTO_COLLAPSE_ROUTES.some(r => prevPathname.current.startsWith(r))
+    if (entering && !wasIn) setCollapsed(true)
+    if (!entering && wasIn) setCollapsed(false)
+    prevPathname.current = pathname
+  }, [pathname])
 
   const isActive = (href: string) =>
     href === '/superadmin' ? pathname === href : pathname.startsWith(href)
@@ -158,21 +176,30 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
       )}
 
       <aside className={`
-        fixed top-0 left-0 z-50 h-full w-60 bg-zinc-900 border-r border-zinc-800
-        flex flex-col transition-transform duration-200
+        fixed top-0 left-0 z-50 h-full ${collapsed ? 'w-16' : 'w-60'} bg-zinc-900 border-r border-zinc-800
+        flex flex-col transition-all duration-200
         ${open ? 'translate-x-0' : '-translate-x-full'}
         lg:translate-x-0 lg:relative lg:z-auto
       `}>
-        {/* Logo */}
+        {/* Logo + collapse toggle */}
         <div className="flex items-center gap-3 px-4 py-5 border-b border-zinc-800">
           <div className="w-8 h-8 rounded-lg bg-purple-600 flex items-center justify-center shrink-0">
             <Brain className="w-4 h-4 text-white" />
           </div>
-          <div className="min-w-0">
-            <p className="font-black text-white text-sm truncate">SmartRestau</p>
-            <p className="text-[10px] text-zinc-500">Enterprise OS</p>
-          </div>
-          <button onClick={onClose} className="ml-auto text-zinc-600 hover:text-white lg:hidden">
+          {!collapsed && (
+            <div className="min-w-0">
+              <p className="font-black text-white text-sm truncate">SmartRestau</p>
+              <p className="text-[10px] text-zinc-500">Enterprise OS</p>
+            </div>
+          )}
+          <button
+            onClick={() => setCollapsed(v => !v)}
+            title={collapsed ? 'Expand' : 'Collapse'}
+            className="ml-auto hidden lg:flex w-6 h-6 rounded-md text-zinc-600 hover:text-white hover:bg-zinc-800 items-center justify-center transition-colors shrink-0"
+          >
+            {collapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
+          </button>
+          <button onClick={onClose} className={`text-zinc-600 hover:text-white lg:hidden ${collapsed ? 'ml-auto' : ''}`}>
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -181,7 +208,7 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
         <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5">
           {NAV.map((group, gi) => (
             <div key={gi}>
-              {group.section && (
+              {group.section && !collapsed && (
                 <p className="px-3 pt-4 pb-1 text-[10px] font-bold text-zinc-600 uppercase tracking-widest">
                   {group.section}
                 </p>
@@ -191,14 +218,15 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
                   key={item.href}
                   href={item.href}
                   onClick={onClose}
-                  className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                  title={item.label}
+                  className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all ${collapsed ? 'justify-center' : ''} ${
                     isActive(item.href)
                       ? 'bg-purple-600/20 text-purple-300'
                       : 'text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800'
                   }`}
                 >
                   <item.icon className="w-4 h-4 shrink-0" />
-                  {item.label}
+                  {!collapsed && item.label}
                 </Link>
               ))}
             </div>
@@ -206,14 +234,16 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
         </nav>
 
         {/* User footer */}
-        <div className="border-t border-zinc-800 px-4 py-3 flex items-center gap-2">
+        <div className={`border-t border-zinc-800 px-4 py-3 flex items-center gap-2 ${collapsed ? 'justify-center' : ''}`}>
           <div className="w-7 h-7 rounded-full bg-purple-800 flex items-center justify-center text-xs font-bold text-white shrink-0">
             {email?.[0]?.toUpperCase() ?? 'S'}
           </div>
-          <p className="text-xs text-zinc-400 truncate flex-1">{email}</p>
-          <button onClick={logout} className="text-zinc-600 hover:text-red-400 transition-colors">
-            <LogOut className="w-3.5 h-3.5" />
-          </button>
+          {!collapsed && <p className="text-xs text-zinc-400 truncate flex-1">{email}</p>}
+          {!collapsed && (
+            <button onClick={logout} className="text-zinc-600 hover:text-red-400 transition-colors">
+              <LogOut className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       </aside>
     </>

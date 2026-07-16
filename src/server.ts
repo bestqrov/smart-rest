@@ -8,6 +8,14 @@ import { initMarketplaceEngine }   from './marketplace'
 import { initPaymentEngine }        from './payments'
 import { initBillingEventNotifications } from './billing/notifications/BillingEventNotificationHub'
 import { initTenantEngine }         from './tenant'
+import { initKitchenEngine }        from './kitchen/KitchenTicketService'
+import { initWhatsAppEngine }       from './whatsapp/WhatsAppEngine'
+import { startWhatsAppSchedulerCron } from './cron/whatsappScheduler'
+import { initEmailEngine }          from './email/EmailEngine'
+import { initAffiliateEngine }      from './affiliate/AffiliateService'
+import { initIntelligenceCore }     from './intelligence'
+import { startEmailSchedulerCron }  from './cron/emailScheduler'
+import { startSocialSchedulerCron } from './cron/socialScheduler'
 
 import express from 'express'
 import http from 'http'
@@ -29,6 +37,7 @@ import authRouter from './routes/auth'
 import ordersRouter from './routes/orders'
 import billRequestsRouter from './routes/billRequests'
 import adminStatsRouter from './routes/adminStats'
+import adminWeatherRouter from './routes/adminWeather'
 import clientMenuRouter from './routes/clientMenu'
 import waiterCallsRouter from './routes/waiterCalls'
 import financeRouter from './routes/finance'
@@ -37,6 +46,7 @@ import menuAdminRouter from './routes/menuAdmin'
 import superadminRouter from './routes/superadmin'
 import posShiftRouter from './routes/pos/shift'
 import posOrdersRouter from './routes/pos/orders'
+import posCustomersRouter from './routes/pos/customers'
 import posCheckoutRouter from './routes/pos/checkout'
 import supervisorTablesRouter from './routes/pos/supervisorTables'
 import posCheckoutBySeatsRouter from './routes/pos/checkoutBySeats'
@@ -60,6 +70,9 @@ import whatsappWebhookRouter from './routes/whatsappWebhook'
 import recipesRouter from './routes/recipes'
 import antiFraudRouter from './routes/antiFraud'
 import feedbackRouter from './routes/feedback'
+import whatsappAdminRouter from './routes/whatsappAdmin'
+import emailAdminRouter from './routes/emailAdmin'
+import emailWebhookRouter from './routes/emailWebhook'
 import landingConfigRouter from './routes/landingConfig'
 import marketingRouter from './routes/marketing'
 import traiteurRouter from './routes/traiteur'
@@ -71,6 +84,8 @@ import opsLogsRouter                 from './routes/opsLogs'
 import opsBackupRouter               from './routes/opsBackup'
 import opsRuntimeRouter              from './routes/opsRuntime'
 import opsSecurityRouter             from './routes/opsSecurity'
+import intelligenceGatewayRouter     from './routes/intelligenceGateway'
+import aiCopilotRouter               from './routes/aiCopilot'
 import marketplaceOrdersSARouter         from './routes/marketplaceOrdersSA'
 import marketplaceOrdersRestaurantRouter from './routes/marketplaceOrdersRestaurant'
 import marketplaceDashboardSARouter      from './routes/marketplaceDashboardSA'
@@ -91,6 +106,13 @@ import billingPlansSARouter              from './routes/billingPlansSA'
 import billingSubscriptionsSARouter      from './routes/billingSubscriptionsSA'
 import billingPaymentsSARouter           from './routes/billingPaymentsSA'
 import billingPaymentWebhookRouter       from './routes/billingPaymentWebhook'
+import billingMetricsSARouter            from './routes/billingMetricsSA'
+import billingSettingsSARouter           from './routes/billingSettingsSA'
+import billingAuditSARouter              from './routes/billingAuditSA'
+import usageLimitsSARouter               from './routes/usageLimitsSA'
+import branchesSARouter                  from './routes/branchesSA'
+import affiliateAdminRouter              from './routes/affiliateAdmin'
+import seoAdminRouter                    from './routes/seoAdmin'
 import inventoryAdminRouter from './routes/inventoryAdmin'
 import reviewGalleryRouter from './routes/reviewGallery'
 import demoRequestsRouter from './routes/demoRequests'
@@ -98,7 +120,9 @@ import zonesRouter from './routes/zones'
 import equipmentRouter from './routes/equipment'
 import supplierInvoicesRouter from './routes/supplierInvoices'
 import requisitionsRouter     from './routes/requisitions'
+import achatsReportRouter     from './routes/achatsReport'
 import customersRouter        from './routes/customers'
+import shiftAdminRouter       from './routes/pos/shiftAdmin'
 import aiCenterRouter         from './routes/aiCenter'
 import aiJobsRouter           from './routes/aiJobs'
 import { addUsageHook }       from './marketing-brain/providers/UsageTracker'
@@ -106,8 +130,10 @@ import { recordUsageEvent }   from './services/aiCenterStats'
 import { registerSocketHandlers } from './socket/handlers'
 import { startWeeklyBillingCron } from './cron/weeklyBilling'
 import { startDailyDebtDetectionCron } from './cron/dailyDebtDetection'
+import { startShiftOvertimeLockCron } from './cron/shiftOvertimeLock'
 import { startNightlyCron } from './cron/nightly'
 import { startCertificationCron } from './cron/certificationEval'
+import { startSubscriptionLifecycleCron } from './cron/subscriptionLifecycle'
 import { initChangeStreams, closeChangeStreams } from './services/changeStreams'
 
 async function main() {
@@ -221,6 +247,7 @@ async function main() {
   app.use(ordersRouter)
   app.use(billRequestsRouter)
   app.use(adminStatsRouter)
+  app.use(adminWeatherRouter)
   app.use(clientMenuRouter)
   app.use(waiterCallsRouter)
   app.use(financeRouter)
@@ -229,6 +256,7 @@ async function main() {
   app.use(superadminRouter)
   app.use(posShiftRouter)
   app.use(posOrdersRouter)
+  app.use(posCustomersRouter)
   app.use(posCheckoutRouter)
   app.use(posCheckoutBySeatsRouter)
   app.use(supervisorTablesRouter)
@@ -252,11 +280,15 @@ async function main() {
   app.use(recipesRouter)
   app.use(antiFraudRouter)
   app.use(feedbackRouter)
+  app.use(whatsappAdminRouter)
+  app.use(emailAdminRouter)
+  app.use(emailWebhookRouter)
   app.use(landingConfigRouter)
   app.use('/api/marketing', marketingRouter)
   app.use('/api/v1/equipment', equipmentRouter)
   app.use('/api/v1/invoices',     supplierInvoicesRouter)
   app.use('/api/v1/requisitions', requisitionsRouter)
+  app.use(achatsReportRouter)
   app.use(traiteurRouter)
   app.use(loyaltyRouter)
   app.use(adminCertificationRouter)
@@ -266,6 +298,8 @@ async function main() {
   app.use(opsBackupRouter)
   app.use(opsRuntimeRouter)
   app.use(opsSecurityRouter)
+  app.use(intelligenceGatewayRouter)
+  app.use(aiCopilotRouter)
   app.use(marketplaceOrdersSARouter)
   app.use(marketplaceOrdersRestaurantRouter)
   app.use(marketplaceDashboardSARouter)
@@ -286,11 +320,19 @@ async function main() {
   app.use(billingSubscriptionsSARouter)
   app.use(billingPaymentsSARouter)
   app.use(billingPaymentWebhookRouter)
+  app.use(billingMetricsSARouter)
+  app.use(billingSettingsSARouter)
+  app.use(billingAuditSARouter)
+  app.use(usageLimitsSARouter)
+  app.use(branchesSARouter)
+  app.use(affiliateAdminRouter)
+  app.use(seoAdminRouter)
   app.use(inventoryAdminRouter)
   app.use(reviewGalleryRouter)
   app.use(demoRequestsRouter)
   app.use(zonesRouter)
   app.use(customersRouter)
+  app.use(shiftAdminRouter)
   app.use(aiCenterRouter)
   app.use(aiJobsRouter)
 
@@ -347,6 +389,11 @@ async function main() {
   initPaymentEngine().catch(() => undefined)
   initBillingEventNotifications()
   initTenantEngine().catch(() => undefined)
+  initKitchenEngine().catch(() => undefined)
+  initWhatsAppEngine()
+  initEmailEngine()
+  initAffiliateEngine()
+  initIntelligenceCore()
 
   // Collect cron task handles for graceful shutdown
   const cronTasks = [
@@ -354,6 +401,11 @@ async function main() {
     startWeeklyBillingCron(),
     startNightlyCron(),
     startCertificationCron(),
+    startSubscriptionLifecycleCron(),
+    startWhatsAppSchedulerCron(),
+    startEmailSchedulerCron(),
+    startSocialSchedulerCron(),
+    startShiftOvertimeLockCron(),
   ]
 
   httpServer.listen(port, '0.0.0.0', () => {

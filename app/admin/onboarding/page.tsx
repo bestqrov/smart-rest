@@ -51,7 +51,7 @@ const T = {
   ar: {
     welcome: 'مرحباً بك في Smart Resto',
     welcomeSub: 'أكمل الإعداد الأولي في 5 خطوات سريعة',
-    steps: ['نوع المنشأة', 'هوية المكان', 'التسعير', 'الهيكلة', 'الأمان'],
+    steps: ['نوع المنشأة', 'هوية المكان', 'التسعير', 'الهيكلة', 'الأمان', 'المنيو'],
     step0: {
       title: 'ما هو نوع منشأتك؟',
       sub:   'هذا يحدد واجهة النظام والميزات المتاحة لك',
@@ -87,16 +87,21 @@ const T = {
     },
     step4: {
       title: 'حساب المدير الرئيسي', sub: 'إنشاء حساب مشرف لتسجيل الدخول عبر POS',
-      managerName: 'اسم المدير', pin: 'الرمز السري (4 أرقام)', pinConfirm: 'تأكيد الرمز السري',
-      pinMismatch: 'الرمزان غير متطابقان', pinInvalid: '4 أرقام فقط',
+      managerName: 'اسم المدير', pin: 'الرمز السري (4 إلى 8 خانات، حروف وأرقام)', pinConfirm: 'تأكيد الرمز السري',
+      pinMismatch: 'الرمزان غير متطابقان', pinInvalid: 'من 4 إلى 8 خانات (حروف وأرقام)',
       showPin: 'إظهار', hidePin: 'إخفاء',
+    },
+    step5: {
+      title: 'ابنِ منيو البداية', sub: 'اختر المنتجات الجاهزة حسب دولتك ونوع نشاطك — يمكنك تعديلها لاحقاً',
+      typeLabel: 'نوع المنتجات المقترحة', selectAll: 'اختيار الكل', clearAll: 'إلغاء الكل',
+      selectedCount: 'منتج محدد', noSuggestions: 'لا توجد اقتراحات لهذه الدولة بعد — يمكنك إضافة المنتجات يدوياً لاحقاً', skip: 'تخطي هذه الخطوة',
     },
     next: 'التالي', back: 'رجوع', launch: 'إنهاء وإطلاق النظام 🚀', launching: 'جارٍ الإطلاق…', error: 'حدث خطأ، حاول مجدداً',
   },
   fr: {
     welcome: 'Bienvenue sur Smart Resto',
     welcomeSub: 'Configurez votre établissement en 5 étapes',
-    steps: ['Type', 'Identité', 'Tarification', 'Structure', 'Sécurité'],
+    steps: ['Type', 'Identité', 'Tarification', 'Structure', 'Sécurité', 'Menu'],
     step0: {
       title: "Quel est votre type d'établissement ?",
       sub:   'Cela détermine l\'interface et les fonctionnalités disponibles',
@@ -132,16 +137,21 @@ const T = {
     },
     step4: {
       title: 'Compte gérant principal', sub: 'Accès POS pour le superviseur',
-      managerName: 'Nom du gérant', pin: 'Code PIN (4 chiffres)', pinConfirm: 'Confirmer le code PIN',
-      pinMismatch: 'Les codes PIN ne correspondent pas', pinInvalid: '4 chiffres requis',
+      managerName: 'Nom du gérant', pin: 'Code PIN (4 à 8 caractères, lettres et chiffres)', pinConfirm: 'Confirmer le code PIN',
+      pinMismatch: 'Les codes PIN ne correspondent pas', pinInvalid: '4 à 8 caractères requis (lettres et chiffres)',
       showPin: 'Afficher', hidePin: 'Masquer',
+    },
+    step5: {
+      title: 'Construisez votre menu de départ', sub: 'Choisissez des produits prêts selon votre pays et type d\'activité — modifiable plus tard',
+      typeLabel: 'Type de produits suggérés', selectAll: 'Tout sélectionner', clearAll: 'Tout désélectionner',
+      selectedCount: 'produits sélectionnés', noSuggestions: 'Pas encore de suggestions pour ce pays — vous pourrez ajouter vos produits manuellement plus tard.', skip: 'Passer cette étape',
     },
     next: 'Suivant', back: 'Retour', launch: 'Terminer et lancer 🚀', launching: 'Lancement…', error: 'Erreur, réessayez',
   },
   en: {
     welcome: 'Welcome to Smart Resto',
     welcomeSub: 'Set up your establishment in 5 quick steps',
-    steps: ['Type', 'Identity', 'Pricing', 'Structure', 'Security'],
+    steps: ['Type', 'Identity', 'Pricing', 'Structure', 'Security', 'Menu'],
     step0: {
       title: 'What type of establishment are you?',
       sub:   'This determines your system interface and available features',
@@ -177,16 +187,21 @@ const T = {
     },
     step4: {
       title: 'Main Manager Account', sub: 'Supervisor account for POS login',
-      managerName: 'Manager name', pin: 'PIN Code (4 digits)', pinConfirm: 'Confirm PIN Code',
-      pinMismatch: 'PIN codes do not match', pinInvalid: '4 digits required',
+      managerName: 'Manager name', pin: 'PIN Code (4 to 8 characters, letters and digits)', pinConfirm: 'Confirm PIN Code',
+      pinMismatch: 'PIN codes do not match', pinInvalid: '4 to 8 characters required (letters and digits)',
       showPin: 'Show', hidePin: 'Hide',
+    },
+    step5: {
+      title: 'Build your starter menu', sub: 'Pick ready-made products for your country and business type — editable anytime later',
+      typeLabel: 'Suggested product type', selectAll: 'Select all', clearAll: 'Clear all',
+      selectedCount: 'products selected', noSuggestions: 'No suggestions available for this country yet — you can add products manually later.', skip: 'Skip this step',
     },
     next: 'Next', back: 'Back', launch: 'Finish & Launch 🚀', launching: 'Launching…', error: 'An error occurred, retry',
   },
   es: {
     welcome: 'Bienvenido a Smart Resto',
     welcomeSub: 'Configura tu establecimiento en 5 pasos',
-    steps: ['Tipo', 'Identidad', 'Precios', 'Estructura', 'Seguridad'],
+    steps: ['Tipo', 'Identidad', 'Precios', 'Estructura', 'Seguridad', 'Menú'],
     step0: {
       title: '¿Qué tipo de establecimiento tienes?',
       sub:   'Esto determina la interfaz y las funciones disponibles',
@@ -222,9 +237,14 @@ const T = {
     },
     step4: {
       title: 'Cuenta del gerente principal', sub: 'Acceso POS para el supervisor',
-      managerName: 'Nombre del gerente', pin: 'Código PIN (4 dígitos)', pinConfirm: 'Confirmar PIN',
-      pinMismatch: 'Los códigos no coinciden', pinInvalid: 'Se requieren 4 dígitos',
+      managerName: 'Nombre del gerente', pin: 'Código PIN (4 a 8 caracteres, letras y números)', pinConfirm: 'Confirmar PIN',
+      pinMismatch: 'Los códigos no coinciden', pinInvalid: 'Se requieren de 4 a 8 caracteres (letras y números)',
       showPin: 'Mostrar', hidePin: 'Ocultar',
+    },
+    step5: {
+      title: 'Crea tu menú inicial', sub: 'Elige productos listos según tu país y tipo de negocio — editable después',
+      typeLabel: 'Tipo de productos sugeridos', selectAll: 'Seleccionar todo', clearAll: 'Deseleccionar todo',
+      selectedCount: 'productos seleccionados', noSuggestions: 'Aún no hay sugerencias para este país — podrás añadir productos manualmente más tarde.', skip: 'Saltar este paso',
     },
     next: 'Siguiente', back: 'Atrás', launch: 'Finalizar y lanzar 🚀', launching: 'Lanzando…', error: 'Error, inténtalo de nuevo',
   },
@@ -239,8 +259,31 @@ interface WizardData {
   zones: Zone[]; managerName: string; managerPin: string; pinConfirm: string
 }
 
-const STEP_ICONS = [Sparkles, Building2, DollarSign, LayoutGrid, ShieldCheck]
-const TOTAL_STEPS = 5
+// ── Step 5: suggested product catalog ─────────────────────────────────────────
+// Mirrors src/onboarding/ProductCatalog.ts's shape — kept local to this page
+// (app/ never imports server-side src/ modules directly), fetched from
+// GET /api/admin/onboarding/product-catalog.
+type CatalogBusinessType = 'CAFE' | 'RESTAURANT' | 'TRAITEUR' | 'PASTRY' | 'FOOD_TRUCK' | 'HOTEL'
+interface CatalogProductItem { key: string; nameAr: string; nameFr: string; nameEn: string; suggestedPrice?: number }
+interface CatalogCategoryItem { key: string; nameAr: string; nameFr: string; nameEn: string; icon: string; products: CatalogProductItem[] }
+
+const CATALOG_TYPE_OPTIONS: { value: CatalogBusinessType; icon: string; label: Record<Lang, string> }[] = [
+  { value: 'CAFE',       icon: '☕', label: { ar: 'مقهى',   fr: 'Café',       en: 'Café',       es: 'Cafetería' } },
+  { value: 'RESTAURANT', icon: '🍽️', label: { ar: 'مطعم',   fr: 'Restaurant', en: 'Restaurant', es: 'Restaurante' } },
+  { value: 'PASTRY',     icon: '🧁', label: { ar: 'حلويات', fr: 'Pâtisserie', en: 'Bakery',     es: 'Pastelería' } },
+  { value: 'FOOD_TRUCK', icon: '🚚', label: { ar: 'فود تراك', fr: 'Food Truck', en: 'Food Truck', es: 'Food Truck' } },
+  { value: 'TRAITEUR',   icon: '🎂', label: { ar: 'طراتور', fr: 'Traiteur',   en: 'Caterer',    es: 'Catering' } },
+  { value: 'HOTEL',      icon: '🏨', label: { ar: 'فندق',   fr: 'Hôtel',      en: 'Hotel',      es: 'Hotel' } },
+]
+
+function nameFor(item: { nameAr: string; nameFr: string; nameEn: string }, lang: Lang): string {
+  if (lang === 'ar') return item.nameAr
+  if (lang === 'fr' || lang === 'es') return item.nameFr
+  return item.nameEn
+}
+
+const STEP_ICONS = [Sparkles, Building2, DollarSign, LayoutGrid, ShieldCheck, Utensils]
+const TOTAL_STEPS = 6
 
 export default function OnboardingPage() {
   const router  = useRouter()
@@ -250,11 +293,25 @@ export default function OnboardingPage() {
   const t     = T[lang]
   const isRTL = lang === 'ar'
 
+  const [brandLogoUrl, setBrandLogoUrl] = useState('/assets/logo.png')
+  useEffect(() => {
+    fetch('/api/public/landing-config')
+      .then(r => r.ok ? r.json() : {})
+      .then((d: any) => { if (d?.logoImageUrl) setBrandLogoUrl(d.logoImageUrl) })
+      .catch(() => {})
+  }, [])
+
   const [step,    setStep]    = useState(0)
   const [saving,  setSaving]  = useState(false)
   const [error,   setError]   = useState('')
   const [showPin, setShowPin] = useState(false)
   const [stepErr, setStepErr] = useState('')
+
+  // Step 5 — suggested product catalog
+  const [catalogType,     setCatalogType]     = useState<CatalogBusinessType>('CAFE')
+  const [catalog,         setCatalog]         = useState<CatalogCategoryItem[]>([])
+  const [catalogLoading,  setCatalogLoading]  = useState(false)
+  const [selectedProducts, setSelectedProducts] = useState<Record<string, Set<string>>>({})
 
   const [data, setData] = useState<WizardData>({
     tier: 'CAFE',
@@ -281,8 +338,45 @@ export default function OnboardingPage() {
           sandwichRefPrice: p.sandwichRefPrice ? String(p.sandwichRefPrice) : '',
           tier:             (p.tier as 'CAFE'|'RESTAURANT') ?? 'CAFE',
         }))
+        if (p.tier === 'RESTAURANT' || p.tier === 'CAFE') setCatalogType(p.tier)
       })
   }, [])
+
+  // Fetch the suggested product catalog whenever country or catalog type
+  // changes — reuses GET /api/admin/onboarding/product-catalog, no client-
+  // side catalog data duplicated here.
+  useEffect(() => {
+    const token = localStorage.getItem('token')
+    if (!token) return
+    setCatalogLoading(true)
+    fetch(`/api/admin/onboarding/product-catalog?country=${encodeURIComponent(data.country)}&businessType=${encodeURIComponent(catalogType)}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.ok ? r.json() : { categories: [] })
+      .then(body => setCatalog(body.categories ?? []))
+      .catch(() => setCatalog([]))
+      .finally(() => setCatalogLoading(false))
+  }, [data.country, catalogType])
+
+  function toggleProduct(categoryKey: string, productKey: string) {
+    setSelectedProducts(prev => {
+      const next = { ...prev }
+      const set = new Set(next[categoryKey] ?? [])
+      if (set.has(productKey)) set.delete(productKey); else set.add(productKey)
+      next[categoryKey] = set
+      return next
+    })
+  }
+
+  function toggleCategoryAll(category: CatalogCategoryItem) {
+    setSelectedProducts(prev => {
+      const current = prev[category.key] ?? new Set<string>()
+      const allSelected = category.products.every(p => current.has(p.key))
+      return { ...prev, [category.key]: allSelected ? new Set() : new Set(category.products.map(p => p.key)) }
+    })
+  }
+
+  const totalSelectedProducts = Object.values(selectedProducts).reduce((sum, s) => sum + s.size, 0)
 
   function set<K extends keyof WizardData>(key: K, val: WizardData[K]) {
     setData(d => ({ ...d, [key]: val })); setStepErr('')
@@ -328,7 +422,7 @@ export default function OnboardingPage() {
     }
     if (step === 4) {
       if (!data.managerName.trim())          { setStepErr(t.step4.managerName + ' — required'); return false }
-      if (!/^\d{4}$/.test(data.managerPin))  { setStepErr(t.step4.pinInvalid); return false }
+      if (!/^[a-zA-Z0-9]{4,8}$/.test(data.managerPin)) { setStepErr(t.step4.pinInvalid); return false }
       if (data.managerPin !== data.pinConfirm) { setStepErr(t.step4.pinMismatch); return false }
     }
     return true
@@ -361,6 +455,20 @@ export default function OnboardingPage() {
       })
       const body = await res.json()
       if (!res.ok) { setError(body.error ?? t.error); return }
+
+      // Best-effort: apply any selected starter-menu products. Never blocks
+      // launch — the owner can always add products manually afterwards.
+      if (totalSelectedProducts > 0) {
+        const selections = Object.entries(selectedProducts)
+          .filter(([, keys]) => keys.size > 0)
+          .map(([categoryKey, keys]) => ({ categoryKey, productKeys: [...keys] }))
+        await fetch('/api/admin/onboarding/apply-product-catalog', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ country: data.country, businessType: catalogType, selections }),
+        }).catch(() => undefined)
+      }
+
       // After onboarding → go to smart menu generation
       router.replace('/admin/menu-gen')
     } catch {
@@ -375,7 +483,10 @@ export default function OnboardingPage() {
 
   return (
     <div dir={isRTL ? 'rtl' : 'ltr'}
-      className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col items-center justify-center px-4 py-10">
+      className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-950 flex flex-col items-center justify-center px-4 py-10 relative overflow-hidden">
+
+      <div className="absolute -top-24 -end-24 w-80 h-80 bg-blue-400/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-28 -start-20 w-80 h-80 bg-indigo-400/10 rounded-full blur-3xl pointer-events-none" />
 
       {data.logoUrl && (
         <div className="fixed inset-0 bg-center bg-no-repeat bg-contain opacity-[0.04] pointer-events-none"
@@ -388,7 +499,7 @@ export default function OnboardingPage() {
         <div className={`flex gap-2 mb-6 ${isRTL ? 'justify-start' : 'justify-end'}`}>
           {(Object.keys(T) as Lang[]).map(l => (
             <button key={l} onClick={() => setLang(l)}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors ${lang === l ? 'bg-amber-500 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}>
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors ${lang === l ? 'bg-blue-500 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}>
               {l.toUpperCase()}
             </button>
           ))}
@@ -396,7 +507,10 @@ export default function OnboardingPage() {
 
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="text-5xl mb-3">🍽️</div>
+          <div className="relative inline-flex items-center justify-center mb-3">
+            <div className="absolute inset-0 bg-blue-400/30 rounded-2xl blur-xl" />
+            <img src={brandLogoUrl} alt="Smart Resto" className="relative w-16 h-16 rounded-2xl object-contain bg-white/95 p-1.5 shadow-lg" />
+          </div>
           <h1 className="text-2xl font-extrabold text-white">{t.welcome}</h1>
           <p className="text-slate-400 text-sm mt-1">{t.welcomeSub}</p>
         </div>
@@ -410,10 +524,10 @@ export default function OnboardingPage() {
             return (
               <div key={i} className="flex items-center">
                 <div className="flex flex-col items-center gap-1">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${done ? 'bg-green-500 text-white' : active ? 'bg-amber-500 text-white ring-4 ring-amber-500/30' : 'bg-slate-700 text-slate-400'}`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${done ? 'bg-green-500 text-white' : active ? 'bg-blue-500 text-white ring-4 ring-blue-500/30' : 'bg-slate-700 text-slate-400'}`}>
                     {done ? <Check className="w-3.5 h-3.5" /> : <Icon className="w-3.5 h-3.5" />}
                   </div>
-                  <span className={`text-xs font-medium hidden sm:block ${active ? 'text-amber-400' : done ? 'text-green-400' : 'text-slate-500'}`}>{label}</span>
+                  <span className={`text-xs font-medium hidden sm:block ${active ? 'text-blue-400' : done ? 'text-green-400' : 'text-slate-500'}`}>{label}</span>
                 </div>
                 {i < TOTAL_STEPS - 1 && (
                   <div className={`w-6 sm:w-10 h-0.5 mx-0.5 mt-[-14px] transition-colors ${i < step ? 'bg-green-500' : 'bg-slate-700'}`} />
@@ -424,7 +538,7 @@ export default function OnboardingPage() {
         </div>
 
         {/* Card */}
-        <div className="bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl p-6 sm:p-8 space-y-5">
+        <div className="bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl ring-1 ring-white/10 p-6 sm:p-8 space-y-5">
 
           {/* ── Step 0: Tier Selection ─────────────────────────── */}
           {step === 0 && (
@@ -437,12 +551,12 @@ export default function OnboardingPage() {
                   onClick={() => set('tier', 'CAFE')}
                   className={`relative rounded-2xl border-2 p-4 text-start transition-all hover:shadow-md ${
                     data.tier === 'CAFE'
-                      ? 'border-amber-500 bg-amber-50 shadow-md shadow-amber-100'
-                      : 'border-slate-200 hover:border-amber-200'
+                      ? 'border-blue-500 bg-blue-50 shadow-md shadow-blue-100'
+                      : 'border-slate-200 hover:border-blue-200'
                   }`}
                 >
                   {data.tier === 'CAFE' && (
-                    <div className="absolute top-3 end-3 w-5 h-5 bg-amber-500 rounded-full flex items-center justify-center">
+                    <div className="absolute top-3 end-3 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
                       <Check className="w-3 h-3 text-white" />
                     </div>
                   )}
@@ -511,8 +625,8 @@ export default function OnboardingPage() {
                   <div className="flex items-center gap-2 mt-2">
                     <span className="text-lg">{selectedEntry.flag}</span>
                     <span className="text-xs text-slate-500">{selectedEntry.name[lang]}</span>
-                    <span className="ms-auto flex items-center gap-1 bg-amber-50 border border-amber-200 text-amber-700 text-xs font-bold px-3 py-1 rounded-full">
-                      {t.step1.currency.split('(')[0].trim()}: <span className="text-amber-600 font-extrabold">{data.currency}</span>
+                    <span className="ms-auto flex items-center gap-1 bg-blue-50 border border-blue-200 text-blue-700 text-xs font-bold px-3 py-1 rounded-full">
+                      {t.step1.currency.split('(')[0].trim()}: <span className="text-blue-600 font-extrabold">{data.currency}</span>
                     </span>
                   </div>
                 )}
@@ -548,7 +662,7 @@ export default function OnboardingPage() {
           {/* ── Step 2: Pricing ────────────────────────────────── */}
           {step === 2 && (
             <StepCard title={t.step2.title} sub={t.step2.sub}>
-              <div className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 text-sm text-amber-700">
+              <div className="bg-blue-50 border border-blue-200 rounded-2xl px-4 py-3 text-sm text-blue-700">
                 💡 {t.step2.hint}
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -577,7 +691,7 @@ export default function OnboardingPage() {
               <div className="space-y-2">
                 {data.zones.map((zone, i) => (
                   <div key={i} className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-full bg-amber-100 text-amber-700 text-xs font-bold flex items-center justify-center shrink-0">{i + 1}</div>
+                    <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 text-xs font-bold flex items-center justify-center shrink-0">{i + 1}</div>
                     <input value={zone.name} onChange={e => updateZone(i, 'name', e.target.value)}
                       placeholder={t.step3.zoneName} className="input flex-1 min-w-0" />
                     <input type="number" min="1" max="50" value={zone.tableCount}
@@ -593,13 +707,13 @@ export default function OnboardingPage() {
                 ))}
               </div>
               <button type="button" onClick={addZone}
-                className="flex items-center gap-2 text-amber-600 hover:text-amber-500 text-sm font-semibold transition-colors">
+                className="flex items-center gap-2 text-blue-600 hover:text-blue-500 text-sm font-semibold transition-colors">
                 <Plus className="w-4 h-4" /> {t.step3.addZone}
               </button>
               {totalTables > 0 && (
                 <div className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
                   <span className="text-sm text-slate-500">{t.step3.totalTables}</span>
-                  <span className="text-2xl font-extrabold text-amber-600">{totalTables}</span>
+                  <span className="text-2xl font-extrabold text-blue-600">{totalTables}</span>
                 </div>
               )}
             </StepCard>
@@ -614,9 +728,9 @@ export default function OnboardingPage() {
               </Field>
               <Field label={`🔐 ${t.step4.pin}`}>
                 <div className="relative">
-                  <input type={showPin ? 'text' : 'password'} inputMode="numeric" maxLength={4}
-                    value={data.managerPin} onChange={e => set('managerPin', e.target.value.replace(/\D/g, '').slice(0,4))}
-                    placeholder="••••" className="input text-center text-2xl tracking-[0.5em] font-bold" />
+                  <input type={showPin ? 'text' : 'password'} maxLength={8}
+                    value={data.managerPin} onChange={e => set('managerPin', e.target.value.replace(/[^a-zA-Z0-9]/g, '').slice(0,8))}
+                    placeholder="••••" className="input text-center text-2xl tracking-[0.4em] font-bold" />
                   <button type="button" onClick={() => setShowPin(p => !p)}
                     className="absolute inset-y-0 end-3 flex items-center text-slate-400 hover:text-slate-600">
                     {showPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -624,18 +738,87 @@ export default function OnboardingPage() {
                 </div>
               </Field>
               <Field label={`🔐 ${t.step4.pinConfirm}`}>
-                <input type={showPin ? 'text' : 'password'} inputMode="numeric" maxLength={4}
-                  value={data.pinConfirm} onChange={e => set('pinConfirm', e.target.value.replace(/\D/g, '').slice(0,4))}
-                  placeholder="••••" className="input text-center text-2xl tracking-[0.5em] font-bold" />
+                <input type={showPin ? 'text' : 'password'} maxLength={8}
+                  value={data.pinConfirm} onChange={e => set('pinConfirm', e.target.value.replace(/[^a-zA-Z0-9]/g, '').slice(0,8))}
+                  placeholder="••••" className="input text-center text-2xl tracking-[0.4em] font-bold" />
               </Field>
               <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-2 text-sm">
                 <p className="font-semibold text-slate-700 mb-2">📋 Summary</p>
                 <div className="flex justify-between"><span className="text-slate-500">Type</span><span className="font-medium">{data.tier === 'CAFE' ? '☕ Cafe' : '🍽️ Restaurant'}</span></div>
                 <div className="flex justify-between"><span className="text-slate-500">Name</span><span className="font-medium">{data.businessName}</span></div>
                 <div className="flex justify-between"><span className="text-slate-500">Country</span><span className="font-medium">{selectedEntry?.flag} {selectedEntry?.name.en}</span></div>
-                <div className="flex justify-between"><span className="text-slate-500">Currency</span><span className="font-bold text-amber-600">{data.currency}</span></div>
+                <div className="flex justify-between"><span className="text-slate-500">Currency</span><span className="font-bold text-blue-600">{data.currency}</span></div>
                 <div className="flex justify-between"><span className="text-slate-500">Tables</span><span className="font-medium">{totalTables} / {data.zones.length} zones</span></div>
               </div>
+            </StepCard>
+          )}
+
+          {/* ── Step 5: Starter menu ────────────────────────────── */}
+          {step === 5 && (
+            <StepCard title={t.step5.title} sub={t.step5.sub}>
+              <Field label={`🍴 ${t.step5.typeLabel}`}>
+                <div className="grid grid-cols-3 gap-2">
+                  {CATALOG_TYPE_OPTIONS.map(opt => (
+                    <button key={opt.value} type="button" onClick={() => setCatalogType(opt.value)}
+                      className={`flex flex-col items-center gap-1 p-2.5 rounded-xl border-2 transition-all text-center ${
+                        catalogType === opt.value ? 'border-blue-400 bg-blue-50' : 'border-slate-200 hover:border-slate-300 bg-white'
+                      }`}>
+                      <span className="text-xl leading-none">{opt.icon}</span>
+                      <span className={`text-xs font-bold ${catalogType === opt.value ? 'text-blue-700' : 'text-slate-600'}`}>{opt.label[lang]}</span>
+                    </button>
+                  ))}
+                </div>
+              </Field>
+
+              {catalogLoading && (
+                <div className="flex items-center justify-center py-8">
+                  <div className="w-6 h-6 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                </div>
+              )}
+
+              {!catalogLoading && catalog.length === 0 && (
+                <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-4 text-sm text-slate-500 text-center">
+                  {t.step5.noSuggestions}
+                </div>
+              )}
+
+              {!catalogLoading && catalog.length > 0 && (
+                <div className="space-y-3 max-h-80 overflow-y-auto pe-1">
+                  {catalog.map(category => {
+                    const selectedInCategory = selectedProducts[category.key] ?? new Set<string>()
+                    const allSelected = category.products.length > 0 && category.products.every(p => selectedInCategory.has(p.key))
+                    return (
+                      <div key={category.key} className="border border-slate-200 rounded-xl overflow-hidden">
+                        <div className="flex items-center justify-between bg-slate-50 px-3 py-2">
+                          <span className="text-sm font-bold text-slate-700 flex items-center gap-1.5">
+                            <span>{category.icon}</span> {nameFor(category, lang)}
+                          </span>
+                          <button type="button" onClick={() => toggleCategoryAll(category)}
+                            className="text-xs font-semibold text-blue-600 hover:text-blue-700">
+                            {allSelected ? t.step5.clearAll : t.step5.selectAll}
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-2 gap-y-1.5 px-3 py-2.5">
+                          {category.products.map(product => {
+                            const checked = selectedInCategory.has(product.key)
+                            return (
+                              <label key={product.key} className="flex items-center gap-1.5 text-sm cursor-pointer select-none">
+                                <input type="checkbox" checked={checked} onChange={() => toggleProduct(category.key, product.key)}
+                                  className="w-4 h-4 rounded accent-blue-500" />
+                                <span className={checked ? 'text-slate-800 font-medium' : 'text-slate-500'}>{nameFor(product, lang)}</span>
+                              </label>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+
+              <p className="text-xs text-slate-400 text-center">
+                {totalSelectedProducts} {t.step5.selectedCount}
+              </p>
             </StepCard>
           )}
 
@@ -653,13 +836,13 @@ export default function OnboardingPage() {
             )}
             {step < TOTAL_STEPS - 1 ? (
               <button type="button" onClick={handleNext}
-                className="flex items-center gap-2 px-6 py-2.5 bg-amber-500 hover:bg-amber-400 text-white rounded-xl font-bold transition-colors active:scale-95">
+                className="flex items-center gap-2 px-6 py-2.5 bg-blue-500 hover:bg-blue-400 text-white rounded-xl font-bold transition-colors active:scale-95">
                 {t.next}
                 {isRTL ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
               </button>
             ) : (
               <button type="button" onClick={handleSubmit} disabled={saving}
-                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 disabled:opacity-60 text-white rounded-xl font-bold text-base transition-all active:scale-95 shadow-lg shadow-amber-500/30">
+                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 disabled:opacity-60 text-white rounded-xl font-bold text-base transition-all active:scale-95 shadow-lg shadow-blue-500/30">
                 {saving
                   ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />{t.launching}</>
                   : <><Rocket className="w-5 h-5" /> {t.launch}</>}

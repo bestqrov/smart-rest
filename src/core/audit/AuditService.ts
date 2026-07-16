@@ -53,6 +53,7 @@ export async function getAuditHistory(filter: AuditFilter = {}): Promise<PagedRe
   if (filter.module)      where.module      = filter.module
   if (filter.entity)      where.entity      = filter.entity
   if (filter.entityId)    where.entityId    = filter.entityId
+  if (filter.action)      where.action      = filter.action
   if (filter.performedBy) where.performedBy = filter.performedBy
   if (filter.from || filter.to) {
     where.timestamp = {}
