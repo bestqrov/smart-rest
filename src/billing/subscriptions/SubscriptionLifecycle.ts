@@ -36,6 +36,9 @@ export async function renew(sub: BillingSubscription, by: string): Promise<Billi
   return updated
 }
 
+// TODO(scheduler-sprint): not called anywhere yet — automatic TRIAL/ACTIVE → GRACE_PERIOD
+// transition is intentionally deferred to a future Infrastructure/Scheduler sprint. See
+// docs/architecture/billing-platform.md § Subscription Engine → Deferred Automatic Lifecycle.
 export async function enterGracePeriod(sub: BillingSubscription, graceDays = 7): Promise<BillingSubscription> {
   Validation.assertTransition(sub.status, 'GRACE_PERIOD')
   const graceEndsAt = new Date()
@@ -47,7 +50,7 @@ export async function enterGracePeriod(sub: BillingSubscription, graceDays = 7):
 export async function suspend(sub: BillingSubscription, reason: string): Promise<BillingSubscription> {
   Validation.assertTransition(sub.status, 'SUSPENDED')
   const updated = await Repo.update(sub.id, { status: 'SUSPENDED' })
-  Events.emitSubscriptionSuspended(updated)
+  Events.emitSubscriptionSuspended(updated, reason)
   return updated
 }
 
@@ -73,6 +76,10 @@ export async function cancel(sub: BillingSubscription, by: string): Promise<Bill
   return updated
 }
 
+// TODO(scheduler-sprint): not called anywhere yet — automatic GRACE_PERIOD → EXPIRED
+// transition (or direct expiry on renewalDate/trialEndsAt lapse) is intentionally deferred
+// to a future Infrastructure/Scheduler sprint. See
+// docs/architecture/billing-platform.md § Subscription Engine → Deferred Automatic Lifecycle.
 export async function expire(sub: BillingSubscription): Promise<BillingSubscription> {
   Validation.assertTransition(sub.status, 'EXPIRED')
   const updated = await Repo.update(sub.id, {

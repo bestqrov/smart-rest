@@ -4,7 +4,6 @@ import * as Repo       from './SubscriptionRepository'
 import * as Lifecycle  from './SubscriptionLifecycle'
 import * as Validation from './SubscriptionValidation'
 import * as Events     from './SubscriptionEvents'
-import * as Notifs     from './SubscriptionNotifications'
 import { AuditService } from '../../core'
 import type { BillingSubscription, SubscriptionWithPlan, SubscriptionStatus } from './SubscriptionTypes'
 
@@ -78,7 +77,6 @@ export async function createActiveSubscription(
   })
   Events.emitSubscriptionCreated(sub)
   Events.emitSubscriptionActivated(sub)
-  await Notifs.notifyActivated(tenantId, plan.name).catch(() => undefined)
   await audit('CREATE_ACTIVE', sub.id, by, { planCode: plan.code })
   return sub
 }
@@ -89,7 +87,6 @@ export async function activate(id: string, by: string): Promise<BillingSubscript
   const sub = await Repo.findById(id)
   if (!sub) throw new Validation.SubscriptionError('Subscription not found')
   const updated = await Lifecycle.activate(sub, by)
-  await Notifs.notifyActivated(sub.tenantId, sub.planName).catch(() => undefined)
   await audit('ACTIVATE', id, by)
   return updated
 }
@@ -98,7 +95,6 @@ export async function renew(id: string, by: string): Promise<BillingSubscription
   const sub = await Repo.findById(id)
   if (!sub) throw new Validation.SubscriptionError('Subscription not found')
   const updated = await Lifecycle.renew(sub, by)
-  await Notifs.notifyRenewed(sub.tenantId, sub.planName, updated.renewalDate).catch(() => undefined)
   await audit('RENEW', id, by)
   return updated
 }
@@ -107,7 +103,6 @@ export async function suspend(id: string, reason: string, by: string): Promise<B
   const sub = await Repo.findById(id)
   if (!sub) throw new Validation.SubscriptionError('Subscription not found')
   const updated = await Lifecycle.suspend(sub, reason)
-  await Notifs.notifySuspended(sub.tenantId, reason).catch(() => undefined)
   await audit('SUSPEND', id, by, { reason })
   return updated
 }
@@ -124,7 +119,6 @@ export async function cancel(id: string, by: string): Promise<BillingSubscriptio
   const sub = await Repo.findById(id)
   if (!sub) throw new Validation.SubscriptionError('Subscription not found')
   const updated = await Lifecycle.cancel(sub, by)
-  await Notifs.notifyCancelled(sub.tenantId).catch(() => undefined)
   await audit('CANCEL', id, by)
   return updated
 }

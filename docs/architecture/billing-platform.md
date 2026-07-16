@@ -323,9 +323,15 @@ src/billing/subscriptions/
   SubscriptionValidation.ts    — SubscriptionError + assertTransition + assertOneActive
   SubscriptionLifecycle.ts     — activate, renew, suspend, resume, cancel, expire, changePlan
   SubscriptionEvents.ts        — 7 EventBus emitters
-  SubscriptionNotifications.ts — 5 NotificationService calls
   SubscriptionService.ts       — Full facade with audit logging
 ```
+
+Notifications are **not** sent from `src/billing/subscriptions/*` directly. Every
+lifecycle transition emits an event via `SubscriptionEvents.ts`, and
+`BillingEventNotificationHub.ts` (`src/billing/notifications/`) is the single
+subscriber that turns those events into `NotificationService` calls. This keeps
+exactly one notification per event — do not add a second notification call
+alongside an event emit.
 
 ### Subscription Events (4 new + reuses 3 from Epic K)
 
@@ -363,6 +369,24 @@ These routes live in `src/routes/billingSubscriptionsSA.ts` and are the sole can
 | `GET /api/billing/subscription` | Current subscription with plan details |
 | `GET /api/billing/subscription/status` | Quick status check |
 | `GET /api/billing/subscription/history` | Full subscription history |
+
+### Deferred: Automatic Lifecycle Scheduling
+
+**Out of scope for Sprint K2, intentionally.** The state machine and schema support
+`GRACE_PERIOD` and `EXPIRED`, and `SubscriptionLifecycle.enterGracePeriod()` /
+`SubscriptionLifecycle.expire()` / `SubscriptionService.expire()` are fully
+implemented — but nothing calls them yet. There is no cron job or scheduled task
+that:
+- moves an `ACTIVE` subscription into `GRACE_PERIOD` when `renewalDate` lapses without
+  payment,
+- auto-`expire()`s a subscription when `graceEndsAt` / `trialEndsAt` passes,
+- or fires `TrialEnding` reminders ahead of `trialEndsAt`.
+
+All of the above are manual-only in this sprint (SuperAdmin-triggered via the
+`/api/superadmin/billing/subscriptions/:id/*` endpoints). Automatic time-based
+transitions are planned for a future **Infrastructure/Scheduler sprint** that adds a
+recurring job runner; see `TODO(scheduler-sprint)` comments in
+`SubscriptionLifecycle.ts`.
 
 ### Future: Invoice Integration (Sprint K3)
 

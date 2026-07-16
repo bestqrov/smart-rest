@@ -4,7 +4,11 @@ import { eventBus } from '../../core'
 import type { BillingSubscription } from './SubscriptionTypes'
 
 function payload(sub: BillingSubscription, extra?: Record<string, unknown>) {
-  return { subscriptionId: sub.id, tenantId: sub.tenantId, planCode: sub.planCode, status: sub.status, ...extra }
+  return {
+    subscriptionId: sub.id, tenantId: sub.tenantId,
+    planCode: sub.planCode, planName: sub.planName, status: sub.status,
+    ...extra,
+  }
 }
 
 export function emitSubscriptionCreated(sub: BillingSubscription): void {
@@ -19,8 +23,8 @@ export function emitSubscriptionRenewed(sub: BillingSubscription): void {
   eventBus.publish('SubscriptionRenewed', payload(sub), 'subscription-engine')
 }
 
-export function emitSubscriptionSuspended(sub: BillingSubscription): void {
-  eventBus.publish('SubscriptionSuspended', payload(sub), 'subscription-engine')
+export function emitSubscriptionSuspended(sub: BillingSubscription, reason?: string): void {
+  eventBus.publish('SubscriptionSuspended', payload(sub, reason ? { reason } : undefined), 'subscription-engine')
 }
 
 export function emitSubscriptionCancelled(sub: BillingSubscription): void {
