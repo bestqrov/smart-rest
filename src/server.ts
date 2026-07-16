@@ -401,19 +401,19 @@ async function main() {
     startWeeklyBillingCron(),
     startNightlyCron(),
     startCertificationCron(),
-    // TODO(scheduler-sprint): startSubscriptionLifecycleCron() intentionally
-    // disabled during the K2 → BillingSubscription migration (Sprint K2.2,
-    // PM decision, dev-only — this branch has not shipped to production).
-    // The cron still calls SubscriptionLifecycleJobs.ts, a compatibility
-    // adapter over the new BillingSubscription engine, but automatic
-    // trial-reminder / expiration / grace-period / auto-renewal sweeps are
-    // paused until a future Infrastructure/Scheduler sprint re-verifies the
-    // adapter against live data and re-enables this line. Every lifecycle
-    // transition it would have triggered remains fully available manually
-    // via the SuperAdmin BillingSubscription API
+    // Legacy TenantProfile-based subscription scheduler — intentionally
+    // disabled. No production customers yet, so architecture cleanliness
+    // was prioritized over keeping this cron alive via a compatibility
+    // adapter (PM decision). SubscriptionLifecycleJobs.ts is now a no-op
+    // stub, not a shim over the new BillingSubscription engine. Every
+    // lifecycle transition it used to trigger remains fully available
+    // manually via the SuperAdmin BillingSubscription API
     // (src/routes/billingSubscriptionsSA.ts: activate/suspend/resume/
     // cancel/renew/change-plan). See docs/architecture/billing-platform.md
     // § Subscription Engine → Deferred Automatic Lifecycle.
+    //
+    // TODO(K48): Replace legacy TenantProfile scheduler with the new
+    // BillingSubscription Scheduler.
     // startSubscriptionLifecycleCron(),
     startWhatsAppSchedulerCron(),
     startEmailSchedulerCron(),

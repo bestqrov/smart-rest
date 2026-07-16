@@ -180,24 +180,3 @@ export async function listSubscriptions(filter: {
 }): Promise<{ subscriptions: BillingSubscription[]; total: number; page: number; pages: number }> {
   return Repo.findAll(filter)
 }
-
-// ─── Scheduler-facing finders ──────────────────────────────────────────────────
-// Read-only lookups for the SubscriptionLifecycleJobs cron compat layer. Kept as
-// thin passthroughs so the cron only ever talks to this Service, never to
-// SubscriptionRepository or a TenantProfile-based model directly.
-
-export async function findTrialsEndingWithin(days: number): Promise<BillingSubscription[]> {
-  return Repo.findTrialsEndingWithin(days)
-}
-
-export async function findExpiredTrials(): Promise<BillingSubscription[]> {
-  return Repo.findExpiredTrials()
-}
-
-export async function findExpiredGracePeriods(): Promise<BillingSubscription[]> {
-  return Repo.findExpiredGracePeriods()
-}
-
-export async function findRenewalCandidates(tenantIds: string[]): Promise<BillingSubscription[]> {
-  return Repo.findRenewalCandidates(tenantIds)
-}

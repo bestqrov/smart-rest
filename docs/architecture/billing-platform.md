@@ -372,23 +372,29 @@ These routes live in `src/routes/billingSubscriptionsSA.ts` and are the sole can
 
 ### Deferred: Automatic Lifecycle Scheduling
 
-**Out of scope for Sprint K2, intentionally — and disabled at the registration point
-as of Sprint K2.2 (dev-only, PM decision).** The state machine and schema support
-`GRACE_PERIOD` and `EXPIRED`, and `SubscriptionLifecycle.enterGracePeriod()` /
-`SubscriptionLifecycle.expire()` / `SubscriptionService.expire()` are fully
-implemented. `SubscriptionLifecycleJobs.ts` (`src/billing/lifecycle/`) is a
-compatibility adapter that translates the daily cron's calls into the new
-`BillingSubscription` API — but its registration,
-`startSubscriptionLifecycleCron()` in `src/server.ts`, is currently **commented
-out** while the migration from the old TenantProfile-based subscription system
-to `BillingSubscription` is verified against live data.
+**Out of scope for Sprint K2, and disabled outright as of K48 planning.** The
+state machine and schema support `GRACE_PERIOD` and `EXPIRED`, and
+`SubscriptionLifecycle.enterGracePeriod()` / `SubscriptionLifecycle.expire()` /
+`SubscriptionService.expire()` are fully implemented — but nothing calls them
+automatically. The legacy daily cron
+(`startSubscriptionLifecycleCron()` in `src/server.ts`) is **commented out**,
+and `SubscriptionLifecycleJobs.ts` (`src/billing/lifecycle/`) — the module it
+used to call — is now a **no-op stub**, not a compatibility adapter over the
+new `BillingSubscription` API.
 
-**Why disabled, not just left as dead code:** the adapter was written and
-type-checked (Sprint K2.2) but never run against a live database — no
-`GRACE_PERIOD`/`EXPIRED` transition, trial-ending reminder, or auto-renewal
-sweep from it has been observed with real records yet. Registering it
-unverified inside a daily production cron was judged riskier than leaving it
-manual-only for one more sprint.
+**Why a stub and not an adapter:** the platform has no production customers
+yet, so architecture cleanliness was explicitly prioritized over backward
+compatibility (PM decision). An earlier revision of this file *did* translate
+the legacy cron's calls into the new `BillingSubscription` engine — that
+translation layer was removed. `SubscriptionLifecycleJobs.ts` exists now only
+so `src/cron/subscriptionLifecycle.ts` and `src/billing/index.ts` keep
+compiling against a disabled cron; it performs no queries and no state
+mutations.
+
+**TODO(K48): Replace legacy TenantProfile scheduler with the new
+BillingSubscription Scheduler.** The real fix is a new scheduler module built
+directly against `SubscriptionService` (activate/suspend/renew/expire) and the
+`BillingSubscription` schema — not a resurrection of this file.
 
 **What's disabled:**
 - moving an `ACTIVE` subscription into `GRACE_PERIOD` when `renewalDate` lapses
@@ -406,19 +412,17 @@ renew,change-plan}`, `src/routes/billingSubscriptionsSA.ts`) and through
 machine, schema, or `BillingSubscription` model itself was touched by this
 change.
 
-**Re-enabling after the Scheduler sprint:**
-1. Run `SubscriptionLifecycleJobs.runSubscriptionLifecycleSweep()` (or the
-   individual `run*` functions) manually against a seeded dev database and
-   confirm the query/transition/notification behavior is correct end-to-end.
-2. Uncomment `startSubscriptionLifecycleCron()` in the `cronTasks` array in
-   `src/server.ts` (search for `TODO(scheduler-sprint)` next to it).
-3. Optionally fold `SubscriptionLifecycleJobs.ts`'s logic directly into
-   `src/cron/subscriptionLifecycle.ts` and retire the compatibility-layer
-   framing, per the `TODO(scheduler-sprint)` comments already in both files.
-
-Automatic time-based transitions are planned for a future
-**Infrastructure/Scheduler sprint**; see `TODO(scheduler-sprint)` comments in
-`SubscriptionLifecycle.ts`, `SubscriptionLifecycleJobs.ts`, and `server.ts`.
+**Building the K48 Scheduler (when it happens):**
+1. Write a new module (e.g. `src/billing/scheduler/SubscriptionScheduler.ts`)
+   that queries `BillingSubscription` directly (via a small set of finder
+   functions on `SubscriptionRepository`/`SubscriptionService`, added when
+   actually needed) and calls `SubscriptionService.suspend/expire/renew`.
+2. Verify it end-to-end against a seeded dev database before it ever runs on
+   a schedule.
+3. Register it in `src/server.ts`'s `cronTasks` array and delete
+   `SubscriptionLifecycleJobs.ts` + the dead import in
+   `src/cron/subscriptionLifecycle.ts` at that point, rather than reusing
+   either.
 
 ### Future: Invoice Integration (Sprint K3)
 

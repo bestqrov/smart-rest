@@ -118,36 +118,3 @@ export async function countByPlan(planCode: string): Promise<number> {
     where: { planCode, status: { in: ['TRIAL', 'ACTIVE', 'GRACE_PERIOD'] } },
   })
 }
-
-// ─── Scheduler-facing finders (used by the SubscriptionLifecycleJobs compat layer) ──
-
-// TRIAL subscriptions whose trialEndsAt falls within the next `days` days
-export async function findTrialsEndingWithin(days: number): Promise<BillingSubscription[]> {
-  const col = await db()
-  const now = new Date()
-  const threshold = new Date(now.getTime() + days * 86400000)
-  const rows = await col.findMany({ where: { status: 'TRIAL', trialEndsAt: { gte: now, lte: threshold } } })
-  return rows.map(toModel)
-}
-
-// TRIAL subscriptions whose trialEndsAt has already passed
-export async function findExpiredTrials(): Promise<BillingSubscription[]> {
-  const col = await db()
-  const rows = await col.findMany({ where: { status: 'TRIAL', trialEndsAt: { lt: new Date() } } })
-  return rows.map(toModel)
-}
-
-// GRACE_PERIOD subscriptions whose graceEndsAt has already passed
-export async function findExpiredGracePeriods(): Promise<BillingSubscription[]> {
-  const col = await db()
-  const rows = await col.findMany({ where: { status: 'GRACE_PERIOD', graceEndsAt: { lt: new Date() } } })
-  return rows.map(toModel)
-}
-
-// GRACE_PERIOD/SUSPENDED subscriptions for the given tenants (renewal candidates)
-export async function findRenewalCandidates(tenantIds: string[]): Promise<BillingSubscription[]> {
-  if (tenantIds.length === 0) return []
-  const col = await db()
-  const rows = await col.findMany({ where: { tenantId: { in: tenantIds }, status: { in: ['GRACE_PERIOD', 'SUSPENDED'] } } })
-  return rows.map(toModel)
-}

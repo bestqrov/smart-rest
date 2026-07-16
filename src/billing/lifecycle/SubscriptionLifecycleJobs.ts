@@ -1,132 +1,53 @@
-// ─── Billing Platform — Subscription Lifecycle Automation ─────────────────
-// Trial reminders, expiration, grace-period expiration and auto-renewal.
+// ─── Billing Platform — Legacy Subscription Lifecycle Automation ─────────
 //
-// COMPATIBILITY LAYER (Sprint K2.2): this file preserves the original
-// function names/signatures consumed by src/cron/subscriptionLifecycle.ts
-// and re-exported from src/billing/index.ts, but delegates every state
-// mutation to the new BillingSubscription engine
-// (src/billing/subscriptions/SubscriptionService.ts) instead of the old
-// TenantProfile-based lifecycle. No TenantProfile fields are read or
-// written here anymore.
+// DISABLED (Sprint K2.2 → K48 migration). This module previously drove the
+// daily subscription-lifecycle cron (trial reminders, expiration,
+// grace-period expiration, auto-renewal) against the old TenantProfile-based
+// subscription model. That model has been replaced by the new
+// BillingSubscription engine (src/billing/subscriptions/SubscriptionService.ts).
 //
-// TODO(scheduler-sprint): this adapter exists only to keep the existing
-// cron entry point stable across the K2 migration. A future
-// Infrastructure/Scheduler sprint should fold this logic directly into
-// src/cron/subscriptionLifecycle.ts (or a dedicated scheduler module) and
-// remove this compatibility layer.
+// Per PM decision: the platform has no production customers yet, so we are
+// prioritizing architecture cleanliness over backward compatibility — this
+// file is intentionally NOT adapted/shimmed to call the new
+// BillingSubscription API. Its cron registration
+// (startSubscriptionLifecycleCron() in src/server.ts) is commented out, and
+// every function below is a no-op stub kept only so the existing import
+// sites (src/cron/subscriptionLifecycle.ts, src/billing/index.ts) keep
+// compiling until they're replaced outright.
 //
-// NOTE (Sprint K2.2, dev-only): startSubscriptionLifecycleCron() is
-// currently commented out in src/server.ts's cronTasks array — this file's
-// functions are exercised manually only, until a Scheduler sprint verifies
-// them against live data. See docs/architecture/billing-platform.md §
-// Subscription Engine → Deferred Automatic Lifecycle for how to re-enable.
+// TODO(K48): Replace legacy TenantProfile scheduler with the new
+// BillingSubscription Scheduler.
+//
+// Manual lifecycle operations (activate/suspend/resume/cancel/renew/
+// change-plan) remain fully available in the meantime via
+// SubscriptionService and the /api/superadmin/billing/subscriptions/:id/*
+// routes — see docs/architecture/billing-platform.md § Subscription Engine
+// → Deferred Automatic Lifecycle.
 
-import { emitTrialEnding }      from '../events/BillingEvents'
-import * as Subscriptions       from '../subscriptions/SubscriptionService'
-import { getDefaultAutoRenew }  from '../settings/BillingSettingsService'
-import logger                   from '../../logger'
+import logger from '../../logger'
 
-async function getPrisma() {
-  const { default: prisma } = await import('../../prisma')
-  return prisma
+function disabledNotice(fn: string) {
+  logger.warn({ msg: `[BillingLifecycle] ${fn} is disabled pending K48 (legacy TenantProfile scheduler removed, BillingSubscription Scheduler not yet built)` })
 }
 
-const DEFAULT_MODULE = 'RESTAURANT'
-
-// ─── 1. Trial ending reminders ─────────────────────────────────────────────
-// Warns TRIAL subscriptions within `warnDays` of trialEndsAt. Idempotent: skips
-// tenants already warned today (a TRIAL_ENDING event already logged today).
-// Notification delivery goes through BillingEventNotificationHub (the single
-// source of truth for billing notifications) via the emitted event — this
-// function does not call NotificationService directly.
-export async function runTrialEndingReminders(warnDays = 3): Promise<number> {
-  const prisma     = await getPrisma()
-  const now         = new Date()
-  const startOfDay  = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const candidates  = await Subscriptions.findTrialsEndingWithin(warnDays)
-
-  let sent = 0
-  for (const sub of candidates) {
-    const alreadyWarned = await (prisma as any).billingEventLog.findFirst({
-      where: { tenantId: sub.tenantId, type: 'TRIAL_ENDING', createdAt: { gte: startOfDay } },
-    })
-    if (alreadyWarned) continue
-
-    const daysLeft = Math.max(0, Math.ceil(((sub.trialEndsAt?.getTime() ?? now.getTime()) - now.getTime()) / 86400000))
-    await emitTrialEnding({
-      tenantId: sub.tenantId, module: DEFAULT_MODULE, plan: sub.planCode,
-      metadata: { subscriptionId: sub.id, daysLeft },
-    })
-    sent++
-  }
-  return sent
+export async function runTrialEndingReminders(): Promise<number> {
+  disabledNotice('runTrialEndingReminders')
+  return 0
 }
 
-// ─── 2. Subscription expiration ────────────────────────────────────────────
-// TRIAL subscriptions whose trial has ended without conversion → EXPIRED.
-// Idempotent: once expired the subscription no longer matches status: 'TRIAL'.
 export async function runSubscriptionExpirationCheck(): Promise<string[]> {
-  const expired = await Subscriptions.findExpiredTrials()
-
-  const cancelled: string[] = []
-  for (const sub of expired) {
-    try {
-      await Subscriptions.expire(sub.id)
-      cancelled.push(sub.tenantId)
-    } catch (err: any) {
-      logger.warn({ msg: '[BillingLifecycle] expiration skipped', tenantId: sub.tenantId, subscriptionId: sub.id, err: err.message })
-    }
-  }
-  return cancelled
+  disabledNotice('runSubscriptionExpirationCheck')
+  return []
 }
 
-// ─── 3. Grace period expiration ────────────────────────────────────────────
-// GRACE_PERIOD subscriptions past graceEndsAt → SUSPENDED.
-// Idempotent: once suspended the subscription no longer matches status: 'GRACE_PERIOD'.
 export async function runGracePeriodExpirationCheck(): Promise<string[]> {
-  const expired = await Subscriptions.findExpiredGracePeriods()
-
-  const suspended: string[] = []
-  for (const sub of expired) {
-    try {
-      await Subscriptions.suspend(sub.id, 'Grace period expired', 'system')
-      suspended.push(sub.tenantId)
-    } catch (err: any) {
-      logger.warn({ msg: '[BillingLifecycle] grace-period suspend skipped', tenantId: sub.tenantId, subscriptionId: sub.id, err: err.message })
-    }
-  }
-  return suspended
+  disabledNotice('runGracePeriodExpirationCheck')
+  return []
 }
 
-// ─── 4. Automatic renewal checks ───────────────────────────────────────────
-// GRACE_PERIOD / SUSPENDED subscriptions with a recently paid invoice → ACTIVE.
-// Skipped entirely when the "billing.default_auto_renew" setting is off.
-// Idempotent: once renewed (status ACTIVE) the subscription no longer matches the filter.
-export async function runAutomaticRenewalChecks(lookbackHours = 24): Promise<string[]> {
-  if (!(await getDefaultAutoRenew())) return []
-
-  const prisma = await getPrisma()
-  const since  = new Date(Date.now() - lookbackHours * 3600000)
-
-  const recentlyPaid = await (prisma as any).billingPlatformInvoice.findMany({
-    where:  { status: 'PAID', paidAt: { gte: since } },
-    select: { tenantId: true },
-  })
-  const tenantIds = [...new Set(recentlyPaid.map((i: any) => i.tenantId))] as string[]
-  if (tenantIds.length === 0) return []
-
-  const pending = await Subscriptions.findRenewalCandidates(tenantIds)
-
-  const renewed: string[] = []
-  for (const sub of pending) {
-    try {
-      await Subscriptions.renew(sub.id, 'system')
-      renewed.push(sub.tenantId)
-    } catch (err: any) {
-      logger.warn({ msg: '[BillingLifecycle] auto-renewal skipped', tenantId: sub.tenantId, subscriptionId: sub.id, err: err.message })
-    }
-  }
-  return renewed
+export async function runAutomaticRenewalChecks(): Promise<string[]> {
+  disabledNotice('runAutomaticRenewalChecks')
+  return []
 }
 
 export async function runSubscriptionLifecycleSweep(): Promise<{
@@ -135,9 +56,6 @@ export async function runSubscriptionLifecycleSweep(): Promise<{
   suspended:     string[]
   renewed:       string[]
 }> {
-  const remindersSent = await runTrialEndingReminders()
-  const cancelled       = await runSubscriptionExpirationCheck()
-  const suspended       = await runGracePeriodExpirationCheck()
-  const renewed         = await runAutomaticRenewalChecks()
-  return { remindersSent, cancelled, suspended, renewed }
+  disabledNotice('runSubscriptionLifecycleSweep')
+  return { remindersSent: 0, cancelled: [], suspended: [], renewed: [] }
 }

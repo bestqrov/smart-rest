@@ -36,7 +36,7 @@ export async function renew(sub: BillingSubscription, by: string): Promise<Billi
   return updated
 }
 
-// TODO(scheduler-sprint): not called anywhere yet — automatic TRIAL/ACTIVE → GRACE_PERIOD
+// TODO(K48): not called anywhere yet — automatic TRIAL/ACTIVE → GRACE_PERIOD
 // transition is intentionally deferred to a future Infrastructure/Scheduler sprint. See
 // docs/architecture/billing-platform.md § Subscription Engine → Deferred Automatic Lifecycle.
 export async function enterGracePeriod(sub: BillingSubscription, graceDays = 7): Promise<BillingSubscription> {
@@ -76,7 +76,7 @@ export async function cancel(sub: BillingSubscription, by: string): Promise<Bill
   return updated
 }
 
-// TODO(scheduler-sprint): not called anywhere yet — automatic GRACE_PERIOD → EXPIRED
+// TODO(K48): not called anywhere yet — automatic GRACE_PERIOD → EXPIRED
 // transition (or direct expiry on renewalDate/trialEndsAt lapse) is intentionally deferred
 // to a future Infrastructure/Scheduler sprint. See
 // docs/architecture/billing-platform.md § Subscription Engine → Deferred Automatic Lifecycle.

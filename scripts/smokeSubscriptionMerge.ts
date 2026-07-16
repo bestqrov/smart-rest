@@ -1,12 +1,13 @@
 /**
- * Sprint K2.2 merge smoke test — no DB required.
+ * Sprint K2.2 → K48 merge smoke test — no DB required.
  *
- * Verifies the module graph resolves at runtime after merging main into
- * worktree-sprint-k2-subscription-engine, that the SubscriptionLifecycleJobs
- * compatibility layer exposes the exact function names/signatures the
- * existing production cron (src/cron/subscriptionLifecycle.ts) expects, and
- * that the old TenantProfile-based subscription API is fully gone (proving
- * there isn't a stale dual-system).
+ * Verifies: the module graph resolves at runtime after merging main into
+ * worktree-sprint-k2-subscription-engine; the old TenantProfile-based
+ * subscription API is fully gone (no stale dual-system); the legacy
+ * subscription-lifecycle cron is disabled and SubscriptionLifecycleJobs.ts
+ * is a no-op stub (NOT a compatibility adapter, per K48 PM decision); no
+ * other cron job was affected; and manual lifecycle operations remain fully
+ * available via the SuperAdmin BillingSubscription API.
  *
  * Run: npx ts-node --transpile-only scripts/smokeSubscriptionMerge.ts
  */
@@ -32,10 +33,6 @@ ok(typeof SubscriptionService.activate === 'function', 'activate exists')
 ok(typeof SubscriptionService.expire === 'function', 'expire exists')
 ok(typeof SubscriptionService.suspend === 'function', 'suspend exists')
 ok(typeof SubscriptionService.renew === 'function', 'renew exists')
-ok(typeof SubscriptionService.findTrialsEndingWithin === 'function', 'findTrialsEndingWithin exists (new scheduler finder)')
-ok(typeof SubscriptionService.findExpiredTrials === 'function', 'findExpiredTrials exists (new scheduler finder)')
-ok(typeof SubscriptionService.findExpiredGracePeriods === 'function', 'findExpiredGracePeriods exists (new scheduler finder)')
-ok(typeof SubscriptionService.findRenewalCandidates === 'function', 'findRenewalCandidates exists (new scheduler finder)')
 
 console.log('\n3. Old TenantProfile-based subscription API is fully removed (no dual system)')
 ok((SubscriptionService as any).cancelSubscription === undefined, 'old cancelSubscription is gone')
@@ -44,32 +41,51 @@ ok((SubscriptionService as any).renewSubscription === undefined, 'old renewSubsc
 ok((SubscriptionService as any).createSubscription === undefined, 'old createSubscription is gone')
 ok((SubscriptionService as any).startTrialSubscription === undefined, 'old startTrialSubscription is gone')
 
-console.log('\n4. SubscriptionLifecycleJobs compat adapter — same entry points the cron uses')
-ok(typeof LifecycleJobs.runTrialEndingReminders === 'function', 'runTrialEndingReminders exists')
-ok(typeof LifecycleJobs.runSubscriptionExpirationCheck === 'function', 'runSubscriptionExpirationCheck exists')
-ok(typeof LifecycleJobs.runGracePeriodExpirationCheck === 'function', 'runGracePeriodExpirationCheck exists')
-ok(typeof LifecycleJobs.runAutomaticRenewalChecks === 'function', 'runAutomaticRenewalChecks exists')
-ok(typeof LifecycleJobs.runSubscriptionLifecycleSweep === 'function', 'runSubscriptionLifecycleSweep exists')
-ok(LifecycleJobs.runSubscriptionLifecycleSweep === Billing.runSubscriptionLifecycleSweep, 'billing barrel re-exports the SAME sweep fn (no shadow copy)')
+console.log('\n4. SubscriptionService has no adapter/scheduler-finder surface (K48: cleanliness over compat)')
+ok((SubscriptionService as any).findTrialsEndingWithin === undefined, 'findTrialsEndingWithin removed (was adapter-only)')
+ok((SubscriptionService as any).findExpiredTrials === undefined, 'findExpiredTrials removed (was adapter-only)')
+ok((SubscriptionService as any).findExpiredGracePeriods === undefined, 'findExpiredGracePeriods removed (was adapter-only)')
+ok((SubscriptionService as any).findRenewalCandidates === undefined, 'findRenewalCandidates removed (was adapter-only)')
 
-console.log('\n5. Cron implementation preserved but registration disabled (Sprint K2.2, dev-only)')
+console.log('\n5. SubscriptionLifecycleJobs is a no-op stub, not a compatibility adapter')
+ok(typeof LifecycleJobs.runTrialEndingReminders === 'function', 'runTrialEndingReminders still exported (import sites keep compiling)')
+ok(typeof LifecycleJobs.runSubscriptionExpirationCheck === 'function', 'runSubscriptionExpirationCheck still exported')
+ok(typeof LifecycleJobs.runGracePeriodExpirationCheck === 'function', 'runGracePeriodExpirationCheck still exported')
+ok(typeof LifecycleJobs.runAutomaticRenewalChecks === 'function', 'runAutomaticRenewalChecks still exported')
+ok(typeof LifecycleJobs.runSubscriptionLifecycleSweep === 'function', 'runSubscriptionLifecycleSweep still exported')
+ok(LifecycleJobs.runSubscriptionLifecycleSweep === Billing.runSubscriptionLifecycleSweep, 'billing barrel re-exports the SAME stub fn (no shadow copy)')
+
+async function verifyStubIsInert() {
+  const result = await LifecycleJobs.runSubscriptionLifecycleSweep()
+  ok(result.remindersSent === 0 && result.cancelled.length === 0 && result.suspended.length === 0 && result.renewed.length === 0,
+     'runSubscriptionLifecycleSweep() is inert — returns all-empty result with zero DB/API calls')
+}
+
+console.log('\n6. Legacy cron implementation preserved but registration disabled')
 ok(typeof startSubscriptionLifecycleCron === 'function', 'src/cron/subscriptionLifecycle.ts still exports startSubscriptionLifecycleCron (not deleted)')
 
 const fs = require('fs')
-const serverSrc = fs.readFileSync(require('path').join(__dirname, '../src/server.ts'), 'utf8')
+const path = require('path')
+const serverSrc = fs.readFileSync(path.join(__dirname, '../src/server.ts'), 'utf8')
 ok(/\/\/\s*startSubscriptionLifecycleCron\(\)/.test(serverSrc), 'startSubscriptionLifecycleCron() call is commented out in cronTasks')
 ok(!/^\s*startSubscriptionLifecycleCron\(\),\s*$/m.test(serverSrc), 'no active (uncommented) startSubscriptionLifecycleCron() call remains')
-ok(/TODO\(scheduler-sprint\)/.test(serverSrc), 'server.ts has a TODO(scheduler-sprint) marker near the disabled cron')
+ok(/TODO\(K48\)/.test(serverSrc), 'server.ts has the required TODO(K48) marker near the disabled cron')
 for (const other of ['startDailyDebtDetectionCron', 'startWeeklyBillingCron', 'startNightlyCron', 'startCertificationCron', 'startWhatsAppSchedulerCron', 'startEmailSchedulerCron', 'startSocialSchedulerCron', 'startShiftOvertimeLockCron']) {
   ok(new RegExp(`^\\s*${other}\\(\\),\\s*$`, 'm').test(serverSrc), `${other}() is still actively registered (unaffected)`)
 }
 
-console.log('\n6. Manual lifecycle operations remain available (SuperAdmin API)')
-const routesSrc = fs.readFileSync(require('path').join(__dirname, '../src/routes/billingSubscriptionsSA.ts'), 'utf8')
+const jobsSrc = fs.readFileSync(path.join(__dirname, '../src/billing/lifecycle/SubscriptionLifecycleJobs.ts'), 'utf8')
+ok(/TODO\(K48\)/.test(jobsSrc), 'SubscriptionLifecycleJobs.ts has the required TODO(K48) marker')
+ok(!/^import .*from ['"]\.\.\/subscriptions\//m.test(jobsSrc), 'SubscriptionLifecycleJobs.ts does not import the new BillingSubscription engine (no adapter logic)')
+
+console.log('\n7. Manual lifecycle operations remain available (SuperAdmin API)')
+const routesSrc = fs.readFileSync(path.join(__dirname, '../src/routes/billingSubscriptionsSA.ts'), 'utf8')
 for (const action of ['activate', 'suspend', 'resume', 'cancel', 'renew', 'change-plan']) {
   ok(routesSrc.includes(`/${action}'`), `POST .../:id/${action} route still registered`)
 }
 
-console.log(`\n${passed} passed, ${failed} failed`)
-console.log(failed === 0 ? 'SMOKE TEST: PASS' : 'SMOKE TEST: FAIL')
-if (failed > 0) process.exit(1)
+verifyStubIsInert().then(() => {
+  console.log(`\n${passed} passed, ${failed} failed`)
+  console.log(failed === 0 ? 'SMOKE TEST: PASS' : 'SMOKE TEST: FAIL')
+  if (failed > 0) process.exit(1)
+})
