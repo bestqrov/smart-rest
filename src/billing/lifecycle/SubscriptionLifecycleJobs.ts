@@ -14,6 +14,12 @@
 // Infrastructure/Scheduler sprint should fold this logic directly into
 // src/cron/subscriptionLifecycle.ts (or a dedicated scheduler module) and
 // remove this compatibility layer.
+//
+// NOTE (Sprint K2.2, dev-only): startSubscriptionLifecycleCron() is
+// currently commented out in src/server.ts's cronTasks array — this file's
+// functions are exercised manually only, until a Scheduler sprint verifies
+// them against live data. See docs/architecture/billing-platform.md §
+// Subscription Engine → Deferred Automatic Lifecycle for how to re-enable.
 
 import { emitTrialEnding }      from '../events/BillingEvents'
 import * as Subscriptions       from '../subscriptions/SubscriptionService'

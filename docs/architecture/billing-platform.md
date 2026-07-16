@@ -372,21 +372,53 @@ These routes live in `src/routes/billingSubscriptionsSA.ts` and are the sole can
 
 ### Deferred: Automatic Lifecycle Scheduling
 
-**Out of scope for Sprint K2, intentionally.** The state machine and schema support
+**Out of scope for Sprint K2, intentionally — and disabled at the registration point
+as of Sprint K2.2 (dev-only, PM decision).** The state machine and schema support
 `GRACE_PERIOD` and `EXPIRED`, and `SubscriptionLifecycle.enterGracePeriod()` /
 `SubscriptionLifecycle.expire()` / `SubscriptionService.expire()` are fully
-implemented — but nothing calls them yet. There is no cron job or scheduled task
-that:
-- moves an `ACTIVE` subscription into `GRACE_PERIOD` when `renewalDate` lapses without
-  payment,
-- auto-`expire()`s a subscription when `graceEndsAt` / `trialEndsAt` passes,
-- or fires `TrialEnding` reminders ahead of `trialEndsAt`.
+implemented. `SubscriptionLifecycleJobs.ts` (`src/billing/lifecycle/`) is a
+compatibility adapter that translates the daily cron's calls into the new
+`BillingSubscription` API — but its registration,
+`startSubscriptionLifecycleCron()` in `src/server.ts`, is currently **commented
+out** while the migration from the old TenantProfile-based subscription system
+to `BillingSubscription` is verified against live data.
 
-All of the above are manual-only in this sprint (SuperAdmin-triggered via the
-`/api/superadmin/billing/subscriptions/:id/*` endpoints). Automatic time-based
-transitions are planned for a future **Infrastructure/Scheduler sprint** that adds a
-recurring job runner; see `TODO(scheduler-sprint)` comments in
-`SubscriptionLifecycle.ts`.
+**Why disabled, not just left as dead code:** the adapter was written and
+type-checked (Sprint K2.2) but never run against a live database — no
+`GRACE_PERIOD`/`EXPIRED` transition, trial-ending reminder, or auto-renewal
+sweep from it has been observed with real records yet. Registering it
+unverified inside a daily production cron was judged riskier than leaving it
+manual-only for one more sprint.
+
+**What's disabled:**
+- moving an `ACTIVE` subscription into `GRACE_PERIOD` when `renewalDate` lapses
+  without payment,
+- auto-`expire()`-ing a subscription when `graceEndsAt` / `trialEndsAt` passes,
+- firing `TrialEnding` reminders ahead of `trialEndsAt`,
+- auto-`renew()`-ing a `GRACE_PERIOD`/`SUSPENDED` subscription after a recent
+  paid invoice.
+
+**What's still available — nothing is lost:** every transition above remains
+fully available on demand through the manual SuperAdmin API
+(`/api/superadmin/billing/subscriptions/:id/{activate,suspend,resume,cancel,
+renew,change-plan}`, `src/routes/billingSubscriptionsSA.ts`) and through
+`SubscriptionService`'s public functions directly. Nothing about the state
+machine, schema, or `BillingSubscription` model itself was touched by this
+change.
+
+**Re-enabling after the Scheduler sprint:**
+1. Run `SubscriptionLifecycleJobs.runSubscriptionLifecycleSweep()` (or the
+   individual `run*` functions) manually against a seeded dev database and
+   confirm the query/transition/notification behavior is correct end-to-end.
+2. Uncomment `startSubscriptionLifecycleCron()` in the `cronTasks` array in
+   `src/server.ts` (search for `TODO(scheduler-sprint)` next to it).
+3. Optionally fold `SubscriptionLifecycleJobs.ts`'s logic directly into
+   `src/cron/subscriptionLifecycle.ts` and retire the compatibility-layer
+   framing, per the `TODO(scheduler-sprint)` comments already in both files.
+
+Automatic time-based transitions are planned for a future
+**Infrastructure/Scheduler sprint**; see `TODO(scheduler-sprint)` comments in
+`SubscriptionLifecycle.ts`, `SubscriptionLifecycleJobs.ts`, and `server.ts`.
 
 ### Future: Invoice Integration (Sprint K3)
 

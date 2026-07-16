@@ -52,8 +52,23 @@ ok(typeof LifecycleJobs.runAutomaticRenewalChecks === 'function', 'runAutomaticR
 ok(typeof LifecycleJobs.runSubscriptionLifecycleSweep === 'function', 'runSubscriptionLifecycleSweep exists')
 ok(LifecycleJobs.runSubscriptionLifecycleSweep === Billing.runSubscriptionLifecycleSweep, 'billing barrel re-exports the SAME sweep fn (no shadow copy)')
 
-console.log('\n5. Cron registration untouched')
-ok(typeof startSubscriptionLifecycleCron === 'function', 'src/cron/subscriptionLifecycle.ts still exports startSubscriptionLifecycleCron')
+console.log('\n5. Cron implementation preserved but registration disabled (Sprint K2.2, dev-only)')
+ok(typeof startSubscriptionLifecycleCron === 'function', 'src/cron/subscriptionLifecycle.ts still exports startSubscriptionLifecycleCron (not deleted)')
+
+const fs = require('fs')
+const serverSrc = fs.readFileSync(require('path').join(__dirname, '../src/server.ts'), 'utf8')
+ok(/\/\/\s*startSubscriptionLifecycleCron\(\)/.test(serverSrc), 'startSubscriptionLifecycleCron() call is commented out in cronTasks')
+ok(!/^\s*startSubscriptionLifecycleCron\(\),\s*$/m.test(serverSrc), 'no active (uncommented) startSubscriptionLifecycleCron() call remains')
+ok(/TODO\(scheduler-sprint\)/.test(serverSrc), 'server.ts has a TODO(scheduler-sprint) marker near the disabled cron')
+for (const other of ['startDailyDebtDetectionCron', 'startWeeklyBillingCron', 'startNightlyCron', 'startCertificationCron', 'startWhatsAppSchedulerCron', 'startEmailSchedulerCron', 'startSocialSchedulerCron', 'startShiftOvertimeLockCron']) {
+  ok(new RegExp(`^\\s*${other}\\(\\),\\s*$`, 'm').test(serverSrc), `${other}() is still actively registered (unaffected)`)
+}
+
+console.log('\n6. Manual lifecycle operations remain available (SuperAdmin API)')
+const routesSrc = fs.readFileSync(require('path').join(__dirname, '../src/routes/billingSubscriptionsSA.ts'), 'utf8')
+for (const action of ['activate', 'suspend', 'resume', 'cancel', 'renew', 'change-plan']) {
+  ok(routesSrc.includes(`/${action}'`), `POST .../:id/${action} route still registered`)
+}
 
 console.log(`\n${passed} passed, ${failed} failed`)
 console.log(failed === 0 ? 'SMOKE TEST: PASS' : 'SMOKE TEST: FAIL')
