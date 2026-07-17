@@ -115,6 +115,11 @@ export * from './decisions'
 
 export * from './knowledge'
 
+// RAG Knowledge Layer — document/chunk retrieval foundation, distinct from
+// ./knowledge above (K39's versioned tenant fact store). RAG-ready, not
+// RAG-complete: no embeddings/AI providers. See src/intelligence/rag/index.ts.
+export * from './rag'
+
 export * from './agents'
 
 export * from './rules'

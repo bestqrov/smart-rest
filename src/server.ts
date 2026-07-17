@@ -122,6 +122,7 @@ import supplierInvoicesRouter from './routes/supplierInvoices'
 import requisitionsRouter     from './routes/requisitions'
 import achatsReportRouter     from './routes/achatsReport'
 import customersRouter        from './routes/customers'
+import knowledgeRouter         from './routes/knowledge'
 import shiftAdminRouter       from './routes/pos/shiftAdmin'
 import aiCenterRouter         from './routes/aiCenter'
 import aiJobsRouter           from './routes/aiJobs'
@@ -332,6 +333,7 @@ async function main() {
   app.use(demoRequestsRouter)
   app.use(zonesRouter)
   app.use(customersRouter)
+  app.use(knowledgeRouter)
   app.use(shiftAdminRouter)
   app.use(aiCenterRouter)
   app.use(aiJobsRouter)

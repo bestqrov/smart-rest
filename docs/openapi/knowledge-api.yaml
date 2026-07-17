@@ -1,0 +1,207 @@
+openapi: 3.0.3
+info:
+  title: SmartRestau — RAG Knowledge Layer API
+  version: "1.0.0"
+  description: >
+    Tenant-facing REST API for the RAG Knowledge Layer (src/intelligence/rag/).
+    Foundation for future retrieval-augmented generation: RAG-ready, not
+    RAG-complete — no embeddings, no external AI provider calls anywhere in
+    this API. Distinct from the read-only SuperAdmin Intelligence Gateway
+    (/api/superadmin/intelligence/*, documented dynamically at
+    /api/superadmin/intelligence/openapi) — this API is authenticated per
+    restaurant/tenant admin (Bearer JWT) and supports document CRUD and
+    search-with-body, which the gateway's GET-only shape does not.
+servers:
+  - url: https://smartrestau.com
+    description: Production
+  - url: http://localhost:4000
+    description: Local dev
+security:
+  - bearerAuth: []
+paths:
+  /api/admin/knowledge/repositories:
+    post:
+      summary: Create a knowledge repository
+      operationId: createKnowledgeRepository
+      tags: [Repositories]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+                description: { type: string }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/Envelope' } } } }
+        "400": { $ref: '#/components/responses/BadRequest' }
+    get:
+      summary: List the caller's knowledge repositories
+      operationId: listKnowledgeRepositories
+      tags: [Repositories]
+      parameters:
+        - in: query
+          name: isActive
+          schema: { type: boolean }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Envelope' } } } }
+
+  /api/admin/knowledge/repositories/{id}:
+    get:
+      summary: Get a repository by id
+      operationId: getKnowledgeRepository
+      tags: [Repositories]
+      parameters: [{ $ref: '#/components/parameters/RepositoryId' }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Envelope' } } } }
+        "404": { $ref: '#/components/responses/NotFound' }
+    patch:
+      summary: Update a repository
+      operationId: updateKnowledgeRepository
+      tags: [Repositories]
+      parameters: [{ $ref: '#/components/parameters/RepositoryId' }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                description: { type: string, nullable: true }
+                isActive: { type: boolean }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Envelope' } } } }
+    delete:
+      summary: Delete a repository (cascades to its documents and chunks)
+      operationId: deleteKnowledgeRepository
+      tags: [Repositories]
+      parameters: [{ $ref: '#/components/parameters/RepositoryId' }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Envelope' } } } }
+
+  /api/admin/knowledge/repositories/{id}/documents:
+    post:
+      summary: Add a document to a repository (chunked synchronously, no embeddings)
+      operationId: createKnowledgeDocument
+      tags: [Documents]
+      parameters: [{ $ref: '#/components/parameters/RepositoryId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, content]
+              properties:
+                title: { type: string }
+                content: { type: string, description: Raw text; split into overlapping word-count chunks server-side }
+                sourceType: { type: string, enum: [MANUAL, UPLOAD, URL, SYSTEM], default: MANUAL }
+                sourceRef: { type: string }
+                contentType: { type: string, default: text/plain }
+                metadata: { type: object }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/Envelope' } } } }
+        "400": { $ref: '#/components/responses/BadRequest' }
+    get:
+      summary: List documents in a repository
+      operationId: listKnowledgeDocuments
+      tags: [Documents]
+      parameters: [{ $ref: '#/components/parameters/RepositoryId' }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Envelope' } } } }
+
+  /api/admin/knowledge/documents/{id}:
+    get:
+      summary: Get a document with its chunks
+      operationId: getKnowledgeDocument
+      tags: [Documents]
+      parameters: [{ $ref: '#/components/parameters/DocumentId' }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Envelope' } } } }
+        "404": { $ref: '#/components/responses/NotFound' }
+    delete:
+      summary: Delete a document and its chunks
+      operationId: deleteKnowledgeDocument
+      tags: [Documents]
+      parameters: [{ $ref: '#/components/parameters/DocumentId' }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Envelope' } } } }
+
+  /api/admin/knowledge/search:
+    post:
+      summary: >
+        Permission-aware retrieval: rank chunks by keyword overlap (no
+        embeddings) and assemble a bounded context. The Semantic Search
+        abstraction (SemanticSearchProvider) is pluggable — this response
+        shape is stable across future provider swaps.
+      operationId: searchKnowledge
+      tags: [Search]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                repositoryId: { type: string, description: Omit to search all of the tenant's repositories }
+                text: { type: string }
+                limit: { type: integer, default: 10 }
+                maxContextWords: { type: integer, default: 1000 }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Envelope' } } } }
+        "403": { description: Forbidden — permission check failed }
+
+  /api/admin/knowledge/audit:
+    get:
+      summary: Audit log for this tenant's Knowledge Layer activity (backed by the shared AuditService)
+      operationId: getKnowledgeAudit
+      tags: [Audit]
+      parameters:
+        - in: query
+          name: limit
+          schema: { type: integer, default: 50 }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Envelope' } } } }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Admin JWT (src/middleware/authorizeAdmin.ts) — cafeId in the token is the tenant scope for every operation below.
+  parameters:
+    RepositoryId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string }
+    DocumentId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string }
+  schemas:
+    Envelope:
+      type: object
+      description: Same envelope shape as the Intelligence Gateway (src/intelligence/gateway/ResponseNormalization.ts), reused for platform consistency.
+      properties:
+        success: { type: boolean }
+        version: { type: string }
+        data: {}
+        error: { type: string }
+        meta:
+          type: object
+          properties:
+            requestId: { type: string }
+            timestamp: { type: string, format: date-time }
+  responses:
+    BadRequest:
+      description: Bad request
+      content: { application/json: { schema: { $ref: '#/components/schemas/Envelope' } } }
+    NotFound:
+      description: Not found
+      content: { application/json: { schema: { $ref: '#/components/schemas/Envelope' } } }

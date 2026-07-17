@@ -27,6 +27,7 @@ import { getReservationAdvisorSummary } from '../reservation-advisor'
 import { getStaffAdvisorSummary } from '../staff-advisor'
 import { getFinancialAdvisorSummary } from '../financial-advisor'
 import { getExecutiveBriefing } from '../executive-ai-advisor'
+import { listRepositories } from '../rag'
 import type { GatewayOperation } from './types'
 
 const operations = new Map<string, GatewayOperation>()
@@ -145,6 +146,18 @@ register({
   handler: (ctx) => {
     if (!ctx.tenantId) throw new Error('tenantId query parameter is required for the executive-ai-advisor service')
     return getExecutiveBriefing(ctx.tenantId)
+  },
+})
+register({
+  // Discovery/summary only — the full CRUD/search REST API lives at
+  // /api/admin/knowledge/* (src/routes/knowledge.ts), tenant-facing and
+  // out of this SuperAdmin-only read-only gateway's shape. Registered here
+  // purely so the RAG Knowledge Layer is discoverable via this platform's
+  // existing /services and /openapi surfaces, consistent with every other module.
+  id: 'knowledge-repositories', version: 'v1', summary: 'RAG Knowledge Layer — list a tenant\'s knowledge repositories (see /api/admin/knowledge/* for full CRUD/search)', path: '/knowledge-repositories',
+  handler: (ctx) => {
+    if (!ctx.tenantId) throw new Error('tenantId query parameter is required for the knowledge-repositories service')
+    return listRepositories(ctx.tenantId)
   },
 })
 
