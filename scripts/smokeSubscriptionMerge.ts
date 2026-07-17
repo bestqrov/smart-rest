@@ -84,6 +84,21 @@ for (const action of ['activate', 'suspend', 'resume', 'cancel', 'renew', 'chang
   ok(routesSrc.includes(`/${action}'`), `POST .../:id/${action} route still registered`)
 }
 
+console.log('\n8. Zero legacy billing dependency — no src/billing/** code reads TenantProfile')
+const glob = require('child_process').execSync(
+  `grep -rl "tenantProfile" --include="*.ts" ${path.join(__dirname, '../src/billing')} || true`,
+  { encoding: 'utf8' },
+).trim()
+ok(glob === '', 'no file under src/billing/ contains a `tenantProfile` (prisma) read/write')
+
+const metricsSrc = fs.readFileSync(path.join(__dirname, '../src/billing/metrics/BillingMetricsService.ts'), 'utf8')
+ok(metricsSrc.includes('billingSubscription'), 'BillingMetricsService.ts reads billingSubscription')
+ok(!metricsSrc.includes('tenantProfile'), 'BillingMetricsService.ts no longer reads tenantProfile')
+
+const planRepoSrc = fs.readFileSync(path.join(__dirname, '../src/billing/plans/PlanRepository.ts'), 'utf8')
+ok(planRepoSrc.includes("from '../subscriptions/SubscriptionRepository'"), 'PlanRepository.ts delegates to SubscriptionRepository.countByPlan')
+ok(!planRepoSrc.includes('tenantProfile'), 'PlanRepository.ts no longer reads tenantProfile')
+
 verifyStubIsInert().then(() => {
   console.log(`\n${passed} passed, ${failed} failed`)
   console.log(failed === 0 ? 'SMOKE TEST: PASS' : 'SMOKE TEST: FAIL')
