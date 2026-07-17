@@ -1,10 +1,11 @@
 /**
  * BillingSubscription Scheduler Cron (K48) — runs every day at 03:00
  *
- * Automatic subscription lifecycle sweep: trial-ending reminders, trial/
- * active lapse → GRACE_PERIOD, grace period expiration → SUSPENDED. All
- * state changes go through SubscriptionService and are idempotent (each
- * sweep's query excludes rows already past the relevant transition).
+ * Automatic subscription lifecycle sweep: trial-ending reminders, trial
+ * expiration → EXPIRED, active lapse → GRACE_PERIOD, grace period expiration
+ * → SUSPENDED. All state changes go through SubscriptionService and are
+ * idempotent (each sweep's query excludes rows already past the relevant
+ * transition).
  */
 
 import cron from 'node-cron'
@@ -19,6 +20,7 @@ export function startSubscriptionSchedulerCron(): ReturnType<typeof cron.schedul
       logger.info({
         msg:           '[CRON] Subscription scheduler sweep completed',
         remindersSent: result.remindersSent,
+        trialExpired:  result.trialExpired.length,
         enteredGrace:  result.enteredGrace.length,
         suspended:     result.suspended.length,
       })

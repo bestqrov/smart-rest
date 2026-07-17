@@ -1,16 +1,22 @@
 // ─── BillingSubscription Scheduler (K48) ───────────────────────────────────
 // Automatic lifecycle sweeps for BillingSubscription — trial-ending
-// reminders, TRIAL/ACTIVE → GRACE_PERIOD, and GRACE_PERIOD → SUSPENDED.
-// This is a real scheduler (not the old SubscriptionLifecycleJobs.ts
-// compatibility stub, which has been deleted) — every function below calls
-// real SubscriptionService/SubscriptionLifecycle transitions, each of which
-// already fires its own event/audit/notification via the existing
-// BillingEventNotificationHub. See docs/architecture/billing-platform.md §
-// Subscription Engine → Automatic Lifecycle Scheduling.
+// reminders, TRIAL → EXPIRED, ACTIVE → GRACE_PERIOD (on renewal lapse), and
+// GRACE_PERIOD → SUSPENDED. This is a real scheduler (not the old
+// SubscriptionLifecycleJobs.ts compatibility stub, which has been deleted)
+// — every function below calls real SubscriptionService/SubscriptionLifecycle
+// transitions, each of which already fires its own event/audit/notification
+// via the existing BillingEventNotificationHub. See
+// docs/architecture/billing-platform.md § Subscription Engine → Automatic
+// Lifecycle Scheduling.
 //
-// Phase 1 scope only: no auto-cancel, no auto-expire, no payment-triggered
-// auto-renew (BillingPaymentService linking exists but isn't wired into this
-// sweep yet) — see docs' § Phase 2 (not yet built).
+// NOTE: GRACE_PERIOD is only reachable from ACTIVE in the state machine's
+// VALID_TRANSITIONS table (SubscriptionValidation.ts) — TRIAL can only go to
+// ACTIVE/CANCELLED/EXPIRED. An expired trial that was never converted
+// therefore goes straight to EXPIRED, not through a grace period.
+//
+// Phase 1 scope only: no auto-cancel, no payment-triggered auto-renew
+// (BillingPaymentService linking exists but isn't wired into this sweep
+// yet) — see docs' § Phase 2 (not yet built).
 
 import * as Repo    from '../subscriptions/SubscriptionRepository'
 import * as Service from '../subscriptions/SubscriptionService'
@@ -37,20 +43,22 @@ export async function runTrialEndingReminders(warnDays = 3): Promise<number> {
   return sent
 }
 
-// ─── 2. Trial expiration → GRACE_PERIOD ────────────────────────────────────
+// ─── 2. Trial expiration → EXPIRED ─────────────────────────────────────────
+// TRIAL can only transition to ACTIVE/CANCELLED/EXPIRED (not GRACE_PERIOD —
+// see module header note), so an unconverted trial expires directly.
 export async function runTrialExpirationCheck(): Promise<string[]> {
   const expired = await Repo.findExpiredTrials()
 
-  const enteredGrace: string[] = []
+  const trialExpired: string[] = []
   for (const sub of expired) {
     try {
-      await Service.enterGracePeriod(sub.id, SYSTEM_ACTOR)
-      enteredGrace.push(sub.tenantId)
+      await Service.expire(sub.id)
+      trialExpired.push(sub.tenantId)
     } catch (err: any) {
-      logger.warn({ msg: '[BillingScheduler] trial-expiration grace-period entry skipped', tenantId: sub.tenantId, subscriptionId: sub.id, err: err.message })
+      logger.warn({ msg: '[BillingScheduler] trial expiration skipped', tenantId: sub.tenantId, subscriptionId: sub.id, err: err.message })
     }
   }
-  return enteredGrace
+  return trialExpired
 }
 
 // ─── 3. Lapsed active subscriptions → GRACE_PERIOD ─────────────────────────
@@ -87,14 +95,13 @@ export async function runGracePeriodExpirationCheck(): Promise<string[]> {
 
 export async function runSubscriptionLifecycleSweep(): Promise<{
   remindersSent: number
+  trialExpired:  string[]
   enteredGrace:  string[]
   suspended:     string[]
 }> {
   const remindersSent = await runTrialEndingReminders()
-  const enteredGrace   = [
-    ...await runTrialExpirationCheck(),
-    ...await runActiveLapseCheck(),
-  ]
-  const suspended = await runGracePeriodExpirationCheck()
-  return { remindersSent, enteredGrace, suspended }
+  const trialExpired   = await runTrialExpirationCheck()
+  const enteredGrace   = await runActiveLapseCheck()
+  const suspended      = await runGracePeriodExpirationCheck()
+  return { remindersSent, trialExpired, enteredGrace, suspended }
 }

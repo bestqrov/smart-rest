@@ -396,16 +396,16 @@ shape. The real scheduler is:
   (which already fire their own event/audit/notification via
   `BillingEventNotificationHub` — nothing new to wire):
   1. `runTrialEndingReminders(warnDays=3)` — `SubscriptionRepository.findTrialsEndingWithin` → `SubscriptionEvents.emitTrialEnding` (reuses the pre-existing `'TrialEnding'` event/payload shape the hub already subscribes to).
-  2. `runTrialExpirationCheck()` — `findExpiredTrials` → `SubscriptionService.enterGracePeriod` (TRIAL → GRACE_PERIOD).
+  2. `runTrialExpirationCheck()` — `findExpiredTrials` → `SubscriptionService.expire` (TRIAL → EXPIRED directly — GRACE_PERIOD is only reachable from ACTIVE in `VALID_TRANSITIONS`, not from TRIAL; caught by a live-DB verification run during release prep, which had originally called `enterGracePeriod` here and failed with "Invalid transition: TRIAL → GRACE_PERIOD").
   3. `runActiveLapseCheck()` — `findLapsedActive` (ACTIVE subscriptions whose `renewalDate` has passed) → `SubscriptionService.enterGracePeriod` (ACTIVE → GRACE_PERIOD).
   4. `runGracePeriodExpirationCheck()` — `findExpiredGracePeriods` → `SubscriptionService.suspend(id, 'Grace period expired', 'system:scheduler')`.
-  - `runSubscriptionLifecycleSweep()` orchestrates all 4, returns `{ remindersSent, enteredGrace, suspended }`.
+  - `runSubscriptionLifecycleSweep()` orchestrates all 4, returns `{ remindersSent, trialExpired, enteredGrace, suspended }`.
 - **`src/cron/subscriptionSchedulerCron.ts`** — registers the sweep on `'0 3 * * *'` (same daily 03:00 slot the old disabled cron used), wired into `src/server.ts`'s `cronTasks` array as `startSubscriptionSchedulerCron()`.
 
 **Phase 1 scope only — not yet automatic:**
-- No auto-`cancel()`/auto-`expire()` (terminal states) — a subscription that
-  lapses through `GRACE_PERIOD` currently stops at `SUSPENDED` and needs a
-  manual SA action to reach `CANCELLED`/`EXPIRED`.
+- No auto-`cancel()` — a `SUSPENDED` subscription needs a manual SA action to
+  reach `CANCELLED`. (Auto-`expire()` for unconverted trials IS handled —
+  see step 2 above.)
 - No payment-triggered auto-renew — `BillingPaymentService`
   (`src/billing/payments/`) already links payments to subscriptions, but
   isn't wired into this sweep yet.

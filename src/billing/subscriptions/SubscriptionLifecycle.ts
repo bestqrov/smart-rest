@@ -75,10 +75,10 @@ export async function cancel(sub: BillingSubscription, by: string): Promise<Bill
   return updated
 }
 
-// TODO(K48): not called anywhere yet — automatic GRACE_PERIOD → EXPIRED
-// transition (or direct expiry on renewalDate/trialEndsAt lapse) is intentionally deferred
-// to a future Infrastructure/Scheduler sprint. See
-// docs/architecture/billing-platform.md § Subscription Engine → Deferred Automatic Lifecycle.
+// Called by SubscriptionScheduler.runTrialExpirationCheck (src/billing/
+// scheduler/SubscriptionScheduler.ts) — the K48 automatic sweep — for an
+// unconverted TRIAL past trialEndsAt. Only valid from TRIAL or ACTIVE per
+// VALID_TRANSITIONS (GRACE_PERIOD/SUSPENDED cannot reach EXPIRED directly).
 export async function expire(sub: BillingSubscription): Promise<BillingSubscription> {
   Validation.assertTransition(sub.status, 'EXPIRED')
   const updated = await Repo.update(sub.id, {

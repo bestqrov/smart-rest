@@ -43,14 +43,29 @@ function mapCafeToSubscription(cafe: {
     return { status: 'SUSPENDED', trialEndsAt: null, graceEndsAt: null }
   }
   if (cafe.billingStatus === 'GRACE_PERIOD') {
-    const trialEndsAt = cafe.trialEndsAt ?? new Date(now.getTime() + 14 * 86400000)
+    // Cafe.trialEndsAt can be stale/already-past even while billingStatus is
+    // still GRACE_PERIOD (the old wallet model only acts on trial expiry via
+    // a separate weekly cron, not immediately) — using a past date here would
+    // make the new BillingSubscription Scheduler expire the tenant on its
+    // very first run, blocking a cafe that's still Cafe.isActive=true today.
+    // Phase 1's core safety goal is not changing existing behavior, so always
+    // give backfilled trials a fresh future window instead of trusting a
+    // possibly-stale historical field.
+    const trialEndsAt = (cafe.trialEndsAt && cafe.trialEndsAt > now)
+      ? cafe.trialEndsAt
+      : new Date(now.getTime() + 14 * 86400000)
     return { status: 'TRIAL', trialEndsAt, graceEndsAt: null }
   }
   if (cafe.billingStatus === 'COLLECTING_DEBT') {
     return { status: 'ACTIVE', trialEndsAt: null, graceEndsAt: null }
   }
   if (cafe.billingStatus === 'PAST_DUE') {
-    const graceEndsAt = cafe.gracePeriodEndsAt ?? new Date(now.getTime() + 7 * 86400000)
+    // Same defensive clamp as the TRIAL case above — don't backfill an
+    // already-past graceEndsAt, which would make the Scheduler suspend the
+    // tenant on its first run.
+    const graceEndsAt = (cafe.gracePeriodEndsAt && cafe.gracePeriodEndsAt > now)
+      ? cafe.gracePeriodEndsAt
+      : new Date(now.getTime() + 7 * 86400000)
     return { status: 'GRACE_PERIOD', trialEndsAt: null, graceEndsAt }
   }
   // billingStatus === 'SUSPENDED', or any unrecognized value: fail-safe to SUSPENDED
