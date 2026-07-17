@@ -7,6 +7,7 @@ import { JWT_SECRET } from '../config'
 import prisma from '../prisma'
 import { sendMagicLink, sendEmail } from '../services/email'
 import { t, resolveLang, type Lang } from '../lib/i18n'
+import { eventBus } from '../core'
 
 const router = express.Router()
 const ACCESS_TOKEN_EXPIRY = process.env.ACCESS_TOKEN_EXPIRY ?? '30m'
@@ -242,6 +243,11 @@ router.post('/api/auth/register', async (req: Request, res: Response) => {
       return { user, cafe }
     })
 
+    // Publish exactly once, only after the transaction has committed —
+    // drives TenantProfile + BillingSubscription auto-provisioning
+    // (src/tenant/index.ts). Never reached if $transaction above throws.
+    eventBus.publish('CafeCreated', { cafeId: cafe.id, currency, country: resolvedCountry }, 'auth:register')
+
     const { accessToken, refreshToken } = await issueTokenPair(user.id, cafe.id, {}, req)
 
     // Seed demo menu in background — gives new accounts a working menu on first QR scan
@@ -316,6 +322,10 @@ router.post('/api/auth/quick-register', async (req: Request, res: Response) => {
       })
       return { user, cafe }
     })
+
+    // Publish exactly once, only after the transaction has committed. Never
+    // reached if $transaction above throws.
+    eventBus.publish('CafeCreated', { cafeId: cafe.id, currency, country: resolvedCountry }, 'auth:quick-register')
 
     // Issue a short-lived magic link token (15 min)
     const magicToken = jwt.sign({ userId: user.id, cafeId: cafe.id, magic: true }, JWT_SECRET, { expiresIn: '15m' })
@@ -620,6 +630,10 @@ router.get('/api/auth/magic-verify', async (req: Request, res: Response) => {
 
       return { user, cafe }
     })
+
+    // Publish exactly once, only after the transaction has committed. Never
+    // reached if $transaction above throws.
+    eventBus.publish('CafeCreated', { cafeId: cafe.id, language: cafeData.lang, currency: cafeData.currency, country: cafeData.country }, 'auth:magic-verify')
 
     // ── Mark token as used (single-use guarantee) ──────────────────────────────
     await prisma.verificationToken.update({

@@ -112,6 +112,14 @@ ok(!/\b(expireTrials|expireGracePeriods|notifyExpiringTrials|cleanupExpiredPromo
    'nightly.ts no longer calls the TenantProfile lifecycle functions')
 ok(nightlySrc.includes('resetDemoCafeStaff'), 'nightly.ts still runs unrelated jobs (resetDemoCafeStaff) — surgical removal only')
 
+console.log('\n10. Release Patch P0 — CafeCreated is published from every real cafe-creation path')
+const authSrc = fs.readFileSync(path.join(__dirname, '../src/routes/auth.ts'), 'utf8')
+const demoReqSrc = fs.readFileSync(path.join(__dirname, '../src/routes/demoRequests.ts'), 'utf8')
+const cafeCreatedPublishCount = (authSrc.match(/eventBus\.publish\('CafeCreated'/g) || []).length
+                               + (demoReqSrc.match(/eventBus\.publish\('CafeCreated'/g) || []).length
+ok(cafeCreatedPublishCount === 4, `exactly 4 CafeCreated publish call sites across auth.ts (3) + demoRequests.ts (1) (found ${cafeCreatedPublishCount})`)
+ok(fs.existsSync(path.join(__dirname, 'controlTestCafeCreatedPipeline.ts')), 'Signup → CafeCreated → BillingSubscription integration test exists')
+
 console.log(`\n${passed} passed, ${failed} failed`)
 console.log(failed === 0 ? 'SMOKE TEST: PASS' : 'SMOKE TEST: FAIL')
 if (failed > 0) process.exit(1)
