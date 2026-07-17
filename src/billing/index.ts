@@ -37,11 +37,11 @@ export {
 
 export {
   runTrialEndingReminders,
-  runSubscriptionExpirationCheck,
+  runTrialExpirationCheck,
+  runActiveLapseCheck,
   runGracePeriodExpirationCheck,
-  runAutomaticRenewalChecks,
   runSubscriptionLifecycleSweep,
-} from './lifecycle/SubscriptionLifecycleJobs'
+} from './scheduler/SubscriptionScheduler'
 
 export {
   getTrialDurationDays,

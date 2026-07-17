@@ -3,18 +3,22 @@
  *
  * Verifies: the module graph resolves at runtime after merging main into
  * worktree-sprint-k2-subscription-engine; the old TenantProfile-based
- * subscription API is fully gone (no stale dual-system); the legacy
- * subscription-lifecycle cron is disabled and SubscriptionLifecycleJobs.ts
- * is a no-op stub (NOT a compatibility adapter, per K48 PM decision); no
- * other cron job was affected; and manual lifecycle operations remain fully
- * available via the SuperAdmin BillingSubscription API.
+ * subscription API is fully gone (no stale dual-system); the old
+ * SubscriptionLifecycleJobs.ts stub and its cron were deleted outright (per
+ * the Tenant Access Migration Phase 1 decision to build a real Scheduler
+ * rather than resurrect the stub); the real SubscriptionScheduler (K48) is
+ * registered in its place; no other cron job was affected; and manual
+ * lifecycle operations remain fully available via the SuperAdmin
+ * BillingSubscription API.
  *
  * Run: npx ts-node --transpile-only scripts/smokeSubscriptionMerge.ts
  */
+import * as fs from 'fs'
+import * as path from 'path'
 import * as Billing from '../src/billing'
 import * as SubscriptionService from '../src/billing/subscriptions/SubscriptionService'
-import * as LifecycleJobs from '../src/billing/lifecycle/SubscriptionLifecycleJobs'
-import { startSubscriptionLifecycleCron } from '../src/cron/subscriptionLifecycle'
+import * as SubscriptionScheduler from '../src/billing/scheduler/SubscriptionScheduler'
+import { startSubscriptionSchedulerCron } from '../src/cron/subscriptionSchedulerCron'
 
 let passed = 0, failed = 0
 function ok(cond: boolean, label: string) {
@@ -33,6 +37,9 @@ ok(typeof SubscriptionService.activate === 'function', 'activate exists')
 ok(typeof SubscriptionService.expire === 'function', 'expire exists')
 ok(typeof SubscriptionService.suspend === 'function', 'suspend exists')
 ok(typeof SubscriptionService.renew === 'function', 'renew exists')
+ok(typeof SubscriptionService.enterGracePeriod === 'function', 'enterGracePeriod exists (K48 Scheduler wrapper)')
+ok(typeof SubscriptionService.isAccessAllowed === 'function', 'isAccessAllowed exists (Tenant Access Migration Phase 1)')
+ok(typeof SubscriptionService.isCafeAccessAllowed === 'function', 'isCafeAccessAllowed exists (Tenant Access Migration Phase 1)')
 
 console.log('\n3. Old TenantProfile-based subscription API is fully removed (no dual system)')
 ok((SubscriptionService as any).cancelSubscription === undefined, 'old cancelSubscription is gone')
@@ -41,42 +48,27 @@ ok((SubscriptionService as any).renewSubscription === undefined, 'old renewSubsc
 ok((SubscriptionService as any).createSubscription === undefined, 'old createSubscription is gone')
 ok((SubscriptionService as any).startTrialSubscription === undefined, 'old startTrialSubscription is gone')
 
-console.log('\n4. SubscriptionService has no adapter/scheduler-finder surface (K48: cleanliness over compat)')
-ok((SubscriptionService as any).findTrialsEndingWithin === undefined, 'findTrialsEndingWithin removed (was adapter-only)')
-ok((SubscriptionService as any).findExpiredTrials === undefined, 'findExpiredTrials removed (was adapter-only)')
-ok((SubscriptionService as any).findExpiredGracePeriods === undefined, 'findExpiredGracePeriods removed (was adapter-only)')
-ok((SubscriptionService as any).findRenewalCandidates === undefined, 'findRenewalCandidates removed (was adapter-only)')
+console.log('\n4. Old K2.2 stub-only adapter surface is gone (superseded by the real K48 Scheduler)')
+ok((SubscriptionService as any).findTrialsEndingWithin === undefined, 'SubscriptionService.findTrialsEndingWithin removed (moved to Repository, used by the real Scheduler)')
+ok(fs.existsSync(path.join(__dirname, '../src/billing/lifecycle/SubscriptionLifecycleJobs.ts')) === false, 'SubscriptionLifecycleJobs.ts (old stub) no longer exists')
+ok(fs.existsSync(path.join(__dirname, '../src/cron/subscriptionLifecycle.ts')) === false, 'cron/subscriptionLifecycle.ts (old stub cron) no longer exists')
 
-console.log('\n5. SubscriptionLifecycleJobs is a no-op stub, not a compatibility adapter')
-ok(typeof LifecycleJobs.runTrialEndingReminders === 'function', 'runTrialEndingReminders still exported (import sites keep compiling)')
-ok(typeof LifecycleJobs.runSubscriptionExpirationCheck === 'function', 'runSubscriptionExpirationCheck still exported')
-ok(typeof LifecycleJobs.runGracePeriodExpirationCheck === 'function', 'runGracePeriodExpirationCheck still exported')
-ok(typeof LifecycleJobs.runAutomaticRenewalChecks === 'function', 'runAutomaticRenewalChecks still exported')
-ok(typeof LifecycleJobs.runSubscriptionLifecycleSweep === 'function', 'runSubscriptionLifecycleSweep still exported')
-ok(LifecycleJobs.runSubscriptionLifecycleSweep === Billing.runSubscriptionLifecycleSweep, 'billing barrel re-exports the SAME stub fn (no shadow copy)')
+console.log('\n5. SubscriptionScheduler (K48) — real scheduler, not a stub')
+ok(typeof SubscriptionScheduler.runTrialEndingReminders === 'function', 'runTrialEndingReminders exists')
+ok(typeof SubscriptionScheduler.runTrialExpirationCheck === 'function', 'runTrialExpirationCheck exists')
+ok(typeof SubscriptionScheduler.runActiveLapseCheck === 'function', 'runActiveLapseCheck exists')
+ok(typeof SubscriptionScheduler.runGracePeriodExpirationCheck === 'function', 'runGracePeriodExpirationCheck exists')
+ok(typeof SubscriptionScheduler.runSubscriptionLifecycleSweep === 'function', 'runSubscriptionLifecycleSweep exists')
+ok(SubscriptionScheduler.runSubscriptionLifecycleSweep === Billing.runSubscriptionLifecycleSweep, 'billing barrel re-exports the SAME scheduler fn (no shadow copy)')
+ok(typeof startSubscriptionSchedulerCron === 'function', 'src/cron/subscriptionSchedulerCron.ts exports startSubscriptionSchedulerCron')
 
-async function verifyStubIsInert() {
-  const result = await LifecycleJobs.runSubscriptionLifecycleSweep()
-  ok(result.remindersSent === 0 && result.cancelled.length === 0 && result.suspended.length === 0 && result.renewed.length === 0,
-     'runSubscriptionLifecycleSweep() is inert — returns all-empty result with zero DB/API calls')
-}
-
-console.log('\n6. Legacy cron implementation preserved but registration disabled')
-ok(typeof startSubscriptionLifecycleCron === 'function', 'src/cron/subscriptionLifecycle.ts still exports startSubscriptionLifecycleCron (not deleted)')
-
-const fs = require('fs')
-const path = require('path')
+console.log('\n6. Cron registration — real scheduler active, no other cron affected')
 const serverSrc = fs.readFileSync(path.join(__dirname, '../src/server.ts'), 'utf8')
-ok(/\/\/\s*startSubscriptionLifecycleCron\(\)/.test(serverSrc), 'startSubscriptionLifecycleCron() call is commented out in cronTasks')
-ok(!/^\s*startSubscriptionLifecycleCron\(\),\s*$/m.test(serverSrc), 'no active (uncommented) startSubscriptionLifecycleCron() call remains')
-ok(/TODO\(K48\)/.test(serverSrc), 'server.ts has the required TODO(K48) marker near the disabled cron')
+ok(/^\s*startSubscriptionSchedulerCron\(\),\s*$/m.test(serverSrc), 'startSubscriptionSchedulerCron() is actively registered in cronTasks')
+ok(!serverSrc.includes('startSubscriptionLifecycleCron'), 'no reference to the old startSubscriptionLifecycleCron remains')
 for (const other of ['startDailyDebtDetectionCron', 'startWeeklyBillingCron', 'startNightlyCron', 'startCertificationCron', 'startWhatsAppSchedulerCron', 'startEmailSchedulerCron', 'startSocialSchedulerCron', 'startShiftOvertimeLockCron']) {
   ok(new RegExp(`^\\s*${other}\\(\\),\\s*$`, 'm').test(serverSrc), `${other}() is still actively registered (unaffected)`)
 }
-
-const jobsSrc = fs.readFileSync(path.join(__dirname, '../src/billing/lifecycle/SubscriptionLifecycleJobs.ts'), 'utf8')
-ok(/TODO\(K48\)/.test(jobsSrc), 'SubscriptionLifecycleJobs.ts has the required TODO(K48) marker')
-ok(!/^import .*from ['"]\.\.\/subscriptions\//m.test(jobsSrc), 'SubscriptionLifecycleJobs.ts does not import the new BillingSubscription engine (no adapter logic)')
 
 console.log('\n7. Manual lifecycle operations remain available (SuperAdmin API)')
 const routesSrc = fs.readFileSync(path.join(__dirname, '../src/routes/billingSubscriptionsSA.ts'), 'utf8')
@@ -99,8 +91,27 @@ const planRepoSrc = fs.readFileSync(path.join(__dirname, '../src/billing/plans/P
 ok(planRepoSrc.includes("from '../subscriptions/SubscriptionRepository'"), 'PlanRepository.ts delegates to SubscriptionRepository.countByPlan')
 ok(!planRepoSrc.includes('tenantProfile'), 'PlanRepository.ts no longer reads tenantProfile')
 
-verifyStubIsInert().then(() => {
-  console.log(`\n${passed} passed, ${failed} failed`)
-  console.log(failed === 0 ? 'SMOKE TEST: PASS' : 'SMOKE TEST: FAIL')
-  if (failed > 0) process.exit(1)
-})
+console.log('\n9. Tenant Access Migration (Phase 1) — access gates wired, nightly TenantProfile sweep removed')
+const gateFiles = [
+  '../src/middleware/validateSeatQR.ts',
+  '../src/routes/publicCafe.ts',
+  '../src/routes/clientMenu.ts',
+  '../src/routes/customers.ts',
+]
+let totalGateCallSites = 0
+for (const f of gateFiles) {
+  const src = fs.readFileSync(path.join(__dirname, f), 'utf8')
+  const count = (src.match(/isCafeAccessAllowed\(/g) || []).length
+  totalGateCallSites += count
+  ok(count > 0, `${f} calls isCafeAccessAllowed (${count}x)`)
+}
+ok(totalGateCallSites === 7, `exactly 7 isCafeAccessAllowed call sites across the 4 gate files (found ${totalGateCallSites})`)
+
+const nightlySrc = fs.readFileSync(path.join(__dirname, '../src/cron/nightly.ts'), 'utf8')
+ok(!/\b(expireTrials|expireGracePeriods|notifyExpiringTrials|cleanupExpiredPromotions)\(/.test(nightlySrc),
+   'nightly.ts no longer calls the TenantProfile lifecycle functions')
+ok(nightlySrc.includes('resetDemoCafeStaff'), 'nightly.ts still runs unrelated jobs (resetDemoCafeStaff) — surgical removal only')
+
+console.log(`\n${passed} passed, ${failed} failed`)
+console.log(failed === 0 ? 'SMOKE TEST: PASS' : 'SMOKE TEST: FAIL')
+if (failed > 0) process.exit(1)

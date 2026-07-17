@@ -38,3 +38,9 @@ export function emitSubscriptionExpired(sub: BillingSubscription): void {
 export function emitPlanChanged(sub: BillingSubscription, previousPlanCode: string): void {
   eventBus.publish('PlanChanged', payload(sub, { previousPlanCode }), 'subscription-engine')
 }
+
+// Matches the pre-existing 'TrialEnding' payload shape BillingEventNotificationHub
+// already subscribes to (tenantId, subscriptionId, daysLeft) — reused, not a new event.
+export function emitTrialEnding(sub: BillingSubscription, daysLeft: number): void {
+  eventBus.publish('TrialEnding', payload(sub, { daysLeft }), 'subscription-engine')
+}

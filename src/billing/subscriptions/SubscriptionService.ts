@@ -107,6 +107,14 @@ export async function suspend(id: string, reason: string, by: string): Promise<B
   return updated
 }
 
+export async function enterGracePeriod(id: string, by: string): Promise<BillingSubscription> {
+  const sub = await Repo.findById(id)
+  if (!sub) throw new Validation.SubscriptionError('Subscription not found')
+  const updated = await Lifecycle.enterGracePeriod(sub)
+  await audit('ENTER_GRACE_PERIOD', id, by)
+  return updated
+}
+
 export async function resume(id: string, by: string): Promise<BillingSubscription> {
   const sub = await Repo.findById(id)
   if (!sub) throw new Validation.SubscriptionError('Subscription not found')
@@ -179,4 +187,39 @@ export async function listSubscriptions(filter: {
   limit?:    number
 }): Promise<{ subscriptions: BillingSubscription[]; total: number; page: number; pages: number }> {
   return Repo.findAll(filter)
+}
+
+// ─── Access control (Tenant Access Migration, Phase 1) ─────────────────────
+// BillingSubscription is becoming the authority for platform access. This is
+// an ADDITIVE gate for now — see isCafeAccessAllowed below, which combines it
+// with the existing Cafe.isActive check rather than replacing it. Phase 2
+// will migrate the remaining Cafe.isActive/billingStatus write sites and
+// eventually retire those fields; see docs/architecture/billing-platform.md
+// § Access Control (Phase 1) and § Phase 2 (not yet built).
+
+const ACCESS_ALLOWED_STATUSES: SubscriptionStatus[] = ['TRIAL', 'ACTIVE', 'GRACE_PERIOD']
+
+// SECURITY: fail-open by design. A tenant with no BillingSubscription row at
+// all (pre-backfill, or a race right after CafeCreated) is NOT blocked — see
+// docs/architecture/billing-platform.md § Access Control (Phase 1) for why
+// this default was chosen (nothing should lock a tenant out until the
+// backfill has actually run and been verified). A tenant whose latest row IS
+// terminal (CANCELLED/EXPIRED) is correctly blocked, which is why this uses
+// findLatestByTenant (sees terminal rows) and not findActiveByTenant (which
+// would silently treat a cancelled tenant the same as a never-provisioned one).
+export async function isAccessAllowed(tenantId: string): Promise<boolean> {
+  const sub = await Repo.findLatestByTenant(tenantId)
+  if (!sub) return true
+  return ACCESS_ALLOWED_STATUSES.includes(sub.status)
+}
+
+// Combines the new BillingSubscription gate with the existing Cafe.isActive
+// gate: blocked if EITHER says blocked. cafeIsActive is a required argument
+// (not re-fetched here) so callers can't accidentally drop the existing
+// check when adding this one. Before backfill has run for a given tenant,
+// this degrades to today's exact behavior (cafeIsActive alone), since
+// isAccessAllowed fails open on a missing row.
+export async function isCafeAccessAllowed(cafeId: string, cafeIsActive: boolean): Promise<boolean> {
+  if (!cafeIsActive) return false
+  return isAccessAllowed(cafeId)
 }

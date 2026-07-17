@@ -36,9 +36,8 @@ export async function renew(sub: BillingSubscription, by: string): Promise<Billi
   return updated
 }
 
-// TODO(K48): not called anywhere yet — automatic TRIAL/ACTIVE → GRACE_PERIOD
-// transition is intentionally deferred to a future Infrastructure/Scheduler sprint. See
-// docs/architecture/billing-platform.md § Subscription Engine → Deferred Automatic Lifecycle.
+// Called by SubscriptionScheduler.runTrialExpirationCheck/runActiveLapseCheck
+// (src/billing/scheduler/SubscriptionScheduler.ts) — the K48 automatic sweep.
 export async function enterGracePeriod(sub: BillingSubscription, graceDays = 7): Promise<BillingSubscription> {
   Validation.assertTransition(sub.status, 'GRACE_PERIOD')
   const graceEndsAt = new Date()

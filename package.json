@@ -12,7 +12,8 @@
     "integration:campaign": "ts-node --transpile-only scripts/marketing-brain-campaign.ts",
     "integration:automation": "ts-node --transpile-only scripts/marketing-brain-automation.ts",
     "seed": "ts-node prisma/seed.ts",
-    "prisma:generate": "prisma generate"
+    "prisma:generate": "prisma generate",
+    "backfill:billing-subscriptions": "ts-node --transpile-only scripts/backfillBillingSubscriptions.ts"
   },
   "dependencies": {
     "@prisma/client": "^4.16.0",

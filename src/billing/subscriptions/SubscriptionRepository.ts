@@ -118,3 +118,44 @@ export async function countByPlan(planCode: string): Promise<number> {
     where: { planCode, status: { in: ['TRIAL', 'ACTIVE', 'GRACE_PERIOD'] } },
   })
 }
+
+// Returns the most recent subscription for a tenant, terminal or not — unlike
+// findActiveByTenant, this does not filter out CANCELLED/EXPIRED, so a
+// genuinely terminated tenant can be told apart from a never-provisioned one.
+export async function findLatestByTenant(tenantId: string): Promise<BillingSubscription | null> {
+  const col = await db()
+  const row = await col.findFirst({
+    where: { tenantId },
+    orderBy: { createdAt: 'desc' },
+  })
+  return row ? toModel(row) : null
+}
+
+// ─── Scheduler-facing finders ──────────────────────────────────────────────
+
+export async function findTrialsEndingWithin(days: number): Promise<BillingSubscription[]> {
+  const col = await db()
+  const now = new Date()
+  const threshold = new Date(now.getTime() + days * 86400000)
+  const rows = await col.findMany({ where: { status: 'TRIAL', trialEndsAt: { gte: now, lte: threshold } } })
+  return rows.map(toModel)
+}
+
+export async function findExpiredTrials(): Promise<BillingSubscription[]> {
+  const col = await db()
+  const rows = await col.findMany({ where: { status: 'TRIAL', trialEndsAt: { lt: new Date() } } })
+  return rows.map(toModel)
+}
+
+// ACTIVE subscriptions whose renewalDate has passed without renewal
+export async function findLapsedActive(): Promise<BillingSubscription[]> {
+  const col = await db()
+  const rows = await col.findMany({ where: { status: 'ACTIVE', renewalDate: { lt: new Date() } } })
+  return rows.map(toModel)
+}
+
+export async function findExpiredGracePeriods(): Promise<BillingSubscription[]> {
+  const col = await db()
+  const rows = await col.findMany({ where: { status: 'GRACE_PERIOD', graceEndsAt: { lt: new Date() } } })
+  return rows.map(toModel)
+}

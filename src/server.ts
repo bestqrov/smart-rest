@@ -133,7 +133,7 @@ import { startDailyDebtDetectionCron } from './cron/dailyDebtDetection'
 import { startShiftOvertimeLockCron } from './cron/shiftOvertimeLock'
 import { startNightlyCron } from './cron/nightly'
 import { startCertificationCron } from './cron/certificationEval'
-import { startSubscriptionLifecycleCron } from './cron/subscriptionLifecycle'
+import { startSubscriptionSchedulerCron } from './cron/subscriptionSchedulerCron'
 import { initChangeStreams, closeChangeStreams } from './services/changeStreams'
 
 async function main() {
@@ -401,20 +401,7 @@ async function main() {
     startWeeklyBillingCron(),
     startNightlyCron(),
     startCertificationCron(),
-    // Legacy TenantProfile-based subscription scheduler — intentionally
-    // disabled. No production customers yet, so architecture cleanliness
-    // was prioritized over keeping this cron alive via a compatibility
-    // adapter (PM decision). SubscriptionLifecycleJobs.ts is now a no-op
-    // stub, not a shim over the new BillingSubscription engine. Every
-    // lifecycle transition it used to trigger remains fully available
-    // manually via the SuperAdmin BillingSubscription API
-    // (src/routes/billingSubscriptionsSA.ts: activate/suspend/resume/
-    // cancel/renew/change-plan). See docs/architecture/billing-platform.md
-    // § Subscription Engine → Deferred Automatic Lifecycle.
-    //
-    // TODO(K48): Replace legacy TenantProfile scheduler with the new
-    // BillingSubscription Scheduler.
-    // startSubscriptionLifecycleCron(),
+    startSubscriptionSchedulerCron(),
     startWhatsAppSchedulerCron(),
     startEmailSchedulerCron(),
     startSocialSchedulerCron(),

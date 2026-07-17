@@ -1,6 +1,7 @@
 import express, { Request, Response } from 'express'
 import prisma from '../prisma'
 import { authorizeAdmin } from '../middleware/authorizeAdmin'
+import { isCafeAccessAllowed } from '../billing/subscriptions/SubscriptionService'
 import {
   getCustomerProfile, searchCustomers, addTag, removeTag, setNotes, addFavorite, removeFavorite,
 } from '../customers/CustomerService'
@@ -140,7 +141,7 @@ router.get('/api/public/loyalty/:subdomain/:phone', async (req: Request, res: Re
     const phone     = req.params.phone as string
 
     const cafe = await prisma.cafe.findUnique({ where: { subdomain }, select: { id: true, isActive: true } })
-    if (!cafe || !cafe.isActive) return res.status(404).json({ error: 'Cafe not found' })
+    if (!cafe || !(await isCafeAccessAllowed(cafe.id, cafe.isActive))) return res.status(404).json({ error: 'Cafe not found' })
 
     const [tierInfo, customer] = await Promise.all([
       getTierInfo(cafe.id, phone),
@@ -166,7 +167,7 @@ router.patch('/api/public/loyalty/:subdomain/:phone', async (req: Request, res: 
     const { name, instagramHandle, facebookHandle, tiktokHandle } = req.body as Record<string, any>
 
     const cafe = await prisma.cafe.findUnique({ where: { subdomain }, select: { id: true, isActive: true } })
-    if (!cafe || !cafe.isActive) return res.status(404).json({ error: 'Cafe not found' })
+    if (!cafe || !(await isCafeAccessAllowed(cafe.id, cafe.isActive))) return res.status(404).json({ error: 'Cafe not found' })
 
     const customer = await prisma.cafeCustomer.upsert({
       where: { cafeId_phone: { cafeId: cafe.id, phone } },
