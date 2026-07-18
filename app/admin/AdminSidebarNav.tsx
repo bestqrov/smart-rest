@@ -6,7 +6,7 @@ import {
   LayoutDashboard, UtensilsCrossed, QrCode, Share2, CreditCard, ChevronDown,
   Users, BarChart3, Sparkles, Settings, TrendingUp, Film,
   Package, Lock, LayoutGrid, Wrench, Receipt, ShoppingCart, CalendarDays, Radio, ShieldCheck,
-  Store, ChevronRight, CalendarClock, Gift, Wallet,
+  Store, ChevronRight, CalendarClock, Gift, Wallet, Contact,
 } from 'lucide-react'
 import type { AdminT } from '@/lib/adminI18n'
 
@@ -44,6 +44,7 @@ export const NAV_GROUPS: NavGroup[] = [
     { href: '/admin/billing/subscription', icon: Wallet, key: 'subscription' },
   ]},
   { group: 'growth', items: [
+    { href: '/admin/customers',     icon: Contact,     key: 'customers'     },
     { href: '/admin/loyalty',       icon: Gift,        key: 'loyalty'       },
     { href: '/admin/certification', icon: ShieldCheck, key: 'certification' },
     { href: '/admin/marketing',     icon: Film,        key: 'marketing'     },
