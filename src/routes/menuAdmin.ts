@@ -3,8 +3,17 @@ import { authorizeAdmin } from '../middleware/authorizeAdmin'
 import logger from '../logger'
 import prisma from '../prisma'
 import { getProductCatalog, resolveSelectedProducts } from '../onboarding/ProductCatalog'
+import { AuditService } from '../core'
 
 const router = express.Router()
+
+// Settings/staff changes here were previously silent — no audit trail at
+// all. Best-effort, never blocks the response on a logging failure.
+async function auditSettings(action: string, cafeId: string, performedBy: string, metadata?: Record<string, unknown>) {
+  await AuditService.createAudit({
+    module: 'CAFE_SETTINGS', entity: 'Cafe', entityId: cafeId, action, performedBy, metadata,
+  }).catch(() => undefined)
+}
 
 // ─── Categories ───────────────────────────────────────────────────────────────
 
@@ -197,6 +206,7 @@ router.put('/api/admin/cafe/profile', authorizeAdmin, async (req: Request, res: 
         ...(reEngagementDays !== undefined && { reEngagementDays: Number(reEngagementDays) }),
       }
     })
+    await auditSettings('UPDATE_PROFILE', cafeId, req.admin!.userId, { fields: Object.keys(req.body ?? {}) })
     return res.json(cafe)
   } catch (err) {
     return res.status(500).json({ error: 'Failed' })
@@ -281,6 +291,8 @@ router.put('/api/admin/cafe/payment-config', authorizeAdmin, async (req: Request
         },
       },
     })
+    // Never log actual credential values — just which fields changed.
+    await auditSettings('UPDATE_PAYMENT_CONFIG', cafeId, req.admin!.userId, { fields: Object.keys(req.body ?? {}) })
     return res.json({ ok: true })
   } catch (err) {
     logger.error({ msg: 'PUT payment-config error', err })
@@ -419,6 +431,10 @@ router.post('/api/admin/staff', authorizeAdmin, async (req: Request, res: Respon
       select: { id: true, name: true, role: true, roles: true, shiftStatus: true, pinDisplay: true },
     })
     logger.info({ msg: 'staff created', staffId: staff.id, cafeId })
+    await AuditService.createAudit({
+      module: 'STAFF', entity: 'Staff', entityId: staff.id, action: 'CREATE', performedBy: req.admin!.userId,
+      metadata: { name: staff.name, role, roles: cleanRoles },
+    }).catch(() => undefined)
     return res.status(201).json(staff)
   } catch (err) {
     logger.error({ msg: 'POST /api/admin/staff error', err })
@@ -436,6 +452,10 @@ router.delete('/api/admin/staff/:id', authorizeAdmin, async (req: Request, res: 
     if (!existing || existing.cafeId !== cafeId) return res.status(404).json({ error: 'Not found' })
     await prisma.staff.update({ where: { id: staffId }, data: { isActive: false } })
     logger.info({ msg: 'staff deactivated', staffId, cafeId })
+    await AuditService.createAudit({
+      module: 'STAFF', entity: 'Staff', entityId: staffId, action: 'DEACTIVATE', performedBy: req.admin!.userId,
+      metadata: { name: existing.name },
+    }).catch(() => undefined)
     return res.json({ ok: true })
   } catch (err) {
     logger.error({ msg: 'DELETE /api/admin/staff error', err })
@@ -668,6 +688,7 @@ router.put('/api/admin/cafe/wifi', authorizeAdmin, async (req: Request, res: Res
       select: { smartWifi: true }
     })
     logger.info({ msg: 'smartWifi updated', cafeId, enabled })
+    await auditSettings('UPDATE_WIFI', cafeId, req.admin!.userId, { enabled, ssidChanged: ssid !== undefined, passwordChanged: password !== undefined })
     return res.json(cafe.smartWifi)
   } catch (err) {
     logger.error({ msg: 'PUT /api/admin/cafe/wifi error', err })
@@ -700,6 +721,10 @@ router.patch('/api/admin/staff/:id/pin', authorizeAdmin, async (req: Request, re
     })
 
     logger.info({ msg: 'Staff PIN updated', cafeId, staffId: id })
+    // Never log the actual PIN value — just that a change happened, by whom.
+    await AuditService.createAudit({
+      module: 'STAFF', entity: 'Staff', entityId: id, action: 'PIN_CHANGE', performedBy: req.admin!.userId,
+    }).catch(() => undefined)
     return res.json({ ok: true })
   } catch (err) {
     logger.error({ msg: 'PATCH staff/:id/pin error', err })

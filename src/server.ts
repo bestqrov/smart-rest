@@ -109,6 +109,7 @@ import billingPaymentWebhookRouter       from './routes/billingPaymentWebhook'
 import billingMetricsSARouter            from './routes/billingMetricsSA'
 import billingSettingsSARouter           from './routes/billingSettingsSA'
 import billingAuditSARouter              from './routes/billingAuditSA'
+import auditLogsSARouter                 from './routes/auditLogsSA'
 import usageLimitsSARouter               from './routes/usageLimitsSA'
 import branchesSARouter                  from './routes/branchesSA'
 import affiliateAdminRouter              from './routes/affiliateAdmin'
@@ -324,6 +325,7 @@ async function main() {
   app.use(billingMetricsSARouter)
   app.use(billingSettingsSARouter)
   app.use(billingAuditSARouter)
+  app.use(auditLogsSARouter)
   app.use(usageLimitsSARouter)
   app.use(branchesSARouter)
   app.use(affiliateAdminRouter)
