@@ -7,6 +7,7 @@ import {
   mapBusinessType,
   inferLanguage,
 } from '../marketing-brain/MarketingGenerationService'
+import { eventBus } from '../core'
 
 function requireSuperAdmin(req: Request, res: Response, next: NextFunction) {
   const secret         = req.header('x-superadmin-secret')
@@ -157,6 +158,10 @@ router.post('/api/superadmin/demo-requests/:id/activate', requireSuperAdmin, asy
 
       return { cafe }
     })
+
+    // Publish exactly once, only after the transaction has committed. Never
+    // reached if $transaction above throws.
+    eventBus.publish('CafeCreated', { cafeId: cafe.id, currency, country: demo.country }, 'demoRequests:activate')
 
     // Send magic link to the owner's email so they can set up their account
     try {

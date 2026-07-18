@@ -7,6 +7,7 @@ import { JWT_SECRET } from '../config'
 import prisma from '../prisma'
 import { sendMagicLink, sendEmail } from '../services/email'
 import { t, resolveLang, type Lang } from '../lib/i18n'
+import { eventBus } from '../core'
 
 const router = express.Router()
 const ACCESS_TOKEN_EXPIRY = process.env.ACCESS_TOKEN_EXPIRY ?? '30m'
@@ -242,6 +243,11 @@ router.post('/api/auth/register', async (req: Request, res: Response) => {
       return { user, cafe }
     })
 
+    // Publish exactly once, only after the transaction has committed —
+    // drives TenantProfile + BillingSubscription auto-provisioning
+    // (src/tenant/index.ts). Never reached if $transaction above throws.
+    eventBus.publish('CafeCreated', { cafeId: cafe.id, currency, country: resolvedCountry }, 'auth:register')
+
     const { accessToken, refreshToken } = await issueTokenPair(user.id, cafe.id, {}, req)
 
     // Seed demo menu in background — gives new accounts a working menu on first QR scan
@@ -316,6 +322,10 @@ router.post('/api/auth/quick-register', async (req: Request, res: Response) => {
       })
       return { user, cafe }
     })
+
+    // Publish exactly once, only after the transaction has committed. Never
+    // reached if $transaction above throws.
+    eventBus.publish('CafeCreated', { cafeId: cafe.id, currency, country: resolvedCountry }, 'auth:quick-register')
 
     // Issue a short-lived magic link token (15 min)
     const magicToken = jwt.sign({ userId: user.id, cafeId: cafe.id, magic: true }, JWT_SECRET, { expiresIn: '15m' })
@@ -423,18 +433,26 @@ router.post('/api/auth/magic-send', async (req: Request, res: Response) => {
   const lang: Lang = resolveLang(req.body?.lang ?? req.query['lang'] as string)
 
   try {
-    const { email, cafeName, subdomain, country = 'MA', businessType = 'RESTAURANT' } = req.body as {
+    const { email, cafeName, subdomain, country = 'MA', businessType = 'RESTAURANT', hotelServiceMode } = req.body as {
       email:         string
       cafeName:      string
       subdomain:     string
       country?:      string
       businessType?: string
+      hotelServiceMode?: string
       lang?:         string
     }
 
     // Normalise businessType — only allow known values
     const VALID_TYPES = ['RESTAURANT', 'CAFE', 'TRAITEUR', 'PASTRY', 'FOOD_TRUCK', 'HOTEL']
     const cleanBusinessType = VALID_TYPES.includes(businessType) ? businessType : 'RESTAURANT'
+
+    // Only meaningful for HOTEL — ignored for every other business type,
+    // even if a client sends one anyway.
+    const VALID_HOTEL_MODES = ['ROOM_SERVICE', 'ON_SITE', 'BOTH']
+    const cleanHotelServiceMode = cleanBusinessType === 'HOTEL' && VALID_HOTEL_MODES.includes(hotelServiceMode ?? '')
+      ? hotelServiceMode
+      : undefined
 
     // ── Field presence ────────────────────────────────────────────────────────
     if (!email || !cafeName || !subdomain) {
@@ -489,6 +507,7 @@ router.post('/api/auth/magic-send', async (req: Request, res: Response) => {
           country:      country.toUpperCase(),
           currency:     currencyFor(country),
           businessType: cleanBusinessType,
+          ...(cleanHotelServiceMode ? { hotelServiceMode: cleanHotelServiceMode } : {}),
           lang
         }
       }
@@ -576,6 +595,7 @@ router.get('/api/auth/magic-verify', async (req: Request, res: Response) => {
       country:      string
       currency:     string
       businessType: string
+      hotelServiceMode?: string
       lang:         Lang
     }
 
@@ -603,6 +623,8 @@ router.get('/api/auth/magic-verify', async (req: Request, res: Response) => {
           currency:      cafeData.currency,
           // accountMode drives which dashboard modules are shown at first login
           accountMode:   isTraiteur ? 'TRAITEUR' : 'RESTAURANT',
+          businessType:     cafeData.businessType,
+          hotelServiceMode: cafeData.hotelServiceMode ?? null,
           trialEndsAt,
           billingStatus: 'GRACE_PERIOD',
           isActive:      true
@@ -620,6 +642,10 @@ router.get('/api/auth/magic-verify', async (req: Request, res: Response) => {
 
       return { user, cafe }
     })
+
+    // Publish exactly once, only after the transaction has committed. Never
+    // reached if $transaction above throws.
+    eventBus.publish('CafeCreated', { cafeId: cafe.id, language: cafeData.lang, currency: cafeData.currency, country: cafeData.country }, 'auth:magic-verify')
 
     // ── Mark token as used (single-use guarantee) ──────────────────────────────
     await prisma.verificationToken.update({

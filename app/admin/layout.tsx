@@ -18,6 +18,7 @@ import AdminSidebarNav from './AdminSidebarNav'
 // ── Nav ───────────────────────────────────────────────────────────────────────
 // The grouped accordion nav (big sections → sub-links) lives in
 // AdminSidebarNav.tsx — shared by the desktop sidebar and the mobile drawer.
+// The Subscription entry (K2) is registered there, in the 'finance' group.
 
 const STAFF_LINKS = [
   { href: '/kitchen',  icon: ChefHat,  key: 'kitchenKds',  color: 'text-orange-500 bg-orange-50 hover:bg-orange-100'  },

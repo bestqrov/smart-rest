@@ -39,15 +39,22 @@ src/billing/
 
 ---
 
-## Relationship to src/tenant/
+## Relationship to src/tenant/ (historical — superseded by Sprint K2 + Tenant Access Migration)
 
-`src/billing/` is a THIN LAYER on top of `src/tenant/`. It does NOT duplicate:
-- Plan definitions → use `src/tenant/plans/PLAN_DEFINITIONS`
-- Usage snapshots → use `src/tenant/usage/UsageService`
-- Lifecycle transitions → use `src/tenant/lifecycle/LifecycleService`
-- Suspension → use `src/tenant/suspension/SuspensionService`
+Originally (Sprint K1), `src/billing/` was a thin layer on top of `src/tenant/`,
+reusing `src/tenant/lifecycle/LifecycleService` and
+`src/tenant/suspension/SuspensionService` for subscription lifecycle and
+suspension. **This is no longer true.** Since Sprint K2, subscription
+lifecycle lives entirely in `src/billing/subscriptions/` against the
+`BillingSubscription` model — it does not call into `src/tenant/` at all.
 
-`src/billing/` ADDS:
+`src/tenant/` (`TenantProfile`) still exists as a separate, general-purpose
+tenant-provisioning module (see § Access Control below for why it was never
+actually the platform's access-control authority), but its lifecycle
+automation (nightly `expireTrials`/`expireGracePeriods` sweep) was removed as
+part of the Tenant Access Migration (Phase 1) — see § Access Control (Phase 1).
+
+`src/billing/` still ADDS, independently of `src/tenant/`:
 - Financial invoices (`BillingPlatformInvoice` — tenant-scoped, not cafeId-scoped)
 - Tax calculation (VAT, Sales Tax)
 - Quota enforcement (check + notify + emit event)
@@ -238,15 +245,13 @@ When a quota is exceeded:
 ## APIs
 
 ### SuperAdmin
+
+_Subscription endpoints moved to their own table under [Subscription Engine → SuperAdmin API](#superadmin-api) (Sprint K2) — the old tenant-scoped `/subscriptions/:tenantId/*` routes below were removed._
+
 | Endpoint | Description |
 |----------|-------------|
 | `GET /api/superadmin/billing/plans` | List all plans with pricing |
 | `GET /api/superadmin/billing/plans/:plan` | Single plan detail |
-| `GET /api/superadmin/billing/subscriptions/:tenantId` | Tenant subscription state |
-| `POST /api/superadmin/billing/subscriptions/:tenantId/plan` | Change tenant plan |
-| `POST /api/superadmin/billing/subscriptions/:tenantId/cancel` | Cancel subscription |
-| `POST /api/superadmin/billing/subscriptions/:tenantId/suspend` | Suspend subscription |
-| `POST /api/superadmin/billing/subscriptions/:tenantId/reactivate` | Reactivate |
 | `GET /api/superadmin/billing/invoices` | List invoices (filterable) |
 | `GET /api/superadmin/billing/invoices/:id` | Invoice detail |
 | `POST /api/superadmin/billing/invoices/generate` | Generate + publish invoice |
@@ -264,6 +269,252 @@ When a quota is exceeded:
 | `GET /api/billing/invoices/:id` | Invoice detail (tenantId guard) |
 | `GET /api/billing/usage` | Current period usage |
 | `GET /api/billing/limits` | All quota statuses |
+
+---
+
+## Subscription Engine (Sprint K2)
+
+### Overview
+
+`BillingSubscription` is the DB-backed subscription record linking a tenant to a `BillingPlan`. It tracks lifecycle state (TRIAL → ACTIVE → etc.) independently from `TenantProfile` (which tracks platform-level access). The two will be linked in a future sprint.
+
+### Subscription Schema
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `tenantId` | String | The tenant (restaurant/hotel/etc.) identifier |
+| `planId` | String | `BillingPlan._id` |
+| `planCode` | String | Denormalized plan code (FREE, STARTER…) |
+| `planName` | String | Denormalized plan name |
+| `status` | String | TRIAL / ACTIVE / GRACE_PERIOD / SUSPENDED / CANCELLED / EXPIRED |
+| `startDate` | DateTime | When subscription started |
+| `endDate` | DateTime? | Scheduled end date |
+| `renewalDate` | DateTime? | Next auto-renewal date |
+| `trialEndsAt` | DateTime? | Trial expiry |
+| `cancelledAt` | DateTime? | Cancellation timestamp |
+| `graceEndsAt` | DateTime? | Grace period end |
+| `autoRenew` | Boolean | Auto-renew flag |
+| `notes` | String? | Admin notes |
+
+### Subscription Lifecycle
+
+```
+TRIAL ──────────────► ACTIVE ──────► GRACE_PERIOD ──► ACTIVE
+  │                     │                 │
+  │                     ▼                 ▼
+  ├──► CANCELLED     SUSPENDED ──────► CANCELLED
+  │       (terminal)     │
+  └──► EXPIRED           └──► CANCELLED
+          (terminal)
+```
+
+Valid transitions enforced by `SubscriptionValidation.assertTransition()`:
+- `TRIAL` → ACTIVE, CANCELLED, EXPIRED
+- `ACTIVE` → GRACE_PERIOD, SUSPENDED, CANCELLED, EXPIRED
+- `GRACE_PERIOD` → ACTIVE, SUSPENDED, CANCELLED
+- `SUSPENDED` → ACTIVE, CANCELLED
+- `CANCELLED`, `EXPIRED` — terminal (no further transitions)
+
+**Business rules:**
+- One active subscription per tenant (TRIAL/ACTIVE/GRACE_PERIOD/SUSPENDED)
+- Trial cannot be restarted on an existing subscription
+- Cannot modify a CANCELLED or EXPIRED subscription
+- Plan change allowed in any non-terminal state
+
+### Subscription Architecture
+
+```
+src/billing/subscriptions/
+  SubscriptionTypes.ts         — BillingSubscription, SubscriptionStatus, SubscriptionWithPlan
+  SubscriptionRepository.ts    — Prisma CRUD + findActiveByTenant + findLatestByTenant +
+                                  findWithPlan + countByPlan + scheduler finders
+                                  (findTrialsEndingWithin/findExpiredTrials/findLapsedActive/
+                                  findExpiredGracePeriods)
+  SubscriptionValidation.ts    — SubscriptionError + assertTransition + assertOneActive
+  SubscriptionLifecycle.ts     — activate, renew, suspend, resume, cancel, expire,
+                                  enterGracePeriod, changePlan
+  SubscriptionEvents.ts        — 8 EventBus emitters (adds emitTrialEnding)
+  SubscriptionService.ts       — Full facade with audit logging, plus
+                                  isAccessAllowed/isCafeAccessAllowed (Access Control, Phase 1)
+src/billing/scheduler/
+  SubscriptionScheduler.ts     — K48: the real automatic-lifecycle sweep (see below)
+```
+
+Notifications are **not** sent from `src/billing/subscriptions/*` directly. Every
+lifecycle transition emits an event via `SubscriptionEvents.ts`, and
+`BillingEventNotificationHub.ts` (`src/billing/notifications/`) is the single
+subscriber that turns those events into `NotificationService` calls. This keeps
+exactly one notification per event — do not add a second notification call
+alongside an event emit.
+
+### Subscription Events (4 new + reuses 3 from Epic K)
+
+| Event | When |
+|-------|------|
+| `SubscriptionCreated` | New subscription created (trial or active) |
+| `SubscriptionActivated` | Transition to ACTIVE state |
+| `SubscriptionRenewed` | Renewal processed |
+| `SubscriptionSuspended` | Suspended by SuperAdmin |
+| `SubscriptionCancelled` | Cancelled by tenant or SA |
+| `SubscriptionExpired` | Auto-expired (cron job) |
+| `PlanChanged` | Plan upgraded or downgraded |
+
+### SuperAdmin API
+
+These routes live in `src/routes/billingSubscriptionsSA.ts` and are the sole canonical implementation (the old tenant-scoped subscription routes were removed from `billingSuperAdmin.ts`).
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/superadmin/billing/subscriptions` | GET | List subscriptions (filter: status, tenantId, planCode) |
+| `/api/superadmin/billing/subscriptions/:id` | GET | Subscription detail |
+| `/api/superadmin/billing/subscriptions` | POST | Create trial or active subscription |
+| `/api/superadmin/billing/subscriptions/:id` | PATCH | Update notes |
+| `/api/superadmin/billing/subscriptions/:id/activate` | POST | Activate |
+| `/api/superadmin/billing/subscriptions/:id/suspend` | POST | Suspend |
+| `/api/superadmin/billing/subscriptions/:id/resume` | POST | Resume |
+| `/api/superadmin/billing/subscriptions/:id/cancel` | POST | Cancel |
+| `/api/superadmin/billing/subscriptions/:id/renew` | POST | Renew |
+| `/api/superadmin/billing/subscriptions/:id/change-plan` | POST | Change plan (body: planId) |
+
+### Restaurant API
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /api/billing/subscription` | Current subscription with plan details |
+| `GET /api/billing/subscription/status` | Quick status check |
+| `GET /api/billing/subscription/history` | Full subscription history |
+
+### Automatic Lifecycle Scheduling (K48 Scheduler — built)
+
+`SubscriptionLifecycleJobs.ts` (the old TenantProfile-era cron module) and
+`src/cron/subscriptionLifecycle.ts` were **deleted outright** — not resurrected
+— per the K48 decision to build a real scheduler rather than reuse the old
+shape. The real scheduler is:
+
+- **`src/billing/scheduler/SubscriptionScheduler.ts`** — 4 sweep functions,
+  each calling real `SubscriptionService`/`SubscriptionLifecycle` transitions
+  (which already fire their own event/audit/notification via
+  `BillingEventNotificationHub` — nothing new to wire):
+  1. `runTrialEndingReminders(warnDays=3)` — `SubscriptionRepository.findTrialsEndingWithin` → `SubscriptionEvents.emitTrialEnding` (reuses the pre-existing `'TrialEnding'` event/payload shape the hub already subscribes to).
+  2. `runTrialExpirationCheck()` — `findExpiredTrials` → `SubscriptionService.expire` (TRIAL → EXPIRED directly — GRACE_PERIOD is only reachable from ACTIVE in `VALID_TRANSITIONS`, not from TRIAL; caught by a live-DB verification run during release prep, which had originally called `enterGracePeriod` here and failed with "Invalid transition: TRIAL → GRACE_PERIOD").
+  3. `runActiveLapseCheck()` — `findLapsedActive` (ACTIVE subscriptions whose `renewalDate` has passed) → `SubscriptionService.enterGracePeriod` (ACTIVE → GRACE_PERIOD).
+  4. `runGracePeriodExpirationCheck()` — `findExpiredGracePeriods` → `SubscriptionService.suspend(id, 'Grace period expired', 'system:scheduler')`.
+  - `runSubscriptionLifecycleSweep()` orchestrates all 4, returns `{ remindersSent, trialExpired, enteredGrace, suspended }`.
+- **`src/cron/subscriptionSchedulerCron.ts`** — registers the sweep on `'0 3 * * *'` (same daily 03:00 slot the old disabled cron used), wired into `src/server.ts`'s `cronTasks` array as `startSubscriptionSchedulerCron()`.
+
+**Phase 1 scope only — not yet automatic:**
+- No auto-`cancel()` — a `SUSPENDED` subscription needs a manual SA action to
+  reach `CANCELLED`. (Auto-`expire()` for unconverted trials IS handled —
+  see step 2 above.)
+- No payment-triggered auto-renew — `BillingPaymentService`
+  (`src/billing/payments/`) already links payments to subscriptions, but
+  isn't wired into this sweep yet.
+
+Both remain manually available via the SuperAdmin API
+(`/api/superadmin/billing/subscriptions/:id/{activate,suspend,resume,cancel,
+renew,change-plan}`).
+
+### Access Control (Phase 1) — Tenant Access Migration
+
+`BillingSubscription` is becoming the platform's access-control authority,
+replacing the historical `Cafe.isActive`/`Cafe.billingStatus` wallet/debt
+system (see § Relationship to src/tenant/ above — `TenantProfile.state` was
+never actually the real gate; `Cafe.isActive` was). This is an **additive,
+fail-open** first phase, not a cutover.
+
+**The gate** (`src/billing/subscriptions/SubscriptionService.ts`):
+```ts
+export async function isAccessAllowed(tenantId: string): Promise<boolean>
+export async function isCafeAccessAllowed(cafeId: string, cafeIsActive: boolean): Promise<boolean>
+```
+- Allowed statuses: `TRIAL`, `ACTIVE`, `GRACE_PERIOD`. Blocked: `SUSPENDED`,
+  `CANCELLED`, `EXPIRED`.
+- **Fail-open by design**: a tenant with no `BillingSubscription` row at all
+  (pre-backfill, or a race right after `CafeCreated`) is allowed, not blocked.
+  Uses `SubscriptionRepository.findLatestByTenant` (sees terminal rows too),
+  not `findActiveByTenant` (which would make a genuinely `CANCELLED` tenant
+  indistinguishable from a never-provisioned one).
+- `isCafeAccessAllowed` combines the new gate with the existing
+  `Cafe.isActive` check (AND — blocked if either says blocked) and requires
+  `cafeIsActive` as an explicit argument so call sites can't accidentally drop
+  the existing check. **Before backfill has run for a tenant, this degrades to
+  today's exact behavior** (`cafe.isActive` alone).
+
+**Wired (7 call sites across 4 files — the confirmed-real access gates):**
+`src/middleware/validateSeatQR.ts` (1), `src/routes/publicCafe.ts` (2),
+`src/routes/clientMenu.ts` (2), `src/routes/customers.ts` (2).
+
+**Auto-provisioning:** every new `Cafe` now gets a `BillingSubscription`
+automatically via the `CafeCreated` event handler in `src/tenant/index.ts`
+(mirrors the pre-existing `TenantProfile` auto-provisioning there), starting
+`TRIAL` against `PlanRepository.findDefault()`'s plan.
+
+**Nightly `TenantProfile` lifecycle sweep removed:** `src/cron/nightly.ts`'s
+`notifyExpiringTrials`/`expireTrials`/`expireGracePeriods`/
+`cleanupExpiredPromotions` block was deleted (confirmed zero other callers,
+near-zero real enforcement — see the "Relationship to src/tenant/" note
+above). Automatic lifecycle processing now flows through the K48 Scheduler
+above instead.
+
+### Backfill
+
+`scripts/backfillBillingSubscriptions.ts` creates a `BillingSubscription` for
+every existing `Cafe` that doesn't have one yet (checked via
+`findLatestByTenant`, so cafes with a terminal row are correctly skipped, not
+double-created).
+
+| Cafe.isActive | Cafe.billingStatus | → BillingSubscription.status |
+|---|---|---|
+| true | GRACE_PERIOD | TRIAL |
+| true | COLLECTING_DEBT | ACTIVE |
+| true | PAST_DUE | GRACE_PERIOD |
+| false | any | SUSPENDED |
+
+- `planId`/`planCode`/`planName` = `PlanRepository.findDefault()`'s plan for
+  every backfilled row — Phase 1 has no source to map `Cafe.packageType` to a
+  real plan code (Phase 2).
+- Defaults to `--dry-run` (reads + logs the proposed mapping, writes nothing).
+  Requires an explicit `--commit` flag to actually create rows.
+- Aborts loudly if no default `BillingPlan` exists — both this script and the
+  `CafeCreated` auto-provisioning hook depend on one.
+- Deliberately does **not** emit `SubscriptionCreated` events for backfilled
+  rows (would spam every real tenant's dashboard with a synthetic
+  notification) — logs a summary locally instead.
+- Never run automatically (not in server boot, cron, or CI). Run via
+  `npm run backfill:billing-subscriptions -- --commit` only after manual
+  review of a `--dry-run` pass.
+
+### Phase 2 (not yet built)
+
+Explicitly deferred from the Tenant Access Migration, to keep Phase 1 bounded
+and reviewable on a shared demo/staging database with no isolated dev DB:
+
+- **11 `Cafe.isActive`/`billingStatus` write sites** — 3 signup flows in
+  `src/routes/auth.ts`, `src/routes/demoRequests.ts` (demo conversion),
+  3 self-service endpoints in `src/routes/finance.ts`, 4 manual SA endpoints
+  in `src/routes/superadmin.ts`. These still write the wallet/debt fields
+  independently of `BillingSubscription` — not yet unified.
+- **~6 additional read sites** that may also gate on `Cafe.isActive`:
+  `src/routes/payment.ts`, `src/routes/traiteur.ts`,
+  `src/routes/whatsappWebhook.ts`, `src/routes/tables.ts`,
+  `src/routes/orders.ts`, `src/routes/antiFraud.ts`. Each needs its own
+  read-through before wiring — not a blind copy of the Phase 1 pattern (some
+  of these may be display-only, not actually blocking).
+- Retiring `Cafe.walletBalance`/`billingStatus`/`gracePeriodEndsAt`/
+  `suspendedAt`/`trialEndsAt`/`hasExtendedTrial` once all writers/readers are
+  migrated.
+- Disabling/deleting `src/cron/dailyDebtDetection.ts` (still the only thing
+  keeping `Cafe.isActive` correct for the write/read sites not yet migrated —
+  do not remove before they are).
+- Unifying `/api/superadmin/tenants/:id/suspend` (`TenantProfile`-based) with
+  `billingSubscriptionsSA.ts`'s BillingSubscription-based suspend into one
+  SuperAdmin action.
+- Mapping `Cafe.packageType` ('Free'/'6-Month'/'Annual') to real `BillingPlan`
+  codes for a more accurate backfill than "everyone gets the default plan".
+
+### Future: Invoice Integration (Sprint K3)
+
+In Sprint K3, subscription renewals will automatically trigger invoice generation via `BillingOrchestrator.generateInvoice()`. The `renewalDate` field will be used by a cron job to generate invoices 3 days before renewal.
 
 ---
 

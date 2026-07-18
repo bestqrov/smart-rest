@@ -1,5 +1,6 @@
 import express, { Request, Response } from 'express'
 import prisma from '../prisma'
+import { isCafeAccessAllowed } from '../billing/subscriptions/SubscriptionService'
 
 const router = express.Router()
 
@@ -34,7 +35,7 @@ router.get('/api/menu/public', async (req: Request, res: Response) => {
       })
     ])
 
-    if (!cafe?.isActive) return res.status(403).json({ error: 'Venue is currently unavailable' })
+    if (!cafe || !(await isCafeAccessAllowed(table.cafeId, cafe.isActive))) return res.status(403).json({ error: 'Venue is currently unavailable' })
 
     // Derive marketType from country
     const GULF_COUNTRIES   = ['SA','AE','KW','QA','BH','OM']
@@ -132,7 +133,7 @@ router.get('/api/client/menu', async (req: Request, res: Response) => {
       where:  { subdomain },
       select: { id: true, isActive: true, orderingEnabled: true }
     })
-    if (!cafe || !cafe.isActive) return res.status(404).json({ error: 'Cafe not found' })
+    if (!cafe || !(await isCafeAccessAllowed(cafe.id, cafe.isActive))) return res.status(404).json({ error: 'Cafe not found' })
     if (cafe.orderingEnabled === false) return res.json({ categories: [] })
 
     const categories = await prisma.category.findMany({

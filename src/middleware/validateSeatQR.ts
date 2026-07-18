@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express'
 import prisma from '../prisma'
 import logger from '../logger'
+import { isCafeAccessAllowed } from '../billing/subscriptions/SubscriptionService'
 
 export interface SeatSession {
   cafeId:      string
@@ -40,7 +41,7 @@ export async function validateSeatQR(req: Request, res: Response, next: NextFunc
       select: { id: true, isActive: true }
     })
     if (!cafe) return res.status(404).json({ error: 'Cafe not found' })
-    if (!cafe.isActive) return res.status(403).json({ error: 'This venue is currently unavailable' })
+    if (!(await isCafeAccessAllowed(cafe.id, cafe.isActive))) return res.status(403).json({ error: 'This venue is currently unavailable' })
 
     const seat = await prisma.seat.findFirst({
       where: {

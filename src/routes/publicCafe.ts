@@ -5,6 +5,7 @@
 
 import express, { Request, Response } from 'express'
 import prisma from '../prisma'
+import { isCafeAccessAllowed } from '../billing/subscriptions/SubscriptionService'
 
 const router = express.Router()
 
@@ -13,9 +14,9 @@ router.get('/api/public/cafe/:subdomain', async (req: Request, res: Response) =>
     const subdomain = (req.params.subdomain as string).trim().toLowerCase()
     const cafe = await prisma.cafe.findUnique({
       where:  { subdomain },
-      select: { name: true, businessName: true, logoUrl: true, currency: true, isActive: true },
+      select: { id: true, name: true, businessName: true, logoUrl: true, currency: true, isActive: true },
     })
-    if (!cafe || !cafe.isActive) return res.status(404).json({ error: 'Cafe not found' })
+    if (!cafe || !(await isCafeAccessAllowed(cafe.id, cafe.isActive))) return res.status(404).json({ error: 'Cafe not found' })
     return res.json({
       name:     cafe.businessName || cafe.name,
       logoUrl:  cafe.logoUrl ?? null,
@@ -94,7 +95,7 @@ router.get('/api/public/demo-staff', async (req: Request, res: Response) => {
       where:  { subdomain },
       select: { id: true, isActive: true }
     })
-    if (!cafe || !cafe.isActive) return res.status(404).json({ error: 'Cafe not found' })
+    if (!cafe || !(await isCafeAccessAllowed(cafe.id, cafe.isActive))) return res.status(404).json({ error: 'Cafe not found' })
     const staff = await prisma.staff.findMany({
       where:  { cafeId: cafe.id, isActive: true },
       select: { id: true, name: true, role: true, roles: true },

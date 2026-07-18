@@ -104,24 +104,13 @@ async function runNightlyJobs(): Promise<void> {
   // admin Staff page. Keep only the 3 fixed demo staff and clear their shift.
   const demoStaffReset = await resetDemoCafeStaff()
 
-  // ─── Tenant Lifecycle maintenance ─────────────────────────────────────────
-  try {
-    const {
-      notifyExpiringTrials,
-      expireTrials,
-      expireGracePeriods,
-      cleanupExpiredPromotions,
-    } = await import('../tenant')
-    const [warned, expired, graceExpired, promosCleaned] = await Promise.all([
-      notifyExpiringTrials(3),
-      expireTrials(7),
-      expireGracePeriods(),
-      cleanupExpiredPromotions(),
-    ])
-    logger.info({ msg: '[CRON] Tenant lifecycle sweep', warned, expired: expired.length, graceExpired: graceExpired.length, promosCleaned })
-  } catch (err) {
-    logger.error({ msg: '[CRON] Tenant lifecycle sweep failed', err })
-  }
+  // Tenant Access Migration (Phase 1): the old TenantProfile-based lifecycle
+  // sweep (notifyExpiringTrials/expireTrials/expireGracePeriods/
+  // cleanupExpiredPromotions) has been removed — TenantProfile.state had
+  // almost no real access-control enforcement anywhere in the app, and
+  // automatic lifecycle processing is now handled by the real
+  // BillingSubscription Scheduler (src/cron/subscriptionSchedulerCron.ts).
+  // See docs/architecture/billing-platform.md § Access Control (Phase 1).
 
   logger.info({
     msg:                 '[CRON] Nightly jobs completed',

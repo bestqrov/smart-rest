@@ -95,6 +95,8 @@ const T = {
       title: 'ابنِ منيو البداية', sub: 'اختر المنتجات الجاهزة حسب دولتك ونوع نشاطك — يمكنك تعديلها لاحقاً',
       typeLabel: 'نوع المنتجات المقترحة', selectAll: 'اختيار الكل', clearAll: 'إلغاء الكل',
       selectedCount: 'منتج محدد', noSuggestions: 'لا توجد اقتراحات لهذه الدولة بعد — يمكنك إضافة المنتجات يدوياً لاحقاً', skip: 'تخطي هذه الخطوة',
+      hotelModeQuestion: 'كيفاش كيخدم الفندق ديالك؟', hotelModeRequired: 'يرجى تحديد نوع الخدمة ديال الفندق',
+      hotelModeRoomService: 'خدمة الغرف بوحدها', hotelModeOnSite: 'مطعم/مقهى الفندق', hotelModeBoth: 'بجوج معاً',
     },
     next: 'التالي', back: 'رجوع', launch: 'إنهاء وإطلاق النظام 🚀', launching: 'جارٍ الإطلاق…', error: 'حدث خطأ، حاول مجدداً',
   },
@@ -145,6 +147,8 @@ const T = {
       title: 'Construisez votre menu de départ', sub: 'Choisissez des produits prêts selon votre pays et type d\'activité — modifiable plus tard',
       typeLabel: 'Type de produits suggérés', selectAll: 'Tout sélectionner', clearAll: 'Tout désélectionner',
       selectedCount: 'produits sélectionnés', noSuggestions: 'Pas encore de suggestions pour ce pays — vous pourrez ajouter vos produits manuellement plus tard.', skip: 'Passer cette étape',
+      hotelModeQuestion: 'Comment fonctionne votre hôtel ?', hotelModeRequired: 'Veuillez préciser le type de service de votre hôtel',
+      hotelModeRoomService: 'Room service uniquement', hotelModeOnSite: 'Restaurant/café sur place', hotelModeBoth: 'Les deux',
     },
     next: 'Suivant', back: 'Retour', launch: 'Terminer et lancer 🚀', launching: 'Lancement…', error: 'Erreur, réessayez',
   },
@@ -195,6 +199,8 @@ const T = {
       title: 'Build your starter menu', sub: 'Pick ready-made products for your country and business type — editable anytime later',
       typeLabel: 'Suggested product type', selectAll: 'Select all', clearAll: 'Clear all',
       selectedCount: 'products selected', noSuggestions: 'No suggestions available for this country yet — you can add products manually later.', skip: 'Skip this step',
+      hotelModeQuestion: 'How does your hotel operate?', hotelModeRequired: "Please specify your hotel's service type",
+      hotelModeRoomService: 'Room service only', hotelModeOnSite: 'On-site restaurant/café', hotelModeBoth: 'Both',
     },
     next: 'Next', back: 'Back', launch: 'Finish & Launch 🚀', launching: 'Launching…', error: 'An error occurred, retry',
   },
@@ -245,6 +251,8 @@ const T = {
       title: 'Crea tu menú inicial', sub: 'Elige productos listos según tu país y tipo de negocio — editable después',
       typeLabel: 'Tipo de productos sugeridos', selectAll: 'Seleccionar todo', clearAll: 'Deseleccionar todo',
       selectedCount: 'productos seleccionados', noSuggestions: 'Aún no hay sugerencias para este país — podrás añadir productos manualmente más tarde.', skip: 'Saltar este paso',
+      hotelModeQuestion: '¿Cómo funciona tu hotel?', hotelModeRequired: 'Por favor especifica el tipo de servicio de tu hotel',
+      hotelModeRoomService: 'Solo room service', hotelModeOnSite: 'Restaurante/café en el hotel', hotelModeBoth: 'Ambos',
     },
     next: 'Siguiente', back: 'Atrás', launch: 'Finalizar y lanzar 🚀', launching: 'Lanzando…', error: 'Error, inténtalo de nuevo',
   },
@@ -312,6 +320,10 @@ export default function OnboardingPage() {
   const [catalog,         setCatalog]         = useState<CatalogCategoryItem[]>([])
   const [catalogLoading,  setCatalogLoading]  = useState(false)
   const [selectedProducts, setSelectedProducts] = useState<Record<string, Set<string>>>({})
+  // Only meaningful when catalogType === 'HOTEL' — carried over from the
+  // signup-time answer (see app/signup/page.tsx) so onboarding never has to
+  // re-ask; legacy accounts with no saved answer still get asked here.
+  const [hotelServiceMode, setHotelServiceMode] = useState<string>('')
 
   const [data, setData] = useState<WizardData>({
     tier: 'CAFE',
@@ -338,7 +350,12 @@ export default function OnboardingPage() {
           sandwichRefPrice: p.sandwichRefPrice ? String(p.sandwichRefPrice) : '',
           tier:             (p.tier as 'CAFE'|'RESTAURANT') ?? 'CAFE',
         }))
-        if (p.tier === 'RESTAURANT' || p.tier === 'CAFE') setCatalogType(p.tier)
+        // businessType (captured at signup, see app/signup/page.tsx) takes
+        // priority over the older tier field so onboarding never re-asks
+        // and defaults back to Café for non-Café/Restaurant business types.
+        if (p.businessType) setCatalogType(p.businessType as CatalogBusinessType)
+        else if (p.tier === 'RESTAURANT' || p.tier === 'CAFE') setCatalogType(p.tier)
+        if (p.hotelServiceMode) setHotelServiceMode(p.hotelServiceMode)
       })
   }, [])
 
@@ -348,15 +365,20 @@ export default function OnboardingPage() {
   useEffect(() => {
     const token = localStorage.getItem('token')
     if (!token) return
+    // For Hotel, wait until a service mode is picked (or already known) —
+    // fetching before that would show the full combined room-service +
+    // on-site catalog and immediately re-fetch once the mode is chosen.
+    if (catalogType === 'HOTEL' && !hotelServiceMode) { setCatalog([]); return }
     setCatalogLoading(true)
-    fetch(`/api/admin/onboarding/product-catalog?country=${encodeURIComponent(data.country)}&businessType=${encodeURIComponent(catalogType)}`, {
+    const modeParam = catalogType === 'HOTEL' && hotelServiceMode ? `&hotelServiceMode=${encodeURIComponent(hotelServiceMode)}` : ''
+    fetch(`/api/admin/onboarding/product-catalog?country=${encodeURIComponent(data.country)}&businessType=${encodeURIComponent(catalogType)}${modeParam}`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(r => r.ok ? r.json() : { categories: [] })
       .then(body => setCatalog(body.categories ?? []))
       .catch(() => setCatalog([]))
       .finally(() => setCatalogLoading(false))
-  }, [data.country, catalogType])
+  }, [data.country, catalogType, hotelServiceMode])
 
   function toggleProduct(categoryKey: string, productKey: string) {
     setSelectedProducts(prev => {
@@ -425,6 +447,10 @@ export default function OnboardingPage() {
       if (!/^[a-zA-Z0-9]{4,8}$/.test(data.managerPin)) { setStepErr(t.step4.pinInvalid); return false }
       if (data.managerPin !== data.pinConfirm) { setStepErr(t.step4.pinMismatch); return false }
     }
+    if (step === 5 && catalogType === 'HOTEL' && !hotelServiceMode) {
+      setStepErr(t.step5.hotelModeRequired)
+      return false
+    }
     return true
   }
 
@@ -465,7 +491,21 @@ export default function OnboardingPage() {
         await fetch('/api/admin/onboarding/apply-product-catalog', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ country: data.country, businessType: catalogType, selections }),
+          body: JSON.stringify({
+            country: data.country, businessType: catalogType, selections,
+            ...(catalogType === 'HOTEL' && hotelServiceMode ? { hotelServiceMode } : {}),
+          }),
+        }).catch(() => undefined)
+      }
+
+      // Persist the hotel service mode onto the Cafe if it was only just
+      // chosen here (legacy account with no signup-time answer) — best
+      // effort, never blocks launch.
+      if (catalogType === 'HOTEL' && hotelServiceMode) {
+        await fetch('/api/admin/cafe/profile', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ hotelServiceMode }),
         }).catch(() => undefined)
       }
 
@@ -769,6 +809,26 @@ export default function OnboardingPage() {
                   ))}
                 </div>
               </Field>
+
+              {catalogType === 'HOTEL' && (
+                <Field label={`🏨 ${t.step5.hotelModeQuestion}`}>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { value: 'ROOM_SERVICE', icon: '🛎️', label: t.step5.hotelModeRoomService },
+                      { value: 'ON_SITE',       icon: '🍽️', label: t.step5.hotelModeOnSite },
+                      { value: 'BOTH',          icon: '🏨', label: t.step5.hotelModeBoth },
+                    ].map(opt => (
+                      <button key={opt.value} type="button" onClick={() => { setHotelServiceMode(opt.value); setStepErr('') }}
+                        className={`flex flex-col items-center gap-1 p-2.5 rounded-xl border-2 transition-all text-center ${
+                          hotelServiceMode === opt.value ? 'border-blue-400 bg-blue-50' : 'border-slate-200 hover:border-slate-300 bg-white'
+                        }`}>
+                        <span className="text-xl leading-none">{opt.icon}</span>
+                        <span className={`text-xs font-bold ${hotelServiceMode === opt.value ? 'text-blue-700' : 'text-slate-600'}`}>{opt.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </Field>
+              )}
 
               {catalogLoading && (
                 <div className="flex items-center justify-center py-8">

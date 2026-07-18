@@ -20,7 +20,7 @@ export {
 
 export { markOverdueInvoices, getInvoice, listInvoices } from './invoices/InvoiceService'
 
-export { getSubscription } from './subscriptions/SubscriptionService'
+export { getSubscription, getSubscriptionByTenant } from './subscriptions/SubscriptionService'
 
 export { getUsageSummary } from './usage/BillingUsageService'
 
@@ -37,11 +37,11 @@ export {
 
 export {
   runTrialEndingReminders,
-  runSubscriptionExpirationCheck,
+  runTrialExpirationCheck,
+  runActiveLapseCheck,
   runGracePeriodExpirationCheck,
-  runAutomaticRenewalChecks,
   runSubscriptionLifecycleSweep,
-} from './lifecycle/SubscriptionLifecycleJobs'
+} from './scheduler/SubscriptionScheduler'
 
 export {
   getTrialDurationDays,

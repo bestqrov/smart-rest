@@ -1,6 +1,7 @@
 // ─── Billing Plans — Repository ────────────────────────────────────────────
 
 import type { BillingPlan, CreatePlanInput, UpdatePlanInput } from './PlanTypes'
+import { countByPlan as countActiveBillingSubscriptions } from '../subscriptions/SubscriptionRepository'
 
 async function db() {
   const { default: prisma } = await import('../../prisma')
@@ -87,9 +88,8 @@ export async function unsetAllDefaults(): Promise<void> {
   await col.updateMany({ where: { isDefault: true }, data: { isDefault: false } })
 }
 
+// Delegates to SubscriptionRepository.countByPlan — BillingSubscription is the
+// single source of truth for active subscriptions, not TenantProfile.
 export async function countActiveSubscriptions(planCode: string): Promise<number> {
-  const { default: prisma } = await import('../../prisma')
-  return (prisma as any).tenantProfile.count({
-    where: { plan: planCode, state: { in: ['ACTIVE', 'TRIAL', 'GRACE_PERIOD'] } },
-  })
+  return countActiveBillingSubscriptions(planCode)
 }

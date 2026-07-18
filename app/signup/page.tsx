@@ -178,6 +178,9 @@ function SignupInner() {
   const [logoUrl, setLogoUrl] = useState('/assets/logo.png')
   const [form, setForm]   = useState({ cafeName: '', subdomain: '', email: '', country: 'MA' })
   const [businessType, setBusinessType] = useState<string>('')
+  // Only asked/used when businessType === 'HOTEL' — does the hotel want
+  // in-room ordering, an on-site restaurant/cafe menu, or both.
+  const [hotelServiceMode, setHotelServiceMode] = useState<string>('')
   const [manualSub, setManualSub] = useState(false)
   const [loading, setLoading]     = useState(false)
   const [error,   setError]       = useState<string | null>(null)
@@ -235,6 +238,10 @@ function SignupInner() {
       setError(lang === 'ar' ? 'يرجى اختيار نوع المنشأة' : lang === 'fr' ? 'Choisissez le type d\'établissement' : 'Please select your establishment type')
       return
     }
+    if (businessType === 'HOTEL' && !hotelServiceMode) {
+      setError(lang === 'ar' ? 'يرجى تحديد نوع الخدمة ديال الفندق' : lang === 'fr' ? 'Veuillez préciser le type de service de votre hôtel' : 'Please specify your hotel\'s service type')
+      return
+    }
     if (!form.cafeName.trim() || !form.subdomain.trim() || !form.email.trim()) {
       setError(tx('err_fields', lang)); return
     }
@@ -250,7 +257,10 @@ function SignupInner() {
       const res  = await fetch('/api/auth/magic-send', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ ...form, businessType, lang })
+        body:    JSON.stringify({
+          ...form, businessType, lang,
+          ...(businessType === 'HOTEL' ? { hotelServiceMode } : {}),
+        })
       })
       const data = await res.json()
       if (!res.ok) {
@@ -268,7 +278,7 @@ function SignupInner() {
     } finally {
       setLoading(false)
     }
-  }, [form, lang])
+  }, [form, lang, businessType, hotelServiceMode])
 
   // ── Success screen ───────────────────────────────────────────────────────────
 
@@ -461,6 +471,39 @@ function SignupInner() {
                       : lang === 'fr'
                       ? 'Vous accéderez à Smart Traiteur — tableau de bord complet pour gérer vos événements, réservations et menus.'
                       : 'You\'ll get Smart Caterer — a full dashboard to manage your events, bookings and menus professionally.'}
+                  </div>
+                )}
+                {/* Hotel service-mode follow-up — asked once here so onboarding
+                    never has to ask again (or default back to Café) */}
+                {businessType === 'HOTEL' && (
+                  <div className="mt-3 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl px-4 py-3">
+                    <p className="text-xs font-semibold text-blue-800 mb-2">
+                      {lang === 'ar' ? 'كيفاش كيخدم الفندق ديالك؟' : lang === 'fr' ? 'Comment fonctionne votre hôtel ?' : lang === 'es' ? '¿Cómo funciona tu hotel?' : "How does your hotel operate?"}
+                    </p>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {[
+                        { value: 'ROOM_SERVICE', icon: '🛎️', label: { ar: 'خدمة الغرف بوحدها', fr: 'Room service uniquement', en: 'Room service only', es: 'Solo room service' } },
+                        { value: 'ON_SITE',       icon: '🍽️', label: { ar: 'مطعم/مقهى الفندق', fr: 'Restaurant/café sur place', en: 'On-site restaurant/café', es: 'Restaurante/café en el hotel' } },
+                        { value: 'BOTH',          icon: '🏨', label: { ar: 'بجوج معاً', fr: 'Les deux', en: 'Both', es: 'Ambos' } },
+                      ].map(opt => {
+                        const selected = hotelServiceMode === opt.value
+                        return (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => { setHotelServiceMode(opt.value); setError(null) }}
+                            className={`flex flex-col items-center gap-0.5 p-2 rounded-lg border-2 transition-all text-center ${
+                              selected ? 'border-blue-400 bg-white shadow-sm' : 'border-blue-100 bg-white/60 hover:border-blue-200'
+                            }`}
+                          >
+                            <span className="text-lg leading-none">{opt.icon}</span>
+                            <span className={`text-[10px] font-bold leading-tight ${selected ? 'text-blue-700' : 'text-blue-500'}`}>
+                              {opt.label[lang]}
+                            </span>
+                          </button>
+                        )
+                      })}
+                    </div>
                   </div>
                 )}
               </div>

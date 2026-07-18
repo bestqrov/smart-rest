@@ -6,6 +6,7 @@ import { registerBuiltinProfiles } from './certification'
 import { initAnalyticsEngine }     from './analytics'
 import { initMarketplaceEngine }   from './marketplace'
 import { initPaymentEngine }        from './payments'
+import { initBillingEventNotifications } from './billing/notifications/BillingEventNotificationHub'
 import { initTenantEngine }         from './tenant'
 import { initKitchenEngine }        from './kitchen/KitchenTicketService'
 import { initWhatsAppEngine }       from './whatsapp/WhatsAppEngine'
@@ -102,9 +103,13 @@ import tenantRestaurantRouter            from './routes/tenantRestaurant'
 import billingSuperAdminRouter           from './routes/billingSuperAdmin'
 import billingRestaurantRouter           from './routes/billingRestaurant'
 import billingPlansSARouter              from './routes/billingPlansSA'
+import billingSubscriptionsSARouter      from './routes/billingSubscriptionsSA'
+import billingPaymentsSARouter           from './routes/billingPaymentsSA'
+import billingPaymentWebhookRouter       from './routes/billingPaymentWebhook'
 import billingMetricsSARouter            from './routes/billingMetricsSA'
 import billingSettingsSARouter           from './routes/billingSettingsSA'
 import billingAuditSARouter              from './routes/billingAuditSA'
+import auditLogsSARouter                 from './routes/auditLogsSA'
 import usageLimitsSARouter               from './routes/usageLimitsSA'
 import branchesSARouter                  from './routes/branchesSA'
 import affiliateAdminRouter              from './routes/affiliateAdmin'
@@ -118,6 +123,7 @@ import supplierInvoicesRouter from './routes/supplierInvoices'
 import requisitionsRouter     from './routes/requisitions'
 import achatsReportRouter     from './routes/achatsReport'
 import customersRouter        from './routes/customers'
+import knowledgeRouter         from './routes/knowledge'
 import shiftAdminRouter       from './routes/pos/shiftAdmin'
 import aiCenterRouter         from './routes/aiCenter'
 import aiJobsRouter           from './routes/aiJobs'
@@ -129,7 +135,7 @@ import { startDailyDebtDetectionCron } from './cron/dailyDebtDetection'
 import { startShiftOvertimeLockCron } from './cron/shiftOvertimeLock'
 import { startNightlyCron } from './cron/nightly'
 import { startCertificationCron } from './cron/certificationEval'
-import { startSubscriptionLifecycleCron } from './cron/subscriptionLifecycle'
+import { startSubscriptionSchedulerCron } from './cron/subscriptionSchedulerCron'
 import { initChangeStreams, closeChangeStreams } from './services/changeStreams'
 
 async function main() {
@@ -313,9 +319,13 @@ async function main() {
   app.use(billingSuperAdminRouter)
   app.use(billingRestaurantRouter)
   app.use(billingPlansSARouter)
+  app.use(billingSubscriptionsSARouter)
+  app.use(billingPaymentsSARouter)
+  app.use(billingPaymentWebhookRouter)
   app.use(billingMetricsSARouter)
   app.use(billingSettingsSARouter)
   app.use(billingAuditSARouter)
+  app.use(auditLogsSARouter)
   app.use(usageLimitsSARouter)
   app.use(branchesSARouter)
   app.use(affiliateAdminRouter)
@@ -325,6 +335,7 @@ async function main() {
   app.use(demoRequestsRouter)
   app.use(zonesRouter)
   app.use(customersRouter)
+  app.use(knowledgeRouter)
   app.use(shiftAdminRouter)
   app.use(aiCenterRouter)
   app.use(aiJobsRouter)
@@ -380,6 +391,7 @@ async function main() {
   // Seed marketplace feature flags (idempotent)
   initMarketplaceEngine().catch(() => undefined)
   initPaymentEngine().catch(() => undefined)
+  initBillingEventNotifications()
   initTenantEngine().catch(() => undefined)
   initKitchenEngine().catch(() => undefined)
   initWhatsAppEngine()
@@ -393,7 +405,7 @@ async function main() {
     startWeeklyBillingCron(),
     startNightlyCron(),
     startCertificationCron(),
-    startSubscriptionLifecycleCron(),
+    startSubscriptionSchedulerCron(),
     startWhatsAppSchedulerCron(),
     startEmailSchedulerCron(),
     startSocialSchedulerCron(),

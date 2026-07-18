@@ -83,6 +83,25 @@ export async function initTenantEngine(): Promise<void> {
           country:         country ?? 'MA',
         })
       } catch {}
+
+      // Tenant Access Migration (Phase 1): also auto-provision a
+      // BillingSubscription, independently of the TenantProfile provisioning
+      // above (own try/catch — one failing must not block the other, and
+      // neither may block Cafe creation itself). See
+      // docs/architecture/billing-platform.md § Access Control (Phase 1).
+      try {
+        const { cafeId } = event.payload as Record<string, any>
+        if (!cafeId) return
+        const PlanRepo = await import('../billing/plans/PlanRepository')
+        const plan = await PlanRepo.findDefault()
+        if (!plan) {
+          const logger = (await import('../logger')).default
+          logger.warn({ msg: '[TenantEngine] CafeCreated: no default BillingPlan found — new cafe has no BillingSubscription', cafeId })
+          return
+        }
+        const { createTrialSubscription } = await import('../billing/subscriptions/SubscriptionService')
+        await createTrialSubscription(String(cafeId), plan.id, 'system:CafeCreated')
+      } catch {}
     })
   } catch {}
 }

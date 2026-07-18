@@ -225,6 +225,11 @@ export type PlatformEventName =
   | 'PlanDeleted'
   | 'PlanActivated'
   | 'PlanDeactivated'
+  // Billing Subscription Engine
+  | 'SubscriptionActivated'
+  | 'SubscriptionSuspended'
+  | 'SubscriptionExpired'
+  | 'PlanChanged'
   // POS Core Engine
   | 'PosOrderOpened'
   | 'PosOrderItemAdded'

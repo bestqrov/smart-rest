@@ -209,6 +209,15 @@ model Cafe {
   tier                String        @default("CAFE")
   // 'RESTAURANT' = daily restaurant/cafe mode | 'TRAITEUR' = events & catering mode
   accountMode         String        @default("RESTAURANT")
+  // Persists the type chosen at signup (RESTAURANT|CAFE|TRAITEUR|PASTRY|FOOD_TRUCK|HOTEL)
+  // — previously captured at signup but discarded, forcing onboarding to
+  // re-ask and default back to CAFE every time. See src/onboarding/ProductCatalog.ts.
+  businessType        String        @default("RESTAURANT")
+  // Only meaningful when businessType === 'HOTEL': does this hotel want an
+  // in-room ordering menu, an on-site restaurant/cafe menu, or both — drives
+  // which starter categories getProductCatalog() offers. Null for every
+  // other businessType.
+  hotelServiceMode    String?
   // Smart WiFi — optional embedded config (null = feature not configured)
   smartWifi           SmartWifi?
 
@@ -2664,6 +2673,62 @@ model KnowledgeEntry {
   @@map("intelligence_knowledge_entries")
 }
 
+// RAG Knowledge Layer — document/chunk retrieval foundation, distinct from
+// KnowledgeEntry above (which is a versioned tenant fact store keyed by
+// (tenantId, key), not a document/chunk RAG system). No embedding field yet
+// by design (embeddings/AI providers are explicitly out of scope for this
+// sprint) — KnowledgeChunk.embedding is intentionally absent, not stubbed,
+// so a future sprint adds it as a real migration rather than an unused
+// column. See src/intelligence/rag/ for the service layer.
+model KnowledgeRagRepository {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId    String
+  name        String
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([tenantId, isActive])
+  @@map("intelligence_rag_repositories")
+}
+
+model KnowledgeRagDocument {
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
+  repositoryId String
+  tenantId     String                     // denormalized from the repository for direct tenant-scoped queries
+  title        String
+  sourceType   String                     // MANUAL | UPLOAD | URL | SYSTEM
+  sourceRef    String?                    // e.g. original filename or URL
+  contentType  String    @default("text/plain")
+  status       String    @default("PROCESSED") // PENDING | PROCESSED | FAILED — no async pipeline yet, so PROCESSED is set synchronously by DocumentService today
+  metadata     String?                    // JSON-stringified, same convention as AuditEntry.metadata
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([repositoryId])
+  @@index([tenantId])
+  @@index([tenantId, repositoryId])
+  @@map("intelligence_rag_documents")
+}
+
+model KnowledgeRagChunk {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  documentId   String
+  repositoryId String                      // denormalized for repository-scoped search without a join
+  tenantId     String                      // denormalized for tenant-scoped search without a join
+  chunkIndex   Int                         // 0-based order within the document
+  content      String
+  tokenCount   Int?                        // approximate (word count), not a real tokenizer — see ChunkService
+  metadata     String?
+  createdAt    DateTime @default(now())
+
+  @@index([documentId])
+  @@index([tenantId, repositoryId])
+  @@map("intelligence_rag_chunks")
+}
+
 // K41 — Rule Engine. Distinct from the RecommendationRule/InsightRule/
 // DecisionRule registries (K35/K36/K38): those hold TypeScript functions
 // (code, in-memory, one global behavior). This holds DECLARATIVE rules —
@@ -2741,4 +2806,31 @@ model BillingPlan {
   @@index([isActive])
   @@index([displayOrder])
   @@map("billing_plans")
+}
+
+// ─── Billing Platform — Subscriptions ────────────────────────────────────────
+
+model BillingSubscription {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId    String
+  planId      String
+  planCode    String
+  planName    String
+  status      String    @default("TRIAL")
+  startDate   DateTime  @default(now())
+  endDate     DateTime?
+  renewalDate DateTime?
+  trialEndsAt DateTime?
+  cancelledAt DateTime?
+  graceEndsAt DateTime?
+  autoRenew   Boolean   @default(true)
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([tenantId])
+  @@index([status])
+  @@index([tenantId, status])
+  @@index([renewalDate])
+  @@map("billing_subscriptions")
 }
