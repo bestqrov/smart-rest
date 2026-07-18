@@ -2,6 +2,7 @@ import express, { Request, Response, NextFunction } from 'express'
 import multer from 'multer'
 import { v2 as cloudinary } from 'cloudinary'
 import prisma from '../prisma'
+import { isRealImage } from '../lib/fileSignature'
 
 const router = express.Router()
 
@@ -61,6 +62,11 @@ router.post(
         return res.status(400).json({ error: msg })
       }
       if (!req.file) return res.status(400).json({ error: 'No file received' })
+      // multer's fileFilter only sees the client-supplied mimetype (spoofable);
+      // the buffer isn't available until here — verify the actual bytes.
+      if (!isRealImage(req.file.buffer)) {
+        return res.status(400).json({ error: 'File is not a valid image (JPEG, PNG, GIF, or WebP)' })
+      }
       try {
         const url = await uploadToCloudinary(req.file.buffer)
         return res.json({ url })

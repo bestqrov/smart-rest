@@ -19,6 +19,7 @@ import Groq from 'groq-sdk'
 import { authorizeAdmin } from '../middleware/authorizeAdmin'
 import logger from '../logger'
 import prisma from '../prisma'
+import { isRealOfficeDoc } from '../lib/fileSignature'
 
 const router = express.Router()
 const ALLOWED_MENU_MIMES = new Set([
@@ -245,6 +246,13 @@ router.post('/api/admin/menu-gen/from-file', authorizeAdmin, upload.single('file
     let text = ''
     const mime = req.file.mimetype
     const buf  = req.file.buffer
+
+    // multer's fileFilter only sees the client-supplied mimetype/extension
+    // (both spoofable) — the buffer isn't available until here. Verify the
+    // actual bytes match what the extension claims before parsing.
+    if (!isRealOfficeDoc(buf, req.file.originalname)) {
+      return res.status(400).json({ error: 'File content does not match its extension' })
+    }
 
     if (mime === 'application/pdf' || req.file.originalname.endsWith('.pdf')) {
       const pdfParse = require('pdf-parse')
