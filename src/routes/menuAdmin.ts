@@ -186,7 +186,8 @@ router.delete('/api/admin/products/:id', authorizeAdmin, async (req: Request, re
 router.put('/api/admin/cafe/profile', authorizeAdmin, async (req: Request, res: Response) => {
   try {
     const cafeId = req.admin!.cafeId
-    const { businessName, logoUrl, socialLinks, hasSocialShareAddon, lat, lng, accentColor, primaryFont, localIp, reservationsEnabled, googleMapsUrl, tripadvisorUrl, reEngagementMessage, reEngagementDays } = req.body
+    const { businessName, logoUrl, socialLinks, hasSocialShareAddon, lat, lng, accentColor, primaryFont, localIp, reservationsEnabled, googleMapsUrl, tripadvisorUrl, reEngagementMessage, reEngagementDays, hotelServiceMode } = req.body
+    const VALID_HOTEL_MODES = ['ROOM_SERVICE', 'ON_SITE', 'BOTH']
     const cafe = await prisma.cafe.update({
       where: { id: cafeId },
       data: {
@@ -204,6 +205,7 @@ router.put('/api/admin/cafe/profile', authorizeAdmin, async (req: Request, res: 
         ...(tripadvisorUrl !== undefined && { tripadvisorUrl: tripadvisorUrl || null }),
         ...(reEngagementMessage !== undefined && { reEngagementMessage: reEngagementMessage || null }),
         ...(reEngagementDays !== undefined && { reEngagementDays: Number(reEngagementDays) }),
+        ...(hotelServiceMode !== undefined && VALID_HOTEL_MODES.includes(hotelServiceMode) && { hotelServiceMode }),
       }
     })
     await auditSettings('UPDATE_PROFILE', cafeId, req.admin!.userId, { fields: Object.keys(req.body ?? {}) })
@@ -229,7 +231,8 @@ router.get('/api/admin/cafe/profile', authorizeAdmin, async (req: Request, res: 
         accentColor: true, primaryFont: true, localIp: true,
         reservationsEnabled: true, isSmartInventoryEnabled: true,
         googleMapsUrl: true, tripadvisorUrl: true,
-        reEngagementMessage: true, reEngagementDays: true
+        reEngagementMessage: true, reEngagementDays: true,
+        businessType: true, hotelServiceMode: true
       }
     })
     return res.json(cafe)
@@ -578,10 +581,11 @@ router.get('/api/admin/onboarding/product-catalog', authorizeAdmin, async (req: 
   try {
     const country      = String(req.query.country ?? '')
     const businessType = String(req.query.businessType ?? '')
+    const hotelServiceMode = req.query.hotelServiceMode ? String(req.query.hotelServiceMode) : undefined
     if (!country || !businessType) {
       return res.status(400).json({ error: 'country and businessType query params are required' })
     }
-    const categories = getProductCatalog(country, businessType)
+    const categories = getProductCatalog(country, businessType, hotelServiceMode)
     return res.json({ categories })
   } catch (err) {
     logger.error({ msg: 'GET onboarding product-catalog error', err })
@@ -598,17 +602,18 @@ router.get('/api/admin/onboarding/product-catalog', authorizeAdmin, async (req: 
 router.post('/api/admin/onboarding/apply-product-catalog', authorizeAdmin, async (req: Request, res: Response) => {
   try {
     const cafeId = req.admin!.cafeId
-    const { country, businessType, selections } = req.body as {
+    const { country, businessType, selections, hotelServiceMode } = req.body as {
       country?:      string
       businessType?: string
       selections?:   { categoryKey: string; productKeys: string[] }[]
+      hotelServiceMode?: string
     }
 
     if (!country || !businessType || !Array.isArray(selections) || selections.length === 0) {
       return res.status(400).json({ error: 'country, businessType and at least one selection are required' })
     }
 
-    const resolved = resolveSelectedProducts(country, businessType, selections)
+    const resolved = resolveSelectedProducts(country, businessType, selections, hotelServiceMode)
     if (resolved.length === 0) {
       return res.status(400).json({ error: 'No matching catalog items for the given selections' })
     }

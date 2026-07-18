@@ -209,6 +209,15 @@ model Cafe {
   tier                String        @default("CAFE")
   // 'RESTAURANT' = daily restaurant/cafe mode | 'TRAITEUR' = events & catering mode
   accountMode         String        @default("RESTAURANT")
+  // Persists the type chosen at signup (RESTAURANT|CAFE|TRAITEUR|PASTRY|FOOD_TRUCK|HOTEL)
+  // — previously captured at signup but discarded, forcing onboarding to
+  // re-ask and default back to CAFE every time. See src/onboarding/ProductCatalog.ts.
+  businessType        String        @default("RESTAURANT")
+  // Only meaningful when businessType === 'HOTEL': does this hotel want an
+  // in-room ordering menu, an on-site restaurant/cafe menu, or both — drives
+  // which starter categories getProductCatalog() offers. Null for every
+  // other businessType.
+  hotelServiceMode    String?
   // Smart WiFi — optional embedded config (null = feature not configured)
   smartWifi           SmartWifi?
 

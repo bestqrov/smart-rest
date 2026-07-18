@@ -219,18 +219,73 @@ const MOROCCO_TRAITEUR: CatalogCategory[] = [
   },
 ]
 
-const MOROCCO_HOTEL: CatalogCategory[] = [
+// Hotel menus split by service mode (src/routes/auth.ts's Cafe.hotelServiceMode):
+// ROOM_SERVICE = in-room ordering only, ON_SITE = hotel's own restaurant/café/bar,
+// BOTH (or unset, for legacy accounts) = the union of the two. Distinct from
+// MOROCCO_RESTAURANT/MOROCCO_CAFE — a hotel guest menu needs its own framing
+// (in-room dining hours, minibar, late-night) even where dish names overlap.
+const MOROCCO_HOTEL_ROOM_SERVICE: CatalogCategory[] = [
   {
-    key: 'room-service', icon: '🛎️', nameAr: 'خدمة الغرف', nameFr: 'Room service', nameEn: 'Room service',
+    key: 'room-service-breakfast', icon: '🥐', nameAr: 'فطور الغرف', nameFr: 'Petit-déjeuner en chambre', nameEn: 'In-room breakfast',
     products: [
-      { key: 'petit-dej-continental', nameAr: 'فطور قاري', nameFr: 'Petit-déjeuner continental', nameEn: 'Continental breakfast', suggestedPrice: 80 },
-      { key: 'club-sandwich', nameAr: 'كلوب ساندويتش', nameFr: 'Club sandwich', nameEn: 'Club sandwich', suggestedPrice: 60 },
+      { key: 'petit-dej-continental', nameAr: 'فطور قاري', nameFr: 'Petit-déjeuner continental', nameEn: 'Continental breakfast', suggestedPrice: 90 },
+      { key: 'petit-dej-marocain', nameAr: 'فطور مغربي كامل', nameFr: 'Petit-déjeuner marocain complet', nameEn: 'Full Moroccan breakfast', suggestedPrice: 110 },
+      { key: 'petit-dej-anglais', nameAr: 'فطور إنجليزي', nameFr: 'Petit-déjeuner anglais', nameEn: 'English breakfast', suggestedPrice: 130 },
+      { key: 'oeufs-choix', nameAr: 'بيض حسب الاختيار (أومليت / مسلوق / مقلي)', nameFr: 'Œufs au choix (omelette / à la coque / au plat)', nameEn: 'Eggs your way (omelette / boiled / fried)', suggestedPrice: 60 },
+      { key: 'viennoiserie-panier', nameAr: 'سلة معجنات', nameFr: 'Panier de viennoiseries', nameEn: 'Pastry basket', suggestedPrice: 45 },
+      { key: 'fruits-frais', nameAr: 'صحن فواكه طازجة', nameFr: 'Assiette de fruits frais', nameEn: 'Fresh fruit plate', suggestedPrice: 50 },
     ],
   },
-  { key: 'hot-drinks', ...MOROCCO_CAFE[0]! },
-  { key: 'cold-drinks', ...MOROCCO_CAFE[1]! },
-  { key: 'mains', ...MOROCCO_RESTAURANT[1]! },
+  {
+    key: 'room-service-all-day', icon: '🍽️', nameAr: 'قائمة اليوم كامل بالغرفة', nameFr: 'Carte all-day dining', nameEn: 'All-day in-room dining',
+    products: [
+      { key: 'club-sandwich', nameAr: 'كلوب ساندويتش', nameFr: 'Club sandwich', nameEn: 'Club sandwich', suggestedPrice: 90 },
+      { key: 'salade-cesar-chambre', nameAr: 'سلطة سيزار', nameFr: 'Salade César', nameEn: 'Caesar salad', suggestedPrice: 85 },
+      { key: 'burger-chambre', nameAr: 'برجر شيف', nameFr: "Burger de l'hôtel", nameEn: "House burger", suggestedPrice: 110 },
+      { key: 'pates-chambre', nameAr: 'باستا (بولونيز / أربياتا)', nameFr: 'Pâtes (bolognaise / arrabiata)', nameEn: 'Pasta (bolognese / arrabbiata)', suggestedPrice: 95 },
+      { key: 'tajine-chambre', nameAr: 'طاجين دجاج بالزيتون', nameFr: 'Tajine de poulet aux olives', nameEn: 'Chicken tajine with olives', suggestedPrice: 120 },
+      { key: 'soupe-du-jour', nameAr: 'شوربة اليوم', nameFr: 'Soupe du jour', nameEn: 'Soup of the day', suggestedPrice: 55 },
+    ],
+  },
+  {
+    key: 'minibar-snacks', icon: '🍫', nameAr: 'ميني بار وسناكس', nameFr: 'Minibar & en-cas', nameEn: 'Minibar & snacks',
+    products: [
+      { key: 'chips-minibar', nameAr: 'شيبس', nameFr: 'Chips', nameEn: 'Chips', suggestedPrice: 30 },
+      { key: 'chocolat-minibar', nameAr: 'شوكولاطة', nameFr: 'Barre chocolatée', nameEn: 'Chocolate bar', suggestedPrice: 35 },
+      { key: 'noix-minibar', nameAr: 'مكسرات مشكلة', nameFr: 'Mélange de noix', nameEn: 'Mixed nuts', suggestedPrice: 40 },
+      { key: 'eau-minerale', nameAr: 'ماء معدني', nameFr: 'Eau minérale', nameEn: 'Mineral water', suggestedPrice: 20 },
+      { key: 'soda-minibar', nameAr: 'مشروب غازي', nameFr: 'Soda', nameEn: 'Soft drink', suggestedPrice: 25 },
+      { key: 'biere-minibar', nameAr: 'جعة', nameFr: 'Bière', nameEn: 'Beer', suggestedPrice: 50 },
+    ],
+  },
+  {
+    key: 'late-night', icon: '🌙', nameAr: 'قائمة الليل', nameFr: 'Carte de nuit', nameEn: 'Late-night menu',
+    products: [
+      { key: 'sandwich-nuit', nameAr: 'سندويش سريع', nameFr: 'Sandwich rapide', nameEn: 'Quick sandwich', suggestedPrice: 70 },
+      { key: 'soupe-nuit', nameAr: 'حريرة ساخنة', nameFr: 'Harira chaude', nameEn: 'Hot harira soup', suggestedPrice: 45 },
+      { key: 'the-tisane-nuit', nameAr: 'أتاي / أعشاب', nameFr: 'Thé / tisane', nameEn: 'Tea / herbal infusion', suggestedPrice: 25 },
+    ],
+  },
 ]
+
+const MOROCCO_HOTEL_ON_SITE: CatalogCategory[] = [
+  { key: 'hotel-hot-drinks', ...MOROCCO_CAFE[0]! },
+  { key: 'hotel-cold-drinks', ...MOROCCO_CAFE[1]! },
+  { key: 'hotel-starters', ...MOROCCO_RESTAURANT[0]! },
+  { key: 'hotel-mains', ...MOROCCO_RESTAURANT[1]! },
+  { key: 'hotel-desserts', ...MOROCCO_RESTAURANT[3]! },
+  {
+    key: 'hotel-bar', icon: '🍸', nameAr: 'بار الفندق', nameFr: 'Bar de l\'hôtel', nameEn: 'Hotel bar',
+    products: [
+      { key: 'cocktail-sans-alcool', nameAr: 'كوكتيل بدون كحول', nameFr: 'Cocktail sans alcool', nameEn: 'Mocktail', suggestedPrice: 60 },
+      { key: 'biere-bar', nameAr: 'جعة', nameFr: 'Bière', nameEn: 'Beer', suggestedPrice: 55 },
+      { key: 'vin-verre', nameAr: 'كأس نبيذ', nameFr: 'Verre de vin', nameEn: 'Glass of wine', suggestedPrice: 70 },
+      { key: 'jus-frais-bar', nameAr: 'عصير طازج', nameFr: 'Jus frais', nameEn: 'Fresh juice', suggestedPrice: 35 },
+    ],
+  },
+]
+
+const MOROCCO_HOTEL: CatalogCategory[] = [...MOROCCO_HOTEL_ROOM_SERVICE, ...MOROCCO_HOTEL_ON_SITE]
 
 const CATALOGS: Record<string, Partial<Record<OnboardingBusinessType, CatalogCategory[]>>> = {
   MA: {
@@ -243,8 +298,25 @@ const CATALOGS: Record<string, Partial<Record<OnboardingBusinessType, CatalogCat
   },
 }
 
-export function getProductCatalog(country: string, businessType: string): CatalogCategory[] {
-  const countryCatalog = CATALOGS[country.trim().toUpperCase()]
+const HOTEL_CATALOGS_BY_MODE: Record<string, Record<string, CatalogCategory[]>> = {
+  MA: {
+    ROOM_SERVICE: MOROCCO_HOTEL_ROOM_SERVICE,
+    ON_SITE:      MOROCCO_HOTEL_ON_SITE,
+    BOTH:         MOROCCO_HOTEL,
+  },
+}
+
+// hotelServiceMode ('ROOM_SERVICE' | 'ON_SITE' | 'BOTH') narrows the Hotel
+// catalog to only the categories relevant to how the hotel actually
+// operates — undefined/unrecognised falls back to the full combined list
+// (legacy accounts created before hotelServiceMode existed).
+export function getProductCatalog(country: string, businessType: string, hotelServiceMode?: string): CatalogCategory[] {
+  const countryCode = country.trim().toUpperCase()
+  if (businessType === 'HOTEL' && hotelServiceMode) {
+    const modeCatalog = HOTEL_CATALOGS_BY_MODE[countryCode]?.[hotelServiceMode]
+    if (modeCatalog) return modeCatalog
+  }
+  const countryCatalog = CATALOGS[countryCode]
   if (!countryCatalog) return []
   return countryCatalog[businessType as OnboardingBusinessType] ?? []
 }
@@ -258,9 +330,9 @@ export function hasProductCatalog(country: string, businessType: string): boolea
 // never trusts client-supplied names/prices for onboarding-created menu
 // items.
 export function resolveSelectedProducts(
-  country: string, businessType: string, selections: { categoryKey: string; productKeys: string[] }[],
+  country: string, businessType: string, selections: { categoryKey: string; productKeys: string[] }[], hotelServiceMode?: string,
 ): { category: CatalogCategory; products: CatalogProduct[] }[] {
-  const catalog = getProductCatalog(country, businessType)
+  const catalog = getProductCatalog(country, businessType, hotelServiceMode)
   const resolved: { category: CatalogCategory; products: CatalogProduct[] }[] = []
 
   for (const selection of selections) {
