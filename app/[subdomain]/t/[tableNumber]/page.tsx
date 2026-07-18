@@ -450,6 +450,10 @@ function TablePageInner() {
   const [optInDone,   setOptInDone]   = useState(false)
   const [userPhoto,       setUserPhoto]       = useState<string | null>(null)
   const [selectedShareImg, setSelectedShareImg] = useState<string | null>(null)
+  // Tracks which flow opened the review sheet: the post-order opt-in prompt
+  // (too early to ask for payment — food hasn't arrived yet) vs. the
+  // post-share prompt (after DELIVERED, correct time to move to payment).
+  const [reviewSource, setReviewSource] = useState<'share' | 'optin' | null>(null)
   const [cafeShare,   setCafeShare]   = useState<{
     socialLinks: Record<string, string> | null
     hasSocialShareAddon: boolean
@@ -747,11 +751,11 @@ function TablePageInner() {
       localStorage.setItem('sm_optin_asked', '1')
       setTimeout(() => {
         setShowOptIn(false)
-        if (cafeShare.googleMapsUrl || cafeShare.tripadvisorUrl) setShowReview(true)
+        if (cafeShare.googleMapsUrl || cafeShare.tripadvisorUrl) { setReviewSource('optin'); setShowReview(true) }
       }, 1800)
     } catch {
       setShowOptIn(false)
-      if (cafeShare.googleMapsUrl || cafeShare.tripadvisorUrl) setShowReview(true)
+      if (cafeShare.googleMapsUrl || cafeShare.tripadvisorUrl) { setReviewSource('optin'); setShowReview(true) }
     } finally {
       setOptInSending(false)
     }
@@ -760,7 +764,7 @@ function TablePageInner() {
   function dismissOptIn() {
     localStorage.setItem('sm_optin_asked', '1')
     setShowOptIn(false)
-    if (cafeShare.googleMapsUrl || cafeShare.tripadvisorUrl) setShowReview(true)
+    if (cafeShare.googleMapsUrl || cafeShare.tripadvisorUrl) { setReviewSource('optin'); setShowReview(true) }
   }
 
   // ── Waiter call ───────────────────────────────────────────────────────────
@@ -932,7 +936,33 @@ function TablePageInner() {
     })
   }
 
+  // Closes the review prompt. Only advances to the payment/bill-request
+  // sheet when this review was opened from the post-share (post-delivery)
+  // flow — the post-order opt-in flow also opens this same sheet, much
+  // earlier, before the food has even arrived, so it must not jump to
+  // payment.
+  function closeReview() {
+    setShowReview(false)
+    if (reviewSource === 'share') setShowPayment(true)
+    setReviewSource(null)
+  }
+
+  // Closes the share sheet and moves the customer to the next step: the
+  // Google/Tripadvisor review prompt if the cafe has review links
+  // configured, otherwise straight to the payment/bill-request sheet.
+  function advanceAfterShare() {
+    setShowShare(false)
+    setSelectedShareImg(null)
+    if (cafeShare.googleMapsUrl || cafeShare.tripadvisorUrl) {
+      setReviewSource('share')
+      setShowReview(true)
+    } else {
+      setShowPayment(true)
+    }
+  }
+
   async function handleShare() {
+    let shared = false
     try {
       // Priority: user-taken photo → selected menu image → text only
       const photoSrc = userPhoto ?? selectedShareImg ?? null
@@ -945,15 +975,23 @@ function TablePageInner() {
         const file = new File([blob], 'smartrestau-dish.jpg', { type: 'image/jpeg' })
         if (typeof navigator !== 'undefined' && navigator.canShare?.({ files: [file] })) {
           await navigator.share({ title: scan?.cafeName ?? 'Smart Resto', text: shareText, files: [file] })
-          return
+          shared = true
         }
       }
-      if (typeof navigator !== 'undefined' && navigator.share) {
-        await navigator.share({ title: scan?.cafeName ?? 'Smart Resto', text: shareText })
-      } else {
-        await navigator.clipboard.writeText(shareText)
+      if (!shared) {
+        if (typeof navigator !== 'undefined' && navigator.share) {
+          await navigator.share({ title: scan?.cafeName ?? 'Smart Resto', text: shareText })
+        } else {
+          await navigator.clipboard.writeText(shareText)
+        }
+        shared = true
       }
-    } catch {}
+    } catch (err: any) {
+      // The user cancelling the native share sheet throws AbortError — not a
+      // failure, just let them try again without advancing the flow.
+      if (err?.name === 'AbortError') return
+    }
+    if (shared) advanceAfterShare()
   }
 
   function handleCameraInput(e: React.ChangeEvent<HTMLInputElement>) {
@@ -1687,12 +1725,12 @@ function TablePageInner() {
         )}
       </AnimatePresence>
 
-      {/* ── Review prompt — shown after WhatsApp opt-in ── */}
+      {/* ── Review prompt — shown after WhatsApp opt-in, or after sharing (post-delivery) ── */}
       <AnimatePresence>
         {showReview && (
           <>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 bg-black/60" onClick={() => setShowReview(false)} />
+              className="fixed inset-0 z-50 bg-black/60" onClick={closeReview} />
             <motion.div
               initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 28, stiffness: 260 }}
@@ -1712,7 +1750,7 @@ function TablePageInner() {
               <div className="space-y-3 mb-4">
                 {cafeShare.googleMapsUrl && (
                   <a href={cafeShare.googleMapsUrl} target="_blank" rel="noopener noreferrer"
-                    onClick={() => setShowReview(false)}
+                    onClick={closeReview}
                     className="flex items-center justify-center gap-3 w-full py-4 rounded-2xl bg-white text-gray-800 font-bold text-sm active:scale-95 transition-all shadow-lg">
                     <svg width="20" height="20" viewBox="0 0 48 48" fill="none">
                       <path d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 7.9 2.9l5.7-5.7C34.5 6.5 29.5 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.2-.1-2.5-.4-3.5z" fill="#FFC107"/>
@@ -1725,14 +1763,14 @@ function TablePageInner() {
                 )}
                 {cafeShare.tripadvisorUrl && (
                   <a href={cafeShare.tripadvisorUrl} target="_blank" rel="noopener noreferrer"
-                    onClick={() => setShowReview(false)}
+                    onClick={closeReview}
                     className="flex items-center justify-center gap-3 w-full py-4 rounded-2xl bg-[#34e0a1] text-gray-900 font-bold text-sm active:scale-95 transition-all shadow-lg">
                     <span className="text-xl">🦉</span>
                     {lang === 'ar' ? 'قيّمنا على Tripadvisor' : lang === 'fr' ? 'Nous noter sur Tripadvisor' : 'Rate us on Tripadvisor'}
                   </a>
                 )}
               </div>
-              <button onClick={() => setShowReview(false)}
+              <button onClick={closeReview}
                 className="w-full py-3 rounded-xl bg-gray-800 text-gray-400 font-bold text-sm active:scale-95 transition-all">
                 {lang === 'ar' ? 'لاحقاً' : lang === 'fr' ? 'Plus tard' : 'Maybe later'}
               </button>
@@ -1865,6 +1903,7 @@ function TablePageInner() {
                   📤 {lang === 'ar' ? 'شارك مع أصدقائك' : lang === 'fr' ? 'Partager avec des amis' : 'Share with friends'}
                 </button>
                 <a href={`https://wa.me/?text=${encodeURIComponent(shareText)}`} target="_blank" rel="noreferrer"
+                  onClick={advanceAfterShare}
                   className="w-full bg-[#25D366] active:scale-95 text-white font-bold py-3 rounded-2xl flex items-center justify-center gap-2 text-sm">
                   💬 WhatsApp
                 </a>
