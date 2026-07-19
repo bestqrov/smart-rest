@@ -649,6 +649,276 @@ router.delete('/api/traiteur/events/:id/services/:serviceId', authorizeAdmin, as
   }
 })
 
+// ─── Payments (installment schedule) ──────────────────────────────────────────
+
+router.get('/api/traiteur/events/:id/payments', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const { cafeId } = req.admin!
+    const eventId    = req.params.id as string
+
+    const event = await prisma.event.findUnique({ where: { id: eventId }, select: { cafeId: true } })
+    if (!event || event.cafeId !== cafeId) return res.status(404).json({ error: 'Event not found' })
+
+    const payments = await prisma.eventPayment.findMany({
+      where:   { eventId },
+      orderBy: { createdAt: 'asc' }
+    })
+    return res.json(payments)
+  } catch (err) {
+    logger.error({ msg: 'GET event payments error', err })
+    return res.status(500).json({ error: 'Failed to fetch payments' })
+  }
+})
+
+router.post('/api/traiteur/events/:id/payments', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const { cafeId } = req.admin!
+    const eventId    = req.params.id as string
+
+    const event = await prisma.event.findUnique({ where: { id: eventId }, select: { cafeId: true } })
+    if (!event || event.cafeId !== cafeId) return res.status(404).json({ error: 'Event not found' })
+
+    const { label, amount, dueDate, method } = req.body as {
+      label: string; amount: number; dueDate?: string; method?: string
+    }
+
+    if (!label?.trim())            return res.status(400).json({ error: 'label is required' })
+    if (typeof amount !== 'number' || amount <= 0) return res.status(400).json({ error: 'amount must be a positive number' })
+
+    const payment = await prisma.eventPayment.create({
+      data: {
+        cafeId, eventId,
+        label:   label.trim(),
+        amount,
+        dueDate: dueDate ? new Date(dueDate) : undefined,
+        method:  method ?? '',
+      }
+    })
+    return res.status(201).json(payment)
+  } catch (err) {
+    logger.error({ msg: 'POST event payment error', err })
+    return res.status(500).json({ error: 'Failed to add payment' })
+  }
+})
+
+router.patch('/api/traiteur/events/:id/payments/:paymentId', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const { cafeId }  = req.admin!
+    const paymentId   = req.params.paymentId as string
+
+    const payment = await prisma.eventPayment.findUnique({ where: { id: paymentId }, select: { cafeId: true } })
+    if (!payment || payment.cafeId !== cafeId) return res.status(404).json({ error: 'Payment not found' })
+
+    const { label, amount, dueDate, method, status, markPaid } = req.body as {
+      label?: string; amount?: number; dueDate?: string | null; method?: string; status?: string; markPaid?: boolean
+    }
+
+    const VALID_STATUS = ['PENDING', 'PAID']
+
+    const updated = await prisma.eventPayment.update({
+      where: { id: paymentId },
+      data: {
+        ...(label   !== undefined ? { label: label.trim() } : {}),
+        ...(amount  !== undefined ? { amount } : {}),
+        ...(dueDate !== undefined ? { dueDate: dueDate ? new Date(dueDate) : null } : {}),
+        ...(method  !== undefined ? { method } : {}),
+        ...(status  !== undefined && VALID_STATUS.includes(status) ? { status } : {}),
+        ...(markPaid ? { status: 'PAID', paidDate: new Date() } : {}),
+      }
+    })
+    return res.json(updated)
+  } catch (err) {
+    logger.error({ msg: 'PATCH event payment error', err })
+    return res.status(500).json({ error: 'Failed to update payment' })
+  }
+})
+
+router.delete('/api/traiteur/events/:id/payments/:paymentId', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const { cafeId }  = req.admin!
+    const paymentId   = req.params.paymentId as string
+
+    const payment = await prisma.eventPayment.findUnique({ where: { id: paymentId }, select: { cafeId: true } })
+    if (!payment || payment.cafeId !== cafeId) return res.status(404).json({ error: 'Payment not found' })
+
+    await prisma.eventPayment.delete({ where: { id: paymentId } })
+    return res.json({ ok: true })
+  } catch (err) {
+    logger.error({ msg: 'DELETE event payment error', err })
+    return res.status(500).json({ error: 'Failed to delete payment' })
+  }
+})
+
+// ─── Tasks (checklist / timeline) ─────────────────────────────────────────────
+
+router.get('/api/traiteur/events/:id/tasks', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const { cafeId } = req.admin!
+    const eventId    = req.params.id as string
+
+    const event = await prisma.event.findUnique({ where: { id: eventId }, select: { cafeId: true } })
+    if (!event || event.cafeId !== cafeId) return res.status(404).json({ error: 'Event not found' })
+
+    const tasks = await prisma.eventTask.findMany({
+      where:   { eventId },
+      orderBy: [{ done: 'asc' }, { dueDate: 'asc' }, { order: 'asc' }]
+    })
+    return res.json(tasks)
+  } catch (err) {
+    logger.error({ msg: 'GET event tasks error', err })
+    return res.status(500).json({ error: 'Failed to fetch tasks' })
+  }
+})
+
+router.post('/api/traiteur/events/:id/tasks', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const { cafeId } = req.admin!
+    const eventId    = req.params.id as string
+
+    const event = await prisma.event.findUnique({ where: { id: eventId }, select: { cafeId: true } })
+    if (!event || event.cafeId !== cafeId) return res.status(404).json({ error: 'Event not found' })
+
+    const { title, dueDate } = req.body as { title: string; dueDate?: string }
+    if (!title?.trim()) return res.status(400).json({ error: 'title is required' })
+
+    const task = await prisma.eventTask.create({
+      data: { cafeId, eventId, title: title.trim(), dueDate: dueDate ? new Date(dueDate) : undefined }
+    })
+    return res.status(201).json(task)
+  } catch (err) {
+    logger.error({ msg: 'POST event task error', err })
+    return res.status(500).json({ error: 'Failed to add task' })
+  }
+})
+
+router.patch('/api/traiteur/events/:id/tasks/:taskId', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const { cafeId } = req.admin!
+    const taskId     = req.params.taskId as string
+
+    const task = await prisma.eventTask.findUnique({ where: { id: taskId }, select: { cafeId: true } })
+    if (!task || task.cafeId !== cafeId) return res.status(404).json({ error: 'Task not found' })
+
+    const { title, dueDate, done } = req.body as { title?: string; dueDate?: string | null; done?: boolean }
+
+    const updated = await prisma.eventTask.update({
+      where: { id: taskId },
+      data: {
+        ...(title   !== undefined ? { title: title.trim() } : {}),
+        ...(dueDate !== undefined ? { dueDate: dueDate ? new Date(dueDate) : null } : {}),
+        ...(done    !== undefined ? { done, doneAt: done ? new Date() : null } : {}),
+      }
+    })
+    return res.json(updated)
+  } catch (err) {
+    logger.error({ msg: 'PATCH event task error', err })
+    return res.status(500).json({ error: 'Failed to update task' })
+  }
+})
+
+router.delete('/api/traiteur/events/:id/tasks/:taskId', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const { cafeId } = req.admin!
+    const taskId     = req.params.taskId as string
+
+    const task = await prisma.eventTask.findUnique({ where: { id: taskId }, select: { cafeId: true } })
+    if (!task || task.cafeId !== cafeId) return res.status(404).json({ error: 'Task not found' })
+
+    await prisma.eventTask.delete({ where: { id: taskId } })
+    return res.json({ ok: true })
+  } catch (err) {
+    logger.error({ msg: 'DELETE event task error', err })
+    return res.status(500).json({ error: 'Failed to delete task' })
+  }
+})
+
+// ─── Staff assignment ──────────────────────────────────────────────────────────
+
+router.get('/api/traiteur/events/:id/staff', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const { cafeId } = req.admin!
+    const eventId    = req.params.id as string
+
+    const event = await prisma.event.findUnique({ where: { id: eventId }, select: { cafeId: true } })
+    if (!event || event.cafeId !== cafeId) return res.status(404).json({ error: 'Event not found' })
+
+    const assignments = await prisma.eventStaffAssignment.findMany({
+      where:   { eventId },
+      orderBy: { createdAt: 'asc' },
+      include: { staff: { select: { id: true, name: true, role: true } } }
+    })
+    return res.json(assignments)
+  } catch (err) {
+    logger.error({ msg: 'GET event staff error', err })
+    return res.status(500).json({ error: 'Failed to fetch staff assignments' })
+  }
+})
+
+// GET /api/traiteur/events/:id/staff/available — cafe staff not yet assigned to this event
+router.get('/api/traiteur/events/:id/staff/available', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const { cafeId } = req.admin!
+    const eventId    = req.params.id as string
+
+    const event = await prisma.event.findUnique({ where: { id: eventId }, select: { cafeId: true } })
+    if (!event || event.cafeId !== cafeId) return res.status(404).json({ error: 'Event not found' })
+
+    const [allStaff, assigned] = await Promise.all([
+      prisma.staff.findMany({ where: { cafeId, isActive: true }, select: { id: true, name: true, role: true } }),
+      prisma.eventStaffAssignment.findMany({ where: { eventId }, select: { staffId: true } }),
+    ])
+    const assignedIds = new Set(assigned.map(a => a.staffId))
+    return res.json(allStaff.filter(s => !assignedIds.has(s.id)))
+  } catch (err) {
+    logger.error({ msg: 'GET available staff error', err })
+    return res.status(500).json({ error: 'Failed to fetch available staff' })
+  }
+})
+
+router.post('/api/traiteur/events/:id/staff', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const { cafeId } = req.admin!
+    const eventId    = req.params.id as string
+
+    const event = await prisma.event.findUnique({ where: { id: eventId }, select: { cafeId: true } })
+    if (!event || event.cafeId !== cafeId) return res.status(404).json({ error: 'Event not found' })
+
+    const { staffId, role, notes } = req.body as { staffId: string; role?: string; notes?: string }
+    if (!staffId) return res.status(400).json({ error: 'staffId is required' })
+
+    const staff = await prisma.staff.findUnique({ where: { id: staffId }, select: { cafeId: true } })
+    if (!staff || staff.cafeId !== cafeId) return res.status(404).json({ error: 'Staff member not found' })
+
+    const existing = await prisma.eventStaffAssignment.findFirst({ where: { eventId, staffId } })
+    if (existing) return res.status(409).json({ error: 'Staff member already assigned to this event' })
+
+    const assignment = await prisma.eventStaffAssignment.create({
+      data: { cafeId, eventId, staffId, role: role ?? '', notes: notes ?? '' },
+      include: { staff: { select: { id: true, name: true, role: true } } }
+    })
+    return res.status(201).json(assignment)
+  } catch (err) {
+    logger.error({ msg: 'POST event staff error', err })
+    return res.status(500).json({ error: 'Failed to assign staff' })
+  }
+})
+
+router.delete('/api/traiteur/events/:id/staff/:assignmentId', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const { cafeId }    = req.admin!
+    const assignmentId  = req.params.assignmentId as string
+
+    const assignment = await prisma.eventStaffAssignment.findUnique({ where: { id: assignmentId }, select: { cafeId: true } })
+    if (!assignment || assignment.cafeId !== cafeId) return res.status(404).json({ error: 'Assignment not found' })
+
+    await prisma.eventStaffAssignment.delete({ where: { id: assignmentId } })
+    return res.json({ ok: true })
+  } catch (err) {
+    logger.error({ msg: 'DELETE event staff error', err })
+    return res.status(500).json({ error: 'Failed to remove staff assignment' })
+  }
+})
+
 // ─── GET /api/traiteur/events/:id/cards — generate QR card URLs ──────────────
 // Returns the full list of guests with their QR URL for the admin print page.
 

@@ -335,6 +335,9 @@ model Cafe {
   guests             Guest[]
   eventMenuItems     EventMenuItem[]
   eventServices      EventService[]
+  eventPayments      EventPayment[]
+  eventTasks         EventTask[]
+  eventStaffAssignments EventStaffAssignment[]
   loyaltyAccounts    LoyaltyAccount[]
   loyaltyRewards     LoyaltyReward[]
   // Smart Inventory module relations
@@ -773,6 +776,7 @@ model Staff {
   assignedTables Table[]       @relation("TableWaiterAssignment")
   cashierShifts  CashierShift[]
   waiterShifts   WaiterShift[]
+  eventAssignments EventStaffAssignment[]
 
   @@index([cafeId])
   @@index([role])
@@ -1462,6 +1466,9 @@ model Event {
   guests      Guest[]
   menuItems   EventMenuItem[]
   services    EventService[]
+  payments    EventPayment[]
+  tasks       EventTask[]
+  staffAssignments EventStaffAssignment[]
 
   @@index([cafeId])
   @@index([status])
@@ -1503,6 +1510,64 @@ model EventService {
 
   @@index([cafeId])
   @@index([eventId])
+}
+
+model EventPayment {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId    String   @db.ObjectId
+  cafe      Cafe     @relation(fields: [cafeId], references: [id])
+  eventId   String   @db.ObjectId
+  event     Event    @relation(fields: [eventId], references: [id])
+
+  label   String            // e.g. "عربون", "دفعة وسطى", "الباقي يوم الحفل" — free text
+  amount  Float
+  dueDate  DateTime?
+  paidDate DateTime?
+  method   String  @default("")   // CASH | TRANSFER | CARD | ... free text
+  status   String  @default("PENDING")   // PENDING | PAID
+
+  createdAt DateTime @default(now())
+
+  @@index([cafeId])
+  @@index([eventId])
+}
+
+model EventTask {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId    String   @db.ObjectId
+  cafe      Cafe     @relation(fields: [cafeId], references: [id])
+  eventId   String   @db.ObjectId
+  event     Event    @relation(fields: [eventId], references: [id])
+
+  title   String
+  dueDate DateTime?
+  done    Boolean  @default(false)
+  doneAt  DateTime?
+  order   Int      @default(0)
+
+  createdAt DateTime @default(now())
+
+  @@index([cafeId])
+  @@index([eventId])
+}
+
+model EventStaffAssignment {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId    String   @db.ObjectId
+  cafe      Cafe     @relation(fields: [cafeId], references: [id])
+  eventId   String   @db.ObjectId
+  event     Event    @relation(fields: [eventId], references: [id])
+  staffId   String   @db.ObjectId
+  staff     Staff    @relation(fields: [staffId], references: [id])
+
+  role  String  @default("")   // free-text role for this event (e.g. "Serveur", "Chef")
+  notes String  @default("")
+
+  createdAt DateTime @default(now())
+
+  @@index([cafeId])
+  @@index([eventId])
+  @@index([staffId])
 }
 
 model Guest {

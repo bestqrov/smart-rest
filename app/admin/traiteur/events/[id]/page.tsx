@@ -55,6 +55,21 @@ type EventServiceRow = {
   cost: number | null; status: string
 }
 
+type PaymentRow = {
+  id: string; label: string; amount: number
+  dueDate: string | null; paidDate: string | null; method: string; status: string
+}
+
+type TaskRow = {
+  id: string; title: string; dueDate: string | null; done: boolean; doneAt: string | null
+}
+
+type StaffAssignmentRow = {
+  id: string; role: string; notes: string
+  staff: { id: string; name: string; role: string }
+}
+type AvailableStaff = { id: string; name: string; role: string }
+
 const SERVICE_STATUS = [
   { value: 'NEEDED',    label: 'مطلوب',  color: 'bg-amber-50 text-amber-700 border-amber-200' },
   { value: 'CONFIRMED', label: 'مؤكد',   color: 'bg-blue-50 text-blue-700 border-blue-200' },
@@ -112,7 +127,7 @@ export default function EventDetailPage() {
   const [cards,    setCards]    = useState<Card[]>([])
   const [qrImages, setQrImages] = useState<Record<string, string>>({})
   const [loading,  setLoading]  = useState(true)
-  const [tab,      setTab]      = useState<'guests' | 'menu' | 'services' | 'cards' | 'finance'>('guests')
+  const [tab,      setTab]      = useState<'guests' | 'menu' | 'services' | 'payments' | 'tasks' | 'staff' | 'cards' | 'finance'>('guests')
 
   // event menu package
   const [menu,          setMenu]          = useState<EventMenu | null>(null)
@@ -131,6 +146,26 @@ export default function EventDetailPage() {
   const [newSvcVendor,   setNewSvcVendor]   = useState('')
   const [newSvcCost,     setNewSvcCost]     = useState('')
   const [addingSvc,      setAddingSvc]      = useState(false)
+
+  // payments (installments)
+  const [payments,      setPayments]      = useState<PaymentRow[] | null>(null)
+  const [newPayLabel,   setNewPayLabel]   = useState('')
+  const [newPayAmount,  setNewPayAmount]  = useState('')
+  const [newPayDue,     setNewPayDue]     = useState('')
+  const [addingPay,     setAddingPay]     = useState(false)
+
+  // tasks (checklist)
+  const [tasks,         setTasks]         = useState<TaskRow[] | null>(null)
+  const [newTaskTitle,  setNewTaskTitle]  = useState('')
+  const [newTaskDue,    setNewTaskDue]    = useState('')
+  const [addingTask,    setAddingTask]    = useState(false)
+
+  // staff assignment
+  const [staffList,       setStaffList]       = useState<StaffAssignmentRow[] | null>(null)
+  const [availableStaff,  setAvailableStaff]  = useState<AvailableStaff[]>([])
+  const [pickStaffId,     setPickStaffId]     = useState('')
+  const [pickStaffRole,   setPickStaffRole]   = useState('')
+  const [assigningStaff,  setAssigningStaff]  = useState(false)
 
   // add guest form
   const [showAddGuest,   setShowAddGuest]   = useState(false)
@@ -208,12 +243,108 @@ export default function EventDetailPage() {
     if (r.ok) setServices(await r.json())
   }
 
+  async function loadPayments() {
+    const r = await fetch(`/api/traiteur/events/${id}/payments`, { headers: auth() })
+    if (r.ok) setPayments(await r.json())
+  }
+
+  async function loadTasks() {
+    const r = await fetch(`/api/traiteur/events/${id}/tasks`, { headers: auth() })
+    if (r.ok) setTasks(await r.json())
+  }
+
+  async function loadStaff() {
+    const [r1, r2] = await Promise.all([
+      fetch(`/api/traiteur/events/${id}/staff`, { headers: auth() }),
+      fetch(`/api/traiteur/events/${id}/staff/available`, { headers: auth() }),
+    ])
+    if (r1.ok) setStaffList(await r1.json())
+    if (r2.ok) setAvailableStaff(await r2.json())
+  }
+
   useEffect(() => { load() }, [id])
   useEffect(() => {
     if (tab === 'cards' && cards.length === 0) loadCards()
     if (tab === 'menu' && menu === null) loadMenu()
     if (tab === 'services' && services === null) loadServices()
+    if (tab === 'payments' && payments === null) loadPayments()
+    if (tab === 'tasks' && tasks === null) loadTasks()
+    if (tab === 'staff' && staffList === null) loadStaff()
   }, [tab])
+
+  async function addPayment() {
+    if (!newPayLabel.trim() || !newPayAmount.trim()) return
+    setAddingPay(true)
+    const r = await fetch(`/api/traiteur/events/${id}/payments`, {
+      method: 'POST',
+      headers: { ...auth(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        label:  newPayLabel.trim(),
+        amount: Number(newPayAmount),
+        dueDate: newPayDue || undefined,
+      })
+    })
+    if (r.ok) { await loadPayments(); setNewPayLabel(''); setNewPayAmount(''); setNewPayDue('') }
+    setAddingPay(false)
+  }
+
+  async function markPaymentPaid(paymentId: string) {
+    await fetch(`/api/traiteur/events/${id}/payments/${paymentId}`, {
+      method: 'PATCH',
+      headers: { ...auth(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ markPaid: true })
+    })
+    await loadPayments()
+  }
+
+  async function deletePayment(paymentId: string) {
+    if (!confirm('حذف هاد الدفعة؟')) return
+    await fetch(`/api/traiteur/events/${id}/payments/${paymentId}`, { method: 'DELETE', headers: auth() })
+    await loadPayments()
+  }
+
+  async function addTask() {
+    if (!newTaskTitle.trim()) return
+    setAddingTask(true)
+    const r = await fetch(`/api/traiteur/events/${id}/tasks`, {
+      method: 'POST',
+      headers: { ...auth(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: newTaskTitle.trim(), dueDate: newTaskDue || undefined })
+    })
+    if (r.ok) { await loadTasks(); setNewTaskTitle(''); setNewTaskDue('') }
+    setAddingTask(false)
+  }
+
+  async function toggleTask(taskId: string, done: boolean) {
+    await fetch(`/api/traiteur/events/${id}/tasks/${taskId}`, {
+      method: 'PATCH',
+      headers: { ...auth(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ done })
+    })
+    await loadTasks()
+  }
+
+  async function deleteTask(taskId: string) {
+    await fetch(`/api/traiteur/events/${id}/tasks/${taskId}`, { method: 'DELETE', headers: auth() })
+    await loadTasks()
+  }
+
+  async function assignStaff() {
+    if (!pickStaffId) return
+    setAssigningStaff(true)
+    const r = await fetch(`/api/traiteur/events/${id}/staff`, {
+      method: 'POST',
+      headers: { ...auth(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ staffId: pickStaffId, role: pickStaffRole.trim() })
+    })
+    if (r.ok) { await loadStaff(); setPickStaffId(''); setPickStaffRole('') }
+    setAssigningStaff(false)
+  }
+
+  async function unassignStaff(assignmentId: string) {
+    await fetch(`/api/traiteur/events/${id}/staff/${assignmentId}`, { method: 'DELETE', headers: auth() })
+    await loadStaff()
+  }
 
   async function addService() {
     if (!newSvcName.trim()) return
@@ -553,6 +684,9 @@ export default function EventDetailPage() {
           ['guests',   `الضيوف (${event.guests.length})`],
           ['menu',     'قائمة الحفلة'],
           ['services', 'خدمات إضافية'],
+          ['payments', 'الدفعات'],
+          ['tasks',    'المهام'],
+          ['staff',    'الطاقم'],
           ['cards',    'بطاقات QR'],
           ['finance',  'المالية'],
         ] as const).map(([key, label]) => (
@@ -841,6 +975,165 @@ export default function EventDetailPage() {
           )}
           {services && services.length === 0 && (
             <div className="text-center py-12 text-gray-400 text-sm">لا توجد خدمات إضافية بعد — زيد أول خدمة فوق</div>
+          )}
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════ */}
+      {/* TAB: PAYMENTS (installment schedule) */}
+      {/* ══════════════════════════════════════════════ */}
+      {tab === 'payments' && (
+        <div className="space-y-4">
+          <div className="bg-white border border-gray-200 rounded-2xl p-4 space-y-3">
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">إضافة دفعة</p>
+            <div className="flex flex-wrap gap-2">
+              <input type="text" value={newPayLabel} onChange={e => setNewPayLabel(e.target.value)}
+                placeholder="عربون / دفعة وسطى / الباقي..."
+                className="flex-1 min-w-[160px] border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400" />
+              <input type="number" value={newPayAmount} onChange={e => setNewPayAmount(e.target.value)}
+                placeholder={`المبلغ (${currency})`} min="0"
+                className="w-36 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400" />
+              <input type="date" value={newPayDue} onChange={e => setNewPayDue(e.target.value)}
+                className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400" />
+              <button onClick={addPayment} disabled={addingPay || !newPayLabel.trim() || !newPayAmount.trim()}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold disabled:opacity-50 flex items-center gap-1.5">
+                {addingPay ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />} إضافة
+              </button>
+            </div>
+          </div>
+
+          {payments && payments.length > 0 && (
+            <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden divide-y divide-gray-100">
+              {payments.map(p => (
+                <div key={p.id} className="flex items-center justify-between px-4 py-3 gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-gray-800">{p.label}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {p.amount.toLocaleString()} {currency}
+                      {p.dueDate && ` · موعدها ${new Date(p.dueDate).toLocaleDateString('ar-MA')}`}
+                      {p.paidDate && ` · تأدت ${new Date(p.paidDate).toLocaleDateString('ar-MA')}`}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {p.status === 'PAID' ? (
+                      <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">تأدت</span>
+                    ) : (
+                      <button onClick={() => markPaymentPaid(p.id)}
+                        className="text-xs font-bold px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100">
+                        علّمها تأدت
+                      </button>
+                    )}
+                    <button onClick={() => deletePayment(p.id)} className="text-gray-300 hover:text-red-500 transition-colors">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+              <div className="px-4 py-3 flex items-center justify-between bg-gray-50">
+                <span className="text-xs font-bold text-gray-500">المجموع</span>
+                <div className="text-xs font-bold text-gray-700 flex gap-3">
+                  <span>تأدى: {payments.filter(p => p.status === 'PAID').reduce((s, p) => s + p.amount, 0).toLocaleString()} {currency}</span>
+                  <span>الباقي: {payments.filter(p => p.status !== 'PAID').reduce((s, p) => s + p.amount, 0).toLocaleString()} {currency}</span>
+                </div>
+              </div>
+            </div>
+          )}
+          {payments && payments.length === 0 && (
+            <div className="text-center py-12 text-gray-400 text-sm">لا توجد دفعات مسجلة بعد — زيد أول دفعة فوق</div>
+          )}
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════ */}
+      {/* TAB: TASKS (checklist) */}
+      {/* ══════════════════════════════════════════════ */}
+      {tab === 'tasks' && (
+        <div className="space-y-4">
+          <div className="bg-white border border-gray-200 rounded-2xl p-4 space-y-3">
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">إضافة مهمة</p>
+            <div className="flex flex-wrap gap-2">
+              <input type="text" value={newTaskTitle} onChange={e => setNewTaskTitle(e.target.value)}
+                placeholder="مثال: موعد التذوق، آخر أجل لتأكيد العدد..."
+                className="flex-1 min-w-[180px] border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400" />
+              <input type="date" value={newTaskDue} onChange={e => setNewTaskDue(e.target.value)}
+                className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400" />
+              <button onClick={addTask} disabled={addingTask || !newTaskTitle.trim()}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold disabled:opacity-50 flex items-center gap-1.5">
+                {addingTask ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />} إضافة
+              </button>
+            </div>
+          </div>
+
+          {tasks && tasks.length > 0 && (
+            <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden divide-y divide-gray-100">
+              {tasks.map(t => (
+                <div key={t.id} className="flex items-center gap-3 px-4 py-3">
+                  <button onClick={() => toggleTask(t.id, !t.done)}
+                    className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-colors ${
+                      t.done ? 'bg-emerald-500 border-emerald-500' : 'border-gray-300 hover:border-violet-400'
+                    }`}>
+                    {t.done && <CheckCheck className="w-3.5 h-3.5 text-white" />}
+                  </button>
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm font-semibold ${t.done ? 'text-gray-400 line-through' : 'text-gray-800'}`}>{t.title}</p>
+                    {t.dueDate && <p className="text-xs text-gray-400 mt-0.5">موعدها {new Date(t.dueDate).toLocaleDateString('ar-MA')}</p>}
+                  </div>
+                  <button onClick={() => deleteTask(t.id)} className="text-gray-300 hover:text-red-500 transition-colors shrink-0">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          {tasks && tasks.length === 0 && (
+            <div className="text-center py-12 text-gray-400 text-sm">لا توجد مهام بعد — زيد أول مهمة فوق</div>
+          )}
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════ */}
+      {/* TAB: STAFF ASSIGNMENT */}
+      {/* ══════════════════════════════════════════════ */}
+      {tab === 'staff' && (
+        <div className="space-y-4">
+          <div className="bg-white border border-gray-200 rounded-2xl p-4 space-y-3">
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">تعيين موظف للحفلة</p>
+            <div className="flex flex-wrap gap-2">
+              <select value={pickStaffId} onChange={e => setPickStaffId(e.target.value)}
+                className="flex-1 min-w-[160px] border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400">
+                <option value="">اختر موظف...</option>
+                {availableStaff.map(s => <option key={s.id} value={s.id}>{s.name} ({s.role})</option>)}
+              </select>
+              <input type="text" value={pickStaffRole} onChange={e => setPickStaffRole(e.target.value)}
+                placeholder="دوره فهاد الحفلة (اختياري)"
+                className="flex-1 min-w-[160px] border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400" />
+              <button onClick={assignStaff} disabled={assigningStaff || !pickStaffId}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold disabled:opacity-50 flex items-center gap-1.5">
+                {assigningStaff ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />} تعيين
+              </button>
+            </div>
+            {availableStaff.length === 0 && (
+              <p className="text-xs text-gray-400">كل الموظفين معينين ديجا، أو ماكاينش موظفين نشيطين.</p>
+            )}
+          </div>
+
+          {staffList && staffList.length > 0 && (
+            <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden divide-y divide-gray-100">
+              {staffList.map(a => (
+                <div key={a.id} className="flex items-center justify-between px-4 py-3">
+                  <div>
+                    <p className="text-sm font-semibold text-gray-800">{a.staff.name}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{a.role || a.staff.role}</p>
+                  </div>
+                  <button onClick={() => unassignStaff(a.id)} className="text-gray-300 hover:text-red-500 transition-colors">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          {staffList && staffList.length === 0 && (
+            <div className="text-center py-12 text-gray-400 text-sm">ماكاين حتى موظف معين لهاد الحفلة بعد</div>
           )}
         </div>
       )}
