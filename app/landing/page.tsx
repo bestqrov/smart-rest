@@ -34,8 +34,8 @@ const T: Record<Lang, Record<string, string | string[]>> = {
     howSub: 'From signup to a fully running restaurant OS in under 30 minutes',
     featLabel: 'Modules', featTitle: 'One OS. Every Module You Need.',
     featSub: '15+ AI-powered modules built for MENA & Africa markets',
-    pricingLabel: 'Pricing', pricingTitle: 'Pay Only Per Completed Order',
-    pricingSub: 'No monthly fee · No fixed costs · Tiny auto-calculated commission per order',
+    pricingLabel: 'Pricing', pricingTitle: 'Simple Plans, Priced for Your Market',
+    pricingSub: 'Pick the plan that fits your restaurant · Custom pricing for chains & enterprises',
     trialBig: '7-Day Free Trial', trialSub: 'Launch your restaurant OS today — no credit card, no commitment',
     trialBadges: ['✓ All modules included', '✓ Unlimited orders', '✓ Live support', '✓ AI insights from day 1'],
     testimonialLabel: 'Success Stories', testimonialTitle: 'Restaurants Growing With SmartRestau',
@@ -81,8 +81,8 @@ const T: Record<Lang, Record<string, string | string[]>> = {
     howSub: "De l'inscription à un OS restaurant complet en moins de 30 minutes",
     featLabel: 'Modules', featTitle: 'Un OS. Tous les Modules Nécessaires.',
     featSub: '15+ modules IA pour les marchés MENA & Afrique',
-    pricingLabel: 'Tarifs', pricingTitle: 'Payez Uniquement par Commande Complétée',
-    pricingSub: "Pas d'abonnement · Pas de frais fixes · Petite commission auto-calculée",
+    pricingLabel: 'Tarifs', pricingTitle: 'Des Offres Simples, Adaptées à Votre Marché',
+    pricingSub: 'Choisissez le plan adapté à votre restaurant · Tarification personnalisée pour les chaînes',
     trialBig: '7 Jours Gratuits', trialSub: "Lancez votre OS restaurant aujourd'hui — sans carte bancaire",
     trialBadges: ['✓ Tous les modules inclus', '✓ Commandes illimitées', '✓ Support en direct', '✓ Insights IA dès le 1er jour'],
     testimonialLabel: 'Success Stories', testimonialTitle: 'Des Restaurants qui Grandissent avec SmartRestau',
@@ -128,8 +128,8 @@ const T: Record<Lang, Record<string, string | string[]>> = {
     howSub: 'من التسجيل إلى نظام تشغيل مطعم كامل في أقل من 30 دقيقة',
     featLabel: 'الوحدات', featTitle: 'نظام تشغيل واحد. كل الوحدات التي تحتاجها.',
     featSub: '15+ وحدة مدعومة بالذكاء الاصطناعي للسوق العربي والأفريقي',
-    pricingLabel: 'الأسعار', pricingTitle: 'تدفع فقط على الطلبات المكتملة',
-    pricingSub: 'لا اشتراك شهري · لا رسوم ثابتة · عمولة رمزية تُحسب تلقائياً',
+    pricingLabel: 'الأسعار', pricingTitle: 'باقات بسيطة، بأسعار تناسب سوقك',
+    pricingSub: 'اختر الباقة المناسبة لمطعمك · تسعير مخصص للسلاسل والمؤسسات الكبرى',
     trialBig: '7 أيام مجاناً', trialSub: 'شغّل نظام مطعمك اليوم — لا بطاقة بنكية، لا التزام',
     trialBadges: ['✓ جميع الوحدات مفعّلة', '✓ طلبات غير محدودة', '✓ دعم فوري', '✓ تحليلات ذكية من اليوم الأول'],
     testimonialLabel: 'قصص نجاح', testimonialTitle: 'مطاعم تنمو مع SmartRestau',
@@ -544,6 +544,16 @@ const OUTPUT_FORMATS = [
   { label: 'Story Content',   ratio: '9:16', color: 'from-amber-900/60 to-orange-900/30', border: 'border-amber-700/40',   icon: Globe2,       iconColor: 'text-amber-400'   },
 ] as const
 
+const PLAN_NAMES = [
+  { en: 'Starter',  fr: 'Starter',  ar: 'أساسي'   },
+  { en: 'Pro',      fr: 'Pro',      ar: 'احترافي' },
+  { en: 'Business', fr: 'Business', ar: 'أعمال'   },
+] as const
+
+function buildPlans(prices: [string, string, string], currency: string) {
+  return PLAN_NAMES.map((name, i) => ({ name, price: prices[i], currency }))
+}
+
 const MARKETS = [
   {
     flag: '🇲🇦', currency: 'MAD',
@@ -551,14 +561,7 @@ const MARKETS = [
     fr: { country: 'Maroc',   cities: 'Agadir · Marrakech · Casablanca · Fès · Rabat' },
     ar: { country: 'المغرب',  cities: 'أكادير · مراكش · كازابلانكا · فاس · الرباط' },
     color: 'from-emerald-700 to-emerald-900',
-    pricing: [
-      { en: 'Under 30 MAD',  fr: 'Moins de 30 MAD', ar: 'أقل من 30 درهم',    fee: '0.30 MAD'    },
-      { en: '30 — 70 MAD',   fr: '30 — 70 MAD',     ar: '30 — 70 درهم',      fee: '0.99 MAD'    },
-      { en: '70 — 150 MAD',  fr: '70 — 150 MAD',    ar: '70 — 150 درهم',     fee: '3.99 MAD'    },
-      { en: 'Over 150 MAD',  fr: 'Plus de 150 MAD', ar: 'أكثر من 150 درهم',  fee: '10 — 12 MAD' },
-    ],
-    note: { en: '−5% if order has 2+ items', fr: '−5% dès 2 articles', ar: 'خصم 5% عند طلب منتجين أو أكثر' },
-    premium: { price: '199', currency: 'MAD', label: '199 MAD / mois' },
+    plans: buildPlans(['200', '350', '700'], 'MAD'),
   },
   {
     flag: '🇸🇦', currency: 'SAR',
@@ -566,16 +569,7 @@ const MARKETS = [
     fr: { country: 'Arabie Saoudite', cities: 'Riyad · Djeddah · La Mecque · Dammam' },
     ar: { country: 'السعودية',        cities: 'الرياض · جدة · مكة · الدمام · المدينة' },
     color: 'from-green-700 to-green-900',
-    pricing: [
-      { en: 'Under 15 SAR',  fr: 'Moins de 15 SAR', ar: 'أقل من 15 ريال',  fee: '1 SAR'  },
-      { en: '15 — 40 SAR',   fr: '15 — 40 SAR',     ar: '15 — 40 ريال',    fee: '3 SAR'  },
-      { en: '40 — 70 SAR',   fr: '40 — 70 SAR',     ar: '40 — 70 ريال',    fee: '6 SAR'  },
-      { en: '70 — 120 SAR',  fr: '70 — 120 SAR',    ar: '70 — 120 ريال',   fee: '10 SAR' },
-      { en: '120 — 200 SAR', fr: '120 — 200 SAR',   ar: '120 — 200 ريال',  fee: '15 SAR' },
-      { en: 'Over 200 SAR',  fr: 'Plus de 200 SAR', ar: 'أكثر من 200 ريال',fee: '22 SAR' },
-    ],
-    note: { en: '−5% if order has 2+ items', fr: '−5% dès 2 articles', ar: 'خصم 5% عند طلب منتجين أو أكثر' },
-    premium: { price: '159', currency: 'SAR', label: '159 SAR / month' },
+    plans: buildPlans(['225', '375', '725'], 'SAR'),
   },
   {
     flag: '🇦🇪', currency: 'AED',
@@ -583,16 +577,7 @@ const MARKETS = [
     fr: { country: 'Émirats',   cities: 'Dubaï · Abu Dhabi · Sharjah · Ajman' },
     ar: { country: 'الإمارات',  cities: 'دبي · أبوظبي · الشارقة · عجمان' },
     color: 'from-red-700 to-red-900',
-    pricing: [
-      { en: 'Under 15 AED',  fr: 'Moins de 15 AED', ar: 'أقل من 15 درهم',  fee: '1 AED'  },
-      { en: '15 — 40 AED',   fr: '15 — 40 AED',     ar: '15 — 40 درهم',    fee: '3 AED'  },
-      { en: '40 — 80 AED',   fr: '40 — 80 AED',     ar: '40 — 80 درهم',    fee: '6 AED'  },
-      { en: '80 — 130 AED',  fr: '80 — 130 AED',    ar: '80 — 130 درهم',   fee: '10 AED' },
-      { en: '130 — 200 AED', fr: '130 — 200 AED',   ar: '130 — 200 درهم',  fee: '15 AED' },
-      { en: 'Over 200 AED',  fr: 'Plus de 200 AED', ar: 'أكثر من 200 درهم',fee: '22 AED' },
-    ],
-    note: { en: '−5% if order has 2+ items', fr: '−5% dès 2 articles', ar: 'خصم 5% عند طلب منتجين أو أكثر' },
-    premium: { price: '159', currency: 'AED', label: '159 AED / month' },
+    plans: buildPlans(['225', '375', '725'], 'AED'),
   },
   {
     flag: '🇩🇿🇹🇳🇪🇬', currency: 'DZD/TND/EGP',
@@ -600,14 +585,7 @@ const MARKETS = [
     fr: { country: 'Afrique du Nord', cities: 'Alger · Tunis · Le Caire · Tripoli · Oran' },
     ar: { country: 'شمال أفريقيا', cities: 'الجزائر · تونس · القاهرة · طرابلس · وهران' },
     color: 'from-sky-700 to-sky-900',
-    pricing: [
-      { en: 'Algeria (DZD)',  fr: 'Algérie (DZD)', ar: 'الجزائر (دينار)', fee: '15 → 450 DZD' },
-      { en: 'Tunisia (TND)',  fr: 'Tunisie (TND)', ar: 'تونس (دينار)',    fee: '0.15 → 5 TND' },
-      { en: 'Egypt (EGP)',    fr: 'Égypte (EGP)',  ar: 'مصر (جنيه)',      fee: '2 → 60 EGP'   },
-      { en: 'Libya (LYD)',    fr: 'Libye (LYD)',   ar: 'ليبيا (دينار)',   fee: '0.30 → 8 LYD' },
-    ],
-    note: { en: '−5% if order has 2+ items', fr: '−5% dès 2 articles', ar: 'خصم 5% عند طلب منتجين أو أكثر' },
-    premium: null,
+    plans: buildPlans(['225', '375', '725'], 'DZD/TND/EGP'),
   },
   {
     flag: '🇫🇷🇪🇸🇧🇪', currency: 'EUR',
@@ -615,16 +593,7 @@ const MARKETS = [
     fr: { country: 'Europe', cities: 'Paris · Madrid · Bruxelles · Berlin · Rome · Amsterdam' },
     ar: { country: 'أوروبا', cities: 'باريس · مدريد · بروكسل · برلين · روما · أمستردام' },
     color: 'from-blue-700 to-blue-900',
-    pricing: [
-      { en: 'Under €5',    fr: 'Moins de 5€',  ar: 'أقل من 5 يورو',   fee: '€0.10' },
-      { en: '€5 — €12',   fr: '5€ — 12€',     ar: '5 — 12 يورو',     fee: '€0.25' },
-      { en: '€12 — €25',  fr: '12€ — 25€',    ar: '12 — 25 يورو',    fee: '€0.50' },
-      { en: '€25 — €50',  fr: '25€ — 50€',    ar: '25 — 50 يورو',    fee: '€0.80' },
-      { en: '€50 — €100', fr: '50€ — 100€',   ar: '50 — 100 يورو',   fee: '€1.20' },
-      { en: 'Over €100',  fr: 'Plus de 100€', ar: 'أكثر من 100 يورو', fee: '€2.00' },
-    ],
-    note: { en: '−5% if order has 2+ items', fr: '−5% dès 2 articles', ar: 'خصم 5% عند طلب منتجين أو أكثر' },
-    premium: { price: '159', currency: 'EUR', label: '159 € / mois' },
+    plans: buildPlans(['225', '375', '725'], 'EUR'),
   },
   {
     flag: '🇸🇳🇨🇮🇧🇫', currency: 'XOF',
@@ -632,13 +601,7 @@ const MARKETS = [
     fr: { country: "Afrique de l'Ouest", cities: 'Dakar · Abidjan · Ouagadougou · Bamako' },
     ar: { country: 'غرب أفريقيا', cities: 'داكار · أبيدجان · واغادوغو · باماكو' },
     color: 'from-yellow-700 to-yellow-900',
-    pricing: [
-      { en: 'Under 2,000 XOF', fr: 'Moins de 2 000 XOF', ar: 'أقل من 2000 فرنك', fee: '50 XOF'  },
-      { en: '2,000 — 5,000',   fr: '2 000 — 5 000',       ar: '2000 — 5000',      fee: '200 XOF' },
-      { en: 'Over 5,000 XOF',  fr: 'Plus de 5 000 XOF',   ar: 'أكثر من 5000',    fee: '500 XOF' },
-    ],
-    note: { en: '−5% if order has 2+ items', fr: '−5% dès 2 articles', ar: 'خصم 5% عند طلب منتجين أو أكثر' },
-    premium: { price: '13 000', currency: 'XOF', label: '13 000 XOF / mois' },
+    plans: buildPlans(['225', '375', '725'], 'XOF'),
   },
   {
     flag: '🌍', currency: 'XOF/KES/XAF',
@@ -646,14 +609,7 @@ const MARKETS = [
     fr: { country: 'Afrique subsaharienne', cities: 'Dakar · Abidjan · Nairobi · Libreville · Yaoundé' },
     ar: { country: 'أفريقيا جنوب الصحراء', cities: 'داكار · أبيدجان · نيروبي · ليبرفيل · ياوندي' },
     color: 'from-orange-700 to-orange-900',
-    pricing: [
-      { en: 'Senegal/CI (XOF)',  fr: 'Sénégal/CI (XOF)',   ar: 'السنغال/ساحل العاج', fee: '25 → 600 XOF' },
-      { en: 'Gabon/Cam (XAF)',   fr: 'Gabon/Cam (XAF)',    ar: 'الغابون/الكاميرون',  fee: '25 → 550 XAF' },
-      { en: 'Kenya (KES)',        fr: 'Kenya (KES)',         ar: 'كينيا (شلن)',         fee: '10 → 180 KES' },
-      { en: 'Mobile Money',       fr: 'Mobile Money',        ar: 'موبايل موني',         fee: 'Wave · M-Pesa' },
-    ],
-    note: { en: '−5% if order has 2+ items', fr: '−5% dès 2 articles', ar: 'خصم 5% عند طلب منتجين أو أكثر' },
-    premium: null,
+    plans: buildPlans(['225', '375', '725'], 'XOF/KES/XAF'),
   },
 ]
 
@@ -1010,9 +966,6 @@ export default function LandingPage() {
 
           {/* Section header */}
           <div className="text-center mb-14">
-            <span className="inline-block border px-4 py-1.5 rounded-full text-sm font-semibold mb-5" style={{ background: 'var(--cbr)', borderColor: 'var(--cbr)', color: 'var(--ca)' }}>
-              {lang === 'ar' ? 'المنصة الشاملة' : lang === 'fr' ? 'Vue d\'ensemble' : 'Platform Overview'}
-            </span>
             <h2 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white leading-[1.1] mb-5">
               {lang === 'ar' ? (
                 <>كل ما يحتاجه مطعمك.<br /><span className="bg-clip-text text-transparent" style={{ backgroundImage: H1_GRADIENT[theme] }}>في نظام واحد.</span></>
@@ -1690,27 +1643,15 @@ export default function LandingPage() {
                   </div>
                   <div className="px-5 py-4">
                     <div className="space-y-2 mb-3">
-                      {m.pricing.map((p, pi) => (
+                      {m.plans.map((p, pi) => (
                         <div key={pi} className="flex items-center justify-between text-sm">
-                          <span className="text-gray-500">{tl(p, lang)}</span>
-                          <span className="font-bold text-xs" style={{ color: 'var(--cp)' }}>{p.fee}</span>
+                          <span className="text-gray-500">{tl(p.name, lang)}</span>
+                          <span className="font-bold text-xs" style={{ color: 'var(--cp)' }}>
+                            {p.price} {p.currency} {lang === 'ar' ? '/ شهرياً' : lang === 'fr' ? '/ mois' : '/ month'}
+                          </span>
                         </div>
                       ))}
                     </div>
-                    {'note' in m && m.note && (
-                      <p className="text-[10px] text-blue-600 font-semibold bg-blue-50 rounded-lg px-2 py-1 mb-3">
-                        {(m.note as Record<string, string>)[lang] ?? (m.note as Record<string, string>).en}
-                      </p>
-                    )}
-                    {'premium' in m && m.premium && (
-                      <div className="mt-3 rounded-lg bg-gradient-to-r from-yellow-500/20 to-amber-500/10 border border-yellow-500/30 px-4 py-3 flex items-center justify-between">
-                        <div>
-                          <span className="text-xs font-bold text-yellow-400 uppercase tracking-wider">💎 Premium</span>
-                          <p className="text-white font-bold text-lg mt-0.5">{(m.premium as { price: string; currency: string; label: string }).label}</p>
-                          <p className="text-gray-400 text-xs">Pas de commission · Toutes les fonctionnalités</p>
-                        </div>
-                      </div>
-                    )}
                     <Link href="/signup" className="block text-center bg-gray-900 hover:bg-gray-800 text-white py-2.5 rounded-xl font-bold text-xs transition-colors">
                       {lang === 'ar' ? `ابدأ في ${d.country}` : lang === 'fr' ? `Démarrer en ${d.country}` : `Start in ${d.country}`}
                     </Link>
