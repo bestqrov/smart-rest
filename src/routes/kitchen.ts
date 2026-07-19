@@ -111,6 +111,37 @@ router.get('/api/kitchen/orders/queue', authorizeKitchen, async (req: Request, r
   }
 })
 
+// ─── GET /api/kitchen/orders/today — today's finished/cancelled tickets ──────
+// Powers the "Today" history tab on the KDS — count + list, no money totals
+// (kitchen doesn't handle payment).
+
+router.get('/api/kitchen/orders/today', authorizeKitchen, async (req: Request, res: Response) => {
+  try {
+    const cafeId    = req.admin!.cafeId
+    const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0)
+    const orders = await prisma.order.findMany({
+      where:   { cafeId, status: { in: ['DELIVERED', 'COMPLETED', 'CANCELLED'] }, createdAt: { gte: todayStart } },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true, status: true, createdAt: true, seatNumber: true,
+        table:         { select: { tableNumber: true, mergedIntoTableId: true, mergedIntoTable: { select: { tableNumber: true } } } },
+        originalTable: { select: { tableNumber: true } },
+        seat:          { select: { seatNumber: true } },
+        items: {
+          select: {
+            quantity: true,
+            product: { select: { id: true, nameEn: true } },
+          },
+        },
+      },
+    })
+    return res.json({ count: orders.length, orders })
+  } catch (err) {
+    logger.error({ msg: 'GET /api/kitchen/orders/today error', err })
+    return res.status(500).json({ error: 'Failed to fetch today\'s orders' })
+  }
+})
+
 // ─── GET /api/kitchen/daily-stats ────────────────────────────────────────────
 
 router.get('/api/kitchen/daily-stats', authorizeKitchen, async (req: Request, res: Response) => {

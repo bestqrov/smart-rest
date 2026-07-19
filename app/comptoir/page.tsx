@@ -13,6 +13,8 @@ interface Staff { id: string; name: string; role: string }
 interface MenuItem { id: string; nameEn: string; nameAr: string; nameFr: string; price: number; imageUrl: string | null }
 interface MenuCat  { id: string; nameEn: string; nameAr: string; nameFr: string; order: number; products: MenuItem[] }
 interface CartItem { productId: string; name: string; price: number; qty: number }
+interface TodaySummaryOrder { id: string; status: string; totalPrice: number; paymentMethod: string; createdAt: string; table: { tableNumber: number } | null }
+interface ShiftLiveSummary  { openingFloat: number; totalCollectedCash: number; count: number; orders: TodaySummaryOrder[] }
 
 function pName(item: { nameEn: string; nameAr: string; nameFr: string }) {
   return item.nameFr || item.nameEn || item.nameAr
@@ -35,6 +37,8 @@ export default function ComptoirPage() {
 
   const cashierShift = useCashierShift(posToken, subdomain)
   const [showCloture, setShowCloture] = useState(false)
+  const [posView,     setPosView]     = useState<'live' | 'today'>('live')
+  const [liveSummary, setLiveSummary] = useState<ShiftLiveSummary | null>(null)
 
   const [menuCats,  setMenuCats]  = useState<MenuCat[]>([])
   const [activeCat, setActiveCat] = useState('')
@@ -97,6 +101,20 @@ export default function ComptoirPage() {
     if (!posToken || !cashierShift.shift) return
     fetchMenu(posToken)
   }, [posToken, cashierShift.shift, fetchMenu])
+
+  const fetchLiveSummary = useCallback(async (tok: string) => {
+    try {
+      const res = await fetch('/api/pos/shift/live-summary', { headers: { Authorization: `Bearer ${tok}` } })
+      if (res.ok) setLiveSummary(await res.json())
+    } catch {}
+  }, [])
+
+  useEffect(() => {
+    if (!posToken || !cashierShift.shift) return
+    fetchLiveSummary(posToken)
+    const id = setInterval(() => fetchLiveSummary(posToken), 20_000)
+    return () => clearInterval(id)
+  }, [posToken, cashierShift.shift, fetchLiveSummary])
 
   function addToCart(item: MenuItem) {
     setCart(prev => {
@@ -311,7 +329,26 @@ export default function ComptoirPage() {
           <p className="text-gray-500 text-xs mt-0.5">{staff?.name} · {staff?.role}</p>
         </div>
         <div className="flex items-center gap-2">
+          {liveSummary && (
+            <div className="hidden md:flex items-center gap-2 bg-gray-950 border border-gray-800 rounded-xl px-2.5 py-1">
+              <span className="text-[10px] text-gray-500 font-bold uppercase">Caisse</span>
+              <span className="text-xs text-gray-400">{liveSummary.openingFloat.toFixed(2)}</span>
+              <span className="text-gray-700">+</span>
+              <span className="text-xs text-emerald-400 font-bold">{liveSummary.totalCollectedCash.toFixed(2)}</span>
+              <span className="text-[10px] text-gray-600">{currency}</span>
+            </div>
+          )}
           <ShiftTimingPill timing={cashierShift.timing} />
+          <div className="flex items-center gap-0.5 bg-gray-950 border border-gray-800 rounded-lg p-0.5">
+            <button onClick={() => setPosView('live')}
+              className={`px-2.5 py-1.5 rounded-md text-xs font-bold transition-all ${posView === 'live' ? 'bg-emerald-600 text-white' : 'text-gray-500 hover:text-gray-300'}`}>
+              Live
+            </button>
+            <button onClick={() => { setPosView('today'); if (posToken) fetchLiveSummary(posToken) }}
+              className={`px-2.5 py-1.5 rounded-md text-xs font-bold transition-all ${posView === 'today' ? 'bg-emerald-600 text-white' : 'text-gray-500 hover:text-gray-300'}`}>
+              Aujourd'hui {liveSummary && liveSummary.count > 0 && <span className="ml-1 opacity-80">({liveSummary.count})</span>}
+            </button>
+          </div>
           {cashierShift.shift && (
             <button onClick={() => setShowCloture(true)}
               className="px-3 py-2 text-xs font-bold text-gray-400 hover:text-white rounded-xl hover:bg-gray-800 transition-colors">
@@ -324,6 +361,28 @@ export default function ComptoirPage() {
         </div>
       </header>
 
+      {posView === 'today' ? (
+        <div className="flex-1 overflow-y-auto p-4">
+          <div className="max-w-2xl mx-auto space-y-3">
+            {(!liveSummary || liveSummary.orders.length === 0) && (
+              <div className="text-center py-20 text-gray-600">
+                <p className="text-3xl mb-3">🧾</p>
+                <p className="text-sm">Aucune vente enregistrée aujourd'hui</p>
+              </div>
+            )}
+            {liveSummary?.orders.map(o => (
+              <div key={o.id} className="flex items-center justify-between bg-gray-900 border border-gray-800 rounded-xl px-4 py-3">
+                <div>
+                  <p className="text-white text-sm font-bold">{o.table ? `Table ${o.table.tableNumber}` : 'Comptoir'} <span className="text-gray-600 font-normal">· {o.paymentMethod}</span></p>
+                  <p className="text-gray-500 text-xs">{new Date(o.createdAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}</p>
+                </div>
+                <span className="text-emerald-400 font-extrabold text-sm">{o.totalPrice.toFixed(2)} {currency}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+      <>
       <div className="flex-1 flex overflow-hidden">
         {/* Left: categories */}
         <div className="w-44 shrink-0 bg-gray-900 border-r border-gray-800 p-3 flex flex-col gap-1 overflow-y-auto">
@@ -426,6 +485,8 @@ export default function ComptoirPage() {
           {confirming ? 'Traitement…' : `Confirmer & Imprimer — ${cartTotal.toFixed(2)} ${currency}`}
         </button>
       </div>
+      </>
+      )}
 
       {clientPicker && (
         <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setClientPicker(false)}>

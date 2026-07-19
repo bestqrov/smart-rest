@@ -42,6 +42,13 @@ type ReadyOrder = {
 type LegacyCall  = { id: string; tableId: string; tableNumber?: number; type: string; message?: string | null; createdAt: string }
 type BillRequest = { id: string; tableId: string; tableNumber?: number; seatNumbers?: number[]; payScope?: string; message?: string | null; createdAt: string }
 type NewOrder    = { orderId: string; mergeLabel: string; totalPrice: string; createdAt: string }
+type TodayOrder = {
+  id: string; status: 'COMPLETED' | 'CANCELLED'; createdAt: string
+  table: { tableNumber: number } | null
+  originalTable: { tableNumber: number } | null
+  seat: { seatNumber: number } | null
+  items: { quantity: number; product: { id: string; nameEn: string } }[]
+}
 type WaiterStatus = {
   id: string; name: string; role: string
   shiftStatus: 'ACTIVE' | 'OFF_DUTY'
@@ -160,8 +167,9 @@ export default function WaiterPage() {
   const [newOrders,     setNewOrders]     = useState<NewOrder[]>([])
   const [legacyCalls,   setLegacyCalls]   = useState<LegacyCall[]>([])
   const [bills,         setBills]         = useState<BillRequest[]>([])
+  const [todayOrders,   setTodayOrders]   = useState<TodayOrder[]>([])
 
-  const [tab,  setTab]  = useState<'alerts' | 'team' | 'order'>('alerts')
+  const [tab,  setTab]  = useState<'alerts' | 'team' | 'today' | 'order'>('alerts')
   const [, setTick]     = useState(0)
 
   // order tab
@@ -235,6 +243,14 @@ export default function WaiterPage() {
   }, [isPOS])
 
   useEffect(() => { if (authed) loadReady() }, [authed, loadReady])
+
+  const loadTodayOrders = useCallback(async () => {
+    if (!isPOS) return
+    const res = await fetch('/api/pos/waiter/today', { headers: authHeader() })
+    if (res.ok) { const d = await res.json(); setTodayOrders(d.orders ?? []) }
+  }, [isPOS])
+
+  useEffect(() => { if (authed) loadTodayOrders() }, [authed, loadTodayOrders])
 
   const vibrate = useCallback(() => { try { navigator.vibrate?.([200, 100, 200]) } catch {} }, [])
 
@@ -721,6 +737,37 @@ export default function WaiterPage() {
               </>
             )}
 
+            {/* ════ TODAY TAB ════ */}
+            {tab === 'today' && (
+              <div className="border-2 border-emerald-200 rounded-2xl overflow-hidden shadow-sm">
+                <div className="bg-emerald-500 px-3 py-1.5"><Label text={L('nav_today')} count={todayOrders.length} light /></div>
+                <div className="p-2 grid grid-cols-1 sm:grid-cols-2 gap-2 bg-emerald-50/40">
+                  {todayOrders.length === 0 && (
+                    <div className="col-span-2 text-center py-16 text-slate-400">
+                      <CheckCircle2 className="w-10 h-10 mx-auto mb-3 text-slate-300" />
+                      <p className="text-sm">{L('today_empty')}</p>
+                    </div>
+                  )}
+                  {todayOrders.map(o => {
+                    const tableNum = o.table?.tableNumber ?? o.originalTable?.tableNumber
+                    const itemCount = o.items.reduce((s, it) => s + it.quantity, 0)
+                    return (
+                      <div key={o.id} className={`bg-white border rounded-2xl p-3 space-y-1.5 shadow-sm ${o.status === 'CANCELLED' ? 'border-red-200' : 'border-emerald-200'}`}>
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-sm text-slate-800">
+                            {tableNum ? `T${tableNum}` : ''}{o.seat?.seatNumber ? ` · S${o.seat.seatNumber}` : ''}
+                          </span>
+                          <span className={`text-[10px] font-black uppercase tracking-wider ${o.status === 'CANCELLED' ? 'text-red-500' : 'text-emerald-500'}`}>{o.status}</span>
+                        </div>
+                        <p className="text-xs text-slate-500">{itemCount} items</p>
+                        <p className="text-[10px] text-slate-400">{new Date(o.createdAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}</p>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* ════ ORDER TAB ════ */}
             {tab === 'order' && (
               <>
@@ -881,6 +928,12 @@ export default function WaiterPage() {
               badge: activeWaiters.length,
             },
             {
+              id: 'today' as const,
+              icon: <CheckCircle2 className="w-5 h-5" />,
+              label: L('nav_today'),
+              badge: todayOrders.length,
+            },
+            {
               id: 'order' as const,
               icon: <ShoppingCart className="w-5 h-5" />,
               label: 'Order',
@@ -888,7 +941,7 @@ export default function WaiterPage() {
             },
           ] as const).map(item => (
             <button key={item.id}
-              onClick={() => item.id === 'order' ? openOrderTab() : setTab(item.id)}
+              onClick={() => { if (item.id === 'order') { openOrderTab() } else { setTab(item.id); if (item.id === 'today') loadTodayOrders() } }}
               className={`flex-1 flex flex-col items-center justify-center gap-1 py-3 transition-all relative ${
                 tab === item.id ? 'text-emerald-600' : 'text-slate-400 hover:text-slate-600'
               }`}>

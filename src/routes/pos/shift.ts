@@ -281,4 +281,47 @@ router.get('/api/pos/shift/current', authorizePOS, async (req: Request, res: Res
   }
 })
 
+// ─── GET /api/pos/shift/live-summary — live cash total + today's orders ───────
+// Powers the always-visible cash pill (opening float + cash collected so far)
+// and the "Today" history tab, without waiting for clôture.
+
+router.get('/api/pos/shift/live-summary', authorizePOS, async (req: Request, res: Response) => {
+  try {
+    const { staffId, cafeId } = req.staff!
+    const shift = await prisma.cashierShift.findFirst({ where: { staffId, cafeId, status: 'OPEN' } })
+    if (!shift) return res.status(404).json({ error: 'No open shift found for this staff member' })
+
+    const [cashOrders, todayOrders] = await Promise.all([
+      prisma.order.aggregate({
+        where: {
+          cafeId,
+          createdById:   staffId,
+          paymentMethod: 'CASH',
+          isPaid:        true,
+          createdAt:     { gte: shift.startTime }
+        },
+        _sum: { totalPrice: true }
+      }),
+      prisma.order.findMany({
+        where:   { cafeId, createdById: staffId, isPaid: true, createdAt: { gte: shift.startTime } },
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true, status: true, totalPrice: true, paymentMethod: true, createdAt: true,
+          table: { select: { tableNumber: true } },
+        },
+      }),
+    ])
+
+    return res.json({
+      openingFloat:       shift.initialCash,
+      totalCollectedCash: cashOrders._sum.totalPrice ?? 0,
+      count:              todayOrders.length,
+      orders:             todayOrders,
+    })
+  } catch (err) {
+    logger.error({ msg: 'GET /api/pos/shift/live-summary error', err })
+    return res.status(500).json({ error: 'Failed to fetch shift summary' })
+  }
+})
+
 export default router

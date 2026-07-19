@@ -38,6 +38,10 @@ const T = {
   nav_menu:        { ar: 'القائمة', fr: 'Menu', en: 'Menu', es: 'Menú' },
   nav_order:       { ar: 'الطلب', fr: 'Commande', en: 'Order', es: 'Pedido' },
   nav_logout:      { ar: 'خروج', fr: 'Déconnexion', en: 'Logout', es: 'Salir' },
+  nav_today:       { ar: 'اليوم', fr: "Aujourd'hui", en: 'Today', es: 'Hoy' },
+  today_empty:     { ar: 'لا يوجد طلبات منتهية اليوم بعد', fr: "Aucune commande terminée aujourd'hui", en: 'No finished orders yet today', es: 'Ningún pedido terminado hoy todavía' },
+  today_cash_open: { ar: 'رصيد بداية الوردية', fr: 'Fond de caisse', en: 'Opening float', es: 'Fondo de caja' },
+  today_cash_in:   { ar: 'الكاش المجموع', fr: 'Espèces collectées', en: 'Cash collected', es: 'Efectivo cobrado' },
   // ── Tables ───────────────────────────────────────────────────────────────
   table:           { ar: 'طاولة', fr: 'Table', en: 'Table', es: 'Mesa' },
   table_empty:     { ar: 'فارغة', fr: 'Libre', en: 'Empty', es: 'Libre' },

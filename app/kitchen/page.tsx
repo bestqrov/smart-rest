@@ -34,6 +34,9 @@ const T = {
     cancelledToday: 'Cancelled',
     selectOrder: 'Select an order',
     selectOrderSub: 'Tap a ticket on the left to see details',
+    todayTab: 'Today',
+    noToday: 'No finished orders yet today',
+    itemsCount: (n: number) => `${n} item${n === 1 ? '' : 's'}`,
   },
   ar: {
     title: 'شاشة المطبخ',
@@ -60,6 +63,9 @@ const T = {
     cancelledToday: 'ملغاة',
     selectOrder: 'اختر طلباً',
     selectOrderSub: 'اضغط على تذكرة لعرض التفاصيل',
+    todayTab: 'اليوم',
+    noToday: 'لا يوجد طلبات منتهية اليوم بعد',
+    itemsCount: (n: number) => `${n} صنف`,
   },
   fr: {
     title: 'Écran Cuisine',
@@ -86,6 +92,9 @@ const T = {
     cancelledToday: 'Annulées',
     selectOrder: 'Sélectionner',
     selectOrderSub: 'Appuyez sur un ticket pour voir les détails',
+    todayTab: "Aujourd'hui",
+    noToday: 'Aucune commande terminée aujourd\'hui',
+    itemsCount: (n: number) => `${n} article${n === 1 ? '' : 's'}`,
   },
   es: {
     title: 'Cocina',
@@ -112,6 +121,9 @@ const T = {
     cancelledToday: 'Canceladas',
     selectOrder: 'Seleccionar',
     selectOrderSub: 'Toca un ticket para ver detalles',
+    todayTab: 'Hoy',
+    noToday: 'Ningún pedido terminado hoy todavía',
+    itemsCount: (n: number) => `${n} artículo${n === 1 ? '' : 's'}`,
   },
 } as const
 
@@ -141,7 +153,18 @@ type Reservation = {
   createdAt: string
 }
 
-type ActiveTab = 'orders' | 'reservations'
+type ActiveTab = 'orders' | 'reservations' | 'today'
+
+type TodayOrder = {
+  id: string
+  status: 'DELIVERED' | 'COMPLETED' | 'CANCELLED'
+  createdAt: string
+  seatNumber: number | null
+  table: { tableNumber: number; mergedIntoTableId: string | null; mergedIntoTable: { tableNumber: number } | null } | null
+  originalTable: { tableNumber: number } | null
+  seat: { seatNumber: number } | null
+  items: { quantity: number; product: { id: string; nameEn: string } }[]
+}
 
 // ─── Audio ────────────────────────────────────────────────────────────────────
 
@@ -212,6 +235,7 @@ export default function KitchenPage() {
   const [, setTick]                     = useState(0)
   const [completedToday, setCompletedToday] = useState(0)
   const [cancelledToday, setCancelledToday] = useState(0)
+  const [todayOrders, setTodayOrders] = useState<TodayOrder[]>([])
   const [newReservationAlert, setNewReservationAlert] = useState(false)
   const [cafeLogoUrl, setCafeLogoUrl]       = useState<string | null>(null)
   const [cafeName, setCafeName]             = useState('')
@@ -314,7 +338,14 @@ export default function KitchenPage() {
     } catch {}
   }
 
-  useEffect(() => { if (!authed) return; loadOrders(); loadDailyStats(); loadReservations() }, [authed])
+  async function loadTodayOrders() {
+    try {
+      const res = await fetch('/api/kitchen/orders/today', { headers: authHeader() })
+      if (res.ok) { const d = await res.json(); setTodayOrders(d.orders ?? []) }
+    } catch {}
+  }
+
+  useEffect(() => { if (!authed) return; loadOrders(); loadDailyStats(); loadReservations(); loadTodayOrders() }, [authed])
 
   useEffect(() => {
     const t = setInterval(() => {
@@ -323,6 +354,7 @@ export default function KitchenPage() {
         return true
       }))
       loadDailyStats()
+      loadTodayOrders()
     }, 3600000)
     return () => clearInterval(t)
   }, [])
@@ -452,6 +484,11 @@ export default function KitchenPage() {
               <CalendarClock className="w-3 h-3 inline mr-1" />
               {tr.reservations}
               {pendingRes.length > 0 && <span className={`ml-1 rounded-full px-1 text-white text-xs ${newReservationAlert ? 'bg-red-500 animate-pulse' : 'bg-violet-600'}`}>{pendingRes.length}</span>}
+            </button>
+            <button onClick={() => { setActiveTab('today'); loadTodayOrders() }}
+              className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all ${activeTab === 'today' ? 'bg-emerald-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>
+              <CheckCheck className="w-3 h-3 inline mr-1" />
+              {tr.todayTab} <span className="ml-1 bg-emerald-600/20 text-emerald-700 rounded-full px-1 text-xs">{todayOrders.length}</span>
             </button>
           </div>
 
@@ -624,6 +661,43 @@ export default function KitchenPage() {
           </div>
         </div>
 
+      ) : activeTab === 'today' ? (
+        /* ── Today history (emerald frame) ── */
+        <div className="flex-1 overflow-y-auto p-3" style={{touchAction:'pan-y'}}>
+          <div className="bg-white border-2 border-emerald-200 rounded-2xl overflow-hidden shadow-sm">
+            <div className="bg-emerald-500 px-4 py-2.5">
+              <h2 className="font-black text-white text-sm flex items-center gap-2">
+                <CheckCheck className="w-4 h-4" /> {tr.todayTab} — {todayOrders.length}
+              </h2>
+            </div>
+            <div className="p-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 bg-emerald-50/40">
+              {todayOrders.length === 0 && (
+                <div className="col-span-3 text-center py-16 text-slate-400">
+                  <p className="text-3xl mb-2">✅</p><p className="text-xs">{tr.noToday}</p>
+                </div>
+              )}
+              {todayOrders.map(o => {
+                const tableNum = o.table?.mergedIntoTable?.tableNumber ?? o.table?.tableNumber ?? o.originalTable?.tableNumber
+                const itemCount = o.items.reduce((s, it) => s + it.quantity, 0)
+                const statusStyle = o.status === 'CANCELLED'
+                  ? 'border-red-200 bg-red-50 text-red-600'
+                  : 'border-emerald-200 bg-white text-emerald-600'
+                return (
+                  <div key={o.id} className={`rounded-2xl border-2 p-4 space-y-2 shadow-sm ${statusStyle}`}>
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-sm text-slate-800">
+                        {tableNum ? `#${tableNum}` : ''}{o.seat?.seatNumber ? ` · ${tr.seat} ${o.seat.seatNumber}` : ''}
+                      </span>
+                      <span className="text-[10px] font-black uppercase tracking-wider">{o.status === 'CANCELLED' ? tr.cancelledToday : tr.completedToday}</span>
+                    </div>
+                    <p className="text-xs text-slate-500">{tr.itemsCount(itemCount)}</p>
+                    <p className="text-[10px] text-slate-400">{new Date(o.createdAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}</p>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
       ) : (
         /* ── Reservations (violet frame) ── */
         <div className="flex-1 overflow-y-auto p-3" style={{touchAction:'pan-y'}}>

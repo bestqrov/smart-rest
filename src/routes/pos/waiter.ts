@@ -39,6 +39,37 @@ router.get('/api/pos/waiter/ready', authorizePOS, async (req: Request, res: Resp
   }
 })
 
+// ─── GET /api/pos/waiter/today ────────────────────────────────────────────────
+// Today's served/completed/cancelled orders — powers the "Today" history tab.
+// Count-focused (no money totals) since the waiter view doesn't own payment.
+
+router.get('/api/pos/waiter/today', authorizePOS, async (req: Request, res: Response) => {
+  try {
+    const { cafeId } = req.staff!
+    const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0)
+    const orders = await prisma.order.findMany({
+      where:   { cafeId, status: { in: ['COMPLETED', 'CANCELLED'] }, createdAt: { gte: todayStart } },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true, status: true, createdAt: true, seatNumber: true,
+        table:         { select: { tableNumber: true } },
+        originalTable: { select: { tableNumber: true } },
+        seat:          { select: { seatNumber: true } },
+        items: {
+          select: {
+            quantity: true,
+            product: { select: { id: true, nameEn: true } },
+          },
+        },
+      },
+    })
+    return res.json({ count: orders.length, orders })
+  } catch (err) {
+    logger.error({ msg: 'GET /api/pos/waiter/today error', err })
+    return res.status(500).json({ error: 'Failed to fetch today\'s orders' })
+  }
+})
+
 // ─── PATCH /api/pos/waiter/orders/:id/served ─────────────────────────────────
 
 router.patch('/api/pos/waiter/orders/:id/served', authorizePOS, async (req: Request, res: Response) => {
