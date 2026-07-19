@@ -64,7 +64,22 @@ router.post('/api/pos/orders', authorizePOS, requireUnlockedShift, async (req: R
       }
     })
 
-    const orderTotal = lineItems.reduce((sum, li) => sum + li.unitPrice * li.quantity, 0)
+    const rawTotal = lineItems.reduce((sum, li) => sum + li.unitPrice * li.quantity, 0)
+
+    // Wholesale/reseller customers get a flat % off — set on the CafeCustomer
+    // profile (customerType=WHOLESALE, wholesaleDiscountPct). Retail walk-ins
+    // are unaffected (discountAmount stays 0).
+    let discountAmount = 0
+    if (customerPhone) {
+      const customer = await prisma.cafeCustomer.findUnique({
+        where:  { cafeId_phone: { cafeId, phone: customerPhone } },
+        select: { customerType: true, wholesaleDiscountPct: true }
+      })
+      if (customer?.customerType === 'WHOLESALE' && customer.wholesaleDiscountPct > 0) {
+        discountAmount = rawTotal * Math.min(100, customer.wholesaleDiscountPct) / 100
+      }
+    }
+    const orderTotal = Math.max(0, rawTotal - discountAmount)
 
     // ── Smart merge: find an open (OPENED) bill for this table ───────────────
     let existingOrder = tableId
@@ -92,6 +107,7 @@ router.post('/api/pos/orders', authorizePOS, requireUnlockedShift, async (req: R
         data: {
           totalPrice:      newTotal,
           totalCommission: newCommission,
+          discountAmount:  (existingOrder.discountAmount ?? 0) + discountAmount,
           items: {
             create: lineItems
           }
@@ -122,6 +138,7 @@ router.post('/api/pos/orders', authorizePOS, requireUnlockedShift, async (req: R
         status:          'PENDING',
         totalPrice:      orderTotal,
         totalCommission,
+        discountAmount:  discountAmount || null,
         customerPhone:   customerPhone ?? null,
         orderType:       orderType ?? null,
         createdById:     staffId,

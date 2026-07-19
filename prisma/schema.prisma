@@ -2030,10 +2030,17 @@ model CafeCustomer {
   facebookHandle  String?
   tiktokHandle    String?
 
+  // Wholesale / B2B resellers — RETAIL (default) | WHOLESALE. Wholesale
+  // customers get a flat discount off every order's subtotal at checkout,
+  // applied in the POS/comptoir order-creation routes.
+  customerType         String @default("RETAIL")
+  wholesaleDiscountPct Float  @default(0)
+
   @@unique([cafeId, phone])
   @@index([cafeId, lastVisit])
   @@index([cafeId, optIn])
   @@index([cafeId, tags])
+  @@index([cafeId, customerType])
 }
 
 // ─── AI Center ────────────────────────────────────────────────────────────────

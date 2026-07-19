@@ -49,13 +49,15 @@ export default function ComptoirPage() {
   const [activeCat, setActiveCat] = useState('')
   const [cart,      setCart]      = useState<CartItem[]>([])
 
-  interface PosCustomer { id: string; phone: string; name: string | null }
+  interface PosCustomer { id: string; phone: string; name: string | null; customerType?: string; wholesaleDiscountPct?: number }
   const [client,       setClient]       = useState<PosCustomer | null>(null)
   const [clientPicker, setClientPicker] = useState(false)
   const [clientSearch, setClientSearch] = useState('')
   const [clientResults, setClientResults] = useState<PosCustomer[]>([])
   const [clientNewName, setClientNewName] = useState('')
   const [clientBusy, setClientBusy] = useState(false)
+  const [newIsWholesale, setNewIsWholesale] = useState(false)
+  const [newWholesalePct, setNewWholesalePct] = useState('10')
 
   // marketplace order logging (Glovo, Uber Eats...)
   const [showMarketplace, setShowMarketplace] = useState(false)
@@ -148,7 +150,9 @@ export default function ComptoirPage() {
       })
       .filter(c => c.qty > 0))
   }
-  const cartTotal = cart.reduce((s, c) => s + lineTotal(c), 0)
+  const cartSubtotal = cart.reduce((s, c) => s + lineTotal(c), 0)
+  const wholesaleDiscount = client?.customerType === 'WHOLESALE' ? cartSubtotal * (client.wholesaleDiscountPct ?? 0) / 100 : 0
+  const cartTotal = Math.max(0, cartSubtotal - wholesaleDiscount)
   const activeItems = menuCats.find(c => c.id === activeCat)?.products ?? []
 
   // Marketplace order cart — separate from the main cart above (no table/client involved)
@@ -212,13 +216,18 @@ export default function ComptoirPage() {
       const res = await fetch('/api/pos/customers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${posToken}` },
-        body: JSON.stringify({ phone: clientSearch.trim(), name: clientNewName.trim() || undefined }),
+        body: JSON.stringify({
+          phone: clientSearch.trim(), name: clientNewName.trim() || undefined,
+          customerType: newIsWholesale ? 'WHOLESALE' : 'RETAIL',
+          wholesaleDiscountPct: newIsWholesale ? Number(newWholesalePct) || 0 : undefined,
+        }),
       })
       const data = await res.json()
       if (res.ok) {
         setClient(data.customer)
         setClientPicker(false)
         setClientSearch(''); setClientNewName(''); setClientResults([])
+        setNewIsWholesale(false); setNewWholesalePct('10')
       }
     } finally {
       setClientBusy(false)
@@ -485,7 +494,14 @@ export default function ComptoirPage() {
           <div className="border-b border-gray-800 px-4 py-3 flex items-center justify-between">
             {client ? (
               <div>
-                <p className="text-white text-sm font-bold">{client.name || 'Client'}</p>
+                <p className="text-white text-sm font-bold flex items-center gap-1.5">
+                  {client.name || 'Client'}
+                  {client.customerType === 'WHOLESALE' && (
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-900/50 text-amber-400 border border-amber-700/50">
+                      Gros −{client.wholesaleDiscountPct}%
+                    </span>
+                  )}
+                </p>
                 <p className="text-gray-500 text-xs font-mono">{client.phone}</p>
               </div>
             ) : (
@@ -509,6 +525,18 @@ export default function ComptoirPage() {
               <p className="text-gray-600 text-sm text-center py-10">Aucun article — touchez un produit pour l'ajouter</p>
             )}
           </div>
+          {wholesaleDiscount > 0 && (
+            <div className="px-4 pt-2 flex items-baseline justify-between text-xs">
+              <span className="text-gray-500">Sous-total</span>
+              <span className="text-gray-400 font-mono">{cartSubtotal.toFixed(2)} {currency}</span>
+            </div>
+          )}
+          {wholesaleDiscount > 0 && (
+            <div className="px-4 flex items-baseline justify-between text-xs">
+              <span className="text-amber-500">Remise gros (−{client?.wholesaleDiscountPct}%)</span>
+              <span className="text-amber-400 font-mono">−{wholesaleDiscount.toFixed(2)} {currency}</span>
+            </div>
+          )}
           <div className="border-t border-dashed border-gray-800 px-4 py-3 flex items-baseline justify-between">
             <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Total</span>
             <span className="text-white font-extrabold text-xl font-mono">{cartTotal.toFixed(2)} {currency}</span>
@@ -579,6 +607,19 @@ export default function ComptoirPage() {
                 <input type="text" value={clientNewName} onChange={e => setClientNewName(e.target.value)}
                   placeholder="Nom (optionnel)"
                   className="w-full px-4 py-2.5 bg-gray-950 border border-gray-700 text-white rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                <label className="flex items-center gap-2 text-xs text-gray-400">
+                  <input type="checkbox" checked={newIsWholesale} onChange={e => setNewIsWholesale(e.target.checked)}
+                    className="w-4 h-4 accent-amber-500" />
+                  Client grossiste (revendeur)
+                </label>
+                {newIsWholesale && (
+                  <div className="flex items-center gap-2">
+                    <input type="number" value={newWholesalePct} onChange={e => setNewWholesalePct(e.target.value)}
+                      min="0" max="100" placeholder="10"
+                      className="w-20 px-3 py-2 bg-gray-950 border border-amber-700/50 text-white rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500" />
+                    <span className="text-xs text-amber-500">% de remise sur chaque commande</span>
+                  </div>
+                )}
                 <button onClick={createClient} disabled={clientBusy}
                   className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white rounded-xl font-bold text-sm">
                   {clientBusy ? 'Création…' : 'Créer et sélectionner'}
