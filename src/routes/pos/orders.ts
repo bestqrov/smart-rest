@@ -51,11 +51,15 @@ router.post('/api/pos/orders', authorizePOS, requireUnlockedShift, async (req: R
 
     const lineItems = items.map(item => {
       const p = productMap.get(item.productId)!
+      // WEIGHT products: `quantity` is grams, `price` is per-KG — snapshot
+      // unitPrice as the per-gram rate so downstream quantity*unitPrice
+      // totals (kitchen, receipts, analytics) stay correct unmodified.
+      const unitPrice = p.unitType === 'WEIGHT' ? p.price / 1000 : p.price
       return {
         productId:      item.productId,
         quantity:       item.quantity,
         notes:          item.notes ?? null,
-        unitPrice:      p.price,
+        unitPrice,
         commissionRate: p.commissionRate
       }
     })
@@ -190,7 +194,7 @@ router.get('/api/pos/menu', authorizePOS, async (req: Request, res: Response) =>
         products: {
           where:   { isAvailable: true },
           orderBy: { nameEn: 'asc' },
-          select:  { id: true, nameAr: true, nameEn: true, nameFr: true, price: true, imageUrl: true }
+          select:  { id: true, nameAr: true, nameEn: true, nameFr: true, price: true, imageUrl: true, unitType: true }
         }
       }
     })

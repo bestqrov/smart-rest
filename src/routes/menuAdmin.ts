@@ -100,7 +100,7 @@ router.get('/api/admin/products', authorizeAdmin, async (req: Request, res: Resp
 router.post('/api/admin/products', authorizeAdmin, async (req: Request, res: Response) => {
   try {
     const cafeId = req.admin!.cafeId
-    const { categoryId, nameAr, nameEn, nameFr = '', nameEs = '', nameDe = '', description, price, imageUrl, costPrice } = req.body
+    const { categoryId, nameAr, nameEn, nameFr = '', nameEs = '', nameDe = '', description, price, imageUrl, costPrice, unitType } = req.body
     if (!categoryId || !nameAr || !nameEn || price === undefined) {
       return res.status(400).json({ error: 'categoryId, nameAr, nameEn, price required' })
     }
@@ -109,7 +109,8 @@ router.post('/api/admin/products', authorizeAdmin, async (req: Request, res: Res
 
     const product = await prisma.product.create({
       data: { categoryId: String(categoryId), nameAr, nameEn, nameFr, nameEs, nameDe, description: description || null, price, imageUrl: imageUrl || null,
-        costPrice: costPrice !== undefined && costPrice !== '' ? Number(costPrice) : null }
+        costPrice: costPrice !== undefined && costPrice !== '' ? Number(costPrice) : null,
+        unitType: unitType === 'WEIGHT' ? 'WEIGHT' : 'PIECE' }
     })
     return res.status(201).json(product)
   } catch (err) {
@@ -125,7 +126,7 @@ router.put('/api/admin/products/:id', authorizeAdmin, async (req: Request, res: 
     const existing = await prisma.product.findUnique({ where: { id }, include: { category: { select: { cafeId: true } } } })
     if (!existing || existing.category.cafeId !== cafeId) return res.status(404).json({ error: 'Not found' })
 
-    const { nameAr, nameEn, nameFr, nameEs, nameDe, description, price, imageUrl, isAvailable, costPrice } = req.body
+    const { nameAr, nameEn, nameFr, nameEs, nameDe, description, price, imageUrl, isAvailable, costPrice, unitType } = req.body
     const product = await prisma.product.update({
       where: { id },
       data: {
@@ -139,6 +140,7 @@ router.put('/api/admin/products/:id', authorizeAdmin, async (req: Request, res: 
         ...(imageUrl !== undefined && { imageUrl }),
         ...(isAvailable !== undefined && { isAvailable }),
         ...(costPrice !== undefined && { costPrice: costPrice === '' || costPrice === null ? null : Number(costPrice) }),
+        ...(unitType !== undefined && { unitType: unitType === 'WEIGHT' ? 'WEIGHT' : 'PIECE' }),
       }
     })
 

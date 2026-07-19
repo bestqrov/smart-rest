@@ -9,10 +9,10 @@ import { useLang } from '../lang-context'
 import { A } from '../../../lib/adminI18n'
 
 type Category = { id: string; nameAr: string; nameEn: string; nameFr: string; nameEs: string; nameDe: string; order: number; _count?: { products: number } }
-type Product  = { id: string; categoryId: string; nameAr: string; nameEn: string; nameFr: string; price: string | number; costPrice?: string | number | null; description?: string; imageUrl?: string; isAvailable: boolean; category?: { nameEn: string } }
+type Product  = { id: string; categoryId: string; nameAr: string; nameEn: string; nameFr: string; price: string | number; costPrice?: string | number | null; unitType?: string; description?: string; imageUrl?: string; isAvailable: boolean; category?: { nameEn: string } }
 
 const EMPTY_CAT: Omit<Category, 'id' | 'order' | '_count'> = { nameAr: '', nameEn: '', nameFr: '', nameEs: '', nameDe: '' }
-const EMPTY_PRD = { categoryId: '', nameAr: '', nameEn: '', nameFr: '', price: '', costPrice: '', description: '', imageUrl: '' }
+const EMPTY_PRD = { categoryId: '', nameAr: '', nameEn: '', nameFr: '', price: '', costPrice: '', unitType: 'PIECE', description: '', imageUrl: '' }
 
 function margin(price: number, cost: number) {
   if (!cost || cost <= 0) return null
@@ -85,7 +85,7 @@ export default function MenuPage() {
   }
 
   function openEditProduct(p: Product) {
-    setPrdModal({ open: true, data: { categoryId: p.categoryId, nameAr: p.nameAr, nameEn: p.nameEn, nameFr: p.nameFr || '', price: String(p.price), costPrice: p.costPrice != null ? String(p.costPrice) : '', description: p.description || '', imageUrl: p.imageUrl || '' }, id: p.id })
+    setPrdModal({ open: true, data: { categoryId: p.categoryId, nameAr: p.nameAr, nameEn: p.nameEn, nameFr: p.nameFr || '', price: String(p.price), costPrice: p.costPrice != null ? String(p.costPrice) : '', unitType: p.unitType || 'PIECE', description: p.description || '', imageUrl: p.imageUrl || '' }, id: p.id })
     setImgPreview(p.imageUrl || '')
   }
 
@@ -226,7 +226,9 @@ export default function MenuPage() {
                           <p className="font-semibold text-gray-900 text-sm truncate">{getName(p, lang)}</p>
                           <p className="text-xs text-gray-400 truncate">{lang !== 'en' ? p.nameEn : p.nameAr}</p>
                           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                            <p className="text-sm font-bold text-emerald-600">{Number(p.price).toFixed(2)}</p>
+                            <p className="text-sm font-bold text-emerald-600">
+                              {Number(p.price).toFixed(2)}{p.unitType === 'WEIGHT' && <span className="text-gray-400 font-normal">/kg</span>}
+                            </p>
                             {p.costPrice != null && Number(p.costPrice) > 0 && (() => {
                               const m = margin(Number(p.price), Number(p.costPrice))
                               return m ? (
@@ -352,10 +354,35 @@ export default function MenuPage() {
               </div>
             ))}
 
+            {/* Unit type — sold per piece or by weight (e.g. cakes/pastries by KG) */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">
+                {lang === 'fr' ? 'Vendu' : lang === 'ar' ? 'يباع' : 'Sold'}
+              </label>
+              <div className="flex gap-2">
+                {[
+                  { value: 'PIECE',  label: lang === 'fr' ? 'À la pièce' : lang === 'ar' ? 'بالقطعة' : 'By piece' },
+                  { value: 'WEIGHT', label: lang === 'fr' ? 'Au poids (kg)' : lang === 'ar' ? 'بالوزن (كيلو)' : 'By weight (kg)' },
+                ].map(opt => (
+                  <button key={opt.value} type="button"
+                    onClick={() => setPrdModal(m => ({ ...m, data: { ...m.data, unitType: opt.value } }))}
+                    className={`flex-1 px-3 py-2 rounded-xl text-xs font-bold border transition-colors ${
+                      ((prdModal.data as any).unitType ?? 'PIECE') === opt.value
+                        ? 'bg-emerald-600 border-emerald-600 text-white'
+                        : 'bg-white border-gray-200 text-gray-500 hover:border-emerald-300'
+                    }`}>
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Price + Cost Price */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">{t.price} * <span className="text-gray-400">(بيع)</span></label>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">
+                  {t.price} * <span className="text-gray-400">({(prdModal.data as any).unitType === 'WEIGHT' ? (lang === 'fr' ? 'par kg' : lang === 'ar' ? 'للكيلو' : 'per kg') : (lang === 'fr' ? 'vente' : lang === 'ar' ? 'بيع' : 'sale')})</span>
+                </label>
                 <div className="relative">
                   <DollarSign className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <input type="number" step="0.01" min="0" value={prdModal.data.price}

@@ -26,9 +26,14 @@ interface PosTable  { id: string; tableNumber: number; qrToken: string; isActive
 interface Staff     { id: string; name: string; role: string }
 interface OrderItem { id: string; productId: string; quantity: number; notes: string | null; unitPrice: number; commissionRate: number; product: { nameAr: string; nameEn: string; nameFr: string } }
 interface TableOrder { id: string; totalPrice: number; totalCommission: number; payMethod: string; orderSource: string; billStatus: string; createdAt: string; items: OrderItem[] }
-interface MenuItem   { id: string; nameEn: string; nameAr: string; nameFr: string; price: number; imageUrl: string | null }
+interface MenuItem   { id: string; nameEn: string; nameAr: string; nameFr: string; price: number; imageUrl: string | null; unitType?: string }
 interface MenuCat    { id: string; nameEn: string; nameAr: string; nameFr: string; order: number; products: MenuItem[] }
-interface CartItem   { productId: string; name: string; price: number; qty: number }
+interface CartItem   { productId: string; name: string; price: number; qty: number; unitType: string }
+
+// Weight items: price is per KG, qty is grams — total = price/1000 * qty.
+function lineTotal(item: { price: number; qty: number; unitType: string }) {
+  return item.unitType === 'WEIGHT' ? (item.price / 1000) * item.qty : item.price * item.qty
+}
 interface TodaySummaryOrder { id: string; status: string; totalPrice: number; paymentMethod: string; createdAt: string; table: { tableNumber: number } | null }
 interface ShiftLiveSummary  { openingFloat: number; totalCollectedCash: number; count: number; orders: TodaySummaryOrder[] }
 
@@ -328,15 +333,21 @@ export default function POSPage() {
 
   // Cart helpers
   function addToCart(item: MenuItem) {
+    const isWeight = item.unitType === 'WEIGHT'
     setCart(prev => {
       const ex = prev.find(c => c.productId === item.id)
-      if (ex) return prev.map(c => c.productId === item.id ? { ...c, qty: c.qty + 1 } : c)
-      return [...prev, { productId: item.id, name: pName(item), price: item.price, qty: 1 }]
+      if (ex) return prev.map(c => c.productId === item.id ? { ...c, qty: c.qty + (isWeight ? 50 : 1) } : c)
+      return [...prev, { productId: item.id, name: pName(item), price: item.price, qty: isWeight ? 250 : 1, unitType: item.unitType ?? 'PIECE' }]
     })
     if (mobileTab === 'menu') setMobileTab('cart')
   }
   function updateQty(productId: string, delta: number) {
-    setCart(prev => prev.map(c => c.productId === productId ? { ...c, qty: Math.max(1, c.qty + delta) } : c))
+    setCart(prev => prev.map(c => {
+      if (c.productId !== productId) return c
+      const isWeight = c.unitType === 'WEIGHT'
+      const step = isWeight ? 50 * delta : delta
+      return { ...c, qty: Math.max(isWeight ? 50 : 1, c.qty + step) }
+    }))
   }
   function removeFromCart(productId: string) {
     setCart(prev => prev.filter(c => c.productId !== productId))
@@ -432,7 +443,7 @@ export default function POSPage() {
     return pa !== pb ? pa - pb : a.tableNumber - b.tableNumber
   })
 
-  const cartTotal        = cart.reduce((s, c) => s + c.price * c.qty, 0)
+  const cartTotal        = cart.reduce((s, c) => s + lineTotal(c), 0)
   const tableOrdersTotal = tableOrders.reduce((s, o) => s + o.totalPrice, 0)
   const orderTotal       = tableOrdersTotal + cartTotal
   const cashVal          = parseFloat(cashInput) || 0
@@ -779,7 +790,7 @@ export default function POSPage() {
                     <div className="p-2.5">
                       <p className="text-white font-bold text-xs leading-tight truncate">{pName(item)}</p>
                       <div className="flex items-center justify-between mt-1.5">
-                        <p className="text-emerald-400 font-extrabold text-sm">{item.price.toFixed(2)} <span className="text-[10px] font-normal text-gray-500">{currency}</span></p>
+                        <p className="text-emerald-400 font-extrabold text-sm">{item.price.toFixed(2)} <span className="text-[10px] font-normal text-gray-500">{currency}{item.unitType === 'WEIGHT' ? '/kg' : ''}</span></p>
                         <div className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors
                           ${selTable ? 'bg-emerald-900/60 text-emerald-400' : 'bg-gray-800 text-gray-600'}`}>
                           <Plus className="w-3.5 h-3.5" />
@@ -873,7 +884,9 @@ export default function POSPage() {
                             className="w-10 h-10 rounded-lg bg-gray-800 hover:bg-gray-700 flex items-center justify-center text-gray-400 hover:text-white active:scale-95 transition-all">
                             <Minus className="w-4 h-4" />
                           </button>
-                          <span className="w-8 text-center text-white font-extrabold text-sm">{item.qty}</span>
+                          <span className="w-12 text-center text-white font-extrabold text-sm">
+                            {item.unitType === 'WEIGHT' ? `${item.qty}g` : item.qty}
+                          </span>
                           <button onClick={() => updateQty(item.productId, 1)}
                             className="w-10 h-10 rounded-lg bg-emerald-900/70 hover:bg-emerald-800 flex items-center justify-center text-emerald-400 hover:text-white active:scale-95 transition-all">
                             <Plus className="w-4 h-4" />
@@ -881,10 +894,12 @@ export default function POSPage() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-white text-sm font-semibold truncate">{item.name}</p>
-                          <p className="text-gray-500 text-xs">{item.price.toFixed(2)} × {item.qty}</p>
+                          <p className="text-gray-500 text-xs">
+                            {item.unitType === 'WEIGHT' ? `${item.price.toFixed(2)}/kg` : item.price.toFixed(2)} × {item.unitType === 'WEIGHT' ? `${item.qty}g` : item.qty}
+                          </p>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
-                          <span className="text-gray-300 tabular-nums text-sm">{(item.price * item.qty).toFixed(2)}</span>
+                          <span className="text-gray-300 tabular-nums text-sm">{lineTotal(item).toFixed(2)}</span>
                           <button onClick={() => removeFromCart(item.productId)}
                             className="w-10 h-10 rounded-lg bg-gray-800 hover:bg-red-900/50 flex items-center justify-center text-gray-600 hover:text-red-400 active:scale-95 transition-all">
                             <Trash2 className="w-4 h-4" />

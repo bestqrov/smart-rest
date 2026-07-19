@@ -467,6 +467,10 @@ model Product {
   nameDe         String  @default("")
   description    String?
   price          Float
+  // PIECE (default, price = per unit) | WEIGHT (price = per KG — sold by
+  // weight at the counter, e.g. pastries/cakes; quantity on OrderItem is
+  // then grams, not a piece count, and unitPrice is snapshotted as price/1000)
+  unitType       String   @default("PIECE")
   imageUrl       String?
   isAvailable    Boolean  @default(true)
   // commission as a fraction of sale price (e.g. 0.05 = 5%)

@@ -10,9 +10,14 @@ import LockedOverlay from '../../src/components/pos/LockedOverlay'
 import { printReceipt } from '../../src/lib/posReceipt'
 
 interface Staff { id: string; name: string; role: string }
-interface MenuItem { id: string; nameEn: string; nameAr: string; nameFr: string; price: number; imageUrl: string | null }
+interface MenuItem { id: string; nameEn: string; nameAr: string; nameFr: string; price: number; imageUrl: string | null; unitType?: string }
 interface MenuCat  { id: string; nameEn: string; nameAr: string; nameFr: string; order: number; products: MenuItem[] }
-interface CartItem { productId: string; name: string; price: number; qty: number }
+interface CartItem { productId: string; name: string; price: number; qty: number; unitType: string }
+
+// Weight items: price is per KG, qty is grams — total = price/1000 * qty.
+function lineTotal(item: { price: number; qty: number; unitType: string }) {
+  return item.unitType === 'WEIGHT' ? (item.price / 1000) * item.qty : item.price * item.qty
+}
 interface TodaySummaryOrder { id: string; status: string; totalPrice: number; paymentMethod: string; createdAt: string; table: { tableNumber: number } | null }
 interface ShiftLiveSummary  { openingFloat: number; totalCollectedCash: number; count: number; orders: TodaySummaryOrder[] }
 
@@ -117,18 +122,23 @@ export default function ComptoirPage() {
   }, [posToken, cashierShift.shift, fetchLiveSummary])
 
   function addToCart(item: MenuItem) {
+    const isWeight = item.unitType === 'WEIGHT'
     setCart(prev => {
       const ex = prev.find(c => c.productId === item.id)
-      if (ex) return prev.map(c => c.productId === item.id ? { ...c, qty: c.qty + 1 } : c)
-      return [...prev, { productId: item.id, name: pName(item), price: item.price, qty: 1 }]
+      if (ex) return prev.map(c => c.productId === item.id ? { ...c, qty: c.qty + (isWeight ? 50 : 1) } : c)
+      return [...prev, { productId: item.id, name: pName(item), price: item.price, qty: isWeight ? 250 : 1, unitType: item.unitType ?? 'PIECE' }]
     })
   }
   function updateQty(productId: string, delta: number) {
     setCart(prev => prev
-      .map(c => c.productId === productId ? { ...c, qty: c.qty + delta } : c)
+      .map(c => {
+        if (c.productId !== productId) return c
+        const isWeight = c.unitType === 'WEIGHT'
+        return { ...c, qty: c.qty + (isWeight ? 50 * delta : delta) }
+      })
       .filter(c => c.qty > 0))
   }
-  const cartTotal = cart.reduce((s, c) => s + c.price * c.qty, 0)
+  const cartTotal = cart.reduce((s, c) => s + lineTotal(c), 0)
   const activeItems = menuCats.find(c => c.id === activeCat)?.products ?? []
 
   async function searchClients(q: string) {
@@ -405,7 +415,7 @@ export default function ComptoirPage() {
                 className="bg-gray-900 border border-gray-800 hover:border-emerald-700 rounded-2xl p-3 text-left transition-colors active:scale-95">
                 <p className="text-white font-bold text-sm truncate">{pName(item)}</p>
                 <div className="flex items-center justify-between mt-2">
-                  <span className="text-emerald-400 font-extrabold text-sm">{item.price.toFixed(2)} {currency}</span>
+                  <span className="text-emerald-400 font-extrabold text-sm">{item.price.toFixed(2)} {currency}{item.unitType === 'WEIGHT' ? '/kg' : ''}</span>
                   <span className="w-7 h-7 rounded-lg bg-emerald-900/60 text-emerald-400 flex items-center justify-center font-bold">+</span>
                 </div>
               </button>
@@ -432,10 +442,10 @@ export default function ComptoirPage() {
             {cart.map(item => (
               <div key={item.productId} className="flex items-center gap-2 bg-gray-950 rounded-xl px-3 py-2">
                 <button onClick={() => updateQty(item.productId, -1)} className="w-8 h-8 rounded-lg bg-gray-800 text-gray-300 font-bold">−</button>
-                <span className="w-6 text-center text-white font-bold text-sm">{item.qty}</span>
+                <span className="w-10 text-center text-white font-bold text-sm">{item.unitType === 'WEIGHT' ? `${item.qty}g` : item.qty}</span>
                 <button onClick={() => updateQty(item.productId, 1)} className="w-8 h-8 rounded-lg bg-emerald-900/70 text-emerald-400 font-bold">+</button>
                 <span className="flex-1 text-white text-sm font-semibold truncate">{item.name}</span>
-                <span className="text-gray-400 text-sm font-mono">{(item.price * item.qty).toFixed(2)}</span>
+                <span className="text-gray-400 text-sm font-mono">{lineTotal(item).toFixed(2)}</span>
               </div>
             ))}
             {cart.length === 0 && (
