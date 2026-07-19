@@ -998,6 +998,96 @@ export default function LandingPage() {
       </nav>
 
       {/* ══════════════════════════════════════════════════════════════════════ */}
+      {/* ECOSYSTEM SHOWCASE */}
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      <section className="py-24 relative overflow-hidden" style={{ background: 'var(--cb)' }}>
+        {/* dot grid */}
+        <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)', backgroundSize: '36px 36px' }} />
+        {/* ambient center glow */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[700px] rounded-full blur-[140px] pointer-events-none" style={{ background: HERO_GLOW[theme] }} />
+
+        <div className="relative max-w-7xl mx-auto px-4">
+
+          {/* Section header */}
+          <div className="text-center mb-14">
+            <span className="inline-block border px-4 py-1.5 rounded-full text-sm font-semibold mb-5" style={{ background: 'var(--cbr)', borderColor: 'var(--cbr)', color: 'var(--ca)' }}>
+              {lang === 'ar' ? 'المنصة الشاملة' : lang === 'fr' ? 'Vue d\'ensemble' : 'Platform Overview'}
+            </span>
+            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white leading-[1.1] mb-5">
+              {lang === 'ar' ? (
+                <>كل ما يحتاجه مطعمك.<br /><span className="bg-clip-text text-transparent" style={{ backgroundImage: H1_GRADIENT[theme] }}>في نظام واحد.</span></>
+              ) : lang === 'fr' ? (
+                <>Tout ce dont votre restaurant a besoin.<br /><span className="bg-clip-text text-transparent" style={{ backgroundImage: H1_GRADIENT[theme] }}>Dans un seul OS.</span></>
+              ) : (
+                <>Everything Your Restaurant Needs.<br /><span className="bg-clip-text text-transparent" style={{ backgroundImage: H1_GRADIENT[theme] }}>One Unified OS.</span></>
+              )}
+            </h2>
+            <p className="text-gray-400 text-lg max-w-2xl mx-auto leading-relaxed">
+              {lang === 'ar'
+                ? 'من القوائم الذكية وشاشات المطبخ إلى التسويق بالذكاء الاصطناعي والنشر التلقائي — كل شيء متصل وكل شيء مؤتمت.'
+                : lang === 'fr'
+                ? 'Des menus intelligents aux écrans cuisine, en passant par le marketing IA et la publication sociale — tout connecté, tout automatisé.'
+                : 'From smart menus and kitchen displays to AI marketing and social publishing — all connected, all automated.'}
+            </p>
+          </div>
+
+          {/* Image showcase */}
+          <div className="relative">
+            {/* outer glow ring */}
+            <div className="absolute -inset-6 rounded-3xl blur-2xl" style={{ background: HERO_GLOW[theme] }} />
+            {/* mid glow */}
+            <div className="absolute -inset-2 rounded-2xl" style={{ background: 'var(--cbr)', opacity: 0.3 }} />
+            {/* image frame */}
+            <div className="relative rounded-2xl overflow-hidden border ring-1 ring-white/5" style={{ borderColor: 'var(--cbr)' }}>
+              <Image
+                src="/assets/smartrest.png"
+                alt="Smart Resto — Complete Restaurant OS"
+                width={1400}
+                height={900}
+                className="w-full h-auto object-cover"
+                priority
+                unoptimized
+              />
+              {/* subtle bottom fade */}
+              <div className="absolute bottom-0 inset-x-0 h-24 bg-gradient-to-t from-gray-950/60 to-transparent" />
+            </div>
+          </div>
+
+          {/* Benefits bar */}
+          <div className="mt-12 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            {([
+              { icon: TrendingUp, en: 'Increase Revenue',     fr: 'Augmenter les Revenus',  ar: 'زيادة الإيرادات',     color: 'emerald' },
+              { icon: CheckCircle,icon2: CheckCircle, en: 'Reduce Errors',         fr: 'Réduire les Erreurs',    ar: 'تقليل الأخطاء',      color: 'blue'    },
+              { icon: Clock,      en: 'Save Time',            fr: 'Gagner du Temps',         ar: 'توفير الوقت',         color: 'amber'   },
+              { icon: Layers,     en: 'Control Operations',   fr: 'Contrôler les Opérations',ar: 'التحكم في العمليات',  color: 'violet'  },
+              { icon: Star,       en: 'Delight Customers',    fr: 'Ravir les Clients',        ar: 'إسعاد الزبائن',       color: 'rose'    },
+              { icon: Zap,        en: 'Grow Your Brand',      fr: 'Développer votre Marque',  ar: 'تنمية علامتك',       color: 'teal'    },
+            ] as const).map(({ icon: Icon, en: enL, fr: frL, ar: arL, color }) => {
+              const label = lang === 'ar' ? arL : lang === 'fr' ? frL : enL
+              const colorMap: Record<string, { bg: string; text: string; border: string }> = {
+                emerald: { bg: 'bg-emerald-900/40', text: 'text-emerald-300', border: 'border-emerald-700/40' },
+                blue:    { bg: 'bg-blue-900/40',    text: 'text-blue-300',    border: 'border-blue-700/40'    },
+                amber:   { bg: 'bg-amber-900/40',   text: 'text-amber-300',   border: 'border-amber-700/40'   },
+                violet:  { bg: 'bg-violet-900/40',  text: 'text-violet-300',  border: 'border-violet-700/40'  },
+                rose:    { bg: 'bg-rose-900/40',    text: 'text-rose-300',    border: 'border-rose-700/40'    },
+                teal:    { bg: 'bg-teal-900/40',    text: 'text-teal-300',    border: 'border-teal-700/40'    },
+              }
+              const c = colorMap[color]
+              return (
+                <div key={enL} className={`flex flex-col items-center gap-2.5 ${c.bg} border ${c.border} rounded-2xl px-4 py-5 text-center`}>
+                  <div className={`w-10 h-10 rounded-xl ${c.bg} border ${c.border} flex items-center justify-center`}>
+                    <Icon className={`w-5 h-5 ${c.text}`} />
+                  </div>
+                  <span className={`text-sm font-semibold ${c.text} leading-tight`}>{label}</span>
+                </div>
+              )
+            })}
+          </div>
+
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════════════════════════ */}
       {/* HERO */}
       {/* ══════════════════════════════════════════════════════════════════════ */}
       <section className="relative overflow-hidden" style={{ background: HERO_GRADIENT[theme] }}>
@@ -1134,96 +1224,6 @@ export default function LandingPage() {
               </div>
             ))}
           </div>
-        </div>
-      </section>
-
-      {/* ══════════════════════════════════════════════════════════════════════ */}
-      {/* ECOSYSTEM SHOWCASE */}
-      {/* ══════════════════════════════════════════════════════════════════════ */}
-      <section className="py-24 relative overflow-hidden" style={{ background: 'var(--cb)' }}>
-        {/* dot grid */}
-        <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)', backgroundSize: '36px 36px' }} />
-        {/* ambient center glow */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[700px] rounded-full blur-[140px] pointer-events-none" style={{ background: HERO_GLOW[theme] }} />
-
-        <div className="relative max-w-7xl mx-auto px-4">
-
-          {/* Section header */}
-          <div className="text-center mb-14">
-            <span className="inline-block border px-4 py-1.5 rounded-full text-sm font-semibold mb-5" style={{ background: 'var(--cbr)', borderColor: 'var(--cbr)', color: 'var(--ca)' }}>
-              {lang === 'ar' ? 'المنصة الشاملة' : lang === 'fr' ? 'Vue d\'ensemble' : 'Platform Overview'}
-            </span>
-            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white leading-[1.1] mb-5">
-              {lang === 'ar' ? (
-                <>كل ما يحتاجه مطعمك.<br /><span className="bg-clip-text text-transparent" style={{ backgroundImage: H1_GRADIENT[theme] }}>في نظام واحد.</span></>
-              ) : lang === 'fr' ? (
-                <>Tout ce dont votre restaurant a besoin.<br /><span className="bg-clip-text text-transparent" style={{ backgroundImage: H1_GRADIENT[theme] }}>Dans un seul OS.</span></>
-              ) : (
-                <>Everything Your Restaurant Needs.<br /><span className="bg-clip-text text-transparent" style={{ backgroundImage: H1_GRADIENT[theme] }}>One Unified OS.</span></>
-              )}
-            </h2>
-            <p className="text-gray-400 text-lg max-w-2xl mx-auto leading-relaxed">
-              {lang === 'ar'
-                ? 'من القوائم الذكية وشاشات المطبخ إلى التسويق بالذكاء الاصطناعي والنشر التلقائي — كل شيء متصل وكل شيء مؤتمت.'
-                : lang === 'fr'
-                ? 'Des menus intelligents aux écrans cuisine, en passant par le marketing IA et la publication sociale — tout connecté, tout automatisé.'
-                : 'From smart menus and kitchen displays to AI marketing and social publishing — all connected, all automated.'}
-            </p>
-          </div>
-
-          {/* Image showcase */}
-          <div className="relative">
-            {/* outer glow ring */}
-            <div className="absolute -inset-6 rounded-3xl blur-2xl" style={{ background: HERO_GLOW[theme] }} />
-            {/* mid glow */}
-            <div className="absolute -inset-2 rounded-2xl" style={{ background: 'var(--cbr)', opacity: 0.3 }} />
-            {/* image frame */}
-            <div className="relative rounded-2xl overflow-hidden border ring-1 ring-white/5" style={{ borderColor: 'var(--cbr)' }}>
-              <Image
-                src="/assets/smartrest.png"
-                alt="Smart Resto — Complete Restaurant OS"
-                width={1400}
-                height={900}
-                className="w-full h-auto object-cover"
-                priority
-                unoptimized
-              />
-              {/* subtle bottom fade */}
-              <div className="absolute bottom-0 inset-x-0 h-24 bg-gradient-to-t from-gray-950/60 to-transparent" />
-            </div>
-          </div>
-
-          {/* Benefits bar */}
-          <div className="mt-12 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-            {([
-              { icon: TrendingUp, en: 'Increase Revenue',     fr: 'Augmenter les Revenus',  ar: 'زيادة الإيرادات',     color: 'emerald' },
-              { icon: CheckCircle,icon2: CheckCircle, en: 'Reduce Errors',         fr: 'Réduire les Erreurs',    ar: 'تقليل الأخطاء',      color: 'blue'    },
-              { icon: Clock,      en: 'Save Time',            fr: 'Gagner du Temps',         ar: 'توفير الوقت',         color: 'amber'   },
-              { icon: Layers,     en: 'Control Operations',   fr: 'Contrôler les Opérations',ar: 'التحكم في العمليات',  color: 'violet'  },
-              { icon: Star,       en: 'Delight Customers',    fr: 'Ravir les Clients',        ar: 'إسعاد الزبائن',       color: 'rose'    },
-              { icon: Zap,        en: 'Grow Your Brand',      fr: 'Développer votre Marque',  ar: 'تنمية علامتك',       color: 'teal'    },
-            ] as const).map(({ icon: Icon, en: enL, fr: frL, ar: arL, color }) => {
-              const label = lang === 'ar' ? arL : lang === 'fr' ? frL : enL
-              const colorMap: Record<string, { bg: string; text: string; border: string }> = {
-                emerald: { bg: 'bg-emerald-900/40', text: 'text-emerald-300', border: 'border-emerald-700/40' },
-                blue:    { bg: 'bg-blue-900/40',    text: 'text-blue-300',    border: 'border-blue-700/40'    },
-                amber:   { bg: 'bg-amber-900/40',   text: 'text-amber-300',   border: 'border-amber-700/40'   },
-                violet:  { bg: 'bg-violet-900/40',  text: 'text-violet-300',  border: 'border-violet-700/40'  },
-                rose:    { bg: 'bg-rose-900/40',    text: 'text-rose-300',    border: 'border-rose-700/40'    },
-                teal:    { bg: 'bg-teal-900/40',    text: 'text-teal-300',    border: 'border-teal-700/40'    },
-              }
-              const c = colorMap[color]
-              return (
-                <div key={enL} className={`flex flex-col items-center gap-2.5 ${c.bg} border ${c.border} rounded-2xl px-4 py-5 text-center`}>
-                  <div className={`w-10 h-10 rounded-xl ${c.bg} border ${c.border} flex items-center justify-center`}>
-                    <Icon className={`w-5 h-5 ${c.text}`} />
-                  </div>
-                  <span className={`text-sm font-semibold ${c.text} leading-tight`}>{label}</span>
-                </div>
-              )
-            })}
-          </div>
-
         </div>
       </section>
 
