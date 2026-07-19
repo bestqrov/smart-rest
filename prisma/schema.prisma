@@ -406,6 +406,11 @@ model Table {
   zoneId          String? @db.ObjectId
   zoneRef         Zone?   @relation(fields: [zoneId], references: [id])
 
+  // Pickup counter (food trucks, takeaway-only counters) — customers scanning
+  // this table's QR get a daily queue number instead of a table number, since
+  // there's no seat to deliver food to. One such table per truck is typical.
+  isPickupCounter Boolean @default(false)
+
   mergedIntoTableId String? @db.ObjectId
   mergedIntoTable   Table?  @relation("TableMerge", fields: [mergedIntoTableId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   mergedTables      Table[] @relation("TableMerge")
@@ -507,6 +512,10 @@ model Order {
   seatId          String?       @db.ObjectId
   seat            Seat?         @relation(fields: [seatId], references: [id])
   seatNumber      Int?
+  // Set instead of relying on table/seat when the order came from a
+  // pickup-counter table (Table.isPickupCounter) — resets daily per cafe,
+  // shown to the customer and kitchen instead of a table number.
+  queueNumber     Int?
   status          OrderStatus   @default(PENDING)
   paymentMethod   PaymentMethod
   isPaid          Boolean       @default(false)

@@ -305,7 +305,9 @@ export default function KitchenPage() {
       orderId:            o.id,
       cafeId:             o.cafeId ?? '',
       billingTableNumber: (o.originalTable ?? o.table)?.tableNumber ?? 0,
-      mergeLabel:         isMarketplace(o) ? `🛵 ${o.externalPlatform || 'Delivery'}` : `T${(o.originalTable ?? o.table)?.tableNumber ?? '?'}`,
+      mergeLabel:         isMarketplace(o) ? `🛵 ${o.externalPlatform || 'Delivery'}`
+                          : o.queueNumber != null ? `#${o.queueNumber}`
+                          : `T${(o.originalTable ?? o.table)?.tableNumber ?? '?'}`,
       seatGroups: [{
         seatNumber:          o.seat?.seatNumber ?? null,
         physicalTableNumber: (o.originalTable ?? o.table)?.tableNumber ?? 0,

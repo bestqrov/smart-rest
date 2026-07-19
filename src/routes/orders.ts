@@ -51,6 +51,7 @@ router.post('/api/orders', async (req: Request, res: Response) => {
     let seatId: string | null         = null
     let seatNumber: number | null     = null
     let resolvedSessionId: string | null = null
+    let isPickupCounter: boolean      = false
 
     if (sessionId) {
       // ── New dynamic-QR flow ──────────────────────────────────────────────
@@ -59,7 +60,7 @@ router.post('/api/orders', async (req: Request, res: Response) => {
         where: { id: sessionId },
         include: {
           table: {
-            select: { id: true, cafeId: true, isActive: true, mergedIntoTableId: true }
+            select: { id: true, cafeId: true, isActive: true, mergedIntoTableId: true, isPickupCounter: true }
           }
         }
       })
@@ -74,12 +75,13 @@ router.post('/api/orders', async (req: Request, res: Response) => {
       billingTableId      = session.table.mergedIntoTableId ?? session.tableId
       seatNumber          = session.seatNumber
       resolvedSessionId   = session.id
+      isPickupCounter     = session.table.isPickupCounter
 
     } else if (seatToken) {
       // ── Legacy per-seat QR flow (backward compat) ────────────────────────
       const seat = await prisma.seat.findUnique({
         where: { qrToken: seatToken },
-        include: { table: { select: { id: true, cafeId: true, isActive: true, mergedIntoTableId: true } } }
+        include: { table: { select: { id: true, cafeId: true, isActive: true, mergedIntoTableId: true, isPickupCounter: true } } }
       })
       if (!seat) return res.status(404).json({ error: 'Invalid seat token' })
       if (!seat.table.isActive) return res.status(403).json({ error: 'Table is inactive' })
@@ -89,6 +91,7 @@ router.post('/api/orders', async (req: Request, res: Response) => {
       billingTableId  = seat.table.mergedIntoTableId ?? seat.table.id
       seatId          = seat.id
       seatNumber      = seat.seatNumber
+      isPickupCounter = seat.table.isPickupCounter
 
     } else {
       // ── Table-level token (no seat) ──────────────────────────────────────
@@ -97,6 +100,7 @@ router.post('/api/orders', async (req: Request, res: Response) => {
       cafeId          = table.cafeId
       physicalTableId = table.id
       billingTableId  = table.mergedIntoTableId ?? table.id
+      isPickupCounter = table.isPickupCounter
     }
 
     const cafe = await prisma.cafe.findUnique({
@@ -142,6 +146,14 @@ router.post('/api/orders', async (req: Request, res: Response) => {
     total = parseFloat(total.toFixed(2))
 
     const result = await prisma.$transaction(async (tx) => {
+      // Pickup-counter orders (food trucks) get a daily queue number instead
+      // of relying on the table — there's no seat to deliver to.
+      let queueNumber: number | undefined
+      if (isPickupCounter) {
+        const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0)
+        queueNumber = (await tx.order.count({ where: { cafeId, queueNumber: { not: null }, createdAt: { gte: todayStart } } })) + 1
+      }
+
       const order = await tx.order.create({
         data: {
           cafeId,
@@ -151,6 +163,7 @@ router.post('/api/orders', async (req: Request, res: Response) => {
           seatNumber:      seatNumber ?? undefined,
           sessionId:       resolvedSessionId ?? undefined,
           customerPhone:   customerPhone || null,
+          queueNumber,
           totalPrice:      total,
           paymentMethod:   'CASH',
           isPaid:          false
@@ -190,7 +203,7 @@ router.post('/api/orders', async (req: Request, res: Response) => {
 
     await autoCheckInReservationForTable(cafeId, physicalTableId)
 
-    return res.status(201).json({ orderId: result.id, totalPrice: total, billingTableId, physicalTableId, seatNumber })
+    return res.status(201).json({ orderId: result.id, totalPrice: total, billingTableId, physicalTableId, seatNumber, queueNumber: result.queueNumber })
   } catch (err: any) {
     logger.error({ msg: 'Create order error', err })
     return res.status(500).json({ error: 'Failed to create order' })

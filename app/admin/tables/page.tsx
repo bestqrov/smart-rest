@@ -10,7 +10,7 @@ import {
 type Seat = { id: string; seatNumber: number; qrToken: string }
 type TableRow = {
   id: string; tableNumber: number; zone: string | null; isActive: boolean; qrToken: string
-  capacity: number; displayType: number
+  capacity: number; displayType: number; isPickupCounter: boolean
   seats: Seat[]
   mergedIntoTableId: string | null
   mergedIntoTable?: { id: string; tableNumber: number } | null
@@ -143,6 +143,7 @@ export default function TablesPage() {
   const [editingId, setEditingId]       = useState<string | null>(null)
   const [editCapacity, setEditCapacity] = useState(4)
   const [editDisplay,  setEditDisplay]  = useState(1)
+  const [editPickup,   setEditPickup]   = useState(false)
   const [savingId, setSavingId]         = useState<string | null>(null)
 
   function authHeader() {
@@ -243,13 +244,13 @@ export default function TablesPage() {
     const r = await fetch(`/api/admin/tables/${tableId}`, {
       method: 'PATCH',
       headers: { ...authHeader(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ capacity: editCapacity, displayType: editDisplay })
+      body: JSON.stringify({ capacity: editCapacity, displayType: editDisplay, isPickupCounter: editPickup })
     })
     if (r.ok) {
       const updated = await r.json()
       setTables(prev => prev.map(t =>
         t.id === tableId
-          ? { ...t, capacity: updated.capacity, displayType: updated.displayType }
+          ? { ...t, capacity: updated.capacity, displayType: updated.displayType, isPickupCounter: updated.isPickupCounter }
           : t
       ))
       setEditingId(null)
@@ -538,6 +539,11 @@ export default function TablesPage() {
                         <option value={4}>🔮 أكريليك</option>
                       </select>
                       <span className="text-gray-300 mx-0.5">|</span>
+                      <label className="flex items-center gap-1 text-xs text-gray-600 cursor-pointer" title="نقطة استلام (فود تراك) — رقم طلب بدل رقم طاولة">
+                        <input type="checkbox" checked={editPickup} onChange={e => setEditPickup(e.target.checked)} className="w-3.5 h-3.5 accent-amber-500" />
+                        🚚
+                      </label>
+                      <span className="text-gray-300 mx-0.5">|</span>
                       <button
                         onClick={() => saveTableEdit(table.id)}
                         disabled={savingId === table.id}
@@ -551,11 +557,11 @@ export default function TablesPage() {
                     </div>
                   ) : (
                     <button
-                      onClick={() => { setEditingId(table.id); setEditCapacity(table.capacity); setEditDisplay(table.displayType) }}
+                      onClick={() => { setEditingId(table.id); setEditCapacity(table.capacity); setEditDisplay(table.displayType); setEditPickup(table.isPickupCounter) }}
                       className="flex items-center gap-1 text-xs text-gray-400 hover:text-emerald-700 border border-gray-100 hover:border-emerald-300 px-2 py-1 rounded-lg transition-colors"
                       title="تعديل الطاقة ونوع الحامل"
                     >
-                      <Pencil className="w-3 h-3" /> {table.capacity} مقاعد
+                      <Pencil className="w-3 h-3" /> {table.isPickupCounter ? '🚚 نقطة استلام' : `${table.capacity} مقاعد`}
                     </button>
                   )}
 

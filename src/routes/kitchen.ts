@@ -93,7 +93,7 @@ router.get('/api/kitchen/orders/queue', authorizeKitchen, async (req: Request, r
       orderBy: { createdAt: 'asc' },
       select: {
         id: true, status: true, totalPrice: true, createdAt: true, seatNumber: true,
-        orderSource: true, externalPlatform: true,
+        orderSource: true, externalPlatform: true, queueNumber: true,
         table:         { select: { tableNumber: true, mergedIntoTableId: true, mergedIntoTable: { select: { tableNumber: true } } } },
         originalTable: { select: { tableNumber: true } },
         seat:          { select: { seatNumber: true } },

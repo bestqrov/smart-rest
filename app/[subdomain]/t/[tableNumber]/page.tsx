@@ -368,7 +368,7 @@ type ScanResult = {
 
 type CartItem = { productId: string; name: string; price: number; quantity: number; notes: string }
 type OrderItem = { productId: string; name: string; quantity: number; status: string }
-type ActiveOrder = { orderId: string; items: OrderItem[]; status: string; totalPrice: number }
+type ActiveOrder = { orderId: string; items: OrderItem[]; status: string; totalPrice: number; queueNumber?: number | null }
 
 type Product = {
   id: string; nameAr: string; nameEn: string; nameFr: string; nameEs: string
@@ -713,7 +713,7 @@ function TablePageInner() {
       }
       if (!r.ok) { setOrderMsg(tr.failedOrder); return }
 
-      const newOrder = { orderId: data.orderId, status: 'PENDING', items: cart.map(c => ({ productId: c.productId, name: c.name, quantity: c.quantity, status: 'PENDING' })), totalPrice: cartTotal }
+      const newOrder = { orderId: data.orderId, status: 'PENDING', items: cart.map(c => ({ productId: c.productId, name: c.name, quantity: c.quantity, status: 'PENDING' })), totalPrice: cartTotal, queueNumber: data.queueNumber }
       setActiveOrder(newOrder)
       sharedOrderRef.current = ''
       setCart([])
@@ -1268,6 +1268,16 @@ function TablePageInner() {
                   {activeOrder.items.map(i => `${i.quantity}× ${i.name}`).join(' · ')}
                 </span>
               </div>
+
+              {/* Queue number — pickup counters (food trucks) instead of a table */}
+              {activeOrder.queueNumber != null && (
+                <div className="flex items-center justify-center gap-2 mb-2.5 bg-black/20 rounded-xl py-2">
+                  <span className="text-xs text-gray-400 font-semibold">
+                    {lang === 'ar' ? 'رقم طلبك' : lang === 'fr' ? 'Votre numéro' : 'Your order #'}
+                  </span>
+                  <span className="text-2xl font-black text-white">#{activeOrder.queueNumber}</span>
+                </div>
+              )}
               <LiveOrderTracker
                 status={activeOrder.status}
                 orderId={activeOrder.orderId}

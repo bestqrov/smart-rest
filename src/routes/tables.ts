@@ -42,6 +42,7 @@ router.get('/api/tables', authorizeAdmin, async (req: Request, res: Response) =>
         qrToken: true,
         capacity: true,
         displayType: true,
+        isPickupCounter: true,
         mergedIntoTableId: true,
         mergedIntoTable: { select: { id: true, tableNumber: true } },
         mergedTables: { select: { id: true, tableNumber: true } },
@@ -775,10 +776,10 @@ router.patch('/api/admin/tables/:id', authorizeAdmin, async (req: Request, res: 
   try {
     const cafeId  = req.admin!.cafeId
     const tableId = String(req.params.id)
-    const { capacity, displayType } = req.body as { capacity?: number; displayType?: number }
+    const { capacity, displayType, isPickupCounter } = req.body as { capacity?: number; displayType?: number; isPickupCounter?: boolean }
 
-    if (capacity === undefined && displayType === undefined) {
-      return res.status(400).json({ error: 'Provide at least one of: capacity, displayType' })
+    if (capacity === undefined && displayType === undefined && isPickupCounter === undefined) {
+      return res.status(400).json({ error: 'Provide at least one of: capacity, displayType, isPickupCounter' })
     }
     if (capacity !== undefined && (!Number.isInteger(capacity) || capacity < 1 || capacity > 20)) {
       return res.status(400).json({ error: 'capacity must be an integer between 1 and 20' })
@@ -795,13 +796,14 @@ router.patch('/api/admin/tables/:id', authorizeAdmin, async (req: Request, res: 
     const updated = await prisma.table.update({
       where: { id: tableId },
       data:  {
-        ...(capacity    !== undefined && { capacity }),
-        ...(displayType !== undefined && { displayType }),
+        ...(capacity        !== undefined && { capacity }),
+        ...(displayType     !== undefined && { displayType }),
+        ...(isPickupCounter !== undefined && { isPickupCounter }),
       },
-      select: { id: true, tableNumber: true, capacity: true, displayType: true }
+      select: { id: true, tableNumber: true, capacity: true, displayType: true, isPickupCounter: true }
     })
 
-    logger.info({ msg: 'table updated', cafeId, tableId, capacity, displayType })
+    logger.info({ msg: 'table updated', cafeId, tableId, capacity, displayType, isPickupCounter })
     return res.json(updated)
   } catch (err) {
     logger.error({ msg: 'PATCH /api/admin/tables/:id error', err })
