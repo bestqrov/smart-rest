@@ -8,7 +8,7 @@ import {
   ArrowRight, Users, Plus, Trash2, Download, Printer,
   Loader2, CheckCircle2, QrCode, MapPin, CalendarDays,
   Phone, Upload, X, Lock, CheckCheck, TrendingUp, Wallet,
-  AlertTriangle, Pencil
+  AlertTriangle, Pencil, MessageCircle, Send
 } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -17,6 +17,7 @@ type Guest = {
   id: string; name: string; phone: string; email: string
   tableNumber: number | null; seatNumber: number | null
   dietaryReq: string; checkedIn: boolean; qrToken: string
+  invitationSentAt: string | null
 }
 
 type Event = {
@@ -26,6 +27,7 @@ type Event = {
   quotedPrice: number | null; depositPaid: number | null
   actualAttendees: number | null; commissionAmount: number | null
   notes: string
+  invitationMessage: string
   guests: Guest[]
 }
 
@@ -95,6 +97,9 @@ const EVENT_STATUSES = [
   { value: 'CANCELLED', label: 'ملغاة' },
 ] as const
 
+const DEFAULT_INVITATION_TEMPLATE =
+  'مرحبا {{name}} 🎉\nمدعو/ة لحفلة {{event}} يوم {{date}} فـ {{venue}}.\nكنتسناوك!'
+
 function toDatetimeLocal(iso: string) {
   const d = new Date(iso)
   const pad = (n: number) => String(n).padStart(2, '0')
@@ -127,7 +132,7 @@ export default function EventDetailPage() {
   const [cards,    setCards]    = useState<Card[]>([])
   const [qrImages, setQrImages] = useState<Record<string, string>>({})
   const [loading,  setLoading]  = useState(true)
-  const [tab,      setTab]      = useState<'guests' | 'menu' | 'services' | 'payments' | 'tasks' | 'staff' | 'cards' | 'finance'>('guests')
+  const [tab,      setTab]      = useState<'guests' | 'menu' | 'services' | 'payments' | 'tasks' | 'staff' | 'invitations' | 'cards' | 'finance'>('guests')
 
   // event menu package
   const [menu,          setMenu]          = useState<EventMenu | null>(null)
@@ -166,6 +171,12 @@ export default function EventDetailPage() {
   const [pickStaffId,     setPickStaffId]     = useState('')
   const [pickStaffRole,   setPickStaffRole]   = useState('')
   const [assigningStaff,  setAssigningStaff]  = useState(false)
+
+  // invitations
+  const [invMessage,     setInvMessage]     = useState('')
+  const [savingInv,      setSavingInv]      = useState(false)
+  const [sendingBulkInv, setSendingBulkInv] = useState(false)
+  const [bulkInvResult,  setBulkInvResult]  = useState<{ total: number; sent: number; skipped: number } | null>(null)
 
   // add guest form
   const [showAddGuest,   setShowAddGuest]   = useState(false)
@@ -270,7 +281,48 @@ export default function EventDetailPage() {
     if (tab === 'payments' && payments === null) loadPayments()
     if (tab === 'tasks' && tasks === null) loadTasks()
     if (tab === 'staff' && staffList === null) loadStaff()
+    if (tab === 'invitations' && !invMessage && event) setInvMessage(event.invitationMessage || DEFAULT_INVITATION_TEMPLATE)
   }, [tab])
+
+  async function saveInvitationTemplate() {
+    setSavingInv(true)
+    await fetch(`/api/traiteur/events/${id}/invitation-template`, {
+      method: 'PATCH',
+      headers: { ...auth(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: invMessage })
+    })
+    setSavingInv(false)
+  }
+
+  function renderInvitationPreview(name: string) {
+    if (!event) return ''
+    return invMessage
+      .split('{{name}}').join(name)
+      .split('{{event}}').join(event.name)
+      .split('{{date}}').join(fmtDate(event.date))
+      .split('{{venue}}').join(event.venue)
+  }
+
+  function waLink(guest: Guest) {
+    const text = encodeURIComponent(renderInvitationPreview(guest.name))
+    const phone = guest.phone.replace(/[^0-9]/g, '')
+    return `https://wa.me/${phone}?text=${text}`
+  }
+
+  async function markInvitationSent(guestId: string) {
+    await fetch(`/api/traiteur/events/${id}/guests/${guestId}/invitation-sent`, { method: 'POST', headers: auth() })
+    await load()
+  }
+
+  async function sendBulkInvitations() {
+    setSendingBulkInv(true); setBulkInvResult(null)
+    await saveInvitationTemplate()
+    const r = await fetch(`/api/traiteur/events/${id}/invitations/send`, {
+      method: 'POST', headers: { ...auth(), 'Content-Type': 'application/json' }, body: JSON.stringify({})
+    })
+    if (r.ok) { setBulkInvResult(await r.json()); await load() }
+    setSendingBulkInv(false)
+  }
 
   async function addPayment() {
     if (!newPayLabel.trim() || !newPayAmount.trim()) return
@@ -687,6 +739,7 @@ export default function EventDetailPage() {
           ['payments', 'الدفعات'],
           ['tasks',    'المهام'],
           ['staff',    'الطاقم'],
+          ['invitations', 'الدعوات'],
           ['cards',    'بطاقات QR'],
           ['finance',  'المالية'],
         ] as const).map(([key, label]) => (
@@ -1135,6 +1188,62 @@ export default function EventDetailPage() {
           {staffList && staffList.length === 0 && (
             <div className="text-center py-12 text-gray-400 text-sm">ماكاين حتى موظف معين لهاد الحفلة بعد</div>
           )}
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════ */}
+      {/* TAB: INVITATIONS */}
+      {/* ══════════════════════════════════════════════ */}
+      {tab === 'invitations' && (
+        <div className="space-y-4">
+          <div className="bg-white border border-gray-200 rounded-2xl p-4 space-y-3">
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">نص الدعوة</p>
+            <textarea value={invMessage} onChange={e => setInvMessage(e.target.value)} rows={3}
+              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400" />
+            <p className="text-[10px] text-gray-400">متاح: {'{{name}} {{event}} {{date}} {{venue}}'}</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <button onClick={saveInvitationTemplate} disabled={savingInv}
+                className="px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white rounded-xl text-sm font-bold disabled:opacity-50 flex items-center gap-1.5">
+                {savingInv ? <Loader2 className="w-4 h-4 animate-spin" /> : 'حفظ النص'}
+              </button>
+              <button onClick={sendBulkInvitations} disabled={sendingBulkInv || !invMessage.trim()}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold disabled:opacity-50 flex items-center gap-1.5">
+                {sendingBulkInv ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                إرسال أوتوماتيكي للكل
+              </button>
+            </div>
+            {bulkInvResult && (
+              <p className="text-xs text-gray-600 bg-gray-50 rounded-lg px-3 py-2">
+                من مجموع {bulkInvResult.total}: تصيفطات {bulkInvResult.sent} · ما تصيفطاتش {bulkInvResult.skipped}
+                {bulkInvResult.skipped > 0 && ' (تأكد بلي WhatsApp متصل، أو صيفط يدوياً بالأزرار تحت)'}
+              </p>
+            )}
+          </div>
+
+          <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden divide-y divide-gray-100">
+            {event.guests.filter(g => g.phone).map(g => (
+              <div key={g.id} className="flex items-center justify-between px-4 py-3 gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-gray-800">{g.name}</p>
+                  <p className="text-xs text-gray-500 mt-0.5 font-mono">{g.phone}</p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {g.invitationSentAt ? (
+                    <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">تصيفطات</span>
+                  ) : (
+                    <a href={waLink(g)} target="_blank" rel="noopener noreferrer"
+                      onClick={() => markInvitationSent(g.id)}
+                      className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100">
+                      <MessageCircle className="w-3.5 h-3.5" /> فتح واتساب
+                    </a>
+                  )}
+                </div>
+              </div>
+            ))}
+            {event.guests.filter(g => g.phone).length === 0 && (
+              <div className="text-center py-12 text-gray-400 text-sm">ماكاين حتى ضيف عندو رقم هاتف بعد</div>
+            )}
+          </div>
         </div>
       )}
 

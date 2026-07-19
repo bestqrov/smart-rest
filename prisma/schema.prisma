@@ -1460,6 +1460,8 @@ model Event {
   menuPackageName String @default("")   // e.g. "Menu Doré"
   pricePerGuest   Float?
 
+  invitationMessage String @default("")   // template with {{name}} {{event}} {{date}} {{venue}}
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -1590,6 +1592,8 @@ model Guest {
 
   checkedIn   Boolean  @default(false)
   checkedInAt DateTime?
+
+  invitationSentAt DateTime?
 
   sessionId   String?  @db.ObjectId
 

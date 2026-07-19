@@ -3,6 +3,7 @@ import { randomUUID } from 'crypto'
 import { authorizeAdmin } from '../middleware/authorizeAdmin'
 import logger from '../logger'
 import prisma from '../prisma'
+import { sendMessage } from '../whatsapp/WhatsAppEngine'
 
 const router = express.Router()
 
@@ -916,6 +917,107 @@ router.delete('/api/traiteur/events/:id/staff/:assignmentId', authorizeAdmin, as
   } catch (err) {
     logger.error({ msg: 'DELETE event staff error', err })
     return res.status(500).json({ error: 'Failed to remove staff assignment' })
+  }
+})
+
+// ─── Invitations ────────────────────────────────────────────────────────────
+// Two ways to send: (1) admin opens WhatsApp manually via a wa.me deep link
+// built client-side, then marks it sent — needs no integration; (2) bulk
+// automated send through the existing WhatsAppEngine (works only if the
+// cafe's Evolution API connection is configured — the engine no-ops
+// gracefully to SKIPPED per message otherwise, it never throws).
+
+function renderInvitation(template: string, vars: Record<string, string>): string {
+  return Object.entries(vars).reduce((s, [k, v]) => s.split(`{{${k}}}`).join(v), template)
+}
+
+router.patch('/api/traiteur/events/:id/invitation-template', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const { cafeId } = req.admin!
+    const eventId    = req.params.id as string
+
+    const event = await prisma.event.findUnique({ where: { id: eventId }, select: { cafeId: true } })
+    if (!event || event.cafeId !== cafeId) return res.status(404).json({ error: 'Event not found' })
+
+    const { message } = req.body as { message: string }
+    const updated = await prisma.event.update({
+      where: { id: eventId },
+      data:  { invitationMessage: message ?? '' },
+      select: { invitationMessage: true }
+    })
+    return res.json(updated)
+  } catch (err) {
+    logger.error({ msg: 'PATCH invitation template error', err })
+    return res.status(500).json({ error: 'Failed to update invitation template' })
+  }
+})
+
+// POST /api/traiteur/events/:id/guests/:guestId/invitation-sent — mark a guest's
+// invitation as sent (used after the admin manually sends via the wa.me link).
+router.post('/api/traiteur/events/:id/guests/:guestId/invitation-sent', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const { cafeId } = req.admin!
+    const guestId    = req.params.guestId as string
+
+    const guest = await prisma.guest.findUnique({ where: { id: guestId }, select: { cafeId: true } })
+    if (!guest || guest.cafeId !== cafeId) return res.status(404).json({ error: 'Guest not found' })
+
+    const updated = await prisma.guest.update({ where: { id: guestId }, data: { invitationSentAt: new Date() } })
+    return res.json(updated)
+  } catch (err) {
+    logger.error({ msg: 'POST invitation-sent error', err })
+    return res.status(500).json({ error: 'Failed to mark invitation as sent' })
+  }
+})
+
+// POST /api/traiteur/events/:id/invitations/send — bulk automated send via
+// WhatsAppEngine, to every guest with a phone number that hasn't been sent
+// one yet (or a specific guestIds subset).
+router.post('/api/traiteur/events/:id/invitations/send', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const { cafeId } = req.admin!
+    const eventId    = req.params.id as string
+
+    const event = await prisma.event.findUnique({ where: { id: eventId } })
+    if (!event || event.cafeId !== cafeId) return res.status(404).json({ error: 'Event not found' })
+
+    const { guestIds } = req.body as { guestIds?: string[] }
+    const template = event.invitationMessage?.trim()
+    if (!template) return res.status(400).json({ error: 'Set an invitation message template first' })
+
+    const guests = await prisma.guest.findMany({
+      where: {
+        eventId,
+        phone: { not: '' },
+        ...(Array.isArray(guestIds) && guestIds.length > 0 ? { id: { in: guestIds } } : {}),
+      }
+    })
+
+    let sent = 0, skipped = 0
+    for (const guest of guests) {
+      const body = renderInvitation(template, {
+        name:  guest.name,
+        event: event.name,
+        date:  new Date(event.date).toLocaleDateString('ar-MA'),
+        venue: event.venue,
+      })
+      try {
+        const msg = await sendMessage(cafeId, guest.phone, body)
+        if (msg.status === 'SENT') {
+          sent++
+          await prisma.guest.update({ where: { id: guest.id }, data: { invitationSentAt: new Date() } })
+        } else {
+          skipped++
+        }
+      } catch {
+        skipped++
+      }
+    }
+
+    return res.json({ total: guests.length, sent, skipped })
+  } catch (err) {
+    logger.error({ msg: 'POST invitations send error', err })
+    return res.status(500).json({ error: 'Failed to send invitations' })
   }
 })
 
