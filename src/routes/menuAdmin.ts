@@ -619,6 +619,7 @@ router.post('/api/admin/onboarding/apply-product-catalog', authorizeAdmin, async
           data: {
             categoryId: cat.id, nameAr: product.nameAr, nameEn: product.nameEn, nameFr: product.nameFr,
             nameEs: '', nameDe: '', price: product.suggestedPrice ?? 0,
+            unitType: product.unitType === 'WEIGHT' ? 'WEIGHT' : 'PIECE',
           },
         })
         createdProducts++

@@ -16,6 +16,9 @@ export interface CatalogProduct {
   nameFr:          string
   nameEn:          string
   suggestedPrice?: number   // rough reference price in the country's local currency
+  // 'WEIGHT' means suggestedPrice is per-KG, not per-piece (e.g. Moroccan
+  // sweets sold loose at a pastry counter). Omitted/'PIECE' = per unit.
+  unitType?:       'PIECE' | 'WEIGHT'
 }
 
 export interface CatalogCategory {
@@ -156,8 +159,19 @@ const MOROCCO_RESTAURANT: CatalogCategory[] = [
 
 const MOROCCO_PASTRY: CatalogCategory[] = [
   {
+    // Sold loose by weight at a pastry counter, unlike the same items in
+    // MOROCCO_CAFE's dessert list (there they're a per-piece dessert
+    // course) — own definition on purpose, not shared, so unitType/price
+    // semantics don't leak across business types.
     key: 'moroccan-sweets', icon: '🧁', nameAr: 'حلويات مغربية', nameFr: 'Gâteaux marocains', nameEn: 'Moroccan sweets',
-    products: MOROCCO_CAFE[3]!.products, // reuse the same pastry list, not a second definition
+    products: [
+      { key: 'corne-gazelle', nameAr: 'كعب الغزال', nameFr: 'Cornes de gazelle', nameEn: 'Gazelle horns', suggestedPrice: 120, unitType: 'WEIGHT' },
+      { key: 'chebakia',      nameAr: 'شباكية',     nameFr: 'Chebakia',          nameEn: 'Chebakia',      suggestedPrice: 90,  unitType: 'WEIGHT' },
+      { key: 'ghriba',        nameAr: 'غريبة',      nameFr: 'Ghriba',            nameEn: 'Ghriba cookies', suggestedPrice: 100, unitType: 'WEIGHT' },
+      { key: 'sellou',        nameAr: 'سلو',        nameFr: 'Sellou',            nameEn: 'Sellou',        suggestedPrice: 130, unitType: 'WEIGHT' },
+      { key: 'briouates-sucrees', nameAr: 'بريوات محلاة', nameFr: 'Briouates sucrées', nameEn: 'Sweet briouates', suggestedPrice: 110, unitType: 'WEIGHT' },
+      { key: 'gateau-jour',   nameAr: 'حلوى اليوم',  nameFr: 'Gâteau du jour',    nameEn: 'Cake of the day', suggestedPrice: 12 },
+    ],
   },
   {
     key: 'western-pastry', icon: '🍰', nameAr: 'معجنات غربية', nameFr: 'Pâtisserie occidentale', nameEn: 'Western pastry',
