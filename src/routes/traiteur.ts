@@ -527,6 +527,128 @@ router.delete('/api/traiteur/events/:id/menu/items/:itemId', authorizeAdmin, asy
   }
 })
 
+// ─── GET /api/traiteur/events/:id/services — list extra services ─────────────
+// Decor, sound system, DJ, photography, etc. — a free-form checklist, not an
+// enum, since caterers offer very different add-ons.
+
+router.get('/api/traiteur/events/:id/services', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const { cafeId } = req.admin!
+    const eventId    = req.params.id as string
+
+    const event = await prisma.event.findUnique({ where: { id: eventId }, select: { cafeId: true } })
+    if (!event || event.cafeId !== cafeId) return res.status(404).json({ error: 'Event not found' })
+
+    const services = await prisma.eventService.findMany({
+      where:   { eventId },
+      orderBy: { createdAt: 'asc' }
+    })
+
+    return res.json(services)
+  } catch (err) {
+    logger.error({ msg: 'GET event services error', err })
+    return res.status(500).json({ error: 'Failed to fetch event services' })
+  }
+})
+
+// ─── POST /api/traiteur/events/:id/services — add an extra service ───────────
+
+router.post('/api/traiteur/events/:id/services', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const { cafeId } = req.admin!
+    const eventId    = req.params.id as string
+
+    const event = await prisma.event.findUnique({ where: { id: eventId }, select: { cafeId: true } })
+    if (!event || event.cafeId !== cafeId) return res.status(404).json({ error: 'Event not found' })
+
+    const { name, details, vendor, cost, status } = req.body as {
+      name:     string
+      details?: string
+      vendor?:  string
+      cost?:    number
+      status?:  string
+    }
+
+    if (!name?.trim()) return res.status(400).json({ error: 'name is required' })
+
+    const VALID_STATUS = ['NEEDED', 'CONFIRMED', 'DONE']
+    const st = VALID_STATUS.includes(status ?? '') ? status! : 'NEEDED'
+
+    const service = await prisma.eventService.create({
+      data: {
+        cafeId,
+        eventId,
+        name:    name.trim(),
+        details: details ?? '',
+        vendor:  vendor  ?? '',
+        cost:    cost ?? undefined,
+        status:  st,
+      }
+    })
+
+    return res.status(201).json(service)
+  } catch (err) {
+    logger.error({ msg: 'POST event service error', err })
+    return res.status(500).json({ error: 'Failed to add service' })
+  }
+})
+
+// ─── PATCH /api/traiteur/events/:id/services/:serviceId ──────────────────────
+
+router.patch('/api/traiteur/events/:id/services/:serviceId', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const { cafeId }  = req.admin!
+    const serviceId   = req.params.serviceId as string
+
+    const service = await prisma.eventService.findUnique({ where: { id: serviceId }, select: { cafeId: true } })
+    if (!service || service.cafeId !== cafeId) return res.status(404).json({ error: 'Service not found' })
+
+    const { name, details, vendor, cost, status } = req.body as {
+      name?:    string
+      details?: string
+      vendor?:  string
+      cost?:    number | null
+      status?:  string
+    }
+
+    const VALID_STATUS = ['NEEDED', 'CONFIRMED', 'DONE']
+
+    const updated = await prisma.eventService.update({
+      where: { id: serviceId },
+      data: {
+        ...(name    !== undefined ? { name: name.trim() } : {}),
+        ...(details !== undefined ? { details } : {}),
+        ...(vendor  !== undefined ? { vendor } : {}),
+        ...(cost    !== undefined ? { cost } : {}),
+        ...(status  !== undefined && VALID_STATUS.includes(status) ? { status } : {}),
+      }
+    })
+
+    return res.json(updated)
+  } catch (err) {
+    logger.error({ msg: 'PATCH event service error', err })
+    return res.status(500).json({ error: 'Failed to update service' })
+  }
+})
+
+// ─── DELETE /api/traiteur/events/:id/services/:serviceId ─────────────────────
+
+router.delete('/api/traiteur/events/:id/services/:serviceId', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const { cafeId }  = req.admin!
+    const serviceId   = req.params.serviceId as string
+
+    const service = await prisma.eventService.findUnique({ where: { id: serviceId }, select: { cafeId: true } })
+    if (!service || service.cafeId !== cafeId) return res.status(404).json({ error: 'Service not found' })
+
+    await prisma.eventService.delete({ where: { id: serviceId } })
+    return res.json({ ok: true })
+  } catch (err) {
+    logger.error({ msg: 'DELETE event service error', err })
+    return res.status(500).json({ error: 'Failed to delete service' })
+  }
+})
+
 // ─── GET /api/traiteur/events/:id/cards — generate QR card URLs ──────────────
 // Returns the full list of guests with their QR URL for the admin print page.
 

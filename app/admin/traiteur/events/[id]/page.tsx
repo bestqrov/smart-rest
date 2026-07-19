@@ -50,6 +50,19 @@ const MENU_CATEGORIES = [
   { value: 'OTHER',   label: 'أخرى' },
 ] as const
 
+type EventServiceRow = {
+  id: string; name: string; details: string; vendor: string
+  cost: number | null; status: string
+}
+
+const SERVICE_STATUS = [
+  { value: 'NEEDED',    label: 'مطلوب',  color: 'bg-amber-50 text-amber-700 border-amber-200' },
+  { value: 'CONFIRMED', label: 'مؤكد',   color: 'bg-blue-50 text-blue-700 border-blue-200' },
+  { value: 'DONE',      label: 'تم',     color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+] as const
+
+const SERVICE_SUGGESTIONS = ['ديكور', 'صوت', 'DJ', 'تصوير', 'إضاءة', 'ورود']
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const STATUS_LABELS: Record<string, string> = {
@@ -76,7 +89,7 @@ export default function EventDetailPage() {
   const [cards,    setCards]    = useState<Card[]>([])
   const [qrImages, setQrImages] = useState<Record<string, string>>({})
   const [loading,  setLoading]  = useState(true)
-  const [tab,      setTab]      = useState<'guests' | 'menu' | 'cards' | 'finance'>('guests')
+  const [tab,      setTab]      = useState<'guests' | 'menu' | 'services' | 'cards' | 'finance'>('guests')
 
   // event menu package
   const [menu,          setMenu]          = useState<EventMenu | null>(null)
@@ -87,6 +100,14 @@ export default function EventDetailPage() {
   const [newItemName,   setNewItemName]   = useState('')
   const [newItemDesc,   setNewItemDesc]   = useState('')
   const [addingItem,    setAddingItem]    = useState(false)
+
+  // extra services (décor, sound, DJ...)
+  const [services,       setServices]       = useState<EventServiceRow[] | null>(null)
+  const [newSvcName,     setNewSvcName]     = useState('')
+  const [newSvcDetails,  setNewSvcDetails]  = useState('')
+  const [newSvcVendor,   setNewSvcVendor]   = useState('')
+  const [newSvcCost,     setNewSvcCost]     = useState('')
+  const [addingSvc,      setAddingSvc]      = useState(false)
 
   // add guest form
   const [showAddGuest,   setShowAddGuest]   = useState(false)
@@ -150,11 +171,52 @@ export default function EventDetailPage() {
     }
   }
 
+  async function loadServices() {
+    const r = await fetch(`/api/traiteur/events/${id}/services`, { headers: auth() })
+    if (r.ok) setServices(await r.json())
+  }
+
   useEffect(() => { load() }, [id])
   useEffect(() => {
     if (tab === 'cards' && cards.length === 0) loadCards()
     if (tab === 'menu' && menu === null) loadMenu()
+    if (tab === 'services' && services === null) loadServices()
   }, [tab])
+
+  async function addService() {
+    if (!newSvcName.trim()) return
+    setAddingSvc(true)
+    const r = await fetch(`/api/traiteur/events/${id}/services`, {
+      method: 'POST',
+      headers: { ...auth(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name:    newSvcName.trim(),
+        details: newSvcDetails.trim(),
+        vendor:  newSvcVendor.trim(),
+        cost:    newSvcCost.trim() ? Number(newSvcCost) : undefined,
+      })
+    })
+    if (r.ok) {
+      await loadServices()
+      setNewSvcName(''); setNewSvcDetails(''); setNewSvcVendor(''); setNewSvcCost('')
+    }
+    setAddingSvc(false)
+  }
+
+  async function updateServiceStatus(serviceId: string, status: string) {
+    await fetch(`/api/traiteur/events/${id}/services/${serviceId}`, {
+      method: 'PATCH',
+      headers: { ...auth(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status })
+    })
+    await loadServices()
+  }
+
+  async function deleteService(serviceId: string) {
+    if (!confirm('حذف هاد الخدمة؟')) return
+    await fetch(`/api/traiteur/events/${id}/services/${serviceId}`, { method: 'DELETE', headers: auth() })
+    await loadServices()
+  }
 
   async function savePackage() {
     setSavingPackage(true)
@@ -352,10 +414,11 @@ export default function EventDetailPage() {
       {/* ── Tabs ── */}
       <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit">
         {([
-          ['guests',  `الضيوف (${event.guests.length})`],
-          ['menu',    'قائمة الحفلة'],
-          ['cards',   'بطاقات QR'],
-          ['finance', 'المالية'],
+          ['guests',   `الضيوف (${event.guests.length})`],
+          ['menu',     'قائمة الحفلة'],
+          ['services', 'خدمات إضافية'],
+          ['cards',    'بطاقات QR'],
+          ['finance',  'المالية'],
         ] as const).map(([key, label]) => (
           <button
             key={key}
@@ -570,6 +633,78 @@ export default function EventDetailPage() {
           })}
           {menu && menu.items.length === 0 && (
             <div className="text-center py-12 text-gray-400 text-sm">لا توجد أطباق فهاد الباقة بعد — زيد أول طبق فوق</div>
+          )}
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════ */}
+      {/* TAB: EXTRA SERVICES (décor, sound, DJ...) */}
+      {/* ══════════════════════════════════════════════ */}
+      {tab === 'services' && (
+        <div className="space-y-4">
+          {/* Add service */}
+          <div className="bg-white border border-gray-200 rounded-2xl p-4 space-y-3">
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">إضافة خدمة إضافية</p>
+            <div className="flex flex-wrap gap-1.5 mb-1">
+              {SERVICE_SUGGESTIONS.map(s => (
+                <button key={s} type="button" onClick={() => setNewSvcName(s)}
+                  className="px-2.5 py-1 rounded-full bg-gray-100 hover:bg-violet-100 hover:text-violet-700 text-gray-600 text-xs font-semibold transition-colors">
+                  {s}
+                </button>
+              ))}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <input type="text" value={newSvcName} onChange={e => setNewSvcName(e.target.value)}
+                placeholder="نوع الخدمة (ديكور، صوت، DJ...)"
+                className="flex-1 min-w-[140px] border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400" />
+              <input type="text" value={newSvcDetails} onChange={e => setNewSvcDetails(e.target.value)}
+                placeholder="التفاصيل (العدد والنوع)"
+                className="flex-1 min-w-[160px] border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400" />
+              <input type="text" value={newSvcVendor} onChange={e => setNewSvcVendor(e.target.value)}
+                placeholder="المورد (اختياري)"
+                className="w-40 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400" />
+              <input type="number" value={newSvcCost} onChange={e => setNewSvcCost(e.target.value)}
+                placeholder={`السعر (${currency})`} min="0"
+                className="w-32 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400" />
+              <button onClick={addService} disabled={addingSvc || !newSvcName.trim()}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold disabled:opacity-50 flex items-center gap-1.5">
+                {addingSvc ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />} إضافة
+              </button>
+            </div>
+          </div>
+
+          {/* Services list */}
+          {services && services.length > 0 && (
+            <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden divide-y divide-gray-100">
+              {services.map(svc => {
+                const st = SERVICE_STATUS.find(s => s.value === svc.status) ?? SERVICE_STATUS[0]
+                return (
+                  <div key={svc.id} className="flex items-center justify-between px-4 py-3 gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-gray-800">{svc.name}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        {[svc.details, svc.vendor, svc.cost != null ? `${svc.cost.toLocaleString()} ${currency}` : null].filter(Boolean).join(' · ')}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <select
+                        value={svc.status}
+                        onChange={e => updateServiceStatus(svc.id, e.target.value)}
+                        className={`text-xs font-bold rounded-full border px-2.5 py-1 focus:outline-none ${st.color}`}
+                      >
+                        {SERVICE_STATUS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                      </select>
+                      <button onClick={() => deleteService(svc.id)} className="text-gray-300 hover:text-red-500 transition-colors">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+          {services && services.length === 0 && (
+            <div className="text-center py-12 text-gray-400 text-sm">لا توجد خدمات إضافية بعد — زيد أول خدمة فوق</div>
           )}
         </div>
       )}

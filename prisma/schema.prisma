@@ -334,6 +334,7 @@ model Cafe {
   events             Event[]
   guests             Guest[]
   eventMenuItems     EventMenuItem[]
+  eventServices      EventService[]
   loyaltyAccounts    LoyaltyAccount[]
   loyaltyRewards     LoyaltyReward[]
   // Smart Inventory module relations
@@ -1460,6 +1461,7 @@ model Event {
 
   guests      Guest[]
   menuItems   EventMenuItem[]
+  services    EventService[]
 
   @@index([cafeId])
   @@index([status])
@@ -1477,6 +1479,25 @@ model EventMenuItem {
   name        String
   description String  @default("")
   order       Int     @default(0)
+
+  createdAt DateTime @default(now())
+
+  @@index([cafeId])
+  @@index([eventId])
+}
+
+model EventService {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId    String   @db.ObjectId
+  cafe      Cafe     @relation(fields: [cafeId], references: [id])
+  eventId   String   @db.ObjectId
+  event     Event    @relation(fields: [eventId], references: [id])
+
+  name    String            // e.g. "ديكور", "صوت", "DJ" — free text, not an enum
+  details String  @default("")   // e.g. "20 طاولة مستديرة + كراسي ذهبية"
+  vendor  String  @default("")   // supplier / provider name
+  cost    Float?
+  status  String  @default("NEEDED")   // NEEDED | CONFIRMED | DONE
 
   createdAt DateTime @default(now())
 
