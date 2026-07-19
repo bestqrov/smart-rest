@@ -339,6 +339,7 @@ model Cafe {
   eventPayments      EventPayment[]
   eventTasks         EventTask[]
   eventStaffAssignments EventStaffAssignment[]
+  cakeOrders            CakeOrder[]
   loyaltyAccounts    LoyaltyAccount[]
   loyaltyRewards     LoyaltyReward[]
   // Smart Inventory module relations
@@ -1611,6 +1612,38 @@ model Guest {
 
   @@index([cafeId])
   @@index([eventId])
+}
+
+// ─── Custom Cake Pre-Orders (pastry shops) ────────────────────────────────────
+// A single made-to-order item with a pickup date, not a multi-guest Event —
+// for birthday/wedding cakes ordered days ahead with size/flavor/writing specs.
+
+model CakeOrder {
+  id     String @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId String @db.ObjectId
+  cafe   Cafe   @relation(fields: [cafeId], references: [id])
+
+  clientName  String
+  clientPhone String @default("")
+
+  description     String   // flavor, filling, size (e.g. "Chocolat, 20 personnes")
+  writingText     String @default("")   // message to write on the cake
+  referenceImageUrl String?
+
+  pickupDate DateTime
+  status     String   @default("PENDING")   // PENDING | CONFIRMED | IN_PROGRESS | READY | COMPLETED | CANCELLED
+
+  price       Float?
+  depositPaid Float?
+
+  notes String @default("")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([cafeId])
+  @@index([status])
+  @@index([pickupDate])
 }
 
 // ─── Loyalty Program ──────────────────────────────────────────────────────────

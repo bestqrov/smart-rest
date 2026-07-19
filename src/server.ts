@@ -75,6 +75,7 @@ import emailWebhookRouter from './routes/emailWebhook'
 import landingConfigRouter from './routes/landingConfig'
 import marketingRouter from './routes/marketing'
 import traiteurRouter from './routes/traiteur'
+import cakeOrdersRouter from './routes/cakeOrders'
 import loyaltyRouter from './routes/loyalty'
 import adminCertificationRouter      from './routes/adminCertification'
 import superadminCertificationRouter from './routes/superadminCertification'
@@ -286,6 +287,7 @@ async function main() {
   app.use('/api/v1/requisitions', requisitionsRouter)
   app.use(achatsReportRouter)
   app.use(traiteurRouter)
+  app.use(cakeOrdersRouter)
   app.use(loyaltyRouter)
   app.use(adminCertificationRouter)
   app.use(superadminCertificationRouter)
