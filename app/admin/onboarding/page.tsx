@@ -272,7 +272,7 @@ const CATALOG_TYPE_OPTIONS: { value: CatalogBusinessType; icon: string; label: R
   { value: 'RESTAURANT', icon: '🍽️', label: { ar: 'مطعم',   fr: 'Restaurant', en: 'Restaurant', es: 'Restaurante' } },
   { value: 'PASTRY',     icon: '🧁', label: { ar: 'حلويات', fr: 'Pâtisserie', en: 'Bakery',     es: 'Pastelería' } },
   { value: 'FOOD_TRUCK', icon: '🚚', label: { ar: 'فود تراك', fr: 'Food Truck', en: 'Food Truck', es: 'Food Truck' } },
-  { value: 'TRAITEUR',   icon: '🎂', label: { ar: 'طراتور', fr: 'Traiteur',   en: 'Caterer',    es: 'Catering' } },
+  { value: 'TRAITEUR',   icon: '🎂', label: { ar: 'تريتور', fr: 'Traiteur',   en: 'Caterer',    es: 'Catering' } },
   { value: 'HOTEL',      icon: '🏨', label: { ar: 'فندق',   fr: 'Hôtel',      en: 'Hotel',      es: 'Hotel' } },
 ]
 

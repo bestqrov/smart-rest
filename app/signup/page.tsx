@@ -25,7 +25,7 @@ type Lang = 'ar' | 'fr' | 'en' | 'es'
 const D = {
   page_title:       { ar: 'أنشئ حسابك مجاناً', fr: 'Créer votre compte', en: 'Create your account', es: 'Crea tu cuenta' },
   page_subtitle:    { ar: 'جاهز في دقيقتين · بدون بطاقة بنكية', fr: 'Prêt en 2 min · Sans carte bancaire', en: 'Ready in 2 min · No credit card', es: 'Listo en 2 min · Sin tarjeta' },
-  brand_tagline:    { ar: 'الحل الذكي الشامل للمطاعم والفنادق والطراتور', fr: 'La solution intelligente pour restaurants, hôtels & traiteurs', en: 'The all-in-one platform for restaurants, hotels & caterers', es: 'La plataforma inteligente para restaurantes, hoteles y catering' },
+  brand_tagline:    { ar: 'الحل الذكي الشامل للمطاعم والفنادق والتريتور', fr: 'La solution intelligente pour restaurants, hôtels & traiteurs', en: 'The all-in-one platform for restaurants, hotels & caterers', es: 'La plataforma inteligente para restaurantes, hoteles y catering' },
   label_lang:       { ar: 'اللغة', fr: 'Langue', en: 'Language', es: 'Idioma' },
   label_btype:      { ar: 'ما هو نوع منشأتك؟', fr: 'Quel type d\'établissement ?', en: 'What type of establishment?', es: '¿Tipo de establecimiento?' },
   label_cafe:       { ar: 'اسم المطعم أو المقهى', fr: 'Nom du restaurant / café', en: 'Restaurant or café name', es: 'Nombre del restaurante / café' },
@@ -123,7 +123,7 @@ const BUSINESS_TYPES: BusinessType[] = [
   {
     value: 'TRAITEUR',
     icon:  '🎂',
-    label: { ar: 'طراتور',    fr: 'Traiteur',      en: 'Caterer',     es: 'Catering' },
+    label: { ar: 'تريتور',    fr: 'Traiteur',      en: 'Caterer',     es: 'Catering' },
     desc:  { ar: 'تنظيم مناسبات وحفلات', fr: 'Événements & buffets', en: 'Events & catering', es: 'Eventos y catering' },
   },
   {
@@ -469,7 +469,7 @@ function SignupInner() {
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">
                   {businessType === 'TRAITEUR'
-                    ? (lang === 'ar' ? 'اسم شركة الطراتور' : lang === 'fr' ? 'Nom de votre entreprise traiteur' : 'Catering company name')
+                    ? (lang === 'ar' ? 'اسم شركة التريتور' : lang === 'fr' ? 'Nom de votre entreprise traiteur' : 'Catering company name')
                     : tx('label_cafe', lang)
                   }
                 </label>

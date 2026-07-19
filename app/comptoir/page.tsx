@@ -66,12 +66,15 @@ export default function ComptoirPage() {
   }, [])
 
   // Auto-detect subdomain + branding + demo mode (same as /pos)
+  // Priority: ?sub= link from the admin dashboard (always correct, no DNS
+  // wildcard required) → real subdomain host → last-known cached value.
   useEffect(() => {
+    const fromQuery = new URLSearchParams(window.location.search).get('sub') ?? ''
     const parts = window.location.hostname.split('.')
     const det   = parts.length >= 3 && parts[0] !== 'www' ? parts[0] : ''
     const saved = localStorage.getItem('posLastSubdomain') ?? ''
-    const sub   = det || saved
-    if (sub) setSubdomain(sub)
+    const sub   = fromQuery || det || saved
+    if (sub) { setSubdomain(sub); localStorage.setItem('posLastSubdomain', sub) }
     if (!sub) return
     fetch(`/api/public/cafe/${sub}`).then(r => r.ok ? r.json() : null).then(d => {
       if (d) setCafeName(d.name)

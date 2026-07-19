@@ -635,7 +635,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
           <div className="w-px h-6 bg-gray-200" />
           <div className="flex items-center gap-1.5">
             {STAFF_LINKS.map(item => (
-              <a key={item.href} href={item.href} target="_blank" rel="noopener noreferrer"
+              <a key={item.href} href={cafe?.subdomain ? `${item.href}?sub=${cafe.subdomain}` : item.href} target="_blank" rel="noopener noreferrer"
                 title={t[item.key as keyof AdminT]}
                 className={`p-2 rounded-lg transition-colors ${item.color}`}>
                 <item.icon className="w-4 h-4" />

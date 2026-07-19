@@ -21,7 +21,7 @@ type Stage = 'idle' | 'submitting' | 'done' | 'error'
 const BUSINESS_TYPES: BusinessType[] = [
   { value: 'RESTAURANT', icon: '🍽️', label: 'مطعم',      desc: 'أكل يومي' },
   { value: 'CAFE',       icon: '☕', label: 'مقهى',       desc: 'مشروبات' },
-  { value: 'TRAITEUR',   icon: '🎂', label: 'طراتور',     desc: 'فعاليات' },
+  { value: 'TRAITEUR',   icon: '🎂', label: 'تريتور',     desc: 'فعاليات' },
   { value: 'PASTRY',     icon: '🧁', label: 'حلويات',     desc: 'مخبزة' },
   { value: 'FOOD_TRUCK', icon: '🚚', label: 'فود تراك',   desc: 'متنقل' },
   { value: 'HOTEL',      icon: '🏨', label: 'فندق',       desc: 'إقامة' },
@@ -37,7 +37,7 @@ const FEATURES = [
   { icon: Calendar,    color: 'pink',    title: 'نظام الحجوزات',        desc: 'حجز طاولات مع تأكيد واتساب أوتوماتيكي' },
   { icon: Sparkles,    color: 'amber',   title: 'تسويق بالذكاء الاصطناعي', desc: 'محتوى سوشيال ميديا يُنتج أوتوماتيكياً يومياً' },
   { icon: Package,     color: 'teal',    title: 'إدارة المخزون',        desc: 'تتبع المواد وتنبيه النقص وطلبات الموردين تلقائياً' },
-  { icon: Users,       icon2: Shield,    color: 'rose', title: 'الطراتور',  desc: 'لوحة فعاليات كاملة — عروض، عقود، لوائح أطباق' },
+  { icon: Users,       icon2: Shield,    color: 'rose', title: 'التريتور',  desc: 'لوحة فعاليات كاملة — عروض، عقود، لوائح أطباق' },
 ]
 
 // ─── Stats ────────────────────────────────────────────────────────────────────
