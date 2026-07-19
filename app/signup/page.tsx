@@ -17,6 +17,7 @@ import { useEffect, useState, useCallback, Suspense } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useSearchParams } from 'next/navigation'
+import { Globe } from 'lucide-react'
 
 // ─── i18n (client-side subset) ────────────────────────────────────────────────
 
@@ -487,7 +488,10 @@ function SignupInner() {
               {/* Subdomain */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">{tx('label_sub', lang)}</label>
-                <div className={`flex rounded-xl overflow-hidden border border-gray-200 focus-within:ring-2 focus-within:ring-blue-400 focus-within:border-blue-400 transition-shadow ${isRTL ? 'flex-row-reverse' : ''}`}>
+                <div className={`flex items-stretch rounded-2xl overflow-hidden border-2 border-blue-100 bg-blue-50/40 focus-within:ring-4 focus-within:ring-blue-100 focus-within:border-blue-400 transition-all ${isRTL ? 'flex-row-reverse' : ''}`}>
+                  <span className={`flex items-center gap-2 px-4 text-blue-500 ${isRTL ? 'border-l' : 'border-r'} border-blue-100`}>
+                    <Globe className="w-4 h-4" />
+                  </span>
                   <input
                     type="text"
                     name="subdomain"
@@ -497,16 +501,16 @@ function SignupInner() {
                     required
                     pattern="[a-z0-9][a-z0-9-]*[a-z0-9]"
                     dir="ltr"
-                    className="flex-1 px-4 py-2.5 focus:outline-none text-gray-800 placeholder-gray-400 bg-white min-w-0"
+                    className="flex-1 px-3 py-3.5 focus:outline-none text-gray-800 placeholder-gray-400 bg-transparent min-w-0 text-base font-medium"
                   />
-                  <span className={`flex items-center px-3 bg-gray-50 text-gray-400 text-xs whitespace-nowrap ${isRTL ? 'border-l' : 'border-r'} border-gray-200`}>
-                    .smartmenu.ma
+                  <span className={`flex items-center px-4 bg-blue-100/60 text-blue-700 text-sm font-semibold whitespace-nowrap ${isRTL ? 'border-l' : 'border-r'} border-blue-100`}>
+                    .smartrestau.com
                   </span>
                 </div>
                 {form.subdomain && (
                   <p className="text-xs text-emerald-600 mt-1.5 flex items-center gap-1">
                     <span>{tx('sub_preview', lang)}</span>
-                    <span dir="ltr" className="font-mono font-bold">{form.subdomain}.smartmenu.ma</span>
+                    <span dir="ltr" className="font-mono font-bold">{form.subdomain}.smartrestau.com</span>
                   </p>
                 )}
               </div>
