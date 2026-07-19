@@ -8,7 +8,7 @@ import {
   ArrowRight, Users, Plus, Trash2, Download, Printer,
   Loader2, CheckCircle2, QrCode, MapPin, CalendarDays,
   Phone, Upload, X, Lock, CheckCheck, TrendingUp, Wallet,
-  AlertTriangle
+  AlertTriangle, Pencil
 } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -62,6 +62,29 @@ const SERVICE_STATUS = [
 ] as const
 
 const SERVICE_SUGGESTIONS = ['ديكور', 'صوت', 'DJ', 'تصوير', 'إضاءة', 'ورود']
+
+const EVENT_TYPES = [
+  { value: 'WEDDING',   label: 'زفاف' },
+  { value: 'CORPORATE', label: 'شركة' },
+  { value: 'BIRTHDAY',  label: 'عيد ميلاد' },
+  { value: 'REUNION',   label: 'لقاء' },
+  { value: 'GALA',      label: 'حفل رسمي' },
+  { value: 'OTHER',     label: 'أخرى' },
+] as const
+
+const EVENT_STATUSES = [
+  { value: 'DRAFT',     label: 'مسودة' },
+  { value: 'CONFIRMED', label: 'مؤكدة' },
+  { value: 'ACTIVE',    label: 'جارية' },
+  { value: 'COMPLETED', label: 'منتهية' },
+  { value: 'CANCELLED', label: 'ملغاة' },
+] as const
+
+function toDatetimeLocal(iso: string) {
+  const d = new Date(iso)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -125,6 +148,15 @@ export default function EventDetailPage() {
 
   // close event
   const [closing, setClosing] = useState(false)
+
+  // edit event
+  const [showEdit,   setShowEdit]   = useState(false)
+  const [savingEdit, setSavingEdit] = useState(false)
+  const [editForm, setEditForm] = useState({
+    name: '', type: 'WEDDING', date: '', venue: '', guestCount: '', status: 'DRAFT',
+    clientName: '', clientPhone: '', clientEmail: '',
+    quotedPrice: '', depositPaid: '', notes: '',
+  })
 
   const currency = typeof window !== 'undefined' ? (localStorage.getItem('currency') ?? 'MAD') : 'MAD'
 
@@ -309,6 +341,44 @@ export default function EventDetailPage() {
     setImporting(false)
   }
 
+  function openEdit() {
+    if (!event) return
+    setEditForm({
+      name: event.name, type: event.type, date: toDatetimeLocal(event.date),
+      venue: event.venue, guestCount: String(event.guestCount), status: event.status,
+      clientName: event.clientName, clientPhone: event.clientPhone, clientEmail: event.clientEmail,
+      quotedPrice: event.quotedPrice != null ? String(event.quotedPrice) : '',
+      depositPaid: event.depositPaid != null ? String(event.depositPaid) : '',
+      notes: event.notes,
+    })
+    setShowEdit(true)
+  }
+
+  async function saveEdit() {
+    if (!editForm.name.trim() || !editForm.date) return
+    setSavingEdit(true)
+    const r = await fetch(`/api/traiteur/events/${id}`, {
+      method: 'PATCH',
+      headers: { ...auth(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name:        editForm.name.trim(),
+        type:        editForm.type,
+        date:        new Date(editForm.date).toISOString(),
+        venue:       editForm.venue.trim(),
+        guestCount:  editForm.guestCount ? Number(editForm.guestCount) : 0,
+        status:      editForm.status,
+        clientName:  editForm.clientName.trim(),
+        clientPhone: editForm.clientPhone.trim(),
+        clientEmail: editForm.clientEmail.trim(),
+        quotedPrice: editForm.quotedPrice.trim() ? Number(editForm.quotedPrice) : null,
+        depositPaid: editForm.depositPaid.trim() ? Number(editForm.depositPaid) : null,
+        notes:       editForm.notes,
+      })
+    })
+    if (r.ok) { await load(); setShowEdit(false) }
+    setSavingEdit(false)
+  }
+
   async function closeEvent() {
     if (!confirm('إغلاق الحفلة وحساب العمولة؟')) return
     setClosing(true)
@@ -399,17 +469,83 @@ export default function EventDetailPage() {
           </div>
         </div>
 
-        {event.status !== 'COMPLETED' && event.status !== 'CANCELLED' && (
+        <div className="flex items-center gap-2 shrink-0">
           <button
-            onClick={closeEvent}
-            disabled={closing}
-            className="flex items-center gap-1.5 text-xs bg-violet-600 hover:bg-violet-700 text-white px-3 py-2 rounded-xl font-semibold disabled:opacity-60 transition-colors shrink-0"
+            onClick={openEdit}
+            className="flex items-center gap-1.5 text-xs bg-white border border-gray-200 hover:border-violet-300 text-gray-600 hover:text-violet-700 px-3 py-2 rounded-xl font-semibold transition-colors"
           >
-            {closing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Lock className="w-3.5 h-3.5" />}
-            إغلاق الحفلة
+            <Pencil className="w-3.5 h-3.5" /> تعديل
           </button>
-        )}
+          {event.status !== 'COMPLETED' && event.status !== 'CANCELLED' && (
+            <button
+              onClick={closeEvent}
+              disabled={closing}
+              className="flex items-center gap-1.5 text-xs bg-violet-600 hover:bg-violet-700 text-white px-3 py-2 rounded-xl font-semibold disabled:opacity-60 transition-colors"
+            >
+              {closing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Lock className="w-3.5 h-3.5" />}
+              إغلاق الحفلة
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* ── Edit Event Modal ── */}
+      {showEdit && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setShowEdit(false)}>
+          <div className="bg-white rounded-3xl p-5 w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-black text-gray-900 text-lg">تعديل معلومات الحفلة</h3>
+              <button onClick={() => setShowEdit(false)} className="text-gray-400 hover:text-gray-700"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="space-y-3">
+              <input type="text" value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
+                placeholder="اسم الحفلة" className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400" />
+              <div className="grid grid-cols-2 gap-3">
+                <select value={editForm.type} onChange={e => setEditForm(f => ({ ...f, type: e.target.value }))}
+                  className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400">
+                  {EVENT_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                </select>
+                <select value={editForm.status} onChange={e => setEditForm(f => ({ ...f, status: e.target.value }))}
+                  className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400">
+                  {EVENT_STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <input type="datetime-local" value={editForm.date} onChange={e => setEditForm(f => ({ ...f, date: e.target.value }))}
+                  className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400" />
+                <input type="number" value={editForm.guestCount} onChange={e => setEditForm(f => ({ ...f, guestCount: e.target.value }))}
+                  placeholder="عدد الضيوف" min="0" className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400" />
+              </div>
+              <input type="text" value={editForm.venue} onChange={e => setEditForm(f => ({ ...f, venue: e.target.value }))}
+                placeholder="المكان" className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400" />
+              <div className="border-t border-gray-100 pt-3 space-y-3">
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">معلومات الزبون</p>
+                <input type="text" value={editForm.clientName} onChange={e => setEditForm(f => ({ ...f, clientName: e.target.value }))}
+                  placeholder="اسم الزبون" className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400" />
+                <div className="grid grid-cols-2 gap-3">
+                  <input type="text" value={editForm.clientPhone} onChange={e => setEditForm(f => ({ ...f, clientPhone: e.target.value }))}
+                    placeholder="الهاتف" className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400" />
+                  <input type="email" value={editForm.clientEmail} onChange={e => setEditForm(f => ({ ...f, clientEmail: e.target.value }))}
+                    placeholder="الإيميل" className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400" />
+                </div>
+              </div>
+              <div className="border-t border-gray-100 pt-3 grid grid-cols-2 gap-3">
+                <input type="number" value={editForm.quotedPrice} onChange={e => setEditForm(f => ({ ...f, quotedPrice: e.target.value }))}
+                  placeholder={`السومة (${currency})`} min="0" className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400" />
+                <input type="number" value={editForm.depositPaid} onChange={e => setEditForm(f => ({ ...f, depositPaid: e.target.value }))}
+                  placeholder={`العربون (${currency})`} min="0" className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400" />
+              </div>
+              <textarea value={editForm.notes} onChange={e => setEditForm(f => ({ ...f, notes: e.target.value }))}
+                placeholder="ملاحظات" rows={2}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400" />
+              <button onClick={saveEdit} disabled={savingEdit || !editForm.name.trim() || !editForm.date}
+                className="w-full py-3 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2">
+                {savingEdit ? <Loader2 className="w-4 h-4 animate-spin" /> : 'حفظ التعديلات'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Tabs ── */}
       <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit">
