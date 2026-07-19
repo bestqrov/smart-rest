@@ -375,6 +375,158 @@ router.delete('/api/traiteur/events/:id/guests/:guestId', authorizeAdmin, async 
   }
 })
 
+// ─── GET /api/traiteur/events/:id/menu — list the event's menu package ───────
+
+router.get('/api/traiteur/events/:id/menu', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const { cafeId } = req.admin!
+    const eventId    = req.params.id as string
+
+    const event = await prisma.event.findUnique({
+      where:  { id: eventId },
+      select: { cafeId: true, menuPackageName: true, pricePerGuest: true, guestCount: true }
+    })
+    if (!event || event.cafeId !== cafeId) return res.status(404).json({ error: 'Event not found' })
+
+    const items = await prisma.eventMenuItem.findMany({
+      where:   { eventId },
+      orderBy: [{ category: 'asc' }, { order: 'asc' }]
+    })
+
+    return res.json({
+      menuPackageName: event.menuPackageName,
+      pricePerGuest:   event.pricePerGuest,
+      guestCount:      event.guestCount,
+      items
+    })
+  } catch (err) {
+    logger.error({ msg: 'GET event menu error', err })
+    return res.status(500).json({ error: 'Failed to fetch event menu' })
+  }
+})
+
+// ─── PATCH /api/traiteur/events/:id/menu — set package name / price per guest ─
+
+router.patch('/api/traiteur/events/:id/menu', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const { cafeId } = req.admin!
+    const eventId    = req.params.id as string
+
+    const event = await prisma.event.findUnique({ where: { id: eventId }, select: { cafeId: true } })
+    if (!event || event.cafeId !== cafeId) return res.status(404).json({ error: 'Event not found' })
+
+    const { menuPackageName, pricePerGuest } = req.body as { menuPackageName?: string; pricePerGuest?: number | null }
+
+    const updated = await prisma.event.update({
+      where: { id: eventId },
+      data: {
+        ...(menuPackageName !== undefined ? { menuPackageName: menuPackageName.trim() } : {}),
+        ...(pricePerGuest   !== undefined ? { pricePerGuest } : {}),
+      },
+      select: { menuPackageName: true, pricePerGuest: true }
+    })
+
+    return res.json(updated)
+  } catch (err) {
+    logger.error({ msg: 'PATCH event menu error', err })
+    return res.status(500).json({ error: 'Failed to update event menu' })
+  }
+})
+
+// ─── POST /api/traiteur/events/:id/menu/items — add a course/dish to the package ─
+
+router.post('/api/traiteur/events/:id/menu/items', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const { cafeId } = req.admin!
+    const eventId    = req.params.id as string
+
+    const event = await prisma.event.findUnique({ where: { id: eventId }, select: { cafeId: true } })
+    if (!event || event.cafeId !== cafeId) return res.status(404).json({ error: 'Event not found' })
+
+    const { category, name, description, order } = req.body as {
+      category?:    string
+      name:         string
+      description?: string
+      order?:       number
+    }
+
+    if (!name?.trim()) return res.status(400).json({ error: 'name is required' })
+
+    const VALID_CATEGORIES = ['STARTER', 'MAIN', 'DESSERT', 'DRINK', 'OTHER']
+    const cat = VALID_CATEGORIES.includes(category ?? '') ? category! : 'MAIN'
+
+    const item = await prisma.eventMenuItem.create({
+      data: {
+        cafeId,
+        eventId,
+        category:    cat,
+        name:        name.trim(),
+        description: description ?? '',
+        order:       order ?? 0,
+      }
+    })
+
+    return res.status(201).json(item)
+  } catch (err) {
+    logger.error({ msg: 'POST event menu item error', err })
+    return res.status(500).json({ error: 'Failed to add menu item' })
+  }
+})
+
+// ─── PATCH /api/traiteur/events/:id/menu/items/:itemId — edit a course/dish ───
+
+router.patch('/api/traiteur/events/:id/menu/items/:itemId', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const { cafeId } = req.admin!
+    const itemId     = req.params.itemId as string
+
+    const item = await prisma.eventMenuItem.findUnique({ where: { id: itemId }, select: { cafeId: true } })
+    if (!item || item.cafeId !== cafeId) return res.status(404).json({ error: 'Menu item not found' })
+
+    const { category, name, description, order } = req.body as {
+      category?:    string
+      name?:        string
+      description?: string
+      order?:       number
+    }
+
+    const VALID_CATEGORIES = ['STARTER', 'MAIN', 'DESSERT', 'DRINK', 'OTHER']
+
+    const updated = await prisma.eventMenuItem.update({
+      where: { id: itemId },
+      data: {
+        ...(category    !== undefined && VALID_CATEGORIES.includes(category) ? { category } : {}),
+        ...(name        !== undefined ? { name: name.trim() } : {}),
+        ...(description !== undefined ? { description } : {}),
+        ...(order       !== undefined ? { order } : {}),
+      }
+    })
+
+    return res.json(updated)
+  } catch (err) {
+    logger.error({ msg: 'PATCH event menu item error', err })
+    return res.status(500).json({ error: 'Failed to update menu item' })
+  }
+})
+
+// ─── DELETE /api/traiteur/events/:id/menu/items/:itemId ──────────────────────
+
+router.delete('/api/traiteur/events/:id/menu/items/:itemId', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const { cafeId } = req.admin!
+    const itemId     = req.params.itemId as string
+
+    const item = await prisma.eventMenuItem.findUnique({ where: { id: itemId }, select: { cafeId: true } })
+    if (!item || item.cafeId !== cafeId) return res.status(404).json({ error: 'Menu item not found' })
+
+    await prisma.eventMenuItem.delete({ where: { id: itemId } })
+    return res.json({ ok: true })
+  } catch (err) {
+    logger.error({ msg: 'DELETE event menu item error', err })
+    return res.status(500).json({ error: 'Failed to delete menu item' })
+  }
+})
+
 // ─── GET /api/traiteur/events/:id/cards — generate QR card URLs ──────────────
 // Returns the full list of guests with their QR URL for the admin print page.
 

@@ -35,6 +35,21 @@ type Card = {
   dietaryReq: string; checkedIn: boolean; qrUrl: string; qrToken: string
 }
 
+type MenuItem = {
+  id: string; category: string; name: string; description: string; order: number
+}
+type EventMenu = {
+  menuPackageName: string; pricePerGuest: number | null; guestCount: number; items: MenuItem[]
+}
+
+const MENU_CATEGORIES = [
+  { value: 'STARTER', label: 'مقبلات' },
+  { value: 'MAIN',    label: 'طبق رئيسي' },
+  { value: 'DESSERT', label: 'حلويات' },
+  { value: 'DRINK',   label: 'مشروبات' },
+  { value: 'OTHER',   label: 'أخرى' },
+] as const
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const STATUS_LABELS: Record<string, string> = {
@@ -61,7 +76,17 @@ export default function EventDetailPage() {
   const [cards,    setCards]    = useState<Card[]>([])
   const [qrImages, setQrImages] = useState<Record<string, string>>({})
   const [loading,  setLoading]  = useState(true)
-  const [tab,      setTab]      = useState<'guests' | 'cards' | 'finance'>('guests')
+  const [tab,      setTab]      = useState<'guests' | 'menu' | 'cards' | 'finance'>('guests')
+
+  // event menu package
+  const [menu,          setMenu]          = useState<EventMenu | null>(null)
+  const [packageName,   setPackageName]   = useState('')
+  const [packagePrice,  setPackagePrice]  = useState('')
+  const [savingPackage, setSavingPackage] = useState(false)
+  const [newItemCat,    setNewItemCat]    = useState<string>('MAIN')
+  const [newItemName,   setNewItemName]   = useState('')
+  const [newItemDesc,   setNewItemDesc]   = useState('')
+  const [addingItem,    setAddingItem]    = useState(false)
 
   // add guest form
   const [showAddGuest,   setShowAddGuest]   = useState(false)
@@ -115,10 +140,53 @@ export default function EventDetailPage() {
     }
   }
 
+  async function loadMenu() {
+    const r = await fetch(`/api/traiteur/events/${id}/menu`, { headers: auth() })
+    if (r.ok) {
+      const data: EventMenu = await r.json()
+      setMenu(data)
+      setPackageName(data.menuPackageName)
+      setPackagePrice(data.pricePerGuest != null ? String(data.pricePerGuest) : '')
+    }
+  }
+
   useEffect(() => { load() }, [id])
   useEffect(() => {
     if (tab === 'cards' && cards.length === 0) loadCards()
+    if (tab === 'menu' && menu === null) loadMenu()
   }, [tab])
+
+  async function savePackage() {
+    setSavingPackage(true)
+    const r = await fetch(`/api/traiteur/events/${id}/menu`, {
+      method: 'PATCH',
+      headers: { ...auth(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        menuPackageName: packageName,
+        pricePerGuest:   packagePrice.trim() ? Number(packagePrice) : null,
+      })
+    })
+    if (r.ok) await loadMenu()
+    setSavingPackage(false)
+  }
+
+  async function addMenuItem() {
+    if (!newItemName.trim()) return
+    setAddingItem(true)
+    const r = await fetch(`/api/traiteur/events/${id}/menu/items`, {
+      method: 'POST',
+      headers: { ...auth(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ category: newItemCat, name: newItemName.trim(), description: newItemDesc.trim() })
+    })
+    if (r.ok) { await loadMenu(); setNewItemName(''); setNewItemDesc('') }
+    setAddingItem(false)
+  }
+
+  async function deleteMenuItem(itemId: string) {
+    if (!confirm('حذف هذا الطبق من الباقة؟')) return
+    await fetch(`/api/traiteur/events/${id}/menu/items/${itemId}`, { method: 'DELETE', headers: auth() })
+    await loadMenu()
+  }
 
   async function addGuest() {
     if (!guestName.trim()) return
@@ -285,6 +353,7 @@ export default function EventDetailPage() {
       <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit">
         {([
           ['guests',  `الضيوف (${event.guests.length})`],
+          ['menu',    'قائمة الحفلة'],
           ['cards',   'بطاقات QR'],
           ['finance', 'المالية'],
         ] as const).map(([key, label]) => (
@@ -417,6 +486,90 @@ export default function EventDetailPage() {
                 </tbody>
               </table>
             </div>
+          )}
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════ */}
+      {/* TAB: MENU PACKAGE */}
+      {/* ══════════════════════════════════════════════ */}
+      {tab === 'menu' && (
+        <div className="space-y-4">
+          {/* Package name + price per guest */}
+          <div className="bg-white border border-gray-200 rounded-2xl p-4 space-y-3">
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">اسم الباقة وسعرها</p>
+            <div className="flex flex-wrap gap-3">
+              <input
+                type="text" value={packageName} onChange={e => setPackageName(e.target.value)}
+                placeholder="مثال: منيو ذهبي"
+                className="flex-1 min-w-[180px] border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
+              />
+              <div className="flex items-center gap-2">
+                <input
+                  type="number" value={packagePrice} onChange={e => setPackagePrice(e.target.value)}
+                  placeholder="السعر للفرد" min="0"
+                  className="w-32 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
+                />
+                <span className="text-xs text-gray-400">{currency} / فرد</span>
+              </div>
+              <button onClick={savePackage} disabled={savingPackage}
+                className="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-sm font-bold disabled:opacity-50 flex items-center gap-1.5">
+                {savingPackage ? <Loader2 className="w-4 h-4 animate-spin" /> : 'حفظ'}
+              </button>
+            </div>
+            {menu?.pricePerGuest != null && (
+              <p className="text-xs text-emerald-600 font-semibold">
+                التقدير الإجمالي: {(menu.pricePerGuest * menu.guestCount).toLocaleString()} {currency} ({menu.guestCount} ضيف)
+              </p>
+            )}
+          </div>
+
+          {/* Add course */}
+          <div className="bg-white border border-gray-200 rounded-2xl p-4 space-y-3">
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">إضافة طبق للباقة</p>
+            <div className="flex flex-wrap gap-2">
+              <select value={newItemCat} onChange={e => setNewItemCat(e.target.value)}
+                className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400">
+                {MENU_CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+              </select>
+              <input type="text" value={newItemName} onChange={e => setNewItemName(e.target.value)}
+                placeholder="اسم الطبق"
+                className="flex-1 min-w-[150px] border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400" />
+              <input type="text" value={newItemDesc} onChange={e => setNewItemDesc(e.target.value)}
+                placeholder="وصف (اختياري)"
+                className="flex-1 min-w-[150px] border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400" />
+              <button onClick={addMenuItem} disabled={addingItem || !newItemName.trim()}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold disabled:opacity-50 flex items-center gap-1.5">
+                {addingItem ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />} إضافة
+              </button>
+            </div>
+          </div>
+
+          {/* Items grouped by category */}
+          {MENU_CATEGORIES.map(cat => {
+            const items = (menu?.items ?? []).filter(i => i.category === cat.value)
+            if (items.length === 0) return null
+            return (
+              <div key={cat.value} className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
+                <div className="bg-violet-50 px-4 py-2 text-sm font-bold text-violet-700">{cat.label}</div>
+                <div className="divide-y divide-gray-100">
+                  {items.map(item => (
+                    <div key={item.id} className="flex items-center justify-between px-4 py-3">
+                      <div>
+                        <p className="text-sm font-semibold text-gray-800">{item.name}</p>
+                        {item.description && <p className="text-xs text-gray-500 mt-0.5">{item.description}</p>}
+                      </div>
+                      <button onClick={() => deleteMenuItem(item.id)} className="text-gray-300 hover:text-red-500 transition-colors">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          })}
+          {menu && menu.items.length === 0 && (
+            <div className="text-center py-12 text-gray-400 text-sm">لا توجد أطباق فهاد الباقة بعد — زيد أول طبق فوق</div>
           )}
         </div>
       )}

@@ -333,6 +333,7 @@ model Cafe {
   clientSessions     ClientSession[]
   events             Event[]
   guests             Guest[]
+  eventMenuItems     EventMenuItem[]
   loyaltyAccounts    LoyaltyAccount[]
   loyaltyRewards     LoyaltyReward[]
   // Smart Inventory module relations
@@ -1451,14 +1452,36 @@ model Event {
   actualAttendees  Int?
   commissionAmount Float?
 
+  menuPackageName String @default("")   // e.g. "Menu Doré"
+  pricePerGuest   Float?
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   guests      Guest[]
+  menuItems   EventMenuItem[]
 
   @@index([cafeId])
   @@index([status])
   @@index([date])
+}
+
+model EventMenuItem {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId    String   @db.ObjectId
+  cafe      Cafe     @relation(fields: [cafeId], references: [id])
+  eventId   String   @db.ObjectId
+  event     Event    @relation(fields: [eventId], references: [id])
+
+  category    String  @default("MAIN")   // STARTER | MAIN | DESSERT | DRINK | OTHER
+  name        String
+  description String  @default("")
+  order       Int     @default(0)
+
+  createdAt DateTime @default(now())
+
+  @@index([cafeId])
+  @@index([eventId])
 }
 
 model Guest {
