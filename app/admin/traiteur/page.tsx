@@ -3,9 +3,9 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import {
-  CalendarDays, Users, TrendingUp, Plus, ChevronRight,
+  CalendarDays, Users, TrendingUp, Plus, ChevronRight, ChevronLeft,
   Loader2, RefreshCw, Clock, MapPin, CheckCircle2,
-  AlertCircle, Star, Briefcase, Cake, Coffee, Utensils
+  AlertCircle, Star, Briefcase, Cake, Coffee, Utensils, List, LayoutGrid
 } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -64,6 +64,24 @@ function fmtMoney(n: number | null, currency = 'MAD') {
   return n.toLocaleString('fr-MA') + ' ' + currency
 }
 
+const WEEKDAYS_AR = ['أحد', 'إثنين', 'ثلاثاء', 'أربعاء', 'خميس', 'جمعة', 'سبت']
+const MONTHS_AR = ['يناير', 'فبراير', 'مارس', 'أبريل', 'ماي', 'يونيو', 'يوليوز', 'غشت', 'شتنبر', 'أكتوبر', 'نونبر', 'دجنبر']
+
+function buildMonthGrid(year: number, month: number) {
+  const first = new Date(year, month, 1)
+  const startOffset = first.getDay() // 0=Sun
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+  const cells: (Date | null)[] = []
+  for (let i = 0; i < startOffset; i++) cells.push(null)
+  for (let d = 1; d <= daysInMonth; d++) cells.push(new Date(year, month, d))
+  while (cells.length % 7 !== 0) cells.push(null)
+  return cells
+}
+
+function sameDay(a: Date, b: Date) {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function TraiteurDashboard() {
@@ -71,6 +89,8 @@ export default function TraiteurDashboard() {
   const [stats,  setStats]  = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
   const [filter, setFilter]   = useState<EventStatus | 'ALL'>('ALL')
+  const [view,   setView]     = useState<'list' | 'calendar'>('list')
+  const [calMonth, setCalMonth] = useState(() => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), 1) })
 
   function auth() {
     return { Authorization: `Bearer ${localStorage.getItem('token')}` }
@@ -113,6 +133,16 @@ export default function TraiteurDashboard() {
           <p className="text-sm text-gray-400 mt-0.5">إدارة الحفلات والمناسبات</p>
         </div>
         <div className="flex items-center gap-2">
+          <div className="flex items-center gap-0.5 bg-gray-100 p-1 rounded-xl">
+            <button onClick={() => setView('list')}
+              className={`p-1.5 rounded-lg transition-colors ${view === 'list' ? 'bg-white text-violet-700 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}>
+              <List className="w-4 h-4" />
+            </button>
+            <button onClick={() => setView('calendar')}
+              className={`p-1.5 rounded-lg transition-colors ${view === 'calendar' ? 'bg-white text-violet-700 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}>
+              <LayoutGrid className="w-4 h-4" />
+            </button>
+          </div>
           <button onClick={load} className="text-gray-400 hover:text-violet-600 transition-colors">
             <RefreshCw className="w-5 h-5" />
           </button>
@@ -170,8 +200,70 @@ export default function TraiteurDashboard() {
         ))}
       </div>
 
+      {/* ── Calendar view ── */}
+      {view === 'calendar' && (
+        <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-5">
+          <div className="flex items-center justify-between mb-4">
+            <button onClick={() => setCalMonth(m => new Date(m.getFullYear(), m.getMonth() - 1, 1))}
+              className="p-1.5 rounded-lg text-gray-400 hover:text-violet-600 hover:bg-gray-50 transition-colors">
+              <ChevronRight className="w-5 h-5" />
+            </button>
+            <h2 className="font-bold text-gray-800">{MONTHS_AR[calMonth.getMonth()]} {calMonth.getFullYear()}</h2>
+            <button onClick={() => setCalMonth(m => new Date(m.getFullYear(), m.getMonth() + 1, 1))}
+              className="p-1.5 rounded-lg text-gray-400 hover:text-violet-600 hover:bg-gray-50 transition-colors">
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+          </div>
+          <div className="grid grid-cols-7 gap-1 mb-1">
+            {WEEKDAYS_AR.map(d => (
+              <div key={d} className="text-center text-[10px] font-bold text-gray-400 py-1">{d}</div>
+            ))}
+          </div>
+          <div className="grid grid-cols-7 gap-1">
+            {buildMonthGrid(calMonth.getFullYear(), calMonth.getMonth()).map((day, i) => {
+              const dayEvents = day ? filtered.filter(e => sameDay(new Date(e.date), day)) : []
+              const isDoubleBooked = dayEvents.length > 1
+              const isToday = day ? sameDay(day, new Date()) : false
+              return (
+                <div key={i} className={`min-h-[76px] rounded-xl border p-1.5 ${
+                  !day ? 'border-transparent' : isDoubleBooked ? 'border-red-300 bg-red-50/60' : 'border-gray-100'
+                }`}>
+                  {day && (
+                    <>
+                      <span className={`text-[11px] font-bold ${isToday ? 'text-white bg-violet-600 rounded-full w-5 h-5 flex items-center justify-center' : 'text-gray-500'}`}>
+                        {day.getDate()}
+                      </span>
+                      <div className="mt-1 space-y-0.5">
+                        {dayEvents.slice(0, 2).map(ev => {
+                          const st = STATUS_CONFIG[ev.status]
+                          return (
+                            <Link key={ev.id} href={`/admin/traiteur/events/${ev.id}`}
+                              title={ev.name}
+                              className={`block truncate text-[9px] font-semibold px-1.5 py-0.5 rounded-md ${st.bg} ${st.color}`}>
+                              {ev.name}
+                            </Link>
+                          )
+                        })}
+                        {dayEvents.length > 2 && (
+                          <span className="block text-[9px] text-gray-400 px-1.5">+{dayEvents.length - 2} أخرى</span>
+                        )}
+                        {isDoubleBooked && (
+                          <span className="flex items-center gap-0.5 text-[8px] font-bold text-red-500 px-1.5">
+                            <AlertCircle className="w-2.5 h-2.5" /> تعارض تواريخ
+                          </span>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {/* ── Events list ── */}
-      {filtered.length === 0 ? (
+      {view === 'list' && (filtered.length === 0 ? (
         <div className="text-center py-20 text-gray-400">
           <CalendarDays className="w-12 h-12 mx-auto mb-3 opacity-30" />
           <p className="font-medium">لا توجد حفلات</p>
@@ -242,7 +334,7 @@ export default function TraiteurDashboard() {
             )
           })}
         </div>
-      )}
+      ))}
     </div>
   )
 }
