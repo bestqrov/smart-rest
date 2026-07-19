@@ -400,7 +400,7 @@ router.post('/api/admin/staff', authorizeAdmin, async (req: Request, res: Respon
     if (!/^\d{4,8}$/.test(pinCode)) return res.status(400).json({ error: 'pinCode must be 4 to 8 digits' })
     if (!['WAITER','CASHIER','SUPERVISOR'].includes(role)) return res.status(400).json({ error: 'invalid role' })
 
-    const ALLOWED_EXTRA = ['WAITER','CASHIER','SUPERVISOR','BARISTA','COOK','CLEANER','DISHWASHER','RUNNER']
+    const ALLOWED_EXTRA = ['WAITER','CASHIER','SUPERVISOR','BARISTA','COOK','BAKER','CLEANER','TECHNICIAN','DISHWASHER','RUNNER','DELIVERY','SECURITY']
     const cleanRoles = Array.isArray(roles) ? roles.filter(r => ALLOWED_EXTRA.includes(r)) : []
 
     const bcrypt = await import('bcrypt')

@@ -38,11 +38,13 @@ type Lang = 'ar' | 'fr' | 'en' | 'es'
 
 const EXTRA_ROLES = [
   { value: 'COOK',       icon: '🥘', ar: 'طباخ',        fr: 'Cuisinier',   en: 'Cook'       },
+  { value: 'BAKER',      icon: '🥖', ar: 'خباز',         fr: 'Boulanger',   en: 'Baker'      },
   { value: 'BARISTA',    icon: '☕', ar: 'باريستا',      fr: 'Barista',     en: 'Barista'    },
   { value: 'BARTENDER',  icon: '🍹', ar: 'نادل بار',    fr: 'Barman',      en: 'Bartender'  },
   { value: 'RUNNER',     icon: '🏃', ar: 'رانر',         fr: 'Runner',      en: 'Runner'     },
   { value: 'DISHWASHER', icon: '🍽️', ar: 'غسيل أواني', fr: 'Plongeur',    en: 'Dishwasher' },
   { value: 'CLEANER',    icon: '🧹', ar: 'نظافة',        fr: 'Entretien',   en: 'Cleaner'    },
+  { value: 'TECHNICIAN', icon: '🔧', ar: 'تقني',         fr: 'Technicien',  en: 'Technician' },
   { value: 'DELIVERY',   icon: '🛵', ar: 'توصيل',        fr: 'Livreur',     en: 'Delivery'   },
   { value: 'SECURITY',   icon: '🛡️', ar: 'أمن',          fr: 'Sécurité',    en: 'Security'   },
 ]
