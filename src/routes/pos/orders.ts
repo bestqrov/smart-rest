@@ -145,6 +145,83 @@ router.post('/api/pos/orders', authorizePOS, requireUnlockedShift, async (req: R
   }
 })
 
+// ─── POST /api/pos/orders/marketplace — log an order from a 3rd-party app ─────
+// Manual entry: staff sees a new order notification on the Glovo/Uber Eats/etc
+// tablet and re-keys it here so it flows through the same kitchen queue,
+// stats, and inventory deduction as any other order. Already paid by the
+// platform, so isPaid=true / billStatus=CLOSED_VIRTUAL from creation — no
+// table involved (courier pickup), status still starts PENDING for the
+// kitchen to prepare it like any ticket.
+
+router.post('/api/pos/orders/marketplace', authorizePOS, requireUnlockedShift, async (req: Request, res: Response) => {
+  try {
+    const { staffId, cafeId } = req.staff!
+    const { items, platform, externalOrderRef } = req.body as {
+      items: ItemInput[]
+      platform: string
+      externalOrderRef?: string
+    }
+
+    if (!items?.length)     return res.status(400).json({ error: 'items are required' })
+    if (!platform?.trim())  return res.status(400).json({ error: 'platform is required (e.g. Glovo, Uber Eats)' })
+
+    const productIds = [...new Set(items.map(i => i.productId))]
+    const products = await prisma.product.findMany({
+      where: { id: { in: productIds }, isAvailable: true }
+    })
+    const productMap = new Map(products.map(p => [p.id, p]))
+
+    for (const item of items) {
+      if (!productMap.has(item.productId)) {
+        return res.status(400).json({ error: `Product not found or unavailable: ${item.productId}` })
+      }
+    }
+
+    const lineItems = items.map(item => {
+      const p = productMap.get(item.productId)!
+      const unitPrice = p.unitType === 'WEIGHT' ? p.price / 1000 : p.price
+      return {
+        productId:      item.productId,
+        quantity:       item.quantity,
+        notes:          item.notes ?? null,
+        unitPrice,
+        commissionRate: p.commissionRate
+      }
+    })
+
+    const orderTotal = lineItems.reduce((sum, li) => sum + li.unitPrice * li.quantity, 0)
+    const totalCommission = lineItems.reduce((sum, li) => sum + li.unitPrice * li.quantity * li.commissionRate, 0)
+
+    const order = await prisma.order.create({
+      data: {
+        cafeId,
+        paymentMethod:    'ONLINE',
+        isPaid:           true,
+        orderSource:      'MARKETPLACE',
+        billStatus:       'CLOSED_VIRTUAL',
+        status:           'PENDING',
+        totalPrice:       orderTotal,
+        totalCommission,
+        orderType:        'DELIVERY',
+        externalPlatform: platform.trim(),
+        externalOrderRef: externalOrderRef?.trim() ?? '',
+        createdById:      staffId,
+        items: { create: lineItems }
+      },
+      include: { items: { include: { product: true } } }
+    })
+
+    const io = req.app.get('io') as SocketIOServer | undefined
+    if (io) await emitKdsTicket(io, order.id)
+
+    logger.info({ msg: 'Marketplace order logged', orderId: order.id, platform, staffId })
+    return res.status(201).json({ order })
+  } catch (err) {
+    logger.error({ msg: 'POST /api/pos/orders/marketplace error', err })
+    return res.status(500).json({ error: 'Failed to log marketplace order' })
+  }
+})
+
 // ─── GET /api/pos/orders/table/:tableId — fetch open order for POS cashier ────
 
 router.get('/api/pos/orders/table/:tableId', authorizePOS, async (req: Request, res: Response) => {

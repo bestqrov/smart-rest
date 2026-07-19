@@ -6,7 +6,7 @@ import Image from 'next/image'
 import {
   LogOut, Bell, BellOff, ChevronLeft, ShoppingCart,
   UtensilsCrossed, LayoutGrid, Plus, Minus, Trash2,
-  Printer, Check, Loader2, AlertTriangle, RefreshCw
+  Printer, Check, Loader2, AlertTriangle, RefreshCw, Bike, X
 } from 'lucide-react'
 import { tr, getLang, setLang as saveLang, isRTL, POS_LANGS, type Lang } from '../../src/lib/posI18n'
 import { printReceipt, type ReceiptItem } from '../../src/lib/posReceipt'
@@ -134,6 +134,16 @@ export default function POSPage() {
   // today history + live cash summary
   const [posView,      setPosView]      = useState<'live' | 'today'>('live')
   const [liveSummary,  setLiveSummary]  = useState<ShiftLiveSummary | null>(null)
+
+  // marketplace order logging (Glovo, Uber Eats...)
+  const [showMarketplace, setShowMarketplace] = useState(false)
+  const [mpPlatform,      setMpPlatform]      = useState('Glovo')
+  const [mpPlatformOther, setMpPlatformOther] = useState('')
+  const [mpRef,           setMpRef]           = useState('')
+  const [mpCart,          setMpCart]          = useState<CartItem[]>([])
+  const [mpCat,           setMpCat]           = useState('')
+  const [mpSubmitting,    setMpSubmitting]    = useState(false)
+  const [mpError,         setMpError]         = useState('')
   // refs
   const mutedRef    = useRef(false)
   const audioCtxRef = useRef<AudioContext | null>(null)
@@ -351,6 +361,48 @@ export default function POSPage() {
   }
   function removeFromCart(productId: string) {
     setCart(prev => prev.filter(c => c.productId !== productId))
+  }
+
+  // Marketplace order cart — separate from the table cart above (no table involved)
+  function addToMpCart(item: MenuItem) {
+    const isWeight = item.unitType === 'WEIGHT'
+    setMpCart(prev => {
+      const ex = prev.find(c => c.productId === item.id)
+      if (ex) return prev.map(c => c.productId === item.id ? { ...c, qty: c.qty + (isWeight ? 50 : 1) } : c)
+      return [...prev, { productId: item.id, name: pName(item), price: item.price, qty: isWeight ? 250 : 1, unitType: item.unitType ?? 'PIECE' }]
+    })
+  }
+  function updateMpQty(productId: string, delta: number) {
+    setMpCart(prev => prev.map(c => {
+      if (c.productId !== productId) return c
+      const isWeight = c.unitType === 'WEIGHT'
+      const step = isWeight ? 50 * delta : delta
+      return { ...c, qty: Math.max(isWeight ? 50 : 1, c.qty + step) }
+    }))
+  }
+  function removeFromMpCart(productId: string) {
+    setMpCart(prev => prev.filter(c => c.productId !== productId))
+  }
+  const mpCartTotal = mpCart.reduce((s, c) => s + lineTotal(c), 0)
+
+  async function submitMarketplaceOrder() {
+    if (!posToken || mpCart.length === 0) return
+    const platform = mpPlatform === 'Other' ? mpPlatformOther.trim() : mpPlatform
+    if (!platform) { setMpError('Choose a platform'); return }
+    setMpSubmitting(true); setMpError('')
+    try {
+      const res = await fetch('/api/pos/orders/marketplace', {
+        method: 'POST', headers: { Authorization: `Bearer ${posToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: mpCart.map(c => ({ productId: c.productId, quantity: c.qty })),
+          platform,
+          externalOrderRef: mpRef.trim() || undefined,
+        })
+      })
+      if (!res.ok) { const d = await res.json(); setMpError(d.error ?? 'Failed'); return }
+      setMpCart([]); setMpRef(''); setShowMarketplace(false)
+    } catch { setMpError('Network error') }
+    finally { setMpSubmitting(false) }
   }
 
   // Checkout
@@ -625,6 +677,11 @@ export default function POSPage() {
               <Bell className="w-3.5 h-3.5" /> {alertCount}
             </div>
           )}
+          <button onClick={() => { setShowMarketplace(true); if (menuCats.length && !mpCat) setMpCat(menuCats[0].id) }}
+            title="Log a delivery-app order (Glovo, Uber Eats...)"
+            className="w-9 h-9 rounded-xl flex items-center justify-center text-amber-500 hover:bg-amber-950 transition-colors">
+            <Bike className="w-4 h-4" />
+          </button>
           <button onClick={() => setMuted(m => !m)}
             className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${muted ? 'text-gray-600 hover:text-gray-400' : 'text-emerald-500 hover:bg-emerald-950'}`}>
             {muted ? <BellOff className="w-4 h-4" /> : <Bell className="w-4 h-4" />}
@@ -1135,6 +1192,81 @@ export default function POSPage() {
             })
           }}
         />
+      )}
+
+      {/* ── Marketplace Order Modal (Glovo, Uber Eats...) ───────────────────────── */}
+      {showMarketplace && (
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4"
+          onClick={() => setShowMarketplace(false)}>
+          <div className="bg-gray-900 rounded-3xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl"
+            onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800 shrink-0">
+              <h3 className="font-black text-lg text-white flex items-center gap-2"><Bike className="w-5 h-5 text-amber-500" /> Delivery App Order</h3>
+              <button onClick={() => setShowMarketplace(false)} className="text-gray-500 hover:text-white"><X className="w-5 h-5" /></button>
+            </div>
+
+            <div className="p-4 space-y-3 border-b border-gray-800 shrink-0">
+              <div className="flex flex-wrap gap-2">
+                {['Glovo', 'Uber Eats', 'Jumia Food', 'Other'].map(p => (
+                  <button key={p} onClick={() => setMpPlatform(p)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${mpPlatform === p ? 'bg-amber-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}>
+                    {p}
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                {mpPlatform === 'Other' && (
+                  <input type="text" value={mpPlatformOther} onChange={e => setMpPlatformOther(e.target.value)}
+                    placeholder="Platform name" className="flex-1 bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500" />
+                )}
+                <input type="text" value={mpRef} onChange={e => setMpRef(e.target.value)}
+                  placeholder="Order # (optional)" className="flex-1 bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500" />
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-hidden flex">
+              <div className="w-1/2 border-r border-gray-800 overflow-y-auto p-3">
+                <div className="flex gap-1.5 overflow-x-auto mb-2 pb-1">
+                  {menuCats.map(cat => (
+                    <button key={cat.id} onClick={() => setMpCat(cat.id)}
+                      className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold ${mpCat === cat.id ? 'bg-amber-600 text-white' : 'bg-gray-800 text-gray-400'}`}>
+                      {pName(cat)}
+                    </button>
+                  ))}
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {(menuCats.find(c => c.id === mpCat)?.products ?? []).map(item => (
+                    <button key={item.id} onClick={() => addToMpCart(item)}
+                      className="bg-gray-800 hover:bg-gray-700 rounded-xl p-2 text-left transition-colors">
+                      <p className="text-white text-xs font-bold truncate">{pName(item)}</p>
+                      <p className="text-amber-400 text-xs font-bold">{item.price.toFixed(2)} {currency}{item.unitType === 'WEIGHT' ? '/kg' : ''}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="w-1/2 overflow-y-auto p-3 space-y-2">
+                {mpCart.map(item => (
+                  <div key={item.productId} className="flex items-center gap-2 bg-gray-800 rounded-xl px-2.5 py-1.5">
+                    <button onClick={() => updateMpQty(item.productId, -1)} className="w-7 h-7 rounded-lg bg-gray-700 text-gray-300 font-bold shrink-0">−</button>
+                    <span className="w-10 text-center text-white text-xs font-bold shrink-0">{item.unitType === 'WEIGHT' ? `${item.qty}g` : item.qty}</span>
+                    <button onClick={() => updateMpQty(item.productId, 1)} className="w-7 h-7 rounded-lg bg-amber-900/70 text-amber-400 font-bold shrink-0">+</button>
+                    <span className="flex-1 text-white text-xs font-semibold truncate">{item.name}</span>
+                    <button onClick={() => removeFromMpCart(item.productId)} className="text-gray-500 hover:text-red-400 shrink-0"><Trash2 className="w-3.5 h-3.5" /></button>
+                  </div>
+                ))}
+                {mpCart.length === 0 && <p className="text-gray-600 text-xs text-center py-8">Tap products to add them</p>}
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-gray-800 shrink-0 space-y-2">
+              {mpError && <p className="text-red-400 text-xs font-semibold">{mpError}</p>}
+              <button onClick={submitMarketplaceOrder} disabled={mpSubmitting || mpCart.length === 0}
+                className="w-full py-3 bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-white rounded-xl font-extrabold text-sm flex items-center justify-center gap-2">
+                {mpSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : `Log Order — ${mpCartTotal.toFixed(2)} ${currency}`}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ── Split Bill Modal ──────────────────────────────────────────────────── */}

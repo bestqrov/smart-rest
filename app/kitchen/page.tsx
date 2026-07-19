@@ -300,11 +300,12 @@ export default function KitchenPage() {
     const orders: any[] = await fetch('/api/kitchen/orders/queue', { headers: authHeader() })
       .then(r => r.ok ? r.json() : [])
 
+    const isMarketplace = (o: any) => o.orderSource === 'MARKETPLACE'
     const toTicket = (o: any): KdsTicket => ({
       orderId:            o.id,
       cafeId:             o.cafeId ?? '',
       billingTableNumber: (o.originalTable ?? o.table)?.tableNumber ?? 0,
-      mergeLabel:         `T${(o.originalTable ?? o.table)?.tableNumber ?? '?'}`,
+      mergeLabel:         isMarketplace(o) ? `🛵 ${o.externalPlatform || 'Delivery'}` : `T${(o.originalTable ?? o.table)?.tableNumber ?? '?'}`,
       seatGroups: [{
         seatNumber:          o.seat?.seatNumber ?? null,
         physicalTableNumber: (o.originalTable ?? o.table)?.tableNumber ?? 0,

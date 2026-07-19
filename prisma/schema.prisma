@@ -70,8 +70,9 @@ type ChosenModifier {
 }
 
 enum OrderSource {
-  QR_CODE    // customer scanned table QR
-  POS_MANUAL // staff entered order via Mini POS
+  QR_CODE      // customer scanned table QR
+  POS_MANUAL   // staff entered order via Mini POS
+  MARKETPLACE  // manually logged from a 3rd-party delivery app (Glovo, Uber Eats...)
 }
 
 enum BillStatus {
@@ -515,6 +516,11 @@ model Order {
   // ── Mini POS additions ──────────────────────────────────────────────────
   orderSource     OrderSource @default(QR_CODE)
   billStatus      BillStatus  @default(OPENED)
+  // Set when orderSource = MARKETPLACE — which 3rd-party app it came from
+  // (free text: "Glovo", "Uber Eats"...) and their order reference, for
+  // reconciliation against the platform's payout statement.
+  externalPlatform String? @default("")
+  externalOrderRef String? @default("")
   totalCommission Float       @default(0)
   // POS Core (K11) — order-level discount, applied on top of item subtotal
   discountAmount  Float?
