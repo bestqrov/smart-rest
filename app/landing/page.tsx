@@ -136,7 +136,7 @@ const T: Record<Lang, Record<string, string | string[]>> = {
     faqLabel: 'الأسئلة الشائعة', faqTitle: 'لديك سؤال؟',
     contactLabel: 'تواصل معنا', contactTitle: 'نحن هنا لمساعدتك',
     contactSub: 'فريق الدعم متاح 7 أيام بالعربية والفرنسية والإنجليزية',
-    finalTitle: 'نظام تشغيل مطعمك جاهز.',
+    finalTitle: 'حوّل مطعمك لنظام ذكي كامل.',
     finalSub: 'انضم لأكثر من 500 مطعم ومقهى يشتغل على SmartRestau يومياً',
     finalCta1: 'شغّل نظام مطعمي الآن ←', finalCta2: 'تحدث مع فريقنا',
     finalNote: 'لا بطاقة بنكية · لا عقد · إلغاء في أي وقت',
