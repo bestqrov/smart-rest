@@ -21,10 +21,17 @@ type Lang = 'en' | 'fr' | 'ar'
 
 const T: Record<Lang, Record<string, string | string[]>> = {
   en: {
-    tagline: 'The AI Operating System for Restaurants',
-    h1a: 'The AI Operating System', h1b: 'for Restaurants',
+    tagline: 'One AI Platform for Food & Hospitality',
+    h1a: 'One Intelligent Platform', h1b: 'for Food & Hospitality',
     h1c: '',
-    desc: 'Run your entire restaurant from one intelligent platform.\n\nManage menus, orders, POS, reservations, employees, attendance, marketing, social media and AI automation from a single dashboard.',
+    desc: 'Run your café, restaurant, hotel, bakery or catering business from one intelligent platform.\n\nManage menus, orders, POS, reservations, employees, attendance, marketing, social media and AI automation from a single dashboard.',
+    businessTypesLabel: 'Business Types',
+    bizLabel: 'Supported Businesses', bizTitle: 'Which business do you manage?',
+    bizSub: 'SmartRestau automatically adapts its dashboard and tools according to your activity.',
+    bizLearnMore: 'Learn more',
+    dynLabel: 'One Platform, Every Workflow',
+    dynTitle: 'One platform. Multiple business experiences.',
+    dynSub: 'After registration, just select your business type. SmartRestau automatically configures your dashboard, modules, navigation, reports and KPIs for your activity — no separate software required.',
     cta1: 'Start Free Trial', cta2: 'Book a Demo', ctaDemo: 'Try Demo — No Login',
     trustBar: 'Trusted by restaurants across Africa, GCC and Europe.',
     badges: ['No contract', '5-min setup', 'Support 24/7', 'No credit card'],
@@ -52,7 +59,7 @@ const T: Record<Lang, Record<string, string | string[]>> = {
     systemOk: '🟢 All systems operational',
     privacy: 'Privacy Policy', terms: 'Terms of Service', legal: 'Legal Notice',
     allRights: 'All rights reserved',
-    madeWith: 'Built for MENA & Africa restaurants — AI-powered, locally tuned',
+    madeWith: 'Built for MENA & Africa food & hospitality businesses — AI-powered, locally tuned',
     enterpriseTitle: 'Enterprise & Chain Plans',
     enterpriseDesc: 'Multiple branches, custom branding, SLA guarantee, VIP support, POS integration',
     enterpriseCta: 'Contact Us for Custom Pricing',
@@ -68,10 +75,17 @@ const T: Record<Lang, Record<string, string | string[]>> = {
     statsLabel: 'Trusted globally',
   },
   fr: {
-    tagline: "Le Système d'Exploitation IA pour les Restaurants",
-    h1a: "Le Système d'Exploitation IA", h1b: 'pour les Restaurants',
+    tagline: "Une Plateforme IA pour le Food & l'Hôtellerie",
+    h1a: "Une Plateforme Intelligente", h1b: "pour le Food & l'Hôtellerie",
     h1c: '',
-    desc: "Pilotez l'intégralité de votre restaurant depuis une plateforme intelligente unique.\n\nGérez menus, commandes, POS, réservations, employés, présence, marketing, réseaux sociaux et automatisation IA depuis un seul tableau de bord.",
+    desc: "Pilotez votre café, restaurant, hôtel, pâtisserie ou service traiteur depuis une plateforme intelligente unique.\n\nGérez menus, commandes, POS, réservations, employés, présence, marketing, réseaux sociaux et automatisation IA depuis un seul tableau de bord.",
+    businessTypesLabel: 'Types de Commerces',
+    bizLabel: 'Commerces Pris en Charge', bizTitle: 'Quel commerce gérez-vous ?',
+    bizSub: "SmartRestau adapte automatiquement son tableau de bord et ses outils selon votre activité.",
+    bizLearnMore: 'En savoir plus',
+    dynLabel: 'Une Plateforme, Chaque Métier',
+    dynTitle: 'Une plateforme. Plusieurs expériences métier.',
+    dynSub: "Après inscription, sélectionnez simplement votre type de commerce. SmartRestau configure automatiquement votre tableau de bord, vos modules, votre navigation, vos rapports et vos KPI selon votre activité — aucun logiciel séparé n'est nécessaire.",
     cta1: 'Essai Gratuit', cta2: 'Réserver une Démo', ctaDemo: 'Essayer la Démo — Sans Inscription',
     trustBar: 'Utilisé par des restaurants en Afrique, GCC et Europe.',
     badges: ['Sans engagement', 'Config 5 min', 'Support 24/7', 'Sans carte bancaire'],
@@ -99,7 +113,7 @@ const T: Record<Lang, Record<string, string | string[]>> = {
     systemOk: '🟢 Tous les systèmes opérationnels',
     privacy: 'Politique de Confidentialité', terms: "Conditions d'Utilisation", legal: 'Mentions Légales',
     allRights: 'Tous droits réservés',
-    madeWith: 'Conçu pour les restaurants MENA & Afrique — IA embarquée, ancrage local',
+    madeWith: 'Conçu pour les commerces food & hôtellerie MENA & Afrique — IA embarquée, ancrage local',
     enterpriseTitle: 'Plans Entreprise & Chaînes',
     enterpriseDesc: 'Plusieurs branches, marque personnalisée, SLA garanti, support VIP, intégration POS',
     enterpriseCta: 'Nous Contacter pour un Devis Personnalisé',
@@ -115,10 +129,17 @@ const T: Record<Lang, Record<string, string | string[]>> = {
     statsLabel: 'Reconnu mondialement',
   },
   ar: {
-    tagline: 'نظام التشغيل الذكي للمطاعم',
-    h1a: 'نظام التشغيل الذكي', h1b: 'للمطاعم',
+    tagline: 'منصة ذكية واحدة لقطاع المطاعم والضيافة',
+    h1a: 'منصة ذكية واحدة', h1b: 'لكل أعمال المطاعم والضيافة',
     h1c: '',
-    desc: 'أدِر مطعمك بالكامل من منصة ذكية واحدة.\n\nأدر قوائمك، طلباتك، POS، الحجوزات، الموظفين، الحضور، التسويق، السوشيال ميديا والأتمتة الذكية من لوحة تحكم واحدة.',
+    desc: 'أدِر مقهاك أو مطعمك أو فندقك أو محل الحلويات أو نشاط التريتور من منصة ذكية واحدة.\n\nأدر قوائمك، طلباتك، POS، الحجوزات، الموظفين، الحضور، التسويق، السوشيال ميديا والأتمتة الذكية من لوحة تحكم واحدة.',
+    businessTypesLabel: 'أنواع الأنشطة',
+    bizLabel: 'الأنشطة المدعومة', bizTitle: 'ما هو نشاطك التجاري؟',
+    bizSub: 'SmartRestau يكيّف تلقائياً لوحة التحكم والأدوات حسب نشاطك.',
+    bizLearnMore: 'اعرف أكثر',
+    dynLabel: 'منصة واحدة لكل الأنشطة',
+    dynTitle: 'منصة واحدة. تجارب متعددة حسب نشاطك.',
+    dynSub: 'بعد التسجيل، اختر فقط نوع نشاطك. SmartRestau يهيئ تلقائياً لوحة التحكم، الوحدات، التنقل، التقارير والمؤشرات حسب نشاطك — بدون الحاجة لأي برنامج منفصل.',
     cta1: 'ابدأ مجاناً', cta2: 'احجز عرضاً', ctaDemo: 'جرّب الديمو — بدون تسجيل',
     trustBar: 'موثوق به من مطاعم في أفريقيا والخليج وأوروبا.',
     badges: ['بدون عقد', 'إعداد 5 دقائق', 'دعم 24/7', 'لا بطاقة بنكية'],
@@ -146,7 +167,7 @@ const T: Record<Lang, Record<string, string | string[]>> = {
     systemOk: '🟢 جميع الأنظمة تعمل',
     privacy: 'سياسة الخصوصية', terms: 'شروط الاستخدام', legal: 'الإشعار القانوني',
     allRights: 'جميع الحقوق محفوظة',
-    madeWith: 'مبني للمطاعم العربية والأفريقية — ذكاء اصطناعي، جذور محلية',
+    madeWith: 'مبني لأنشطة المطاعم والضيافة في المنطقة العربية وأفريقيا — ذكاء اصطناعي، جذور محلية',
     enterpriseTitle: 'باقة المؤسسات والسلاسل',
     enterpriseDesc: 'عدة فروع، علامة تجارية خاصة، SLA مضمون، دعم VIP، تكامل مع POS',
     enterpriseCta: 'تواصل معنا للتسعير المخصص',
@@ -241,6 +262,51 @@ const PERSONAS = [
     fr:  { title: 'Chaîne & Food Court',   pain: 'Gérer plusieurs points de vente',     gain: 'Poste de commande IA — toutes les branches, un seul tableau de bord' },
     ar:  { title: 'سلسلة وفود كورت',       pain: 'إدارة فروع متعددة صعبة ومرهقة',      gain: 'مركز قيادة ذكي — كل الفروع من لوحة تحكم واحدة' },
     border: 'border-rose-200 hover:border-rose-500', iconBg: 'bg-rose-50', iconColor: 'text-rose-600', gainColor: 'text-rose-700',
+  },
+]
+
+const BUSINESS_CARDS = [
+  {
+    emoji: '🍽',
+    en: { title: 'Restaurant', desc: 'Complete restaurant management with POS, QR Menu, Kitchen and Reservations.' },
+    fr: { title: 'Restaurant', desc: 'Gestion complète : POS, Menu QR, Cuisine et Réservations.' },
+    ar: { title: 'مطعم',       desc: 'إدارة شاملة: نقطة بيع، قائمة QR، المطبخ والحجوزات.' },
+  },
+  {
+    emoji: '☕',
+    en: { title: 'Café', desc: 'Fast service, QR ordering and customer loyalty.' },
+    fr: { title: 'Café', desc: 'Service rapide, commande via QR et fidélité client.' },
+    ar: { title: 'مقهى', desc: 'خدمة سريعة، طلب عبر QR وبرنامج ولاء الزبائن.' },
+  },
+  {
+    emoji: '🍔',
+    en: { title: 'Snack', desc: 'Fast ordering and simplified POS.' },
+    fr: { title: 'Snack', desc: 'Commande rapide et POS simplifié.' },
+    ar: { title: 'سناك',  desc: 'طلب سريع ونقطة بيع مبسطة.' },
+  },
+  {
+    emoji: '🍱',
+    en: { title: 'Traiteur', desc: 'Events, quotations, planning and production.' },
+    fr: { title: 'Traiteur', desc: 'Événements, devis, planification et production.' },
+    ar: { title: 'تريتور',   desc: 'مناسبات، عروض أسعار، تخطيط وإنتاج.' },
+  },
+  {
+    emoji: '🏨',
+    en: { title: 'Hôtel', desc: 'Restaurant, room service and hospitality workflows.' },
+    fr: { title: 'Hôtel', desc: 'Restaurant, room service et opérations hôtelières.' },
+    ar: { title: 'فندق',  desc: 'المطعم، خدمة الغرف وعمليات الضيافة.' },
+  },
+  {
+    emoji: '🥐',
+    en: { title: 'Pâtisserie', desc: 'Daily production and inventory management.' },
+    fr: { title: 'Pâtisserie', desc: 'Production quotidienne et gestion des stocks.' },
+    ar: { title: 'حلويات',     desc: 'إنتاج يومي وإدارة المخزون.' },
+  },
+  {
+    emoji: '🥖',
+    en: { title: 'Boulangerie', desc: 'Bakery production, stock and sales.' },
+    fr: { title: 'Boulangerie', desc: 'Production, stock et ventes de boulangerie.' },
+    ar: { title: 'مخبزة',       desc: 'إنتاج المخبزة، المخزون والمبيعات.' },
   },
 ]
 
@@ -891,6 +957,7 @@ export default function LandingPage() {
             <a href="#who"      className="transition-colors hover:opacity-100" style={{ color: 'var(--ctm)' }} onMouseEnter={e => (e.currentTarget.style.color = 'var(--ca)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--ctm)')}>{t('whoLabel')}</a>
             <a href="#platform" className="transition-colors" style={{ color: 'var(--ctm)' }} onMouseEnter={e => (e.currentTarget.style.color = 'var(--ca)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--ctm)')}>{t('architectureLabel')}</a>
             <a href="#features" className="transition-colors" style={{ color: 'var(--ctm)' }} onMouseEnter={e => (e.currentTarget.style.color = 'var(--ca)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--ctm)')}>{t('featLabel')}</a>
+            <a href="#business-types" className="transition-colors" style={{ color: 'var(--ctm)' }} onMouseEnter={e => (e.currentTarget.style.color = 'var(--ca)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--ctm)')}>{t('businessTypesLabel')}</a>
             <a href="#how"      className="transition-colors" style={{ color: 'var(--ctm)' }} onMouseEnter={e => (e.currentTarget.style.color = 'var(--ca)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--ctm)')}>{t('howLabel')}</a>
             <a href="#pricing"  className="transition-colors" style={{ color: 'var(--ctm)' }} onMouseEnter={e => (e.currentTarget.style.color = 'var(--ca)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--ctm)')}>{t('pricingLabel')}</a>
             <a href="#contact"  className="transition-colors" style={{ color: 'var(--ctm)' }} onMouseEnter={e => (e.currentTarget.style.color = 'var(--ca)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--ctm)')}>{t('contactLabel')}</a>
@@ -932,7 +999,7 @@ export default function LandingPage() {
 
         {mobileMenuOpen && (
           <div className="lg:hidden border-t px-4 py-4 space-y-3" style={{ background: 'var(--cs)', borderColor: 'var(--cbr)' }}>
-            {[['#who', t('whoLabel')], ['#platform', t('architectureLabel')], ['#features', t('featLabel')], ['#how', t('howLabel')], ['#pricing', t('pricingLabel')], ['#contact', t('contactLabel')]].map(([href, label]) => (
+            {[['#who', t('whoLabel')], ['#platform', t('architectureLabel')], ['#features', t('featLabel')], ['#business-types', t('businessTypesLabel')], ['#how', t('howLabel')], ['#pricing', t('pricingLabel')], ['#contact', t('contactLabel')]].map(([href, label]) => (
               <a key={href} href={href} onClick={() => setMobileMenuOpen(false)} className="block font-medium py-1.5" style={{ color: 'var(--ct)' }}>{label}</a>
             ))}
             {/* Theme switcher (mobile) */}
@@ -968,11 +1035,11 @@ export default function LandingPage() {
           <div className="text-center mb-14">
             <h2 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white leading-[1.1] mb-5">
               {lang === 'ar' ? (
-                <>كل ما يحتاجه مطعمك.<br /><span className="bg-clip-text text-transparent" style={{ backgroundImage: H1_GRADIENT[theme] }}>في نظام واحد.</span></>
+                <>كل ما يحتاجه نشاطك.<br /><span className="bg-clip-text text-transparent" style={{ backgroundImage: H1_GRADIENT[theme] }}>في نظام واحد.</span></>
               ) : lang === 'fr' ? (
-                <>Tout ce dont votre restaurant a besoin.<br /><span className="bg-clip-text text-transparent" style={{ backgroundImage: H1_GRADIENT[theme] }}>Dans un seul OS.</span></>
+                <>Tout ce dont votre commerce a besoin.<br /><span className="bg-clip-text text-transparent" style={{ backgroundImage: H1_GRADIENT[theme] }}>Dans un seul OS.</span></>
               ) : (
-                <>Everything Your Restaurant Needs.<br /><span className="bg-clip-text text-transparent" style={{ backgroundImage: H1_GRADIENT[theme] }}>One Unified OS.</span></>
+                <>Everything Your Business Needs.<br /><span className="bg-clip-text text-transparent" style={{ backgroundImage: H1_GRADIENT[theme] }}>One Unified OS.</span></>
               )}
             </h2>
             <p className="text-gray-400 text-lg max-w-2xl mx-auto leading-relaxed">
@@ -1323,10 +1390,10 @@ export default function LandingPage() {
             </span>
             <h2 className="text-4xl sm:text-5xl font-extrabold text-white mb-4">
               {lang === 'ar'
-                ? <>منصة واحدة. <span className="bg-clip-text text-transparent" style={{ backgroundImage: H1_GRADIENT[theme] }}>كل عمليات مطعمك.</span></>
+                ? <>منصة واحدة. <span className="bg-clip-text text-transparent" style={{ backgroundImage: H1_GRADIENT[theme] }}>كل عمليات نشاطك.</span></>
                 : lang === 'fr'
                 ? <>Une Plateforme. <span className="bg-clip-text text-transparent" style={{ backgroundImage: H1_GRADIENT[theme] }}>Toutes les Opérations.</span></>
-                : <>One Platform. <span className="bg-clip-text text-transparent" style={{ backgroundImage: H1_GRADIENT[theme] }}>Every Restaurant Operation.</span></>
+                : <>One Platform. <span className="bg-clip-text text-transparent" style={{ backgroundImage: H1_GRADIENT[theme] }}>Every Business Operation.</span></>
               }
             </h2>
             <p className="text-gray-400 text-lg max-w-2xl mx-auto">{t('architectureSub')}</p>
@@ -1460,6 +1527,42 @@ export default function LandingPage() {
                 </div>
               )
             })}
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      {/* BUSINESS TYPES — WHICH BUSINESS DO YOU MANAGE */}
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      <section id="business-types" className="py-24" style={{ background: 'var(--cb)' }}>
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="mb-14 text-center">
+            <span className="inline-block border px-4 py-1 rounded-full text-sm font-semibold mb-4" style={{ background: 'var(--cbr)', borderColor: 'var(--cbr)', color: 'var(--ca)' }}>{t('bizLabel')}</span>
+            <h2 className="text-4xl font-extrabold" style={{ color: 'var(--ct)' }}>{t('bizTitle')}</h2>
+            <p className="mt-3 text-lg max-w-2xl mx-auto" style={{ color: 'var(--ctm)' }}>{t('bizSub')}</p>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            {BUSINESS_CARDS.map((b, i) => {
+              const d = tl(b, lang)
+              return (
+                <div key={i} className={`group rounded-2xl p-5 border hover:shadow-lg transition-all cursor-default ${isRtl ? 'text-right' : ''}`} style={{ background: 'var(--cs)', borderColor: 'var(--cbr)' }}>
+                  <div className="text-3xl mb-3 group-hover:scale-110 transition-transform origin-left">{b.emoji}</div>
+                  <h3 className="font-bold text-base mb-1.5" style={{ color: 'var(--ct)' }}>{d.title}</h3>
+                  <p className="text-xs leading-relaxed mb-3" style={{ color: 'var(--ctm)' }}>{d.desc}</p>
+                  <Link href="/signup" className="inline-flex items-center gap-1 text-xs font-semibold opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: 'var(--ca)' }}>
+                    {t('bizLearnMore')} <ChevronRight className="w-3 h-3" />
+                  </Link>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Dynamic explanation */}
+          <div className="mt-16 rounded-3xl border p-8 lg:p-12 text-center" style={{ background: 'var(--cs)', borderColor: 'var(--cbr)' }}>
+            <span className="inline-block border px-4 py-1 rounded-full text-sm font-semibold mb-4" style={{ background: 'var(--cbr)', borderColor: 'var(--cbr)', color: 'var(--ca)' }}>{t('dynLabel')}</span>
+            <h3 className="text-2xl sm:text-3xl font-extrabold mb-3" style={{ color: 'var(--ct)' }}>{t('dynTitle')}</h3>
+            <p className="text-base max-w-2xl mx-auto leading-relaxed" style={{ color: 'var(--ctm)' }}>{t('dynSub')}</p>
           </div>
         </div>
       </section>

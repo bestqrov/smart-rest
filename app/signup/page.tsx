@@ -28,7 +28,7 @@ const D = {
   page_subtitle:    { ar: 'جاهز في دقيقتين · بدون بطاقة بنكية', fr: 'Prêt en 2 min · Sans carte bancaire', en: 'Ready in 2 min · No credit card', es: 'Listo en 2 min · Sin tarjeta' },
   brand_tagline:    { ar: 'الحل الذكي الشامل للمطاعم والفنادق والتريتور', fr: 'La solution intelligente pour restaurants, hôtels & traiteurs', en: 'The all-in-one platform for restaurants, hotels & caterers', es: 'La plataforma inteligente para restaurantes, hoteles y catering' },
   label_lang:       { ar: 'اللغة', fr: 'Langue', en: 'Language', es: 'Idioma' },
-  label_btype:      { ar: 'ما هو نوع منشأتك؟', fr: 'Quel type d\'établissement ?', en: 'What type of establishment?', es: '¿Tipo de establecimiento?' },
+  label_btype:      { ar: 'اختر نوع نشاطك', fr: 'Sélectionnez votre type d\'activité', en: 'Select your business type', es: 'Selecciona tu tipo de negocio' },
   label_cafe:       { ar: 'اسم المطعم أو المقهى', fr: 'Nom du restaurant / café', en: 'Restaurant or café name', es: 'Nombre del restaurante / café' },
   label_sub:        { ar: 'رابط المطعم (subdomain)', fr: 'Adresse web (sous-domaine)', en: 'Web address (subdomain)', es: 'Dirección web (subdominio)' },
   label_email:      { ar: 'البريد الإلكتروني', fr: 'Adresse e-mail', en: 'E-mail address', es: 'Correo electrónico' },
