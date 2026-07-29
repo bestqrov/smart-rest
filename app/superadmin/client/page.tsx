@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { Contact, Search, Loader2, Send, CheckCircle2 } from 'lucide-react'
+import { Contact, Search, Loader2, Send, CheckCircle2, Trash2 } from 'lucide-react'
 import { useSAAuth } from '../context'
 
 type ClientUser = { id: string; email: string }
@@ -29,6 +29,8 @@ export default function ClientPage() {
   const [loading, setLoading] = useState(false)
   const [sending, setSending] = useState<string | null>(null)
   const [sent,    setSent]    = useState<Record<string, boolean>>({})
+  const [deleteConfirm, setDeleteConfirm] = useState<Client | null>(null)
+  const [deleting,      setDeleting]      = useState(false)
 
   const load = useCallback(async (query: string) => {
     setLoading(true)
@@ -61,6 +63,15 @@ export default function ClientPage() {
       setSent(s => ({ ...s, [userId]: true }))
       setTimeout(() => setSent(s => ({ ...s, [userId]: false })), 5000)
     } finally { setSending(null) }
+  }
+
+  async function deleteClient(id: string) {
+    setDeleting(true)
+    try {
+      await fetch(`/api/superadmin/tenants/${id}`, { method: 'DELETE', headers: header() })
+      setDeleteConfirm(null)
+      load(q)
+    } finally { setDeleting(false) }
   }
 
   return (
@@ -99,6 +110,7 @@ export default function ClientPage() {
                   <th className="text-left font-semibold px-5 py-3">Password</th>
                   <th className="text-left font-semibold px-5 py-3">Payment</th>
                   <th className="text-left font-semibold px-5 py-3">Created</th>
+                  <th className="text-left font-semibold px-5 py-3">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-800">
@@ -145,6 +157,18 @@ export default function ClientPage() {
                           {new Date(client.createdAt).toLocaleDateString()}
                         </td>
                       )}
+                      {i === 0 && (
+                        <td rowSpan={rows.length} className="px-5 py-3 align-top">
+                          <button
+                            onClick={() => setDeleteConfirm(client)}
+                            disabled={client.isDemo}
+                            title={client.isDemo ? 'Demo account protégé' : ''}
+                            className="flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg shrink-0 bg-red-900/40 hover:bg-red-800 text-red-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                          >
+                            <Trash2 className="w-3 h-3" /> حذف
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   ))
                 })}
@@ -153,6 +177,39 @@ export default function ClientPage() {
           </div>
         )}
       </div>
+
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-[60] bg-black/90 flex items-center justify-center p-4">
+          <div className="bg-gray-900 border border-red-800 rounded-2xl w-full max-w-sm shadow-2xl p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-red-900/60 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5 text-red-400" />
+              </div>
+              <div>
+                <h3 className="text-white font-extrabold text-base">حذف نهائي</h3>
+                <p className="text-gray-400 text-xs mt-0.5">هذا الإجراء لا يمكن التراجع عنه</p>
+              </div>
+            </div>
+            <div className="bg-red-950/40 border border-red-800/50 rounded-xl px-4 py-3">
+              <p className="text-red-300 font-bold text-sm">{deleteConfirm.businessName || deleteConfirm.name}</p>
+              <p className="text-red-500 text-xs mt-1">
+                غادي يتمسح الرستوران، إيميلات المستخدمين، الطلبات، المنيو، الطاولات، الموظفين، وكل السجلات المرتبطة بيه.
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => setDeleteConfirm(null)} disabled={deleting}
+                className="flex-1 px-4 py-2.5 rounded-xl border border-gray-700 text-gray-400 hover:bg-gray-800 text-sm font-semibold">
+                إلغاء
+              </button>
+              <button onClick={() => deleteClient(deleteConfirm.id)} disabled={deleting}
+                className="flex-1 px-4 py-2.5 rounded-xl bg-red-700 hover:bg-red-600 text-white text-sm font-bold flex items-center justify-center gap-2">
+                {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                {deleting ? 'جارٍ الحذف…' : 'تأكيد الحذف'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
