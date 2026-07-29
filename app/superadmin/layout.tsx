@@ -8,7 +8,7 @@ import {
   Brain, Zap, Workflow, ShieldCheck, BarChart3, Map,
   Users, Activity, Settings, AlertTriangle, LogOut,
   ChevronDown, ChevronLeft, ChevronRight, Menu, X, KeyRound, HeartPulse,
-  ShoppingBag, Tag, Package, Truck, ClipboardList, Warehouse,
+  ShoppingBag, Tag, Package, Truck, ClipboardList, Warehouse, Contact,
 } from 'lucide-react'
 import { SAAuthProvider, useSAAuth } from './context'
 
@@ -70,6 +70,7 @@ const NAV = [
   {
     section: 'Administration',
     items: [
+      { href: '/superadmin/client',      icon: Contact,     label: 'Clients' },
       { href: '/superadmin/credentials', icon: KeyRound,   label: 'Credentials' },
       { href: '/superadmin/users',       icon: Users,      label: 'Users' },
       { href: '/superadmin/activity',    icon: Activity,   label: 'Activity Log' },

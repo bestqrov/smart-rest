@@ -1221,6 +1221,56 @@ router.get('/api/superadmin/credentials-directory', requireSuperAdmin, async (re
   }
 })
 
+// ─── GET /api/superadmin/clients ────────────────────────────────────────────
+// Flat client directory: restaurant name, owner login email, billing/payment
+// status, and account creation date. Creation date is derived from the Mongo
+// ObjectId timestamp since Cafe has no createdAt column. No password material
+// is ever returned (passwords are one-way hashed); resets go through
+// /api/superadmin/users/:id/reset-password below.
+
+router.get('/api/superadmin/clients', requireSuperAdmin, async (req: Request, res: Response) => {
+  try {
+    const q     = (req.query['q'] as string | undefined)?.trim()
+    const page  = Math.max(1, Number(req.query['page'])  || 1)
+    const limit = Math.min(100, Number(req.query['limit']) || 50)
+
+    const where = q ? {
+      OR: [
+        { name:         { contains: q, mode: 'insensitive' as const } },
+        { businessName: { contains: q, mode: 'insensitive' as const } },
+        { subdomain:    { contains: q, mode: 'insensitive' as const } },
+        { ownerEmail:   { contains: q, mode: 'insensitive' as const } },
+        { users: { some: { email: { contains: q, mode: 'insensitive' as const } } } },
+      ],
+    } : {}
+
+    const [total, cafes] = await Promise.all([
+      prisma.cafe.count({ where }),
+      prisma.cafe.findMany({
+        where,
+        orderBy: { name: 'asc' },
+        skip: (page - 1) * limit,
+        take: limit,
+        select: {
+          id: true, name: true, businessName: true, subdomain: true,
+          billingStatus: true, isActive: true, isDemo: true,
+          users: { select: { id: true, email: true }, orderBy: { id: 'asc' } },
+        },
+      }),
+    ])
+
+    const clients = cafes.map(cafe => ({
+      ...cafe,
+      createdAt: new Date(parseInt(cafe.id.substring(0, 8), 16) * 1000),
+    }))
+
+    return res.json({ total, page, pages: Math.ceil(total / limit), clients })
+  } catch (err) {
+    logger.error({ msg: 'clients directory error', err })
+    return res.status(500).json({ error: 'Server error' })
+  }
+})
+
 // ─── POST /api/superadmin/users/:id/reset-password ─────────────────────────────
 // Directly issue a temp password for a given user, without requiring the
 // client to have filed a PasswordResetRequest first.
