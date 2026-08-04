@@ -63,7 +63,7 @@ function VerifySuccessInner() {
       <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden text-center">
 
         <div className={`px-8 py-8 ${state === 'error' ? 'bg-gradient-to-r from-red-400 to-red-500' : 'bg-gradient-to-r from-amber-400 to-amber-500'}`}>
-          <Image src="/assets/logo.png" alt="Smart Resto" width={48} height={48} className="rounded-xl mx-auto mb-3" />
+          <Image src="/assets/logo.png" alt="Smart Resto" width={48} height={48} className="rounded-xl mx-auto mb-3" unoptimized />
           <h1 className="text-xl font-extrabold text-white">
             {state === 'loading' ? tx('loading', lang)
              : state === 'success' ? tx('success', lang)

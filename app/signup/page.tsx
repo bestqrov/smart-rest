@@ -177,7 +177,8 @@ function SignupInner() {
   const dir               = isRTL ? 'rtl' : 'ltr'
 
   const [logoUrl, setLogoUrl] = useState('/assets/logo.png')
-  const [form, setForm]   = useState({ cafeName: '', subdomain: '', email: '', country: 'MA' })
+  // Pre-fill from the landing page's email-capture CTA (?email=...), if present
+  const [form, setForm]   = useState({ cafeName: '', subdomain: '', email: params.get('email') ?? '', country: 'MA' })
   const [businessType, setBusinessType] = useState<string>('')
   const [manualSub, setManualSub] = useState(false)
   const [loading, setLoading]     = useState(false)
@@ -320,7 +321,7 @@ function SignupInner() {
 
         {/* Brand */}
         <Link href="/landing" className="relative flex items-center gap-2.5 shrink-0">
-          <Image src={logoUrl} alt="Smart Resto" width={36} height={36} className="rounded-lg shadow-lg object-contain" unoptimized={!logoUrl.startsWith('/')} />
+          <Image src={logoUrl} alt="Smart Resto" width={36} height={36} className="rounded-lg shadow-lg object-contain" unoptimized />
           <div className="flex flex-col leading-tight">
             <span className="text-white text-base font-extrabold">Smart Resto</span>
             <span className="text-blue-300 text-[11px] leading-tight max-w-[220px]">{tx('brand_tagline', lang)}</span>
@@ -381,7 +382,7 @@ function SignupInner() {
         {/* Top bar */}
         <div className="flex items-center justify-between px-6 sm:px-10 lg:px-14 pt-5 lg:pt-6 shrink-0">
           <Link href="/landing" className="flex items-center gap-2 lg:hidden">
-            <Image src={logoUrl} alt="Smart Resto" width={28} height={28} className="rounded-lg object-contain" unoptimized={!logoUrl.startsWith('/')} />
+            <Image src={logoUrl} alt="Smart Resto" width={28} height={28} className="rounded-lg object-contain" unoptimized />
             <span className="text-gray-900 text-sm font-extrabold">Smart Resto</span>
           </Link>
           <Link href="/landing" className="hidden lg:flex items-center gap-1.5 text-gray-400 hover:text-gray-600 text-sm font-medium transition-colors">

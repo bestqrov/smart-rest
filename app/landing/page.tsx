@@ -945,7 +945,7 @@ export default function LandingPage() {
 
           {/* Logo */}
           <div className="flex items-center gap-2.5 shrink-0">
-            <Image src={logoImageUrl} alt="SmartRestau" width={38} height={38} className="rounded-xl shadow-sm object-contain" unoptimized={!logoImageUrl.startsWith('/') || logoImageUrl.startsWith('/uploads/')} />
+            <Image src={logoImageUrl} alt="SmartRestau" width={38} height={38} className="rounded-xl shadow-sm object-contain" unoptimized />
             <div className="leading-tight">
               <span className="font-extrabold text-lg tracking-tight" style={{ color: 'var(--ct)' }}>SmartRestau</span>
               <span className="hidden sm:block text-[10px] font-semibold leading-none" style={{ color: 'var(--ca)' }}>AI OS · OPERATE · GROW</span>
@@ -1508,7 +1508,7 @@ export default function LandingPage() {
                   width={900}
                   height={500}
                   className="w-full max-w-3xl h-auto rounded-2xl shadow-lg object-contain"
-                  unoptimized={!platformImageUrl.startsWith('/') || platformImageUrl.startsWith('/uploads/')}
+                  unoptimized
                 />
               </div>
             )}
@@ -1954,7 +1954,7 @@ export default function LandingPage() {
             {/* Brand */}
             <div className="col-span-2 md:col-span-1">
               <div className={`flex items-center gap-2 mb-4 ${isRtl ? 'flex-row-reverse' : ''}`}>
-                <Image src={logoImageUrl} alt={footerBrand} width={36} height={36} className="rounded-xl object-contain" unoptimized={!logoImageUrl.startsWith('/') || logoImageUrl.startsWith('/uploads/')} />
+                <Image src={logoImageUrl} alt={footerBrand} width={36} height={36} className="rounded-xl object-contain" unoptimized />
                 <span className="text-white font-extrabold text-lg">{footerBrand}</span>
               </div>
               <p className="text-sm leading-relaxed mb-4">{t('madeWith')}</p>

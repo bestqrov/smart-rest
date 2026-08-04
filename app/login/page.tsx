@@ -243,7 +243,7 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="flex items-center gap-3 mb-10">
           <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden">
-            <Image src="/assets/logo.png" alt="SmartRestau" width={40} height={40} className="object-contain" />
+            <Image src="/assets/logo.png" alt="SmartRestau" width={40} height={40} className="object-contain" unoptimized />
           </div>
           <p className="font-black text-white text-xl">Smart<span className="text-emerald-400">Restau</span></p>
         </div>
@@ -288,7 +288,7 @@ export default function LoginPage() {
         <div className="relative flex items-center justify-between mb-10">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden">
-              <Image src="/assets/logo.png" alt="SmartRestau" width={32} height={32} className="object-contain" />
+              <Image src="/assets/logo.png" alt="SmartRestau" width={32} height={32} className="object-contain" unoptimized />
             </div>
             <div>
               <p className="font-black text-white text-sm leading-none">Smart<span className="text-emerald-400">Restau</span></p>
