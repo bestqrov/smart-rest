@@ -158,7 +158,7 @@ export default function DashboardPage() {
                 </div>
               </div>
               <button onClick={() => ackCall(c)}
-                className="flex items-center gap-1 bg-amber-500 hover:bg-amber-600 text-white text-xs px-2.5 py-1.5 rounded-lg font-medium transition-colors shrink-0">
+                className="flex items-center gap-1 bg-amber-500 hover:bg-amber-600 active:scale-95 text-white text-xs px-3 py-2.5 rounded-lg font-medium transition-all shrink-0">
                 <CheckCheck className="w-4 h-4" /> {t.ack}
               </button>
             </div>
@@ -364,8 +364,12 @@ function SmallBox({ gradient, icon: Icon, value, label, sub, href, moreInfo, pul
   gradient: string; icon: any; value: string; label: string; sub: string
   href: string; moreInfo: string; pulse?: boolean; isRTL: boolean
 }) {
+  // Whole card is the tap target (was: only the thin "more info" strip at the
+  // bottom, ~24px tall) — these are the most-glanced-at tiles on the screen,
+  // so drilling in should work with a careless one-hand tap anywhere on them.
   return (
-    <div className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${gradient} text-white shadow-sm flex flex-col`}>
+    <Link href={href}
+      className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${gradient} text-white shadow-sm flex flex-col active:scale-[0.98] transition-transform`}>
       <div className="p-4 flex-1">
         <div className="text-2xl font-extrabold leading-tight">{value}</div>
         <div className="text-sm font-medium text-white/90 mt-0.5">{label}</div>
@@ -373,11 +377,10 @@ function SmallBox({ gradient, icon: Icon, value, label, sub, href, moreInfo, pul
       </div>
       <Icon aria-hidden
         className={`absolute ${isRTL ? 'left-2' : 'right-2'} top-3 w-14 h-14 text-black/10 ${pulse ? 'animate-pulse' : ''}`} />
-      <Link href={href}
-        className="block text-center text-[11px] font-semibold text-white/90 bg-black/10 hover:bg-black/20 py-1.5 transition-colors">
+      <span className="block text-center text-[11px] font-semibold text-white/90 bg-black/10 py-1.5">
         {moreInfo} <ChevronRight className={`inline w-3 h-3 ${isRTL ? 'rotate-180' : ''}`} />
-      </Link>
-    </div>
+      </span>
+    </Link>
   )
 }
 
