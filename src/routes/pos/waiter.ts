@@ -10,7 +10,7 @@ import { Server as SocketIOServer } from 'socket.io'
 import authorizePOS from '../../middleware/authorizePOS'
 import prisma from '../../prisma'
 import logger from '../../logger'
-import { applyOrderFee } from '../../services/billing'
+import { completeOrderFinancials, awardLoyaltyBestEffort } from '../../services/orderCompletion'
 import { emitOrderStatusUpdate } from '../../services/kds'
 
 const router = express.Router()
@@ -79,17 +79,23 @@ router.patch('/api/pos/waiter/orders/:id/served', authorizePOS, async (req: Requ
 
     const order = await prisma.order.findUnique({
       where:  { id: orderId },
-      select: { id: true, cafeId: true, status: true, totalPrice: true, tableId: true, _count: { select: { items: true } } }
+      select: {
+        id: true, cafeId: true, status: true, totalPrice: true, tableId: true,
+        customerPhone: true, _count: { select: { items: true } }
+      }
     })
     if (!order) return res.status(404).json({ error: 'Order not found' })
     if (order.cafeId !== cafeId) return res.status(403).json({ error: 'Forbidden' })
+    if (order.status === 'COMPLETED') return res.json({ orderId, status: 'COMPLETED', message: 'Already completed' })
 
     const cafe = await prisma.cafe.findUnique({ where: { id: cafeId }, select: { country: true } })
 
     await prisma.$transaction(async (tx) => {
       await tx.order.update({ where: { id: orderId }, data: { status: 'COMPLETED' } })
-      await applyOrderFee(tx, cafeId, orderId, order.totalPrice, cafe?.country ?? 'MA', false, order._count.items)
+      await completeOrderFinancials(tx, cafeId, orderId, order.totalPrice, cafe?.country ?? 'MA', order._count.items)
     })
+
+    await awardLoyaltyBestEffort(cafeId, order.customerPhone, order.totalPrice, orderId)
 
     const io = req.app.get('io') as SocketIOServer | undefined
     if (io) emitOrderStatusUpdate(io, cafeId, orderId, 'COMPLETED', order.tableId ?? null)

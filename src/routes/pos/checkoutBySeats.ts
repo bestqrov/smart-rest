@@ -13,6 +13,7 @@ import express, { Request, Response } from 'express'
 import prisma from '../../prisma'
 import logger from '../../logger'
 import authorizePOS from '../../middleware/authorizePOS'
+import { completeOrderFinancials, awardLoyaltyBestEffort } from '../../services/orderCompletion'
 
 const router = express.Router()
 
@@ -76,17 +77,20 @@ router.post('/api/pos/checkout/by-seats', authorizePOS, async (req: Request, res
     }
 
     const billStatus = printReceipt ? 'CLOSED_PRINTED' : 'CLOSED_VIRTUAL'
+    const cafe = await prisma.cafe.findUnique({ where: { id: cafeId }, select: { country: true } })
 
     // Close each order in a transaction
-    const closedOrders = await prisma.$transaction(
-      ordersToClose.map(order => {
+    const closedResults = await prisma.$transaction(async (tx) => {
+      const results = []
+      for (const order of ordersToClose) {
         const totalCommission = order.items.reduce(
           (sum, item) => sum + item.unitPrice * item.quantity * item.commissionRate,
           0
         )
         const method = paymentMethod ?? order.paymentMethod
+        const wasCompleted = order.status === 'COMPLETED'
 
-        return prisma.order.update({
+        const result = await tx.order.update({
           where: { id: order.id },
           data: {
             isPaid:          true,
@@ -95,10 +99,25 @@ router.post('/api/pos/checkout/by-seats', authorizePOS, async (req: Request, res
             totalCommission,
             status:          'COMPLETED',
           },
-          select: { id: true, tableId: true, seatNumber: true, totalPrice: true }
+          select: { id: true, tableId: true, seatNumber: true, totalPrice: true, customerPhone: true }
         })
-      })
-    )
+
+        if (!wasCompleted) {
+          await completeOrderFinancials(tx, cafeId, order.id, order.totalPrice, cafe?.country ?? 'MA', order.items.length)
+        }
+
+        results.push({ result, wasCompleted })
+      }
+      return results
+    })
+
+    for (const { result, wasCompleted } of closedResults) {
+      if (!wasCompleted) {
+        await awardLoyaltyBestEffort(cafeId, result.customerPhone, result.totalPrice, result.id)
+      }
+    }
+
+    const closedOrders = closedResults.map(({ result }) => result)
 
     logger.info({
       msg:    'POS checkout by-seats',

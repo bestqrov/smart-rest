@@ -5,8 +5,7 @@ import logger from '../logger'
 import prisma from '../prisma'
 import { applyOrderFee } from '../services/billing'
 import { emitKdsTicket, emitOrderStatusUpdate } from '../services/kds'
-import { deductInventoryForOrder } from '../services/inventoryDeduction'
-import { earnPoints } from '../loyalty/LoyaltyService'
+import { completeOrderFinancials, awardLoyaltyBestEffort } from '../services/orderCompletion'
 import { autoCheckInReservationForTable } from '../reservations/ReservationService'
 
 const router = express.Router()
@@ -248,26 +247,14 @@ router.patch('/api/orders/:orderId/status', authorizeAdmin, async (req: Request,
       await tx.order.update({ where: { id: orderId }, data: updateData })
 
       if (status === 'COMPLETED' && order.status !== 'COMPLETED') {
-        await applyOrderFee(tx, cafeId, orderId, order.totalPrice, cafe?.country ?? 'MA', false, order._count.items)
-
-        // Deduct inventory stock for each recipe ingredient consumed
-        await deductInventoryForOrder(tx, cafeId, orderId)
+        await completeOrderFinancials(tx, cafeId, orderId, order.totalPrice, cafe?.country ?? 'MA', order._count.items)
       }
     })
 
-    // Award loyalty points via the shared service (outside the transaction —
-    // earnPoints does its own prisma call and previously this block bypassed
-    // LoyaltyService entirely with a duplicated, out-of-sync copy that never
-    // updated lifetimePoints, silently breaking tier progression).
-    // Best-effort posture: awarding points must not undo a completed,
-    // already-paid order, so a loyalty-service failure here is logged and
-    // swallowed rather than turning a genuinely completed order into a 500.
-    if (status === 'COMPLETED' && order.status !== 'COMPLETED' && order.customerPhone) {
-      try {
-        await earnPoints(cafeId, order.customerPhone, order.totalPrice, orderId)
-      } catch (err) {
-        logger.error({ msg: 'PATCH order status: loyalty earn failed', orderId, cafeId, err })
-      }
+    // Award loyalty points via the shared, best-effort helper (outside the
+    // transaction — see orderCompletion.ts for why).
+    if (status === 'COMPLETED' && order.status !== 'COMPLETED') {
+      await awardLoyaltyBestEffort(cafeId, order.customerPhone, order.totalPrice, orderId)
     }
 
     const io = req.app.get('io') as SocketIOServer | undefined
