@@ -536,10 +536,11 @@ export default function KitchenPage() {
                 const hasAlert = alertOrderIds.current.has(t.orderId)
 
                 return (
-                  <button
+                  <div
                     key={t.orderId}
                     onClick={() => setSelectedId(isSel ? null : t.orderId)}
-                    className={`w-full text-left px-4 py-4 border-b border-slate-100 transition-all flex items-center justify-between gap-2
+                    role="button" tabIndex={0}
+                    className={`w-full text-left px-4 py-4 border-b border-slate-100 transition-all flex items-center justify-between gap-2 cursor-pointer
                       ${isSel
                         ? 'bg-sky-50 border-l-4 border-l-sky-500'
                         : hasAlert && isPend
@@ -563,13 +564,33 @@ export default function KitchenPage() {
                       </span>
                     </div>
 
-                    {/* Urgency dot */}
-                    <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${
-                      tier === 'critical' ? 'bg-red-500 animate-pulse' :
-                      tier === 'warning'  ? 'bg-orange-400' :
-                      tier === 'caution'  ? 'bg-yellow-400' : 'bg-slate-300'
-                    }`} />
-                  </button>
+                    <div className="flex flex-col items-center gap-2 shrink-0">
+                      {/* Urgency dot */}
+                      <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+                        tier === 'critical' ? 'bg-red-500 animate-pulse' :
+                        tier === 'warning'  ? 'bg-orange-400' :
+                        tier === 'caution'  ? 'bg-yellow-400' : 'bg-slate-300'
+                      }`} />
+                      {/* One-tap action — skip the select-then-confirm detour */}
+                      {isPend ? (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); accept(t.orderId) }}
+                          aria-label={tr.accept}
+                          className="w-11 h-11 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-90 text-white transition-all flex items-center justify-center"
+                        >
+                          <CheckCircle2 className="w-5 h-5" />
+                        </button>
+                      ) : (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); markReady(t.orderId) }}
+                          aria-label={tr.ready}
+                          className="w-11 h-11 rounded-xl bg-[#22c55e] hover:bg-[#16a34a] active:scale-90 text-white transition-all flex items-center justify-center"
+                        >
+                          <Check className="w-5 h-5 stroke-[3]" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 )
               })}
             </div>

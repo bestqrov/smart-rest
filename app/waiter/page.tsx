@@ -820,7 +820,7 @@ export default function WaiterPage() {
                       <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
                         {menuCats.map(cat => (
                           <button key={cat.id} onClick={() => setActiveCat(cat.id)}
-                            className={`shrink-0 px-4 py-2 rounded-full text-xs font-bold transition-all ${
+                            className={`shrink-0 px-4 py-3 rounded-full text-xs font-bold transition-all ${
                               activeCat === cat.id
                                 ? 'bg-emerald-600 text-white'
                                 : 'bg-white border border-slate-200 text-slate-500 hover:text-slate-800'
@@ -876,15 +876,15 @@ export default function WaiterPage() {
                                 <p className="text-sm text-slate-700 truncate">{c.name}</p>
                                 <p className="text-xs text-slate-400">{c.price} × {c.qty} = {(c.price * c.qty).toFixed(2)} MAD</p>
                               </div>
-                              <div className="flex items-center gap-1 shrink-0">
+                              <div className="flex items-center gap-1.5 shrink-0">
                                 <button onClick={() => updateCartQty(c.productId, -1)}
-                                  className="w-7 h-7 bg-slate-100 hover:bg-slate-200 rounded-lg flex items-center justify-center active:scale-90 transition-all">
-                                  {c.qty === 1 ? <Trash2 className="w-3.5 h-3.5 text-red-500" /> : <Minus className="w-3.5 h-3.5 text-slate-500" />}
+                                  className="w-11 h-11 bg-slate-100 hover:bg-slate-200 rounded-lg flex items-center justify-center active:scale-90 transition-all">
+                                  {c.qty === 1 ? <Trash2 className="w-4 h-4 text-red-500" /> : <Minus className="w-4 h-4 text-slate-500" />}
                                 </button>
                                 <span className="w-6 text-center font-bold text-sm text-slate-800">{c.qty}</span>
                                 <button onClick={() => updateCartQty(c.productId, 1)}
-                                  className="w-7 h-7 bg-emerald-100 hover:bg-emerald-200 rounded-lg flex items-center justify-center active:scale-90 transition-all">
-                                  <Plus className="w-3.5 h-3.5 text-emerald-600" />
+                                  className="w-11 h-11 bg-emerald-100 hover:bg-emerald-200 rounded-lg flex items-center justify-center active:scale-90 transition-all">
+                                  <Plus className="w-4 h-4 text-emerald-600" />
                                 </button>
                               </div>
                             </div>
