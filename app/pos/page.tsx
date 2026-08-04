@@ -888,7 +888,7 @@ export default function POSPage() {
                   )}
 
                   {/* Split bill button — shown when table has active sessions (capacity > 1) */}
-                  {selTable && selTable.capacity > 1 && (
+                  {selTable && selTable.capacity > 1 ? (
                     <button
                       onClick={() => { setSplitSeats([]); setSplitOpen(true) }}
                       disabled={checkingOut}
@@ -896,6 +896,10 @@ export default function POSPage() {
                     >
                       🪑 Split Bill by Seat
                     </button>
+                  ) : selTable && (
+                    <p className="text-center text-[11px] text-gray-600">
+                      Split bill isn't available — this table only has 1 seat
+                    </p>
                   )}
 
                   {/* Checkout buttons */}
