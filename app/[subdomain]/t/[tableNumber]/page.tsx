@@ -16,6 +16,7 @@ import Link from 'next/link'
 import { io as socketIO, Socket } from 'socket.io-client'
 import LiveOrderTracker from './LiveOrderTracker'
 import CertifiedBadge from '../../menu/components/CertifiedBadge'
+import SmartWifiCard from '../../menu/SmartWifiCard'
 
 type Lang = 'ar' | 'en' | 'fr' | 'es'
 
@@ -438,6 +439,7 @@ function TablePageInner() {
   const [scan, setScan]           = useState<ScanResult | null>(null)
   const [categories, setCategories] = useState<Category[]>([])
   const [certified, setCertified]   = useState(false)
+  const [wifiData, setWifiData]     = useState<{ ssid: string; password: string } | null>(null)
   const [cart, setCart]           = useState<CartItem[]>([])
   const [activeOrder, setActiveOrder] = useState<ActiveOrder | null>(null)
   const [search, setSearch]       = useState('')
@@ -733,6 +735,18 @@ function TablePageInner() {
       setCartOpen(false)
       setOrderMsg(tr.orderPlaced)
       setTimeout(() => setOrderMsg(''), 4000)
+
+      // Smart WiFi — best-effort, matches legacy menu/page.tsx: the endpoint
+      // only returns credentials once there's a verified active order, which
+      // is exactly what just happened. A 403/404 here just means the venue
+      // doesn't have Smart WiFi configured — silently ignored, same as before.
+      try {
+        const wifiRes = await fetch(`/api/menu/wifi?tableToken=${encodeURIComponent(tableToken)}`)
+        if (wifiRes.ok) {
+          const wifi = await wifiRes.json()
+          if (wifi.ssid) setWifiData(wifi)
+        }
+      } catch {}
 
       // Show opt-in popup once per device (3s after order confirmation)
       const alreadyAsked = localStorage.getItem('sm_optin_asked')
@@ -1257,6 +1271,17 @@ function TablePageInner() {
           Powered by <span className="text-gray-500 font-bold">Smart</span><span className="text-orange-500/80 font-bold">Restau</span> © 2025
         </p>
       </div>
+
+      {/* ── Smart WiFi — appears once there's a verified active order ── */}
+      {wifiData && (
+        <div className="px-4 pt-4">
+          <SmartWifiCard
+            ssid={wifiData.ssid}
+            password={wifiData.password}
+            onClose={() => setWifiData(null)}
+          />
+        </div>
+      )}
 
       {/* ── Order tracker — floating prominent card above bottom bar ── */}
       <AnimatePresence>
