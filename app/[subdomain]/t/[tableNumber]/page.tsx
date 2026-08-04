@@ -15,6 +15,7 @@ import { useParams, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { io as socketIO, Socket } from 'socket.io-client'
 import LiveOrderTracker from './LiveOrderTracker'
+import CertifiedBadge from '../../menu/components/CertifiedBadge'
 
 type Lang = 'ar' | 'en' | 'fr' | 'es'
 
@@ -436,6 +437,7 @@ function TablePageInner() {
   const [showPayment, setShowPayment] = useState(false)
   const [scan, setScan]           = useState<ScanResult | null>(null)
   const [categories, setCategories] = useState<Category[]>([])
+  const [certified, setCertified]   = useState(false)
   const [cart, setCart]           = useState<CartItem[]>([])
   const [activeOrder, setActiveOrder] = useState<ActiveOrder | null>(null)
   const [search, setSearch]       = useState('')
@@ -589,6 +591,8 @@ function TablePageInner() {
         const cats: Category[] = data.categories || []
         setCategories(cats)
         if (cats.length > 0) setActiveCat(cats[0].id)
+        // Already present on this same response — just wasn't read before.
+        setCertified(data.certificationStatus === 'CERTIFIED')
         // Enrich scan state with logo/name (kept out of /api/qr/scan to avoid huge base64 payload)
         if (data.cafeName || data.cafeLogoUrl) {
           setScan(prev => prev ? { ...prev, cafeName: data.cafeName ?? prev.cafeName, cafeLogoUrl: data.cafeLogoUrl ?? prev.cafeLogoUrl } : prev)
@@ -1248,6 +1252,7 @@ function TablePageInner() {
         {scan.cafeName && (
           <h1 className="text-xl font-black text-white tracking-tight">{scan.cafeName}</h1>
         )}
+        <CertifiedBadge certified={certified} lang={lang} />
         <p className="text-[10px] text-gray-600 font-medium tracking-widest uppercase">
           Powered by <span className="text-gray-500 font-bold">Smart</span><span className="text-orange-500/80 font-bold">Restau</span> © 2025
         </p>

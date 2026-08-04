@@ -10,13 +10,14 @@
 
 interface Props {
   certified: boolean
-  lang?:     'ar' | 'fr' | 'en'
+  lang?:     'ar' | 'fr' | 'en' | 'es'
 }
 
 const LABELS = {
   ar: { badge: 'مُعتمد Smart Resto', sub: 'خدمة رقمية راقية وسريعة' },
   fr: { badge: 'Smart Resto Certifié', sub: 'Service digital premium & rapide' },
   en: { badge: 'Smart Resto Certified', sub: 'Premium digital dining experience' },
+  es: { badge: 'Smart Resto Certificado', sub: 'Experiencia digital premium' },
 }
 
 export default function CertifiedBadge({ certified, lang = 'fr' }: Props) {
