@@ -797,14 +797,14 @@ export default function POSPage() {
                       <div key={item.productId} className="flex items-center gap-3 bg-gray-900 rounded-xl px-3 py-2">
                         <div className="flex items-center gap-1 shrink-0">
                           <button onClick={() => updateQty(item.productId, -1)}
-                            className="w-10 h-10 rounded-lg bg-gray-800 hover:bg-gray-700 flex items-center justify-center text-gray-400 hover:text-white active:scale-95 transition-all">
+                            className="w-11 h-11 rounded-lg bg-gray-800 hover:bg-gray-700 flex items-center justify-center text-gray-400 hover:text-white active:scale-90 transition-all">
                             <Minus className="w-4 h-4" />
                           </button>
                           <span className="w-12 text-center text-white font-extrabold text-sm">
                             {item.unitType === 'WEIGHT' ? `${item.qty}g` : item.qty}
                           </span>
                           <button onClick={() => updateQty(item.productId, 1)}
-                            className="w-10 h-10 rounded-lg bg-emerald-900/70 hover:bg-emerald-800 flex items-center justify-center text-emerald-400 hover:text-white active:scale-95 transition-all">
+                            className="w-11 h-11 rounded-lg bg-emerald-900/70 hover:bg-emerald-800 flex items-center justify-center text-emerald-400 hover:text-white active:scale-90 transition-all">
                             <Plus className="w-4 h-4" />
                           </button>
                         </div>
@@ -817,7 +817,7 @@ export default function POSPage() {
                         <div className="flex items-center gap-2 shrink-0">
                           <span className="text-gray-300 tabular-nums text-sm">{lineTotal(item).toFixed(2)}</span>
                           <button onClick={() => removeFromCart(item.productId)}
-                            className="w-10 h-10 rounded-lg bg-gray-800 hover:bg-red-900/50 flex items-center justify-center text-gray-600 hover:text-red-400 active:scale-95 transition-all">
+                            className="w-11 h-11 rounded-lg bg-gray-800 hover:bg-red-900/50 flex items-center justify-center text-gray-600 hover:text-red-400 active:scale-90 transition-all">
                             <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
@@ -866,7 +866,7 @@ export default function POSPage() {
                           className="flex-1 px-4 py-2.5 bg-gray-900 border border-gray-700 text-white rounded-xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500" />
                         {[1, 5, 10].map(add => (
                           <button key={add} onClick={() => setCashInput(v => String((parseFloat(v)||0) + add))}
-                            className="px-3 py-2.5 bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white rounded-xl text-xs font-bold transition-colors active:scale-95">
+                            className="min-w-[44px] px-3 py-3 bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white rounded-xl text-xs font-bold transition-all active:scale-90">
                             +{add}
                           </button>
                         ))}

@@ -423,18 +423,20 @@ export default function ComptoirPage() {
             ) : (
               <p className="text-amber-400 text-xs font-bold">⚠ Sélectionnez un client</p>
             )}
-            <button onClick={() => setClientPicker(true)} className="text-emerald-400 text-xs font-bold hover:text-emerald-300">
+            <button onClick={() => setClientPicker(true)} className="px-3 py-2 -m-1 text-emerald-400 text-xs font-bold hover:text-emerald-300 active:scale-95 transition-all">
               {client ? 'Changer' : 'Choisir'}
             </button>
           </div>
           <div className="flex-1 overflow-y-auto p-3 space-y-2">
             {cart.map(item => (
               <div key={item.productId} className="flex items-center gap-2 bg-gray-950 rounded-xl px-3 py-2">
-                <button onClick={() => updateQty(item.productId, -1)} className="w-8 h-8 rounded-lg bg-gray-800 text-gray-300 font-bold">−</button>
-                <span className="w-10 text-center text-white font-bold text-sm">{item.unitType === 'WEIGHT' ? `${item.qty}g` : item.qty}</span>
-                <button onClick={() => updateQty(item.productId, 1)} className="w-8 h-8 rounded-lg bg-emerald-900/70 text-emerald-400 font-bold">+</button>
+                <button onClick={() => updateQty(item.productId, -1)}
+                  className="w-11 h-11 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold active:scale-90 transition-all shrink-0">−</button>
+                <span className="w-10 text-center text-white font-bold text-sm shrink-0">{item.unitType === 'WEIGHT' ? `${item.qty}g` : item.qty}</span>
+                <button onClick={() => updateQty(item.productId, 1)}
+                  className="w-11 h-11 rounded-lg bg-emerald-900/70 hover:bg-emerald-800 text-emerald-400 font-bold active:scale-90 transition-all shrink-0">+</button>
                 <span className="flex-1 text-white text-sm font-semibold truncate">{item.name}</span>
-                <span className="text-gray-400 text-sm font-mono">{lineTotal(item).toFixed(2)}</span>
+                <span className="text-gray-400 text-sm font-mono shrink-0">{lineTotal(item).toFixed(2)}</span>
               </div>
             ))}
             {cart.length === 0 && (
