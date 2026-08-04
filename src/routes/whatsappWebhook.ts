@@ -24,7 +24,6 @@ import type { Server as SocketIOServer } from 'socket.io'
 import prisma from '../prisma'
 import logger from '../logger'
 import { emitKdsTicket } from '../services/kds'
-import { applyOrderFee } from '../services/billing'
 import { OnlinePaymentMethod, OnlinePaymentStatus } from '@prisma/client'
 
 const router = express.Router()
@@ -149,10 +148,10 @@ async function createWhatsAppOrder(
     return order
   })
 
-  await applyOrderFee(
-    prisma as unknown as import('@prisma/client').Prisma.TransactionClient,
-    cafeId, order.id, total, cafe.country, false, parsed.items.length
-  )
+  // Commission is applied once, when this order later reaches COMPLETED via the
+  // normal kitchen/waiter flow — same lifecycle as every other order type. Do
+  // NOT apply it here too: this order starts PENDING/isPaid:false, so the
+  // COMPLETED-transition guard elsewhere would fire again and double-charge.
 
   if (io) await emitKdsTicket(io, order.id)
 

@@ -42,31 +42,37 @@ router.patch('/api/pos/orders/:orderId/checkout', authorizePOS, requireUnlockedS
 
     const billStatus = printReceipt ? 'CLOSED_PRINTED' : 'CLOSED_VIRTUAL'
     const method = paymentMethod ?? order.paymentMethod
-    const wasCompleted = order.status === 'COMPLETED'
 
     const cafe = await prisma.cafe.findUnique({ where: { id: cafeId }, select: { country: true } })
 
-    const updated = await prisma.$transaction(async (tx) => {
-      const result = await tx.order.update({
-        where: { id: orderId },
+    // Atomic guard (isPaid: false in the where clause, not just the pre-check
+    // above) so two concurrent checkout requests for the same order can't
+    // both pass and both run financials.
+    const { updated, didComplete } = await prisma.$transaction(async (tx) => {
+      const result = await tx.order.updateMany({
+        where: { id: orderId, isPaid: false },
         data: {
           isPaid:          true,
           paymentMethod:   method,
           billStatus,
           totalCommission,
           status:          'COMPLETED'
-        },
-        include: { items: { include: { product: true } } }
+        }
       })
 
-      if (!wasCompleted) {
+      const wasCompletedAlready = order.status === 'COMPLETED'
+      if (result.count === 1 && !wasCompletedAlready) {
         await completeOrderFinancials(tx, cafeId, orderId, order.totalPrice, cafe?.country ?? 'MA', order.items.length)
       }
 
-      return result
+      const updated = await tx.order.findUniqueOrThrow({
+        where: { id: orderId },
+        include: { items: { include: { product: true } } }
+      })
+      return { updated, didComplete: result.count === 1 && !wasCompletedAlready }
     })
 
-    if (!wasCompleted) {
+    if (didComplete) {
       await awardLoyaltyBestEffort(cafeId, order.customerPhone, order.totalPrice, orderId)
     }
 
@@ -102,28 +108,33 @@ router.patch('/api/pos/tables/:tableId/checkout', authorizePOS, requireUnlockedS
     const updated = await prisma.$transaction(async (tx) => {
       const results = []
       for (const o of orders) {
-        const wasCompleted = o.status === 'COMPLETED'
-        const result = await tx.order.update({
-          where: { id: o.id },
+        // Atomic guard: isPaid: false in the where clause closes the race
+        // where two concurrent table-checkout calls both process this order.
+        const writeResult = await tx.order.updateMany({
+          where: { id: o.id, isPaid: false },
           data: {
             isPaid:          true,
             paymentMethod:   paymentMethod ?? o.paymentMethod,
             billStatus,
             status:          'COMPLETED',
             totalCommission: o.items.reduce((s, i) => s + i.unitPrice * i.quantity * i.commissionRate, 0),
-          },
-          include: { items: { include: { product: true } } }
+          }
         })
-        if (!wasCompleted) {
+        const didComplete = writeResult.count === 1 && o.status !== 'COMPLETED'
+        if (didComplete) {
           await completeOrderFinancials(tx, cafeId, o.id, o.totalPrice, cafe?.country ?? 'MA', o.items.length)
         }
-        results.push({ result, wasCompleted })
+        const result = await tx.order.findUniqueOrThrow({
+          where: { id: o.id },
+          include: { items: { include: { product: true } } }
+        })
+        results.push({ result, didComplete })
       }
       return results
     })
 
-    for (const { result, wasCompleted } of updated) {
-      if (!wasCompleted) {
+    for (const { result, didComplete } of updated) {
+      if (didComplete) {
         await awardLoyaltyBestEffort(cafeId, result.customerPhone, result.totalPrice, result.id)
       }
     }

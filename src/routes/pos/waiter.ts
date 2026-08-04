@@ -90,12 +90,24 @@ router.patch('/api/pos/waiter/orders/:id/served', authorizePOS, async (req: Requ
 
     const cafe = await prisma.cafe.findUnique({ where: { id: cafeId }, select: { country: true } })
 
-    await prisma.$transaction(async (tx) => {
-      await tx.order.update({ where: { id: orderId }, data: { status: 'COMPLETED' } })
-      await completeOrderFinancials(tx, cafeId, orderId, order.totalPrice, cafe?.country ?? 'MA', order._count.items)
+    // Atomic guard: only the request that actually flips status away from
+    // COMPLETED runs financials — closes the race where two concurrent
+    // "served" calls both pass the pre-check above and both charge/deduct.
+    const didComplete = await prisma.$transaction(async (tx) => {
+      const result = await tx.order.updateMany({
+        where: { id: orderId, status: { not: 'COMPLETED' } },
+        data:  { status: 'COMPLETED' }
+      })
+      if (result.count === 1) {
+        await completeOrderFinancials(tx, cafeId, orderId, order.totalPrice, cafe?.country ?? 'MA', order._count.items)
+        return true
+      }
+      return false
     })
 
-    await awardLoyaltyBestEffort(cafeId, order.customerPhone, order.totalPrice, orderId)
+    if (didComplete) {
+      await awardLoyaltyBestEffort(cafeId, order.customerPhone, order.totalPrice, orderId)
+    }
 
     const io = req.app.get('io') as SocketIOServer | undefined
     if (io) emitOrderStatusUpdate(io, cafeId, orderId, 'COMPLETED', order.tableId ?? null)

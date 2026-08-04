@@ -236,6 +236,12 @@ router.patch('/api/orders/:orderId/status', authorizeAdmin, async (req: Request,
 
     const cafe = await prisma.cafe.findUnique({ where: { id: cafeId }, select: { country: true } })
 
+    // didComplete tracks whether THIS request is the one that actually flipped
+    // the order to COMPLETED — guarded atomically in the write itself (status:
+    // { not: 'COMPLETED' } in the where clause), not just the pre-read above,
+    // so two concurrent requests for the same order can't both run financials.
+    let didComplete = false
+
     await prisma.$transaction(async (tx) => {
       const updateData: any = { status }
 
@@ -244,16 +250,23 @@ router.patch('/api/orders/:orderId/status', authorizeAdmin, async (req: Request,
         updateData.preparedAt = new Date()
       }
 
-      await tx.order.update({ where: { id: orderId }, data: updateData })
-
-      if (status === 'COMPLETED' && order.status !== 'COMPLETED') {
-        await completeOrderFinancials(tx, cafeId, orderId, order.totalPrice, cafe?.country ?? 'MA', order._count.items)
+      if (status === 'COMPLETED') {
+        const result = await tx.order.updateMany({
+          where: { id: orderId, status: { not: 'COMPLETED' } },
+          data:  updateData
+        })
+        didComplete = result.count === 1
+        if (didComplete) {
+          await completeOrderFinancials(tx, cafeId, orderId, order.totalPrice, cafe?.country ?? 'MA', order._count.items)
+        }
+      } else {
+        await tx.order.update({ where: { id: orderId }, data: updateData })
       }
     })
 
     // Award loyalty points via the shared, best-effort helper (outside the
     // transaction — see orderCompletion.ts for why).
-    if (status === 'COMPLETED' && order.status !== 'COMPLETED') {
+    if (didComplete) {
       await awardLoyaltyBestEffort(cafeId, order.customerPhone, order.totalPrice, orderId)
     }
 

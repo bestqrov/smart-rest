@@ -30,7 +30,6 @@ import logger from '../logger'
 import { authorizeAdmin } from '../middleware/authorizeAdmin'
 import { buildMobileMoneyPayloads } from '../services/mobileMoneyQR'
 import { emitKdsTicket } from '../services/kds'
-import { applyOrderFee } from '../services/billing'
 import { autoCheckInReservationForTable } from '../reservations/ReservationService'
 import { OnlinePaymentMethod, OnlinePaymentStatus } from '@prisma/client'
 
@@ -182,13 +181,11 @@ async function confirmAndCreateOrder(opts: {
     return order
   })
 
-  const cafe = await prisma.cafe.findUnique({ where: { id: cafeId }, select: { country: true } })
-  if (cafe) {
-    await applyOrderFee(
-      prisma as unknown as import('@prisma/client').Prisma.TransactionClient,
-      cafeId, order.id, totalPrice, cafe.country, false, items.length
-    )
-  }
+  // Commission is applied once, when this order later reaches COMPLETED via the
+  // normal kitchen/waiter flow (PATCH /api/orders/:orderId/status ->
+  // completeOrderFinancials in orderCompletion.ts) — same lifecycle as every
+  // other order type. Do NOT apply it here too: this order starts PENDING, so
+  // the COMPLETED-transition guard elsewhere would fire again and double-charge.
 
   if (io) await emitKdsTicket(io, order.id)
 

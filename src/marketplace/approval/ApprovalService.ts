@@ -3,6 +3,7 @@ import { assertTransition }  from '../workflow/OrderWorkflow'
 import { getOrder }          from '../orders/OrderService'
 import { getOrderItems }     from '../order-items/OrderItemService'
 import { reserveStock, releaseReservation } from '../inventory/InventoryService'
+import logger from '../../logger'
 import {
   emitOrderApproved,
   emitOrderRejected,
@@ -158,10 +159,14 @@ export async function fulfillOrder(orderId: string, fulfilledBy: string): Promis
   const items = await getOrderItems(orderId)
   for (const item of items) {
     // Release the reservation (it was reserved on approve)
-    await releaseReservation(item.productId, item.quantity).catch(() => undefined)
+    await releaseReservation(item.productId, item.quantity).catch(err =>
+      logger.error({ msg: 'fulfillOrder: releaseReservation failed', orderId, productId: item.productId, err })
+    )
     // Deduct from stock
     const { adjustStock } = await import('../inventory/InventoryService')
-    await adjustStock(item.productId, { delta: -item.quantity, reason: `Fulfilled order ${order.orderNumber}` }).catch(() => undefined)
+    await adjustStock(item.productId, { delta: -item.quantity, reason: `Fulfilled order ${order.orderNumber}` }).catch(err =>
+      logger.error({ msg: 'fulfillOrder: adjustStock failed', orderId, productId: item.productId, err })
+    )
   }
 
   const updated = await setStatus(orderId, 'FULFILLED', fulfilledBy)
@@ -197,7 +202,9 @@ export async function cancelApprovedOrder(orderId: string, cancelledBy: string):
   if (order.status === 'APPROVED') {
     const items = await getOrderItems(orderId)
     for (const item of items) {
-      await releaseReservation(item.productId, item.quantity).catch(() => undefined)
+      await releaseReservation(item.productId, item.quantity).catch(err =>
+        logger.error({ msg: 'cancelApprovedOrder: releaseReservation failed', orderId, productId: item.productId, err })
+      )
     }
   }
 }

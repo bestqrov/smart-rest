@@ -88,31 +88,37 @@ router.post('/api/pos/checkout/by-seats', authorizePOS, async (req: Request, res
           0
         )
         const method = paymentMethod ?? order.paymentMethod
-        const wasCompleted = order.status === 'COMPLETED'
 
-        const result = await tx.order.update({
-          where: { id: order.id },
+        // Atomic guard: isPaid: false in the where clause closes the race
+        // where two concurrent split-bill checkout calls both process this order.
+        const writeResult = await tx.order.updateMany({
+          where: { id: order.id, isPaid: false },
           data: {
             isPaid:          true,
             paymentMethod:   method,
             billStatus,
             totalCommission,
             status:          'COMPLETED',
-          },
-          select: { id: true, tableId: true, seatNumber: true, totalPrice: true, customerPhone: true }
+          }
         })
+        const didComplete = writeResult.count === 1 && order.status !== 'COMPLETED'
 
-        if (!wasCompleted) {
+        if (didComplete) {
           await completeOrderFinancials(tx, cafeId, order.id, order.totalPrice, cafe?.country ?? 'MA', order.items.length)
         }
 
-        results.push({ result, wasCompleted })
+        const result = await tx.order.findUniqueOrThrow({
+          where: { id: order.id },
+          select: { id: true, tableId: true, seatNumber: true, totalPrice: true, customerPhone: true }
+        })
+
+        results.push({ result, didComplete })
       }
       return results
     })
 
-    for (const { result, wasCompleted } of closedResults) {
-      if (!wasCompleted) {
+    for (const { result, didComplete } of closedResults) {
+      if (didComplete) {
         await awardLoyaltyBestEffort(cafeId, result.customerPhone, result.totalPrice, result.id)
       }
     }
