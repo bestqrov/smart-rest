@@ -243,6 +243,10 @@ model Cafe {
   cashierPosEnabled        Boolean @default(true)
   orderingEnabled          Boolean @default(true)
   reservationsEnabled      Boolean @default(true)
+  // Onboarding-configured capabilities (editable later in Settings → Feature Configuration)
+  kitchenDisplayEnabled    Boolean @default(true)
+  loyaltyEnabled           Boolean @default(true)
+  takeawayOnlyMode         Boolean @default(false)
   // Smart Inventory & Supplier Management add-on
   isSmartInventoryEnabled          Boolean   @default(false)
   // Set to true when the restaurant owner requests activation (pending superadmin approval)

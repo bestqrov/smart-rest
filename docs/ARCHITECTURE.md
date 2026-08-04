@@ -1,3 +1,4 @@
+
 # SmartRestau — Architecture
 
 ## Overview
@@ -186,6 +187,10 @@ COLLECTING_DEBT
 **Webhook idempotency** — All Stripe and Moyasar webhooks are deduplicated via `ProcessedWebhook(provider, eventId)` unique constraint. Second delivery returns 200 without processing.
 
 **Graceful shutdown** — `SIGTERM` triggers an ordered teardown: crons stop first (no new job runs), then HTTP drains (in-flight requests complete), then WebSocket closes, then DB disconnects. Zero dropped requests on standard platform redeploys.
+
+**Capability flags as explicit booleans, not a config blob** — Business capabilities that change what a restaurant *can do* (e.g. `orderingEnabled`, `reservationsEnabled`, `smartWifiEnabled`, `isSmartInventoryEnabled`, `kitchenDisplayEnabled`, `loyaltyEnabled`, `takeawayOnlyMode`) are explicit boolean fields on the `Cafe` model, never packed into a JSON/object blob. This keeps them type-safe end-to-end through Prisma, filterable/reportable by SuperAdmin without JSON-path queries, and consistent with the existing fields on `Cafe`. Revisit only if the flag count grows large enough (roughly 15-20+) that per-flag migrations become the bottleneck — not before.
+
+Capabilities are distinct from **UI preferences** (dashboard widget visibility, theme, compact mode, table density, language): preferences describe *how* a restaurant wants to see the interface, not what it can do, and must never be added as `Cafe` capability booleans. They belong in a separate UI Preferences structure, introduced only when a real preference need arises.
 
 ---
 
