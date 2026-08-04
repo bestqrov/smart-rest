@@ -165,8 +165,19 @@ router.post('/api/webhooks/whatsapp/evolution', async (req: Request, res: Respon
   try {
     const token  = req.headers['x-webhook-token'] ?? req.headers['apikey']
     const secret = process.env.EVOLUTION_WEBHOOK_TOKEN
-    if (secret && token !== secret) {
-      return res.status(401).json({ error: 'Unauthorized' })
+
+    // Signature/token verification is REQUIRED when EVOLUTION_WEBHOOK_TOKEN is
+    // configured. Reject ALL requests in production when it isn't configured —
+    // this webhook creates real Orders, so it must not fail open. Mirrors the
+    // same fail-closed pattern already used for the Moyasar webhook.
+    if (secret) {
+      if (token !== secret) {
+        logger.warn({ msg: 'WhatsApp webhook token mismatch' })
+        return res.status(401).json({ error: 'Unauthorized' })
+      }
+    } else if (process.env.NODE_ENV === 'production') {
+      logger.error({ msg: 'WhatsApp webhook received but EVOLUTION_WEBHOOK_TOKEN not set — rejecting' })
+      return res.status(500).json({ error: 'Webhook not configured' })
     }
 
     const { event, data } = req.body as {
@@ -185,10 +196,20 @@ router.post('/api/webhooks/whatsapp/evolution', async (req: Request, res: Respon
     const fromPhone = (data.key?.remoteJid ?? '').replace('@s.whatsapp.net', '')
     const body      = data.message.conversation ?? data.message.extendedTextMessage?.text ?? ''
 
-    const existing = await prisma.onlinePayment.findFirst({
-      where: { whatsappMessageId: messageId }
-    })
-    if (existing) return res.status(200).json({ ok: true, duplicate: true })
+    // Idempotency guard via the same unique-constrained ProcessedWebhook table
+    // used by Stripe/Moyasar (provider+eventId unique index), instead of the
+    // previous read-then-write findFirst check — closes the race where two
+    // near-simultaneous redeliveries of the same message could both pass a
+    // plain read before either write committed.
+    if (messageId) {
+      try {
+        await prisma.processedWebhook.create({ data: { provider: 'whatsapp', eventId: messageId } })
+      } catch {
+        return res.status(200).json({ ok: true, duplicate: true })
+      }
+    } else {
+      logger.warn({ msg: 'WhatsApp webhook message with no id — cannot dedupe', fromPhone })
+    }
 
     const parsed = parseOrderMessage(body)
     if (!parsed) return res.status(200).json({ ok: true, ignored: true })
