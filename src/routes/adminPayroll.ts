@@ -9,109 +9,118 @@
  *  - baseSalary:     attendanceDays × dailyRate
  *  - commissions:    sum of totalCommission on COMPLETED orders in period
  *  - netSalary:      baseSalary + commissions - deductions
+ *  - approved:       whether a PayrollApproval already exists for this exact period
  *
  * PATCH /api/admin/payroll/:staffId/rate
  *   body: { dailyRate: number }
  *   Sets the daily rate for payroll calculation.
+ *
+ * POST /api/admin/payroll/:staffId/approve
+ *   body: { from: ISO string, to: ISO string }  — must match a period the
+ *   admin actually viewed (returned by GET above)
+ *   Persists the approval (PayrollApproval + a linked Expense(category:'wages')
+ *   so it flows into existing financial reporting), server-recomputing the
+ *   amount rather than trusting the client. Duplicate-safe via a DB unique
+ *   constraint on (staffId, periodFrom, periodTo).
  */
 
 import express, { Request, Response } from 'express'
 import { authorizeAdmin } from '../middleware/authorizeAdmin'
 import logger from '../logger'
 import prisma from '../prisma'
+import { computePayroll } from '../services/payroll'
 
 const router = express.Router()
+
+function resolvePeriod(query: Request['query']): { from: Date; to: Date } {
+  const now = new Date()
+  const from = query.from ? new Date(query.from as string) : new Date(now.getFullYear(), now.getMonth(), 1)
+  const to   = query.to   ? new Date(query.to   as string) : new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59)
+  return { from, to }
+}
 
 // ─── GET /api/admin/payroll ───────────────────────────────────────────────────
 
 router.get('/api/admin/payroll', authorizeAdmin, async (req: Request, res: Response) => {
   try {
     const cafeId = req.admin!.cafeId
+    const { from, to } = resolvePeriod(req.query)
 
-    // Default period: current month
-    const now   = new Date()
-    const from  = req.query.from ? new Date(req.query.from as string) : new Date(now.getFullYear(), now.getMonth(), 1)
-    const to    = req.query.to   ? new Date(req.query.to   as string) : new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59)
-
-    // Working days in period (Mon–Sat, excluding Sunday as rest day) — approximate
-    function countWorkingDays(start: Date, end: Date): number {
-      let count = 0
-      const cur = new Date(start)
-      cur.setHours(0, 0, 0, 0)
-      while (cur <= end) {
-        if (cur.getDay() !== 0) count++ // skip Sunday
-        cur.setDate(cur.getDate() + 1)
-      }
-      return count
-    }
-    const workingDays = countWorkingDays(from, to)
-
-    const [allStaff, shifts, orders] = await Promise.all([
-      prisma.staff.findMany({
-        where:  { cafeId, isActive: true },
-        select: { id: true, name: true, role: true, roles: true, dailyRate: true, shiftStatus: true },
-      }),
-      prisma.waiterShift.findMany({
-        where: { cafeId, clockIn: { gte: from, lte: to } },
-        select: { staffId: true, clockIn: true, clockOut: true },
-      }),
-      prisma.order.findMany({
-        where:  { cafeId, status: 'COMPLETED', assignedWaiterId: { not: null }, createdAt: { gte: from, lte: to } },
-        select: { assignedWaiterId: true, totalCommission: true },
+    const [lines, approvals] = await Promise.all([
+      computePayroll(cafeId, from, to),
+      prisma.payrollApproval.findMany({
+        where:  { cafeId, periodFrom: from, periodTo: to },
+        select: { staffId: true },
       }),
     ])
+    const approvedIds = new Set(approvals.map(a => a.staffId))
 
-    // Build payroll per staff
-    const payroll = allStaff.map(member => {
-      const memberShifts = shifts.filter(s => s.staffId === member.id)
-
-      // Distinct calendar days with attendance
-      const attendedDays = new Set(
-        memberShifts.map(s => {
-          const d = new Date(s.clockIn)
-          return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
-        })
-      )
-      const attendanceDays = attendedDays.size
-      const absenceDays    = Math.max(0, workingDays - attendanceDays)
-
-      // Late arrivals: clockIn hour >= 10 (simple heuristic)
-      const lateDays = memberShifts.filter(s => new Date(s.clockIn).getHours() >= 10).length
-
-      // Total hours worked
-      const totalHours = memberShifts.reduce((sum, s) => {
-        const out = s.clockOut ? new Date(s.clockOut).getTime() : Date.now()
-        return sum + (out - new Date(s.clockIn).getTime()) / 3600000
-      }, 0)
-
-      const baseSalary  = attendanceDays * member.dailyRate
-      const commissions = orders
-        .filter(o => o.assignedWaiterId === member.id)
-        .reduce((sum, o) => sum + (o.totalCommission ?? 0), 0)
-
-      return {
-        id:           member.id,
-        name:         member.name,
-        role:         member.role,
-        roles:        member.roles,
-        shiftStatus:  member.shiftStatus,
-        dailyRate:    member.dailyRate,
-        attendanceDays,
-        absenceDays,
-        lateDays,
-        totalHours:   Math.round(totalHours * 10) / 10,
-        baseSalary,
-        commissions:  Math.round(commissions * 100) / 100,
-        deductions:   0,
-        netSalary:    Math.round((baseSalary + commissions) * 100) / 100,
-        workingDays,
-      }
-    })
+    const payroll = lines.map(line => ({ ...line, approved: approvedIds.has(line.id) }))
 
     return res.json({ payroll, period: { from: from.toISOString(), to: to.toISOString() } })
   } catch (err) {
     logger.error({ msg: 'GET /api/admin/payroll error', err })
     return res.status(500).json({ error: 'Failed to compute payroll' })
+  }
+})
+
+// ─── POST /api/admin/payroll/:staffId/approve ────────────────────────────────
+
+router.post('/api/admin/payroll/:staffId/approve', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    const cafeId  = req.admin!.cafeId
+    const adminId = req.admin!.userId
+    const staffId = String(req.params.staffId)
+    const { from: fromStr, to: toStr } = req.body as { from?: string; to?: string }
+
+    if (!fromStr || !toStr) return res.status(400).json({ error: 'from and to are required' })
+    const from = new Date(fromStr)
+    const to   = new Date(toStr)
+    if (isNaN(from.getTime()) || isNaN(to.getTime())) {
+      return res.status(400).json({ error: 'from/to must be valid dates' })
+    }
+
+    const staff = await prisma.staff.findUnique({ where: { id: staffId }, select: { cafeId: true, name: true } })
+    if (!staff || staff.cafeId !== cafeId) return res.status(404).json({ error: 'Staff not found' })
+
+    // Server-authoritative recompute — never trust a client-sent amount.
+    const [line] = await computePayroll(cafeId, from, to, staffId)
+    if (!line) return res.status(404).json({ error: 'No payroll data for this staff member/period' })
+
+    try {
+      const approval = await prisma.$transaction(async (tx) => {
+        const expense = await tx.expense.create({
+          data: {
+            cafeId,
+            amount:      line.netSalary,
+            category:    'wages',
+            description: `Payroll — ${staff.name} (${from.toISOString().slice(0, 10)} → ${to.toISOString().slice(0, 10)})`,
+            date:        new Date(),
+          },
+        })
+        return tx.payrollApproval.create({
+          data: {
+            cafeId, staffId,
+            periodFrom: from, periodTo: to,
+            netSalary:  line.netSalary,
+            expenseId:  expense.id,
+            approvedBy: adminId,
+          },
+        })
+      })
+
+      logger.info({ msg: 'Payroll approved', cafeId, staffId, netSalary: line.netSalary, adminId })
+      return res.status(201).json({ ok: true, approval })
+    } catch (err: any) {
+      // Unique constraint on (staffId, periodFrom, periodTo) — already approved.
+      if (err?.code === 'P2002') {
+        return res.status(409).json({ error: 'Already approved for this period' })
+      }
+      throw err
+    }
+  } catch (err) {
+    logger.error({ msg: 'POST /api/admin/payroll/:staffId/approve error', err })
+    return res.status(500).json({ error: 'Failed to approve payment' })
   }
 })
 

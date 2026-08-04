@@ -33,6 +33,7 @@ interface PayrollMember {
   attendanceDays: number; absenceDays: number; lateDays: number
   totalHours: number; workingDays: number
   baseSalary: number; commissions: number; deductions: number; netSalary: number
+  approved: boolean
 }
 
 type Period = 'today' | 'week' | 'month' | 'custom'
@@ -202,7 +203,9 @@ export default function FinancialsPage() {
   const [prTo,   setPrTo]   = useState('')
   const [editingRate, setEditingRate]   = useState<string | null>(null)
   const [rateInput, setRateInput]       = useState('')
-  const [approvedIds, setApprovedIds]   = useState<Set<string>>(new Set())
+  const [payrollRange, setPayrollRange] = useState<{ from: string; to: string } | null>(null)
+  const [approvingId, setApprovingId]   = useState<string | null>(null)
+  const [approveErr, setApproveErr]     = useState<Record<string, string>>({})
   const [expandedId, setExpandedId]     = useState<string | null>(null)
 
   // ── Fetch report ────────────────────────────────────────────────────────────
@@ -241,9 +244,38 @@ export default function FinancialsPage() {
     let url = '/api/admin/payroll'
     if (payrollPeriod === 'custom' && prFrom) url += `?from=${prFrom}&to=${prTo || new Date().toISOString().slice(0,10)}`
     const res = await fetch(url, { headers: authHeader() })
-    if (res.ok) { const d = await res.json(); setPayroll(d.payroll ?? []) }
+    if (res.ok) {
+      const d = await res.json()
+      setPayroll(d.payroll ?? [])
+      setPayrollRange(d.period ?? null)
+    }
     setLoadingPayroll(false)
   }, [payrollPeriod, prFrom, prTo])
+
+  // ── Approve payroll payment ─────────────────────────────────────────────────
+  async function approvePayroll(staffId: string) {
+    if (!payrollRange) return
+    setApprovingId(staffId)
+    setApproveErr(prev => { const n = { ...prev }; delete n[staffId]; return n })
+    try {
+      const res = await fetch(`/api/admin/payroll/${staffId}/approve`, {
+        method: 'POST', headers: authHeader(),
+        body: JSON.stringify({ from: payrollRange.from, to: payrollRange.to }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setApproveErr(prev => ({ ...prev, [staffId]: data.error ?? 'Failed to approve payment' }))
+        return
+      }
+      // Refetch so state (approved flag, and the report tab via wages expense)
+      // reflects the persisted server truth rather than an optimistic guess.
+      await fetchPayroll()
+    } catch {
+      setApproveErr(prev => ({ ...prev, [staffId]: 'Network error — payment was not recorded' }))
+    } finally {
+      setApprovingId(null)
+    }
+  }
 
   useEffect(() => { if (tab === 'payroll') fetchPayroll() }, [tab, fetchPayroll])
 
@@ -589,7 +621,7 @@ export default function FinancialsPage() {
             <div className="space-y-3">
               {filteredPayroll.map(member => {
                 const isExpanded = expandedId === member.id
-                const isApproved = approvedIds.has(member.id)
+                const isApproved = member.approved
                 return (
                   <div key={member.id} className={`bg-white rounded-2xl shadow-sm border transition-all ${
                     isApproved ? 'border-emerald-200' : 'border-slate-100'
@@ -678,19 +710,26 @@ export default function FinancialsPage() {
 
                         {/* Approve button */}
                         <button
-                          onClick={() => setApprovedIds(prev => new Set([...prev, member.id]))}
-                          disabled={isApproved}
+                          onClick={() => approvePayroll(member.id)}
+                          disabled={isApproved || approvingId === member.id}
                           className={`w-full py-2.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${
                             isApproved
                               ? 'bg-emerald-50 text-emerald-600 border border-emerald-200 cursor-default'
-                              : 'bg-violet-500 hover:bg-violet-400 text-white active:scale-95'
+                              : 'bg-violet-500 hover:bg-violet-400 text-white active:scale-95 disabled:opacity-60'
                           }`}
                         >
                           {isApproved
                             ? <><CheckCircle className="w-4 h-4" /> {t.approved}</>
-                            : <><DollarSign className="w-4 h-4" /> {t.approve} — {fmt(member.netSalary, currency)}</>
+                            : approvingId === member.id
+                              ? <><Loader2 className="w-4 h-4 animate-spin" /> {t.saving}</>
+                              : <><DollarSign className="w-4 h-4" /> {t.approve} — {fmt(member.netSalary, currency)}</>
                           }
                         </button>
+                        {approveErr[member.id] && (
+                          <p className="text-xs text-red-500 font-semibold flex items-center gap-1">
+                            <AlertCircle className="w-3.5 h-3.5" /> {approveErr[member.id]}
+                          </p>
+                        )}
                       </div>
                     )}
                   </div>

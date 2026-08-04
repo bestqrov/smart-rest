@@ -325,6 +325,7 @@ model Cafe {
   waiterShifts    WaiterShift[]
   waiterQRTokens  WaiterQRToken[]
   expenses        Expense[]
+  payrollApprovals PayrollApproval[]
   paymentRequests PaymentRequest[]
   reservations    Reservation[]
   onlinePayments  OnlinePayment[]
@@ -800,6 +801,7 @@ model Staff {
   cashierShifts  CashierShift[]
   waiterShifts   WaiterShift[]
   eventAssignments EventStaffAssignment[]
+  payrollApprovals PayrollApproval[]
 
   @@index([cafeId])
   @@index([role])
@@ -885,6 +887,28 @@ model Expense {
 
   @@index([cafeId])
   @@index([date])
+}
+
+// Persists a payroll "Approve Payment" click — one row per staff member per
+// computed pay period. The unique index is what actually prevents double
+// approval (not just UI state, which resets on refresh). Also creates a
+// linked Expense(category: 'wages') so existing financial reporting picks
+// it up with no separate wiring.
+model PayrollApproval {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId      String   @db.ObjectId
+  cafe        Cafe     @relation(fields: [cafeId], references: [id])
+  staffId     String   @db.ObjectId
+  staff       Staff    @relation(fields: [staffId], references: [id])
+  periodFrom  DateTime
+  periodTo    DateTime
+  netSalary   Float
+  expenseId   String   @db.ObjectId
+  approvedBy  String   @db.ObjectId
+  approvedAt  DateTime @default(now())
+
+  @@unique([staffId, periodFrom, periodTo])
+  @@index([cafeId])
 }
 
 // ─── Waiter Shifts ────────────────────────────────────────────────────────────
