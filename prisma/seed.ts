@@ -476,18 +476,14 @@ async function upsertDemoStaff(cafeId: string) {
     // Find by role (unique per demo cafe) — handles rename from old "Demo Cashier" style names
     const exists = await prisma.staff.findFirst({ where: { cafeId, role: s.role, isActive: true } })
     if (!exists) {
-      const pinCode = await bcrypt.hash(s.pin, 10)
-      await prisma.staff.create({ data: { cafeId, name: s.name, role: s.role, pinCode, pinDisplay: s.pin, isActive: true } })
+      const pinCode = await bcrypt.hash(s.pin, 12)
+      await prisma.staff.create({ data: { cafeId, name: s.name, role: s.role, pinCode, isActive: true } })
       console.log(`  🪪 Staff created: ${s.name} (PIN: ${s.pin})`)
+    } else if (exists.name !== s.name) {
+      await prisma.staff.update({ where: { id: exists.id }, data: { name: s.name } })
+      console.log(`  🪪 Staff updated: ${exists.name} → ${s.name}`)
     } else {
-      // Rename + backfill pinDisplay if name is old English style or pinDisplay missing
-      const needsUpdate = exists.name !== s.name || !exists.pinDisplay
-      if (needsUpdate) {
-        await prisma.staff.update({ where: { id: exists.id }, data: { name: s.name, pinDisplay: s.pin } })
-        console.log(`  🪪 Staff updated: ${exists.name} → ${s.name}`)
-      } else {
-        console.log(`  🪪 Staff ok: ${s.name}`)
-      }
+      console.log(`  🪪 Staff ok: ${s.name}`)
     }
   }
 }

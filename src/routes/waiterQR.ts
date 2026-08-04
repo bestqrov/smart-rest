@@ -12,13 +12,13 @@
 
 import express, { Request, Response } from 'express'
 import crypto from 'crypto'
-import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
 import { authorizeAdmin } from '../middleware/authorizeAdmin'
 import { authorizePOS } from '../middleware/authorizePOS'
 import prisma from '../prisma'
 import logger from '../logger'
 import { JWT_SECRET } from '../config'
+import { verifyPassword } from '../auth/hash'
 import type { StaffRole } from '../types/staff'
 
 const router = express.Router()
@@ -151,8 +151,8 @@ router.post('/api/waiters/qr-login', async (req: Request, res: Response) => {
       }
     }
 
-    if (!pinCode || !/^\d{4}$/.test(pinCode)) {
-      return res.status(400).json({ error: 'pinCode must be exactly 4 digits' })
+    if (!pinCode || !/^\d{4,8}$/.test(pinCode)) {
+      return res.status(400).json({ error: 'pinCode must be 4 to 8 digits' })
     }
 
     // ── Match PIN against active staff in this cafe ───────────────────────────
@@ -163,7 +163,7 @@ router.post('/api/waiters/qr-login', async (req: Request, res: Response) => {
 
     let matched: { id: string; name: string; role: string } | null = null
     for (const s of allStaff) {
-      if (await bcrypt.compare(pinCode, s.pinCode)) {
+      if (await verifyPassword(pinCode, s.pinCode)) {
         matched = s
         break
       }

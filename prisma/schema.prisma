@@ -779,10 +779,9 @@ model Staff {
   cafe     Cafe      @relation(fields: [cafeId], references: [id])
   name     String
   role     StaffRole @default(WAITER)
-  // 4-digit PIN for fast POS login (stored hashed in application layer)
+  // 4-8 digit PIN for fast POS login — bcrypt hash only, never stored in plaintext.
+  // No "view existing PIN" capability by design; use PATCH /api/admin/staff/:id/pin to reset it.
   pinCode  String
-  // Plain PIN stored for admin display only (show/hide in attendance panel)
-  pinDisplay String?
   // Multi-role labels beyond the primary role (e.g. ["BARISTA","CLEANER"])
   roles    String[]  @default([])
   isActive Boolean   @default(true)

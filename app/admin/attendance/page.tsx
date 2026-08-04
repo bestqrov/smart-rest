@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import QRCode from 'qrcode'
 import {
-  Eye, EyeOff, RefreshCw, CalendarClock, Clock,
+  RefreshCw, CalendarClock, Clock,
   ChevronLeft, ChevronRight, Download, TableProperties, Users, Zap,
 } from 'lucide-react'
 import { useLang } from '../lang-context'
@@ -25,7 +25,6 @@ interface StaffMember {
   name:           string
   role:           'WAITER' | 'CASHIER' | 'SUPERVISOR'
   roles:          string[]
-  pinDisplay:     string | null
   shiftStatus:    'ACTIVE' | 'OFF_DUTY'
   clockInTime:    string | null
   isActive:       boolean
@@ -145,7 +144,6 @@ export default function AttendancePage() {
   const qrRefreshRef   = useRef<ReturnType<typeof setTimeout> | null>(null)
   const qrCountdownRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  const [revealedPins, setRevealedPins] = useState<Set<string>>(new Set())
 
   // ── Fetch staff ────────────────────────────────────────────────────────────
   const fetchStaff = useCallback(async () => {
@@ -189,10 +187,6 @@ export default function AttendancePage() {
       if (qrCountdownRef.current) clearInterval(qrCountdownRef.current)
     }
   }, [refreshQR])
-
-  function togglePin(id: string) {
-    setRevealedPins(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
-  }
 
   const activeStaff  = staff.filter(s => s.shiftStatus === 'ACTIVE')
   const offDutyStaff = staff.filter(s => s.shiftStatus !== 'ACTIVE')
@@ -334,8 +328,6 @@ export default function AttendancePage() {
                   member={member}
                   lang={lang}
                   t={t}
-                  pinRevealed={revealedPins.has(member.id)}
-                  onTogglePin={() => togglePin(member.id)}
                 />
               ))}
             </div>
@@ -350,7 +342,6 @@ export default function AttendancePage() {
               <div className="bg-white rounded-xl border border-slate-100 divide-y divide-slate-50">
                 {offDutyStaff.map(member => {
                   const rs = ROLE_STYLE[member.role] ?? ROLE_STYLE.WAITER
-                  const pinShown = revealedPins.has(member.id)
                   return (
                     <div key={member.id} className="flex items-center gap-3 px-4 py-3">
                       {/* Avatar */}
@@ -363,14 +354,9 @@ export default function AttendancePage() {
                           {rs.label[lang]}
                         </span>
                       </div>
-                      {/* PIN inline */}
+                      {/* PIN inline — masked only; reset from Staff settings if forgotten */}
                       <div className="flex items-center gap-1.5 shrink-0">
-                        <span className={`text-xs font-mono font-bold ${pinShown ? 'text-slate-700' : 'text-slate-300'}`}>
-                          {pinShown ? (member.pinDisplay ?? '—') : '••••'}
-                        </span>
-                        <button onClick={() => togglePin(member.id)} className="text-slate-300 hover:text-slate-500 transition-colors">
-                          {pinShown ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                        </button>
+                        <span className="text-xs font-mono font-bold text-slate-300">••••</span>
                       </div>
                     </div>
                   )
@@ -388,12 +374,10 @@ export default function AttendancePage() {
 // ActiveCard — clean card only for on-duty staff
 // ─────────────────────────────────────────────────────────────────────────────
 
-function ActiveCard({ member, lang, t, pinRevealed, onTogglePin }: {
+function ActiveCard({ member, lang, t }: {
   member:      StaffMember
   lang:        Lang
   t:           typeof T['en']
-  pinRevealed: boolean
-  onTogglePin: () => void
 }) {
   const rs = ROLE_STYLE[member.role] ?? ROLE_STYLE.WAITER
 
@@ -435,17 +419,10 @@ function ActiveCard({ member, lang, t, pinRevealed, onTogglePin }: {
           </p>
         )}
 
-        {/* PIN reveal */}
+        {/* PIN — masked only; reset from Staff settings if forgotten */}
         <div className="flex items-center justify-between pt-2 border-t border-slate-100">
           <span className="text-xs font-bold text-slate-500">{t.pinLabel}</span>
-          <div className="flex items-center gap-2">
-            <span className={`text-sm font-mono font-bold tracking-widest ${pinRevealed ? 'text-slate-800' : 'text-slate-300'}`}>
-              {pinRevealed ? (member.pinDisplay ?? t.pinNotSet) : '••••'}
-            </span>
-            <button onClick={onTogglePin} className="text-slate-400 hover:text-slate-600 transition-colors">
-              {pinRevealed ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-            </button>
-          </div>
+          <span className="text-sm font-mono font-bold tracking-widest text-slate-300">••••</span>
         </div>
       </div>
     </div>

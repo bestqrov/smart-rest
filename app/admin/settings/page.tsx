@@ -32,7 +32,6 @@ type StaffMember = {
   id:         string
   name:       string
   role:       string
-  pinDisplay: string | null
   shiftStatus: string
 }
 
@@ -270,7 +269,6 @@ function SettingsInner() {
       })
       if (res.ok) {
         showToast('تم تحديث الـ PIN ✓', 'success')
-        setStaff(prev => prev.map(s => s.id === staffId ? { ...s, pinDisplay: pin } : s))
         setEditingPin(prev => { const n = { ...prev }; delete n[staffId]; return n })
       } else {
         const d = await res.json()
@@ -826,10 +824,10 @@ function SettingsInner() {
                       ) : (
                         <>
                           <span className="font-mono text-gray-500 text-sm bg-gray-100 px-2.5 py-1 rounded-lg">
-                            {s.pinDisplay ?? '••••'}
+                            ••••
                           </span>
                           <button
-                            onClick={() => setEditingPin(prev => ({ ...prev, [s.id]: s.pinDisplay ?? '' }))}
+                            onClick={() => setEditingPin(prev => ({ ...prev, [s.id]: '' }))}
                             className="text-xs text-sky-600 hover:text-sky-800 font-semibold px-2 py-1 rounded-lg hover:bg-sky-50 transition-all"
                           >
                             {t.edit}

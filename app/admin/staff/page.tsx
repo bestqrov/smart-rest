@@ -15,7 +15,6 @@ interface StaffMember {
   name:           string
   role:           PrimaryRole
   roles:          string[]
-  pinDisplay:     string | null
   shiftStatus:    'ACTIVE' | 'OFF_DUTY'
   clockInTime:    string | null
   isActive:       boolean
@@ -213,7 +212,6 @@ export default function AdminStaffPage() {
       if (res.ok) {
         setPinSuccess(id)
         setTimeout(() => setPinSuccess(null), 2000)
-        setStaff(prev => prev.map(s => s.id === id ? { ...s, pinDisplay: pin } : s))
         setEditingPin(prev => { const n = { ...prev }; delete n[id]; return n })
         fetchStaff()
       }
@@ -475,7 +473,7 @@ export default function AdminStaffPage() {
                     ) : (
                       <div className="flex items-center gap-1.5">
                         <span className="font-mono text-sm text-slate-300 tracking-widest">
-                          {member.pinDisplay ? '•'.repeat(member.pinDisplay.length) : '—'}
+                          ••••
                         </span>
                         <button onClick={() => setEditingPin(p => ({ ...p, [member.id]: '' }))}
                           className="p-1 text-slate-300 hover:text-slate-600 transition-colors" title={t.editPin}>

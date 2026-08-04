@@ -9,12 +9,12 @@
  */
 
 import express, { Request, Response } from 'express'
-import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
 import prisma from '../../prisma'
 import logger from '../../logger'
 import { JWT_SECRET } from '../../config'
 import authorizePOS from '../../middleware/authorizePOS'
+import { verifyPassword } from '../../auth/hash'
 import type { StaffRole } from '../../types/staff'
 
 const router = express.Router()
@@ -37,7 +37,7 @@ async function validatePin(cafeId: string, pinCode: string) {
     select: { id: true, name: true, role: true, pinCode: true }
   })
   for (const s of allStaff) {
-    const match = await bcrypt.compare(pinCode, s.pinCode)
+    const match = await verifyPassword(pinCode, s.pinCode)
     if (match) return s
   }
   return null

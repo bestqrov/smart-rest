@@ -3,6 +3,7 @@ import { authorizeAdmin } from '../middleware/authorizeAdmin'
 import logger from '../logger'
 import prisma from '../prisma'
 import { getProductCatalog, resolveSelectedProducts } from '../onboarding/ProductCatalog'
+import { hashPassword } from '../auth/hash'
 
 const router = express.Router()
 
@@ -350,7 +351,7 @@ router.get('/api/admin/staff', authorizeAdmin, async (req: Request, res: Respons
       where:   { cafeId, isActive: true },
       select: {
         id: true, name: true, role: true, roles: true,
-        pinDisplay: true, shiftStatus: true,
+        shiftStatus: true,
         clockInTime: true, isActive: true,
         assignedTables: { select: { id: true, tableNumber: true, zone: true } },
       },
@@ -405,8 +406,7 @@ router.post('/api/admin/staff', authorizeAdmin, async (req: Request, res: Respon
     const ALLOWED_EXTRA = ['WAITER','CASHIER','SUPERVISOR','BARISTA','COOK','BAKER','CLEANER','TECHNICIAN','DISHWASHER','RUNNER','DELIVERY','SECURITY']
     const cleanRoles = Array.isArray(roles) ? roles.filter(r => ALLOWED_EXTRA.includes(r)) : []
 
-    const bcrypt = await import('bcrypt')
-    const hashed = await bcrypt.default.hash(pinCode, 10)
+    const hashed = await hashPassword(pinCode)
 
     const staff = await prisma.staff.create({
       data: {
@@ -415,10 +415,9 @@ router.post('/api/admin/staff', authorizeAdmin, async (req: Request, res: Respon
         role:       role as any,
         roles:      cleanRoles,
         pinCode:    hashed,
-        pinDisplay: pinCode,
         isActive:   true,
       },
-      select: { id: true, name: true, role: true, roles: true, shiftStatus: true, pinDisplay: true },
+      select: { id: true, name: true, role: true, roles: true, shiftStatus: true },
     })
     logger.info({ msg: 'staff created', staffId: staff.id, cafeId })
     return res.status(201).json(staff)
@@ -484,7 +483,6 @@ router.post('/api/admin/onboarding', authorizeAdmin, async (req: Request, res: R
     if (!managerName?.trim())                 return res.status(400).json({ error: 'managerName is required' })
     if (!/^[a-zA-Z0-9]{4,8}$/.test(managerPin)) return res.status(400).json({ error: 'managerPin must be 4-8 alphanumeric characters' })
 
-    const bcrypt = await import('bcrypt')
     const { randomUUID } = await import('crypto')
 
     // ── 1. Update cafe profile ─────────────────────────────────────────────────
@@ -532,7 +530,7 @@ router.post('/api/admin/onboarding', authorizeAdmin, async (req: Request, res: R
       where: { cafeId, role: 'SUPERVISOR' },
     })
     if (!existingSupervisor) {
-      const hashed = await bcrypt.default.hash(managerPin, 10)
+      const hashed = await hashPassword(managerPin)
       await prisma.staff.create({
         data: {
           cafeId,
@@ -694,12 +692,11 @@ router.patch('/api/admin/staff/:id/pin', authorizeAdmin, async (req: Request, re
     if (!staff) return res.status(404).json({ error: 'Staff not found' })
     if (staff.cafeId !== cafeId) return res.status(403).json({ error: 'Forbidden' })
 
-    const bcrypt = await import('bcrypt')
-    const hashed = await bcrypt.default.hash(pinCode, 10)
+    const hashed = await hashPassword(pinCode)
 
     await prisma.staff.update({
       where: { id },
-      data:  { pinCode: hashed, pinDisplay: pinCode }
+      data:  { pinCode: hashed }
     })
 
     logger.info({ msg: 'Staff PIN updated', cafeId, staffId: id })
