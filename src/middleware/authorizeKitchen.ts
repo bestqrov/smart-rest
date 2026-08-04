@@ -13,6 +13,23 @@ import { JWT_SECRET } from '../config'
 import prisma from '../prisma'
 import type { AdminTokenPayload } from './authorizeAdmin'
 
+// The order fetched here for the ownership check is reused by kitchen route
+// handlers (via req.kitchenOrder) so they don't re-query the same row.
+export interface KitchenOrderContext {
+  id:      string
+  cafeId:  string
+  status:  string
+  tableId: string | null
+}
+
+declare global {
+  namespace Express {
+    interface Request {
+      kitchenOrder?: KitchenOrderContext
+    }
+  }
+}
+
 export async function authorizeKitchen(req: Request, res: Response, next: NextFunction) {
   try {
     const auth = req.header('authorization')
@@ -30,16 +47,19 @@ export async function authorizeKitchen(req: Request, res: Response, next: NextFu
     if (payload.userId && payload.cafeId) {
       req.admin = { userId: payload.userId, cafeId: payload.cafeId } as AdminTokenPayload
 
-      // Validate orderId ownership if present
+      // Validate orderId ownership if present — select the fields kitchen
+      // route handlers need too, so they can reuse req.kitchenOrder instead
+      // of re-querying the same order right after this middleware runs.
       if (req.params.orderId) {
         const orderId = Array.isArray(req.params.orderId) ? req.params.orderId[0] : req.params.orderId
         const order = await prisma.order.findUnique({
           where:  { id: orderId },
-          select: { cafeId: true },
+          select: { id: true, cafeId: true, status: true, tableId: true },
         })
         if (!order || order.cafeId !== payload.cafeId) {
           return res.status(403).json({ error: 'Order does not belong to your cafe' })
         }
+        req.kitchenOrder = order
       }
       return next()
     }
@@ -52,11 +72,12 @@ export async function authorizeKitchen(req: Request, res: Response, next: NextFu
         const orderId = Array.isArray(req.params.orderId) ? req.params.orderId[0] : req.params.orderId
         const order = await prisma.order.findUnique({
           where:  { id: orderId },
-          select: { cafeId: true },
+          select: { id: true, cafeId: true, status: true, tableId: true },
         })
         if (!order || order.cafeId !== payload.cafeId) {
           return res.status(403).json({ error: 'Order does not belong to your cafe' })
         }
+        req.kitchenOrder = order
       }
       return next()
     }

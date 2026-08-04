@@ -75,8 +75,9 @@ export default function DashboardPage() {
         .catch(() => undefined)
     }
 
-    // Auto-refresh every 60s
-    const refreshId = setInterval(loadStats, 60_000)
+    // Socket-driven scheduleStatsReload (below) already refreshes on every
+    // order/status change — this is now just a reconnect safety net.
+    const refreshId = setInterval(loadStats, 300_000)
 
     const token  = localStorage.getItem('token')
     const SOCKET = process.env.NEXT_PUBLIC_SOCKET_URL || '/'

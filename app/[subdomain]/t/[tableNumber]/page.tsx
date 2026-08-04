@@ -522,8 +522,8 @@ function TablePageInner() {
               const merged = { ...cached, ...fresh }
               setScan(merged)
               saveSession(cached.tableId, merged)
-              await loadMenu()
-              await fetchActiveOrder(cached.sessionId, lang)
+              // Independent reads — no need to serialize them.
+              await Promise.all([loadMenu(), fetchActiveOrder(cached.sessionId, lang)])
               setPhase('menu')
               startHeartbeat(cached.sessionId)
               return
@@ -546,8 +546,8 @@ function TablePageInner() {
 
         setScan(data)
         saveSession(data.tableId, data)
-        await loadMenu()
-        await fetchActiveOrder(data.sessionId, lang)
+        // Independent reads — no need to serialize them.
+        await Promise.all([loadMenu(), fetchActiveOrder(data.sessionId, lang)])
         setPhase('welcome')
         startHeartbeat(data.sessionId)
 
@@ -1408,7 +1408,7 @@ function TablePageInner() {
                   return (
                     <div key={product.id} className={`bg-gray-900 rounded-2xl border border-gray-800/80 overflow-hidden flex ${product.imageUrl ? 'items-stretch' : 'items-center p-3'}`}>
                       {product.imageUrl && (
-                        <img src={product.imageUrl} alt={name}
+                        <img src={product.imageUrl} alt={name} loading="lazy"
                           className="w-24 h-24 object-cover shrink-0 self-stretch" />
                       )}
                       <div className={`flex-1 min-w-0 flex items-center justify-between gap-2 ${product.imageUrl ? 'p-3' : ''}`}>
@@ -1883,7 +1883,7 @@ function TablePageInner() {
                     <button key={idx} onClick={() => setSelectedShareImg(isSelected ? null : item.imageUrl)}
                       className="shrink-0 flex flex-col items-center gap-1 active:scale-95 transition-transform">
                       <div className="relative">
-                        <img src={item.imageUrl} alt={item.name}
+                        <img src={item.imageUrl} alt={item.name} loading="lazy"
                           className={`w-20 h-20 rounded-2xl object-cover transition-all ${
                             isSelected
                               ? 'border-2 border-emerald-400 ring-2 ring-emerald-400/40'

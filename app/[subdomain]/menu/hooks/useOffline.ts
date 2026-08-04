@@ -32,7 +32,9 @@ interface OfflineState {
   queuedOrders:  number
 }
 
-export function useOffline({ localIp, pollIntervalMs = 8_000 }: UseOfflineOptions) {
+// online/offline browser events (below) already give fast-path detection;
+// this interval is just a periodic confirmatory check, not the primary signal.
+export function useOffline({ localIp, pollIntervalMs = 30_000 }: UseOfflineOptions) {
   const [state, setState] = useState<OfflineState>({
     conn:         'online',
     lanEndpoint:  null,

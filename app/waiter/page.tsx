@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
 import { io as socketIO, Socket } from 'socket.io-client'
 import {
@@ -293,7 +293,9 @@ export default function WaiterPage() {
   useEffect(() => {
     if (!authed) return
     loadWaiters()
-    const t = setInterval(loadWaiters, 30_000)
+    // table_assigned/table_released socket handlers already call loadWaiters()
+    // directly — this is now just a reconnect safety net.
+    const t = setInterval(loadWaiters, 180_000)
     return () => clearInterval(t)
   }, [authed, loadWaiters])
 
@@ -478,12 +480,19 @@ export default function WaiterPage() {
   }
 
   // ── derived ────────────────────────────────────────────────────────────────
-  const activeNotifs  = notifications.filter(n => n.isActive)
+  const activeNotifs  = useMemo(() => notifications.filter(n => n.isActive), [notifications])
   const alertCount    = activeNotifs.length + ready.length + newOrders.length + legacyCalls.length + bills.length
-  const activeWaiters = waiters.filter(w => w.shiftStatus === 'ACTIVE')
-  const offWaiters    = waiters.filter(w => w.shiftStatus === 'OFF_DUTY')
+  const activeWaiters = useMemo(() => waiters.filter(w => w.shiftStatus === 'ACTIVE'), [waiters])
+  const offWaiters    = useMemo(() => waiters.filter(w => w.shiftStatus === 'OFF_DUTY'), [waiters])
   const selfWaiter    = waiters.find(w => w.name === staffName) ?? null
   const selfTables    = selfWaiter?.assignedTables ?? []
+  const visibleProducts = useMemo(() => {
+    const q = productSearch.trim().toLowerCase()
+    return q
+      ? menuCats.flatMap(c => c.products).filter(p =>
+          (p.nameEn || '').toLowerCase().includes(q) || (p.nameAr || '').toLowerCase().includes(q))
+      : (menuCats.find(c => c.id === activeCat)?.products ?? [])
+  }, [productSearch, menuCats, activeCat])
   const cartTotal     = orderCart.reduce((s, c) => s + c.price * c.qty, 0)
   const cartQty       = orderCart.reduce((s, c) => s + c.qty, 0)
 
@@ -955,10 +964,6 @@ export default function WaiterPage() {
                       </div>
                     ) : (() => {
                       const q = productSearch.trim().toLowerCase()
-                      const visibleProducts = q
-                        ? menuCats.flatMap(c => c.products).filter(p =>
-                            (p.nameEn || '').toLowerCase().includes(q) || (p.nameAr || '').toLowerCase().includes(q))
-                        : (menuCats.find(c => c.id === activeCat)?.products ?? [])
                       if (q && visibleProducts.length === 0) {
                         return <p className="text-center text-sm text-slate-400 py-8">{lang === 'ar' ? 'لا توجد نتائج' : 'No results'}</p>
                       }

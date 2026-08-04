@@ -30,7 +30,20 @@ router.get('/api/menu/public', async (req: Request, res: Response) => {
       prisma.category.findMany({
         where: { cafeId: table.cafeId },
         orderBy: { order: 'asc' },
-        include: { products: { where: { isAvailable: true }, orderBy: { nameEn: 'asc' } } }
+        include: {
+          products: {
+            where:   { isAvailable: true },
+            orderBy: { nameEn: 'asc' },
+            // Public/anonymous endpoint — never expose owner-only fields like
+            // costPrice/commissionRate (commercially sensitive) or internal
+            // fields (status/tags) that no customer-facing page reads.
+            select: {
+              id: true, nameAr: true, nameEn: true, nameFr: true, nameEs: true,
+              description: true, price: true, unitType: true, imageUrl: true,
+              isAvailable: true, calories: true, likesCount: true,
+            },
+          }
+        }
       })
     ])
 
@@ -138,7 +151,20 @@ router.get('/api/client/menu', async (req: Request, res: Response) => {
     const categories = await prisma.category.findMany({
       where:   { cafeId: cafe.id },
       orderBy: { order: 'asc' },
-      include: { products: { where: { isAvailable: true }, orderBy: { nameEn: 'asc' } } }
+      include: {
+        products: {
+          where:   { isAvailable: true },
+          orderBy: { nameEn: 'asc' },
+          // Public/anonymous endpoint — never expose owner-only fields like
+          // costPrice/commissionRate (commercially sensitive) or internal
+          // fields (status/tags) that no customer-facing page reads.
+          select: {
+            id: true, nameAr: true, nameEn: true, nameFr: true, nameEs: true,
+            description: true, price: true, unitType: true, imageUrl: true,
+            isAvailable: true, calories: true, likesCount: true,
+          },
+        }
+      }
     })
 
     return res.json({ categories })

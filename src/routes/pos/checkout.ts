@@ -67,7 +67,7 @@ router.patch('/api/pos/orders/:orderId/checkout', authorizePOS, requireUnlockedS
 
       const updated = await tx.order.findUniqueOrThrow({
         where: { id: orderId },
-        include: { items: { include: { product: true } } }
+        include: { items: { include: { product: { select: { nameEn: true, nameFr: true, nameAr: true } } } } }
       })
       return { updated, didComplete: result.count === 1 && !wasCompletedAlready }
     })
@@ -126,7 +126,7 @@ router.patch('/api/pos/tables/:tableId/checkout', authorizePOS, requireUnlockedS
         }
         const result = await tx.order.findUniqueOrThrow({
           where: { id: o.id },
-          include: { items: { include: { product: true } } }
+          include: { items: { include: { product: { select: { nameEn: true, nameFr: true, nameAr: true } } } } }
         })
         results.push({ result, didComplete })
       }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { io as socketIO, Socket } from 'socket.io-client'
 import Image from 'next/image'
 import {
@@ -265,7 +265,9 @@ export default function POSPage() {
   useEffect(() => {
     if (!posToken || !cafeId) return
     fetchTables(posToken); fetchMenu(posToken)
-    const id = setInterval(() => fetchTables(posToken), 30_000)
+    // Socket events (new_order/order_status_updated/bill_requested below) keep
+    // `tables` in sync in real time — this is now just a reconnect safety net.
+    const id = setInterval(() => fetchTables(posToken), 180_000)
     return () => clearInterval(id)
   }, [posToken, cafeId, fetchTables, fetchMenu])
 
@@ -439,10 +441,10 @@ export default function POSPage() {
     EMPTY:          3,
     INACTIVE:       4,
   }
-  const sortedTables = [...tables].sort((a, b) => {
+  const sortedTables = useMemo(() => [...tables].sort((a, b) => {
     const pa = STATUS_PRIORITY[a.status], pb = STATUS_PRIORITY[b.status]
     return pa !== pb ? pa - pb : a.tableNumber - b.tableNumber
-  })
+  }), [tables])
 
   const cartTotal        = cart.reduce((s, c) => s + lineTotal(c), 0)
   const tableOrdersTotal = tableOrders.reduce((s, o) => s + o.totalPrice, 0)

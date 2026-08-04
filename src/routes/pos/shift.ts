@@ -28,9 +28,6 @@ function issueStaffToken(staffId: string, cafeId: string, staffRole: StaffRole, 
 }
 
 async function validatePin(cafeId: string, pinCode: string) {
-  const staff = await prisma.staff.findFirst({
-    where: { cafeId, isActive: true }
-  })
   // iterate over all active staff for this cafe (PIN uniqueness per cafe is enforced at creation)
   const allStaff = await prisma.staff.findMany({
     where: { cafeId, isActive: true },

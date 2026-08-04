@@ -67,10 +67,19 @@ router.get('/api/admin/stats', authorizeAdmin, async (req: Request, res: Respons
     const products = await prisma.product.findMany({ where: { id: { in: productIds } } })
     const top = topProducts.map((t) => ({ productId: t.productId, quantity: t._sum.quantity || 0, name: products.find((p) => p.id === t.productId)?.nameEn || '' }))
 
+    // Single 30-day scan feeding peak-hours, AOV, daily-sales, and new-customers —
+    // these were 4 separate overlapping cafeId+createdAt>=start30 queries before;
+    // each downstream calc below applies the exact same filter it used to run in
+    // its own query (revenueWhere for AOV/dailySales, unfiltered for the rest).
+    const window30 = await prisma.order.findMany({
+      where:  { cafeId, createdAt: { gte: start30 } },
+      select: { createdAt: true, totalPrice: true, customerPhone: true, isPaid: true, status: true },
+    })
+    const isRevenueOrder = (o: { isPaid: boolean; status: string }) => o.isPaid || o.status === 'COMPLETED'
+
     // Peak hours (last 30 days) - compute by hour (0-23)
-    const orders30 = await prisma.order.findMany({ where: { cafeId, createdAt: { gte: start30 } }, select: { createdAt: true } })
     const hourCounts = new Array(24).fill(0)
-    for (const o of orders30) {
+    for (const o of window30) {
       const h = new Date(o.createdAt).getHours()
       hourCounts[h] = hourCounts[h] + 1
     }
@@ -78,18 +87,19 @@ router.get('/api/admin/stats', authorizeAdmin, async (req: Request, res: Respons
     const peakHours = hourCounts.map((count, hour) => ({ hour, count })).sort((a, b) => b.count - a.count).slice(0, 3)
 
     // Average Order Value (AOV) - over last 30 days
-    const aovAgg = await prisma.order.aggregate({ _avg: { totalPrice: true }, where: revenueWhere({ createdAt: { gte: start30 } }) })
-    const aov = aovAgg._avg.totalPrice || 0
+    const revenueOrders30 = window30.filter(isRevenueOrder)
+    const aov = revenueOrders30.length
+      ? revenueOrders30.reduce((s, o) => s + Number(o.totalPrice as unknown as string || 0), 0) / revenueOrders30.length
+      : 0
 
     // Daily sales for last 30 days (for line chart)
-    const salesOrders = await prisma.order.findMany({ where: revenueWhere({ createdAt: { gte: start30 } }), select: { totalPrice: true, createdAt: true } })
     const dailyMap: Record<string, number> = {}
     for (let i = 0; i < daysBack; i++) {
       const d = new Date(start30.getTime() + i * 24 * 60 * 60 * 1000)
       const key = d.toISOString().slice(0, 10)
       dailyMap[key] = 0
     }
-    for (const o of salesOrders) {
+    for (const o of revenueOrders30) {
       const key = new Date(o.createdAt).toISOString().slice(0, 10)
       dailyMap[key] = (dailyMap[key] || 0) + Number(o.totalPrice as unknown as string || 0)
     }
@@ -99,8 +109,7 @@ router.get('/api/admin/stats', authorizeAdmin, async (req: Request, res: Respons
     const ordersCountToday = await prisma.order.count({ where: { cafeId, createdAt: { gte: todayStart } } })
 
     // New customers (unique phone numbers) last 30 days
-    const recentOrdersWithPhone = await prisma.order.findMany({ where: { cafeId, createdAt: { gte: start30 }, customerPhone: { not: null } }, select: { customerPhone: true } })
-    const uniquePhones = new Set(recentOrdersWithPhone.map((o) => o.customerPhone))
+    const uniquePhones = new Set(window30.filter(o => o.customerPhone).map((o) => o.customerPhone))
     const newCustomers = uniquePhones.size
 
     // Recently completed orders

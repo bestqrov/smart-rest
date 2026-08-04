@@ -112,7 +112,7 @@ router.post('/api/pos/orders', authorizePOS, requireUnlockedShift, async (req: R
             create: lineItems
           }
         },
-        include: { items: { include: { product: true } } }
+        include: { items: { include: { product: { select: { nameEn: true, nameFr: true, nameAr: true } } } } }
       })
 
       const io = req.app.get('io') as SocketIOServer | undefined
@@ -146,7 +146,7 @@ router.post('/api/pos/orders', authorizePOS, requireUnlockedShift, async (req: R
           create: lineItems
         }
       },
-      include: { items: { include: { product: true } } }
+      include: { items: { include: { product: { select: { nameEn: true, nameFr: true, nameAr: true } } } } }
     })
 
     const io = req.app.get('io') as SocketIOServer | undefined
@@ -225,7 +225,7 @@ router.post('/api/pos/orders/marketplace', authorizePOS, requireUnlockedShift, a
         createdById:      staffId,
         items: { create: lineItems }
       },
-      include: { items: { include: { product: true } } }
+      include: { items: { include: { product: { select: { nameEn: true, nameFr: true, nameAr: true } } } } }
     })
 
     const io = req.app.get('io') as SocketIOServer | undefined

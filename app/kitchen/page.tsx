@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { io as socketIO, Socket } from 'socket.io-client'
 import { Bell, BellOff, ChefHat, CheckCircle2, AlertTriangle, CheckCheck, XCircle, CalendarClock, Users, Phone, Check, X } from 'lucide-react'
 
@@ -467,10 +467,10 @@ export default function KitchenPage() {
     }
   }
 
-  const allTickets = [...tickets].sort((a, b) => {
+  const allTickets = useMemo(() => [...tickets].sort((a, b) => {
     if (a.status === b.status) return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
     return a.status === 'PENDING' ? -1 : 1
-  })
+  }), [tickets])
   const selectedTicket = allTickets.find(t => t.orderId === selectedId) ?? null
   const pendingRes     = reservations.filter(r => r.status === 'PENDING')
 

@@ -48,12 +48,9 @@ router.patch('/api/kitchen/orders/:orderId', authorizeKitchen, async (req: Reque
     const targetStatus    = STATUS_TARGET[status]
     const requiredCurrent = REQUIRED_PREDECESSOR[targetStatus]
 
-    // authorizeKitchen already confirmed the order belongs to this cafeId
-    const order = await prisma.order.findUnique({
-      where: { id: orderId },
-      select: { status: true, tableId: true }
-    })
-
+    // authorizeKitchen already fetched & confirmed the order belongs to this
+    // cafeId — reuse it instead of querying the same row again.
+    const order = req.kitchenOrder
     if (!order) return res.status(404).json({ error: 'Order not found' })
 
     if (order.status !== requiredCurrent) {

@@ -50,6 +50,7 @@ export async function buildKdsTicket(orderId: string): Promise<KdsTicket | null>
           mergedTables: { select: { id: true, tableNumber: true } }
         }
       },
+      originalTable: { select: { tableNumber: true } },
       items: {
         select: {
           quantity: true,
@@ -68,10 +69,7 @@ export async function buildKdsTicket(orderId: string): Promise<KdsTicket | null>
     return null
   }
 
-  const physicalTableNumber = order.originalTableId
-    ? (await prisma.table.findUnique({ where: { id: order.originalTableId }, select: { tableNumber: true } }))
-        ?.tableNumber ?? billingTable.tableNumber
-    : billingTable.tableNumber
+  const physicalTableNumber = order.originalTable?.tableNumber ?? billingTable.tableNumber
 
   const mergedChildren = billingTable.mergedTables.map((t) => t.tableNumber)
   const physicalTableNumbers = [billingTable.tableNumber, ...mergedChildren].sort((a, b) => a - b)

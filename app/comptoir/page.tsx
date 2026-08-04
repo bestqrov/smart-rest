@@ -154,16 +154,21 @@ export default function ComptoirPage() {
   const cartTotal = Math.max(0, cartSubtotal - wholesaleDiscount)
   const activeItems = menuCats.find(c => c.id === activeCat)?.products ?? []
 
-  async function searchClients(q: string) {
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  function searchClients(q: string) {
     setClientSearch(q)
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
     if (!posToken || q.trim().length < 2) { setClientResults([]); return }
-    const res = await fetch(`/api/pos/customers?search=${encodeURIComponent(q.trim())}`, {
-      headers: { Authorization: `Bearer ${posToken}` },
-    })
-    if (res.ok) {
-      const data = await res.json()
-      setClientResults(data.items ?? [])
-    }
+    searchDebounceRef.current = setTimeout(async () => {
+      const res = await fetch(`/api/pos/customers?search=${encodeURIComponent(q.trim())}`, {
+        headers: { Authorization: `Bearer ${posToken}` },
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setClientResults(data.items ?? [])
+      }
+    }, 300)
   }
 
   async function createClient() {

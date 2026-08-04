@@ -59,7 +59,7 @@ router.post('/api/pos/checkout/by-seats', authorizePOS, async (req: Request, res
         isPaid:     false,
         billStatus: { in: ['OPENED', 'BILL_REQUESTED'] },
       },
-      include: { items: { include: { product: true } } }
+      include: { items: { include: { product: { select: { nameEn: true, nameFr: true, nameAr: true } } } } }
     })
 
     if (openOrders.length === 0) {
