@@ -237,6 +237,14 @@ export default function KitchenPage() {
   const [cancelledToday, setCancelledToday] = useState(0)
   const [todayOrders, setTodayOrders] = useState<TodayOrder[]>([])
   const [newReservationAlert, setNewReservationAlert] = useState(false)
+  const [actionError, setActionError] = useState<string | null>(null)
+  const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  function flashActionError(msg: string) {
+    setActionError(msg)
+    if (errorTimerRef.current) clearTimeout(errorTimerRef.current)
+    errorTimerRef.current = setTimeout(() => setActionError(null), 4000)
+  }
   const [cafeLogoUrl, setCafeLogoUrl]       = useState<string | null>(null)
   const [cafeName, setCafeName]             = useState('')
 
@@ -420,17 +428,43 @@ export default function KitchenPage() {
   async function accept(orderId: string) {
     alertOrderIds.current.delete(orderId); stopBeepLoopIfEmpty()
     setTickets(prev => prev.map(t => t.orderId === orderId ? { ...t, status: 'PREPARING' as const } : t))
-    try { await fetch(`/api/kitchen/orders/${orderId}`, { method: 'PATCH', headers: { ...authHeader(), 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'preparing' }) }) } catch {}
+    try {
+      const res = await fetch(`/api/kitchen/orders/${orderId}`, { method: 'PATCH', headers: { ...authHeader(), 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'preparing' }) })
+      if (!res.ok) throw new Error()
+    } catch {
+      // Revert the optimistic flip so the ticket doesn't silently claim
+      // "cooking" when the server never got the update — staff need to
+      // see it's still PENDING and retry.
+      setTickets(prev => prev.map(t => t.orderId === orderId ? { ...t, status: 'PENDING' as const } : t))
+      alertOrderIds.current.add(orderId); startBeepLoop()
+      flashActionError(lang === 'ar' ? 'فشل تحديث الطلب — حاول مجدداً' : 'Failed to update order — try again')
+    }
   }
   async function markReady(orderId: string) {
+    const ticket = tickets.find(t => t.orderId === orderId)
     deliveredIds.current.add(orderId); alertOrderIds.current.delete(orderId); stopBeepLoopIfEmpty()
     setTickets(prev => prev.filter(t => t.orderId !== orderId))
     setSelectedId(null); setCompletedToday(n => n + 1)
-    try { await fetch(`/api/kitchen/orders/${orderId}`, { method: 'PATCH', headers: { ...authHeader(), 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'ready' }) }) } catch {}
+    try {
+      const res = await fetch(`/api/kitchen/orders/${orderId}`, { method: 'PATCH', headers: { ...authHeader(), 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'ready' }) })
+      if (!res.ok) throw new Error()
+    } catch {
+      deliveredIds.current.delete(orderId)
+      setCompletedToday(n => Math.max(0, n - 1))
+      if (ticket) setTickets(prev => prev.find(t => t.orderId === orderId) ? prev : [...prev, ticket])
+      flashActionError(lang === 'ar' ? 'فشل تحديث الطلب — حاول مجدداً' : 'Failed to update order — try again')
+    }
   }
   async function handleReservation(id: string, action: 'accept' | 'cancel') {
+    const reservation = reservations.find(r => r.id === id)
     setReservations(prev => prev.filter(r => r.id !== id))
-    try { await fetch(`/api/kitchen/reservations/${id}`, { method: 'PATCH', headers: { ...authHeader(), 'Content-Type': 'application/json' }, body: JSON.stringify({ action }) }) } catch {}
+    try {
+      const res = await fetch(`/api/kitchen/reservations/${id}`, { method: 'PATCH', headers: { ...authHeader(), 'Content-Type': 'application/json' }, body: JSON.stringify({ action }) })
+      if (!res.ok) throw new Error()
+    } catch {
+      if (reservation) setReservations(prev => prev.find(r => r.id === id) ? prev : [reservation, ...prev])
+      flashActionError(lang === 'ar' ? 'فشل تحديث الحجز — حاول مجدداً' : 'Failed to update reservation — try again')
+    }
   }
 
   const allTickets = [...tickets].sort((a, b) => {
@@ -512,6 +546,14 @@ export default function KitchenPage() {
           </div>
         </div>
       </header>
+
+      {/* ── Action failure banner — actions are optimistic, so a failed request
+          must be surfaced loudly instead of silently reverting behind the scenes ── */}
+      {actionError && (
+        <div className="shrink-0 bg-red-600 text-white text-sm font-bold px-4 py-2.5 flex items-center gap-2 justify-center">
+          <AlertTriangle className="w-4 h-4 shrink-0" /> {actionError}
+        </div>
+      )}
 
       {/* ── Main body ── */}
       {activeTab === 'orders' ? (

@@ -171,6 +171,14 @@ export default function WaiterPage() {
 
   const [tab,  setTab]  = useState<'alerts' | 'team' | 'today' | 'order'>('alerts')
   const [, setTick]     = useState(0)
+  const [actionError, setActionError] = useState<string | null>(null)
+  const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  function flashActionError(msg: string) {
+    setActionError(msg)
+    if (errorTimerRef.current) clearTimeout(errorTimerRef.current)
+    errorTimerRef.current = setTimeout(() => setActionError(null), 4000)
+  }
 
   // order tab
   const [menuCats,        setMenuCats]        = useState<MenuCat[]>([])
@@ -341,11 +349,17 @@ export default function WaiterPage() {
     setNotifications(prev => prev.map(n => n.orderId === orderId ? { ...n, isActive: false } : n))
     stopBeepIfQuiet()
     try {
-      await fetch('/api/waiter/notifications/ack', {
+      const res = await fetch('/api/waiter/notifications/ack', {
         method: 'PATCH', headers: { ...authHeader(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ orderId }),
       })
-    } catch {}
+      if (!res.ok) throw new Error()
+    } catch {
+      setNotifications(prev => prev.map(n => n.orderId === orderId ? { ...n, isActive: true } : n))
+      const original = notifsRef.current.find(n => n.orderId === orderId)
+      startBeepLoop(original?.type ?? 'call_waiter')
+      flashActionError(lang === 'ar' ? 'فشل تأكيد التنبيه — حاول مجدداً' : 'Failed to acknowledge — try again')
+    }
   }
 
   function ackLegacyCall(callId: string) {
@@ -354,10 +368,20 @@ export default function WaiterPage() {
   }
 
   async function markServed(orderId: string) {
-    const ep = isPOS ? `/api/pos/waiter/orders/${orderId}/served` : `/api/orders/${orderId}/status`
-    const body = isPOS ? undefined : JSON.stringify({ status: 'COMPLETED' })
-    await fetch(ep, { method: 'PATCH', headers: { ...authHeader(), 'Content-Type': 'application/json' }, body })
+    const order = ready.find(o => o.id === orderId)
     setReady(prev => prev.filter(o => o.id !== orderId))
+    try {
+      const ep = isPOS ? `/api/pos/waiter/orders/${orderId}/served` : `/api/orders/${orderId}/status`
+      const body = isPOS ? undefined : JSON.stringify({ status: 'COMPLETED' })
+      const res = await fetch(ep, { method: 'PATCH', headers: { ...authHeader(), 'Content-Type': 'application/json' }, body })
+      if (!res.ok) throw new Error()
+    } catch {
+      // Put it back — the order wasn't actually marked served, so silently
+      // dropping it from the "ready to serve" list would hide a table that
+      // still needs food brought out.
+      if (order) setReady(prev => prev.find(o => o.id === orderId) ? prev : [...prev, order].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()))
+      flashActionError(lang === 'ar' ? 'فشل تحديث الطلب — حاول مجدداً' : 'Failed to update — try again')
+    }
   }
 
   function logout() {
@@ -495,6 +519,14 @@ export default function WaiterPage() {
             </div>
           )}
         </header>
+
+        {/* ── Action failure banner — actions update the UI optimistically, so a
+            failed request must be surfaced, not silently swallowed ── */}
+        {actionError && (
+          <div className="shrink-0 bg-red-600 text-white text-sm font-bold px-4 py-2.5 flex items-center justify-center gap-2">
+            <WifiOff className="w-4 h-4 shrink-0" /> {actionError}
+          </div>
+        )}
 
         {/* ── Body ───────────────────────────────────────────────────────── */}
         <main className="flex-1 overflow-y-auto pb-24">
