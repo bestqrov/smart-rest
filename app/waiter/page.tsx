@@ -180,6 +180,57 @@ export default function WaiterPage() {
     errorTimerRef.current = setTimeout(() => setActionError(null), 4000)
   }
 
+  // ── Manage table (zone + release) — both endpoints already existed with
+  // zero UI caller anywhere in the app. Scoped to the current waiter's own
+  // assigned tables since /release only allows the assigned waiter or a
+  // supervisor, and this keeps the affordance consistent for both actions.
+  const [manageTable, setManageTable] = useState<{ id: string; tableNumber: number; zone?: string | null } | null>(null)
+  const [zoneInput,   setZoneInput]   = useState('')
+  const [savingZone,  setSavingZone]  = useState(false)
+  const [releasing,   setReleasing]   = useState(false)
+  const [manageError, setManageError] = useState('')
+
+  function openManageTable(t: { id: string; tableNumber: number; zone?: string | null }) {
+    setManageTable(t)
+    setZoneInput(t.zone ?? '')
+    setManageError('')
+  }
+
+  async function saveZone() {
+    if (!manageTable || !zoneInput.trim()) return
+    setSavingZone(true); setManageError('')
+    try {
+      const res = await fetch(`/api/pos/tables/${manageTable.id}/zone`, {
+        method: 'PATCH', headers: { ...authHeader(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ zone: zoneInput.trim() }),
+      })
+      if (!res.ok) { const d = await res.json().catch(() => ({})); setManageError(d.error ?? 'Failed'); return }
+      setManageTable(null)
+      loadWaiters()
+    } catch {
+      setManageError('Network error')
+    } finally {
+      setSavingZone(false)
+    }
+  }
+
+  async function releaseTable() {
+    if (!manageTable) return
+    setReleasing(true); setManageError('')
+    try {
+      const res = await fetch(`/api/pos/tables/${manageTable.id}/release`, {
+        method: 'DELETE', headers: authHeader(),
+      })
+      if (!res.ok) { const d = await res.json().catch(() => ({})); setManageError(d.error ?? 'Failed'); return }
+      setManageTable(null)
+      loadWaiters()
+    } catch {
+      setManageError('Network error')
+    } finally {
+      setReleasing(false)
+    }
+  }
+
   // order tab
   const [menuCats,        setMenuCats]        = useState<MenuCat[]>([])
   const [activeCat,       setActiveCat]       = useState('')
@@ -722,10 +773,13 @@ export default function WaiterPage() {
                             <div className="flex flex-wrap gap-1.5">
                               {w.assignedTables.map(t => {
                                 const hasA = myA.some(n => n.tableId === t.id)
-                                return (
-                                  <span key={t.id} className={`text-xs font-bold px-2.5 py-1 rounded-lg ${hasA ? 'bg-red-100 text-red-600 ring-1 ring-red-300' : 'bg-slate-100 text-slate-500'}`}>
-                                    T{t.tableNumber}{t.zone ? ` · ${t.zone}` : ''}{hasA ? ' 🔔' : ''}
-                                  </span>
+                                const isMine = w.id === selfWaiter?.id
+                                const pillClass = `text-xs font-bold px-2.5 py-1.5 rounded-lg transition-all ${hasA ? 'bg-red-100 text-red-600 ring-1 ring-red-300' : 'bg-slate-100 text-slate-500'} ${isMine ? 'active:scale-95' : ''}`
+                                const label = `T${t.tableNumber}${t.zone ? ` · ${t.zone}` : ''}${hasA ? ' 🔔' : ''}`
+                                return isMine ? (
+                                  <button key={t.id} onClick={() => openManageTable(t)} className={pillClass}>{label}</button>
+                                ) : (
+                                  <span key={t.id} className={pillClass}>{label}</span>
                                 )
                               })}
                             </div>
@@ -1038,6 +1092,40 @@ export default function WaiterPage() {
           ))}
           </div>
         </nav>
+
+        {/* ── Manage table — zone + release, both existing endpoints with no prior UI ── */}
+        {manageTable && (
+          <div className="fixed inset-0 z-50 bg-black/60 flex items-end justify-center" onClick={() => setManageTable(null)}>
+            <div className="w-full max-w-md bg-white rounded-t-3xl p-5 space-y-4" onClick={e => e.stopPropagation()}>
+              <div className="w-10 h-1 bg-slate-200 rounded-full mx-auto" />
+              <h3 className="font-black text-lg text-slate-800">Table {manageTable.tableNumber}</h3>
+
+              <div>
+                <label className="text-xs font-bold text-slate-500 block mb-1.5">Zone</label>
+                <input value={zoneInput} onChange={e => setZoneInput(e.target.value)}
+                  placeholder="e.g. Terrace, Upstairs…"
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+              </div>
+
+              {manageError && <p className="text-red-500 text-xs font-medium">{manageError}</p>}
+
+              <button onClick={saveZone} disabled={savingZone || !zoneInput.trim()}
+                className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white rounded-xl font-bold text-sm active:scale-95 transition-all">
+                {savingZone ? 'Saving…' : 'Save zone'}
+              </button>
+
+              <button onClick={releaseTable} disabled={releasing}
+                className="w-full py-3 bg-white border-2 border-red-200 hover:bg-red-50 disabled:opacity-40 text-red-600 rounded-xl font-bold text-sm active:scale-95 transition-all">
+                {releasing ? 'Releasing…' : '✕ Release this table'}
+              </button>
+
+              <button onClick={() => setManageTable(null)}
+                className="w-full py-2 text-slate-400 text-sm font-medium">
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
 
       </div>
     </>
