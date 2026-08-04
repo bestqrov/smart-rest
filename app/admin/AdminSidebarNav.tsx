@@ -141,12 +141,19 @@ export default function AdminSidebarNav({
                       </Link>
                     )
                   })}
-                  {g.group === 'growth' && marketplaceEnabled && (
+                  {g.group === 'growth' && (
                     <Link href="/admin/marketplace" onClick={onNavigate}
-                      className={linkClass(pathname.startsWith('/admin/marketplace'))}>
+                      className={linkClass(pathname.startsWith('/admin/marketplace')) + ' relative'}>
                       <Store className="w-5 h-5 shrink-0" />
                       <span className="font-medium flex-1">{lang === 'ar' ? 'المتجر' : 'Marketplace'}</span>
-                      <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">AI</span>
+                      {marketplaceEnabled ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">AI</span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                          <Lock className="w-2.5 h-2.5" />
+                          PRO
+                        </span>
+                      )}
                     </Link>
                   )}
                   {g.group === 'settingsGroup' && cafeInventoryEnabled !== null && (
