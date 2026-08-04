@@ -14,6 +14,7 @@ import prisma from '../../prisma'
 import logger from '../../logger'
 import authorizePOS from '../../middleware/authorizePOS'
 import requireUnlockedShift from '../../middleware/requireUnlockedShift'
+import requireActiveBilling from '../../middleware/requireActiveBilling'
 import { emitKdsTicket } from '../../services/kds'
 import { autoCheckInReservationForTable } from '../../reservations/ReservationService'
 
@@ -21,7 +22,7 @@ const router = express.Router()
 
 type ItemInput = { productId: string; quantity: number; notes?: string }
 
-router.post('/api/pos/orders', authorizePOS, requireUnlockedShift, async (req: Request, res: Response) => {
+router.post('/api/pos/orders', authorizePOS, requireUnlockedShift, requireActiveBilling, async (req: Request, res: Response) => {
   try {
     const { staffId, cafeId, shiftId } = req.staff!
     const { tableId, items, paymentMethod, customerPhone, orderType } = req.body as {
@@ -170,7 +171,7 @@ router.post('/api/pos/orders', authorizePOS, requireUnlockedShift, async (req: R
 // table involved (courier pickup), status still starts PENDING for the
 // kitchen to prepare it like any ticket.
 
-router.post('/api/pos/orders/marketplace', authorizePOS, requireUnlockedShift, async (req: Request, res: Response) => {
+router.post('/api/pos/orders/marketplace', authorizePOS, requireUnlockedShift, requireActiveBilling, async (req: Request, res: Response) => {
   try {
     const { staffId, cafeId } = req.staff!
     const { items, platform, externalOrderRef } = req.body as {

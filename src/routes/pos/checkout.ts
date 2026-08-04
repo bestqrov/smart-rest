@@ -10,11 +10,12 @@ import prisma from '../../prisma'
 import logger from '../../logger'
 import authorizePOS from '../../middleware/authorizePOS'
 import requireUnlockedShift from '../../middleware/requireUnlockedShift'
+import requireActiveBilling from '../../middleware/requireActiveBilling'
 import { completeOrderFinancials, awardLoyaltyBestEffort } from '../../services/orderCompletion'
 
 const router = express.Router()
 
-router.patch('/api/pos/orders/:orderId/checkout', authorizePOS, requireUnlockedShift, async (req: Request, res: Response) => {
+router.patch('/api/pos/orders/:orderId/checkout', authorizePOS, requireUnlockedShift, requireActiveBilling, async (req: Request, res: Response) => {
   try {
     const { staffId, cafeId } = req.staff!
     const orderId = req.params['orderId'] as string
@@ -86,7 +87,7 @@ router.patch('/api/pos/orders/:orderId/checkout', authorizePOS, requireUnlockedS
 
 // ─── PATCH /api/pos/tables/:tableId/checkout — close ALL open orders for a table ──
 
-router.patch('/api/pos/tables/:tableId/checkout', authorizePOS, requireUnlockedShift, async (req: Request, res: Response) => {
+router.patch('/api/pos/tables/:tableId/checkout', authorizePOS, requireUnlockedShift, requireActiveBilling, async (req: Request, res: Response) => {
   try {
     const { staffId, cafeId } = req.staff!
     const tableId = req.params['tableId'] as string

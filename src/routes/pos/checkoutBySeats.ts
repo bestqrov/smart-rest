@@ -13,11 +13,12 @@ import express, { Request, Response } from 'express'
 import prisma from '../../prisma'
 import logger from '../../logger'
 import authorizePOS from '../../middleware/authorizePOS'
+import requireActiveBilling from '../../middleware/requireActiveBilling'
 import { completeOrderFinancials, awardLoyaltyBestEffort } from '../../services/orderCompletion'
 
 const router = express.Router()
 
-router.post('/api/pos/checkout/by-seats', authorizePOS, async (req: Request, res: Response) => {
+router.post('/api/pos/checkout/by-seats', authorizePOS, requireActiveBilling, async (req: Request, res: Response) => {
   try {
     const { staffId, cafeId } = req.staff!
     const {

@@ -8,6 +8,7 @@
 import express, { Request, Response } from 'express'
 import { Server as SocketIOServer } from 'socket.io'
 import authorizePOS from '../../middleware/authorizePOS'
+import requireActiveBilling from '../../middleware/requireActiveBilling'
 import prisma from '../../prisma'
 import logger from '../../logger'
 import { completeOrderFinancials, awardLoyaltyBestEffort } from '../../services/orderCompletion'
@@ -72,7 +73,7 @@ router.get('/api/pos/waiter/today', authorizePOS, async (req: Request, res: Resp
 
 // ─── PATCH /api/pos/waiter/orders/:id/served ─────────────────────────────────
 
-router.patch('/api/pos/waiter/orders/:id/served', authorizePOS, async (req: Request, res: Response) => {
+router.patch('/api/pos/waiter/orders/:id/served', authorizePOS, requireActiveBilling, async (req: Request, res: Response) => {
   try {
     const { cafeId } = req.staff!
     const orderId = req.params['id'] as string
