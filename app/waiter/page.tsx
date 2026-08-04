@@ -5,7 +5,7 @@ import Image from 'next/image'
 import { io as socketIO, Socket } from 'socket.io-client'
 import {
   Bell, CheckCircle2, Clock, Users, LogOut, WifiOff,
-  ShoppingCart, Plus, Minus, Trash2, Send, ChefHat, Utensils,
+  ShoppingCart, Plus, Minus, Trash2, Send, ChefHat, Utensils, Search, X,
 } from 'lucide-react'
 import { tr, getLang, setLang as saveLang, POS_LANGS, type Lang } from '../../src/lib/posI18n'
 
@@ -175,10 +175,12 @@ export default function WaiterPage() {
   // order tab
   const [menuCats,        setMenuCats]        = useState<MenuCat[]>([])
   const [activeCat,       setActiveCat]       = useState('')
+  const [productSearch,   setProductSearch]   = useState('')
   const [orderTable,      setOrderTable]      = useState<{ id: string; tableNumber: number } | null>(null)
   const [orderCart,       setOrderCart]       = useState<CartItem[]>([])
   const [orderSubmitting, setOrderSubmitting] = useState(false)
   const [orderDone,       setOrderDone]       = useState(false)
+  const [lastOrderTable,  setLastOrderTable]  = useState<{ id: string; tableNumber: number } | null>(null)
   const [orderErr,        setOrderErr]        = useState('')
 
   const tokenRef   = useRef('')
@@ -393,6 +395,7 @@ export default function WaiterPage() {
         body: JSON.stringify({ tableId: orderTable.id, items: orderCart.map(c => ({ productId: c.productId, quantity: c.qty })), paymentMethod: 'CASH' }),
       })
       if (!res.ok) { const d = await res.json(); setOrderErr(d.error ?? 'Failed'); return }
+      setLastOrderTable(orderTable)
       setOrderCart([]); setOrderTable(null); setOrderDone(true)
       setTimeout(() => setOrderDone(false), 3000)
     } catch { setOrderErr('Network error') }
@@ -777,10 +780,18 @@ export default function WaiterPage() {
                       <CheckCircle2 className="w-10 h-10 text-emerald-500" />
                     </div>
                     <p className="font-bold text-xl text-emerald-600">{L('order_sent')}</p>
-                    <button onClick={() => { setOrderDone(false); setOrderTable(null) }}
-                      className="mt-2 px-6 py-3 bg-emerald-600 text-white rounded-xl font-bold text-sm active:scale-95 transition-all">
-                      + New Order
-                    </button>
+                    <div className="flex gap-2 mt-2">
+                      {lastOrderTable && (
+                        <button onClick={() => { setOrderDone(false); setOrderTable(lastOrderTable); setProductSearch('') }}
+                          className="px-5 py-3 bg-white border-2 border-emerald-300 text-emerald-700 rounded-xl font-bold text-sm active:scale-95 transition-all">
+                          Table {lastOrderTable.tableNumber} — {lang === 'ar' ? 'أضف المزيد' : 'add more'}
+                        </button>
+                      )}
+                      <button onClick={() => { setOrderDone(false); setOrderTable(null) }}
+                        className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-bold text-sm active:scale-95 transition-all">
+                        + New Order
+                      </button>
+                    </div>
                   </div>
                 ) : !orderTable ? (
                   <div className="border-2 border-sky-200 rounded-2xl overflow-hidden shadow-sm">
@@ -794,7 +805,7 @@ export default function WaiterPage() {
                     ) : (
                       <div className="grid grid-cols-4 gap-2">
                         {selfTables.map(t => (
-                          <button key={t.id} onClick={() => setOrderTable(t)}
+                          <button key={t.id} onClick={() => { setOrderTable(t); setProductSearch('') }}
                             className="bg-white border border-sky-200 hover:border-sky-400 rounded-2xl p-4 flex flex-col items-center gap-1 transition-all active:scale-95 shadow-sm">
                             <span className="text-2xl font-black text-slate-800">{t.tableNumber}</span>
                             <span className="text-[10px] text-slate-400">Table</span>
@@ -809,14 +820,34 @@ export default function WaiterPage() {
                     {/* Table banner */}
                     <div className="flex items-center justify-between bg-emerald-100 border-2 border-emerald-300 rounded-2xl px-4 py-3">
                       <span className="font-black text-emerald-700">Table {orderTable.tableNumber}</span>
-                      <button onClick={() => { setOrderTable(null); setOrderCart([]) }}
+                      <button onClick={() => { setOrderTable(null); setOrderCart([]); setProductSearch('') }}
                         className="text-xs bg-white hover:bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl font-bold text-emerald-700 transition-all">
                         ← Change
                       </button>
                     </div>
 
-                    {/* Category tabs */}
+                    {/* Product search — find an item across all categories in one go,
+                        instead of hunting through category tabs during a rush */}
                     {menuCats.length > 0 && (
+                      <div className="relative">
+                        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <input
+                          value={productSearch}
+                          onChange={e => setProductSearch(e.target.value)}
+                          placeholder={lang === 'ar' ? 'ابحث عن صنف…' : 'Search a product…'}
+                          className="w-full pl-10 pr-9 py-3 bg-white border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        />
+                        {productSearch && (
+                          <button onClick={() => setProductSearch('')}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center text-slate-400 hover:text-slate-600">
+                            <X className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Category tabs — hidden while searching (results already span all categories) */}
+                    {menuCats.length > 0 && !productSearch && (
                       <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
                         {menuCats.map(cat => (
                           <button key={cat.id} onClick={() => setActiveCat(cat.id)}
@@ -836,31 +867,41 @@ export default function WaiterPage() {
                       <div className="text-center py-8 text-slate-400">
                         <p className="text-sm">Loading menu…</p>
                       </div>
-                    ) : (
-                      <div className="grid grid-cols-2 gap-2">
-                        {(menuCats.find(c => c.id === activeCat)?.products ?? []).map(p => {
-                          const inCart = orderCart.find(c => c.productId === p.id)
-                          return (
-                            <button key={p.id} onClick={() => addToCart(p)}
-                              className={`bg-white rounded-2xl border p-3 flex flex-col gap-2 text-left transition-all active:scale-95 shadow-sm ${
-                                inCart ? 'border-emerald-400 bg-emerald-50' : 'border-slate-200 hover:border-slate-300'
-                              }`}>
-                              <p className="font-bold text-slate-800 text-xs leading-snug">
-                                {lang === 'ar' ? (p.nameAr || p.nameEn) : (p.nameEn || p.nameAr)}
-                              </p>
-                              <div className="flex items-center justify-between">
-                                <span className="text-xs font-bold text-emerald-600">{p.price} MAD</span>
-                                {inCart && (
-                                  <span className="bg-emerald-500 text-white text-xs font-black w-5 h-5 rounded-full flex items-center justify-center">
-                                    {inCart.qty}
-                                  </span>
-                                )}
-                              </div>
-                            </button>
-                          )
-                        })}
-                      </div>
-                    )}
+                    ) : (() => {
+                      const q = productSearch.trim().toLowerCase()
+                      const visibleProducts = q
+                        ? menuCats.flatMap(c => c.products).filter(p =>
+                            (p.nameEn || '').toLowerCase().includes(q) || (p.nameAr || '').toLowerCase().includes(q))
+                        : (menuCats.find(c => c.id === activeCat)?.products ?? [])
+                      if (q && visibleProducts.length === 0) {
+                        return <p className="text-center text-sm text-slate-400 py-8">{lang === 'ar' ? 'لا توجد نتائج' : 'No results'}</p>
+                      }
+                      return (
+                        <div className="grid grid-cols-2 gap-2">
+                          {visibleProducts.map(p => {
+                            const inCart = orderCart.find(c => c.productId === p.id)
+                            return (
+                              <button key={p.id} onClick={() => addToCart(p)}
+                                className={`bg-white rounded-2xl border p-3 flex flex-col gap-2 text-left transition-all active:scale-95 shadow-sm ${
+                                  inCart ? 'border-emerald-400 bg-emerald-50' : 'border-slate-200 hover:border-slate-300'
+                                }`}>
+                                <p className="font-bold text-slate-800 text-xs leading-snug">
+                                  {lang === 'ar' ? (p.nameAr || p.nameEn) : (p.nameEn || p.nameAr)}
+                                </p>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-xs font-bold text-emerald-600">{p.price} MAD</span>
+                                  {inCart && (
+                                    <span className="bg-emerald-500 text-white text-xs font-black w-5 h-5 rounded-full flex items-center justify-center">
+                                      {inCart.qty}
+                                    </span>
+                                  )}
+                                </div>
+                              </button>
+                            )
+                          })}
+                        </div>
+                      )
+                    })()}
 
                     {/* Cart */}
                     {orderCart.length > 0 && (
