@@ -1183,9 +1183,9 @@ function MenuPageInner() {
                 <p className="text-emerald-600 text-sm font-semibold">{(item.product.price * item.quantity).toFixed(2)} {currency}</p>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
-                <button onClick={() => updateQty(item.product.id, item.quantity - 1)} className="w-8 h-8 rounded-full bg-gray-100 text-gray-700 font-bold text-lg flex items-center justify-center">−</button>
+                <button onClick={() => updateQty(item.product.id, item.quantity - 1)} className="w-11 h-11 rounded-full bg-gray-100 text-gray-700 font-bold text-lg flex items-center justify-center active:scale-90 transition-transform">−</button>
                 <span className="w-5 text-center font-bold text-sm">{item.quantity}</span>
-                <button onClick={() => updateQty(item.product.id, item.quantity + 1)} className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 font-bold text-lg flex items-center justify-center">+</button>
+                <button onClick={() => updateQty(item.product.id, item.quantity + 1)} className="w-11 h-11 rounded-full bg-emerald-100 text-emerald-700 font-bold text-lg flex items-center justify-center active:scale-90 transition-transform">+</button>
               </div>
             </div>
           ))}
@@ -1339,16 +1339,16 @@ function ProductCard({ product, currency, name, cartQty, onAdd, onUpdateQty, lik
             <span className="font-bold text-gray-900">{product.price.toFixed(2)} <span className="text-xs font-medium text-gray-400">{currency}</span></span>
             {cartQty === 0 ? (
               <motion.button whileTap={{ scale: 0.82 }} onClick={onAdd}
-                className="bg-gray-900 text-white rounded-full w-9 h-9 flex items-center justify-center text-xl font-bold shadow-md">
+                className="bg-gray-900 text-white rounded-full w-11 h-11 flex items-center justify-center text-xl font-bold shadow-md">
                 +
               </motion.button>
             ) : (
               <div className="flex items-center gap-2">
                 <motion.button whileTap={{ scale: 0.85 }} onClick={() => onUpdateQty(cartQty - 1)}
-                  className="w-8 h-8 rounded-full bg-gray-100 text-gray-700 font-bold flex items-center justify-center text-lg">−</motion.button>
+                  className="w-11 h-11 rounded-full bg-gray-100 text-gray-700 font-bold flex items-center justify-center text-lg">−</motion.button>
                 <span className="w-5 text-center font-bold text-sm">{cartQty}</span>
                 <motion.button whileTap={{ scale: 0.85 }} onClick={() => onUpdateQty(cartQty + 1)}
-                  className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 font-bold flex items-center justify-center text-lg">+</motion.button>
+                  className="w-11 h-11 rounded-full bg-emerald-100 text-emerald-700 font-bold flex items-center justify-center text-lg">+</motion.button>
               </div>
             )}
           </div>

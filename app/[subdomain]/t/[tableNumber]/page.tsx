@@ -44,6 +44,7 @@ const T = {
     orderPlaced: "🎉 Order placed! We're on it.",
     failedOrder: 'Failed to place order',
     placeOrder: 'Place Order 🎉',
+    notePlaceholder: 'Add a note (e.g. no onions)…',
     waiterTitle: 'How can we help?',
     callWaiter: 'Call Waiter 🔔',
     payCash: 'Pay in Cash 💵',
@@ -107,6 +108,7 @@ const T = {
     orderPlaced: '🎉 تم الطلب! نحن على ذلك.',
     failedOrder: 'فشل في تقديم الطلب',
     placeOrder: 'اطلب الآن 🎉',
+    notePlaceholder: 'أضف ملاحظة (مثلاً: بلا بصل)…',
     waiterTitle: 'كيف يمكننا مساعدتك؟',
     callWaiter: 'استدعاء النادل 🔔',
     payCash: 'الدفع نقداً 💵',
@@ -170,6 +172,7 @@ const T = {
     orderPlaced: '🎉 Commande passée !',
     failedOrder: 'Échec de la commande',
     placeOrder: 'Commander 🎉',
+    notePlaceholder: 'Ajouter une note (ex. sans oignons)…',
     waiterTitle: 'Comment pouvons-nous vous aider ?',
     callWaiter: 'Appeler le serveur 🔔',
     payCash: 'Payer en espèces 💵',
@@ -233,6 +236,7 @@ const T = {
     orderPlaced: '🎉 ¡Pedido realizado!',
     failedOrder: 'Error al realizar el pedido',
     placeOrder: 'Pedir 🎉',
+    notePlaceholder: 'Añade una nota (ej. sin cebolla)…',
     waiterTitle: '¿Cómo podemos ayudarte?',
     callWaiter: 'Llamar al camarero 🔔',
     payCash: 'Pagar en efectivo 💵',
@@ -1372,14 +1376,14 @@ function TablePageInner() {
                           {inCart ? (
                             <>
                               <button onClick={() => removeFromCart(product.id)}
-                                className="w-7 h-7 rounded-full bg-gray-700 flex items-center justify-center text-white font-bold text-lg leading-none active:scale-90 transition-transform">−</button>
+                                className="w-11 h-11 rounded-full bg-gray-700 flex items-center justify-center text-white font-bold text-lg leading-none active:scale-90 transition-transform">−</button>
                               <span className="text-sm font-black w-5 text-center text-white">{inCart.quantity}</span>
                               <button onClick={() => addToCart(product)}
-                                className="w-7 h-7 rounded-full bg-emerald-500 flex items-center justify-center text-white font-bold text-lg leading-none active:scale-90 transition-transform">+</button>
+                                className="w-11 h-11 rounded-full bg-emerald-500 flex items-center justify-center text-white font-bold text-lg leading-none active:scale-90 transition-transform">+</button>
                             </>
                           ) : (
                             <button onClick={() => addToCart(product)}
-                              className="w-9 h-9 rounded-full bg-emerald-500 flex items-center justify-center text-white font-bold text-2xl leading-none active:scale-90 transition-transform shadow-lg shadow-emerald-500/20">+</button>
+                              className="w-11 h-11 rounded-full bg-emerald-500 flex items-center justify-center text-white font-bold text-2xl leading-none active:scale-90 transition-transform shadow-lg shadow-emerald-500/20">+</button>
                           )}
                         </div>
                       </div>
@@ -1448,16 +1452,25 @@ function TablePageInner() {
               <h3 className="font-black text-lg mb-4">{tr.viewCart}</h3>
               <div className="space-y-3 mb-4">
                 {cart.map(item => (
-                  <div key={item.productId} className="flex items-center justify-between">
-                    <div>
-                      <p className="font-bold text-sm">{item.name}</p>
-                      <p className="text-xs text-gray-400">{(item.price * item.quantity).toFixed(2)}</p>
+                  <div key={item.productId} className="pb-3 border-b border-gray-800/60 last:border-0 last:pb-0">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-bold text-sm">{item.name}</p>
+                        <p className="text-xs text-gray-400">{(item.price * item.quantity).toFixed(2)}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => removeFromCart(item.productId)} className="w-11 h-11 rounded-full bg-gray-700 flex items-center justify-center font-bold active:scale-90 transition-transform">−</button>
+                        <span className="w-5 text-center font-bold">{item.quantity}</span>
+                        <button onClick={() => setCart(prev => prev.map(c => c.productId === item.productId ? { ...c, quantity: c.quantity + 1 } : c))} className="w-11 h-11 rounded-full bg-emerald-500 flex items-center justify-center font-bold text-white active:scale-90 transition-transform">+</button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <button onClick={() => removeFromCart(item.productId)} className="w-7 h-7 rounded-full bg-gray-700 flex items-center justify-center font-bold">−</button>
-                      <span className="w-5 text-center font-bold">{item.quantity}</span>
-                      <button onClick={() => setCart(prev => prev.map(c => c.productId === item.productId ? { ...c, quantity: c.quantity + 1 } : c))} className="w-7 h-7 rounded-full bg-emerald-500 flex items-center justify-center font-bold text-white">+</button>
-                    </div>
+                    <input
+                      value={item.notes}
+                      onChange={e => setCart(prev => prev.map(c => c.productId === item.productId ? { ...c, notes: e.target.value } : c))}
+                      placeholder={tr.notePlaceholder}
+                      maxLength={140}
+                      className="mt-2 w-full bg-gray-800/60 text-white placeholder-gray-500 rounded-lg px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
                   </div>
                 ))}
               </div>
