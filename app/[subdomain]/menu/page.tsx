@@ -86,6 +86,24 @@ const UI_STRINGS = {
   gpsHint:       { ar: 'يرجى تفعيل خدمة الموقع في إعدادات المتصفح وإعادة تحميل الصفحة.', fr: 'Veuillez activer la géolocalisation dans les paramètres du navigateur et recharger la page.', en: 'Please enable location services in your browser settings and reload the page.', es: 'Active los servicios de ubicación en su navegador y recargue la página.' },
 }
 
+// ── Reservation modal strings — was hardcoded Arabic-only despite this page
+// supporting AR/FR/EN/ES everywhere else ──────────────────────────────────────
+const RES_STRINGS = {
+  title:      { ar: '📅 حجز طاولة', fr: '📅 Réserver une table', en: '📅 Book a table', es: '📅 Reservar mesa' },
+  name:       { ar: 'الاسم *', fr: 'Nom *', en: 'Name *', es: 'Nombre *' },
+  namePh:     { ar: 'اسمك الكامل', fr: 'Votre nom complet', en: 'Your full name', es: 'Tu nombre completo' },
+  phone:      { ar: 'رقم الهاتف *', fr: 'Téléphone *', en: 'Phone *', es: 'Teléfono *' },
+  guests:     { ar: 'عدد الأشخاص *', fr: 'Nombre de personnes *', en: 'Number of guests *', es: 'Número de personas *' },
+  guestsUnit: { ar: (n: number) => n === 1 ? 'شخص' : 'أشخاص', fr: (n: number) => n === 1 ? 'personne' : 'personnes', en: (n: number) => n === 1 ? 'guest' : 'guests', es: (n: number) => n === 1 ? 'persona' : 'personas' },
+  date:       { ar: 'التاريخ والوقت *', fr: 'Date et heure *', en: 'Date & time *', es: 'Fecha y hora *' },
+  notes:      { ar: 'ملاحظات (اختياري)', fr: 'Notes (optionnel)', en: 'Notes (optional)', es: 'Notas (opcional)' },
+  notesPh:    { ar: 'حساسية غذائية، مناسبة خاصة...', fr: 'Allergie, occasion spéciale...', en: 'Allergy, special occasion...', es: 'Alergia, ocasión especial...' },
+  sending:    { ar: 'جاري الإرسال…', fr: 'Envoi en cours…', en: 'Sending…', es: 'Enviando…' },
+  confirm:    { ar: 'تأكيد الحجز', fr: 'Confirmer la réservation', en: 'Confirm Reservation', es: 'Confirmar Reserva' },
+  sentTitle:  { ar: 'تم إرسال الحجز!', fr: 'Réservation envoyée !', en: 'Reservation sent!', es: '¡Reserva enviada!' },
+  sentSub:    { ar: 'سيتواصل معك المطعم للتأكيد', fr: 'Le restaurant vous contactera pour confirmer', en: 'The restaurant will contact you to confirm', es: 'El restaurante te contactará para confirmar' },
+}
+
 function MenuContent({ params }: { params: { subdomain: string } }) {
   const searchParams = useSearchParams()
   const tableToken = searchParams.get('token') ?? ''
@@ -97,6 +115,14 @@ function MenuContent({ params }: { params: { subdomain: string } }) {
   function s(key: keyof typeof UI_STRINGS): string {
     const map = UI_STRINGS[key]
     return (map as Record<string, string>)[lang] ?? map.en
+  }
+  function rs(key: Exclude<keyof typeof RES_STRINGS, 'guestsUnit'>): string {
+    const map = RES_STRINGS[key]
+    return (map as Record<string, string>)[lang] ?? map.en
+  }
+  function guestsUnit(n: number): string {
+    const fn = (RES_STRINGS.guestsUnit as Record<string, (n: number) => string>)[lang] ?? RES_STRINGS.guestsUnit.en
+    return fn(n)
   }
 
   // ── PWA: register service worker once ───────────────────────────────────────
@@ -136,6 +162,15 @@ function MenuContent({ params }: { params: { subdomain: string } }) {
   const [resSending, setResSending] = useState(false)
   // Set of productIds whose price just changed — used to flash the price tag
   const [flashedPrices, setFlashedPrices] = useState<Set<string>>(new Set())
+  // In-app toast — replaces native alert() which blocks the page and reads as
+  // a broken/cheap experience on a customer-facing menu.
+  const [toast, setToast] = useState<{ text: string; kind: 'success' | 'error' } | null>(null)
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  function showToast(text: string, kind: 'success' | 'error' = 'error') {
+    setToast({ text, kind })
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
+    toastTimerRef.current = setTimeout(() => setToast(null), 3500)
+  }
 
   const sectionRefs = useRef<Record<number, HTMLElement | null>>({})
 
@@ -309,7 +344,7 @@ function MenuContent({ params }: { params: { subdomain: string } }) {
       })
 
       if (!result.ok && !result.queued) {
-        alert(s('orderFailed'))
+        showToast(s('orderFailed'))
         return
       }
 
@@ -337,7 +372,7 @@ function MenuContent({ params }: { params: { subdomain: string } }) {
         }
       }
     } catch {
-      alert(s('networkErr'))
+      showToast(s('networkErr'))
     } finally {
       setSubmitting(false)
     }
@@ -358,10 +393,10 @@ function MenuContent({ params }: { params: { subdomain: string } }) {
         setTimeout(() => { setResOpen(false); setResSent(false) }, 2500)
       } else {
         const d = await res.json()
-        alert(d.error || s('resFailed'))
+        showToast(d.error || s('resFailed'))
       }
     } catch {
-      alert(s('networkErr'))
+      showToast(s('networkErr'))
     } finally {
       setResSending(false)
     }
@@ -375,9 +410,9 @@ function MenuContent({ params }: { params: { subdomain: string } }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tableToken })
       })
-      alert(s('billSent'))
+      showToast(s('billSent'), 'success')
     } catch {
-      alert(s('billFailed'))
+      showToast(s('billFailed'))
     }
   }
 
@@ -413,6 +448,20 @@ function MenuContent({ params }: { params: { subdomain: string } }) {
         lang={lang}
         queuedOrders={queuedOrders}
       />
+
+      {/* ── Action toast — order/reservation/bill success or failure ── */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ y: -40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -40, opacity: 0 }}
+            className={`fixed top-4 left-1/2 -translate-x-1/2 z-[60] max-w-[92vw] text-center text-white text-sm font-bold px-4 py-3 rounded-xl shadow-lg ${
+              toast.kind === 'success' ? 'bg-emerald-600' : 'bg-red-600'
+            }`}
+          >
+            {toast.text}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div dir={isRtl ? 'rtl' : 'ltr'} className="relative min-h-screen bg-gray-50 text-gray-900">
 
@@ -634,7 +683,7 @@ function MenuContent({ params }: { params: { subdomain: string } }) {
             onClick={() => setResOpen(true)}
             className="fixed bottom-4 right-4 z-30 flex items-center gap-2 bg-violet-600 hover:bg-violet-500 active:scale-95 text-white font-semibold text-sm px-4 py-2.5 rounded-full shadow-xl transition-all"
           >
-            📅 حجز طاولة
+            📅 {{ ar: 'حجز طاولة', fr: 'Réserver une table', en: 'Book a table', es: 'Reservar mesa' }[lang] ?? 'Book a table'}
           </button>
         )}
 
@@ -655,28 +704,28 @@ function MenuContent({ params }: { params: { subdomain: string } }) {
                 {resSent ? (
                   <div className="text-center py-8 space-y-3">
                     <p className="text-5xl">✅</p>
-                    <p className="font-bold text-lg text-gray-800">تم إرسال الحجز!</p>
-                    <p className="text-sm text-gray-500">سيتواصل معك المطعم للتأكيد</p>
+                    <p className="font-bold text-lg text-gray-800">{rs('sentTitle')}</p>
+                    <p className="text-sm text-gray-500">{rs('sentSub')}</p>
                   </div>
                 ) : (
                   <>
                     <div className="flex items-center justify-between">
-                      <h3 className="font-bold text-lg text-gray-900">📅 حجز طاولة</h3>
-                      <button onClick={() => setResOpen(false)} className="text-gray-400 hover:text-gray-700 text-xl leading-none">✕</button>
+                      <h3 className="font-bold text-lg text-gray-900">{rs('title')}</h3>
+                      <button onClick={() => setResOpen(false)} className="w-10 h-10 -m-1.5 flex items-center justify-center text-gray-400 hover:text-gray-700 text-xl leading-none">✕</button>
                     </div>
 
                     <div className="space-y-3">
                       <div>
-                        <label className="text-xs font-semibold text-gray-600 block mb-1">الاسم *</label>
+                        <label className="text-xs font-semibold text-gray-600 block mb-1">{rs('name')}</label>
                         <input
-                          type="text" placeholder="اسمك الكامل"
+                          type="text" placeholder={rs('namePh')}
                           value={resForm.name}
                           onChange={e => setResForm(f => ({ ...f, name: e.target.value }))}
                           className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-violet-400"
                         />
                       </div>
                       <div>
-                        <label className="text-xs font-semibold text-gray-600 block mb-1">رقم الهاتف *</label>
+                        <label className="text-xs font-semibold text-gray-600 block mb-1">{rs('phone')}</label>
                         <input
                           type="tel" placeholder="06XXXXXXXX"
                           value={resForm.phone}
@@ -686,19 +735,19 @@ function MenuContent({ params }: { params: { subdomain: string } }) {
                       </div>
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <label className="text-xs font-semibold text-gray-600 block mb-1">عدد الأشخاص *</label>
+                          <label className="text-xs font-semibold text-gray-600 block mb-1">{rs('guests')}</label>
                           <select
                             value={resForm.guests}
                             onChange={e => setResForm(f => ({ ...f, guests: Number(e.target.value) }))}
                             className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-violet-400"
                           >
                             {[1,2,3,4,5,6,7,8,10,12,15,20].map(n => (
-                              <option key={n} value={n}>{n} {n === 1 ? 'شخص' : 'أشخاص'}</option>
+                              <option key={n} value={n}>{n} {guestsUnit(n)}</option>
                             ))}
                           </select>
                         </div>
                         <div>
-                          <label className="text-xs font-semibold text-gray-600 block mb-1">التاريخ والوقت *</label>
+                          <label className="text-xs font-semibold text-gray-600 block mb-1">{rs('date')}</label>
                           <input
                             type="datetime-local"
                             min={new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16)}
@@ -709,9 +758,9 @@ function MenuContent({ params }: { params: { subdomain: string } }) {
                         </div>
                       </div>
                       <div>
-                        <label className="text-xs font-semibold text-gray-600 block mb-1">ملاحظات (اختياري)</label>
+                        <label className="text-xs font-semibold text-gray-600 block mb-1">{rs('notes')}</label>
                         <textarea
-                          placeholder="حساسية غذائية، مناسبة خاصة..."
+                          placeholder={rs('notesPh')}
                           value={resForm.notes}
                           onChange={e => setResForm(f => ({ ...f, notes: e.target.value }))}
                           rows={2}
@@ -725,10 +774,7 @@ function MenuContent({ params }: { params: { subdomain: string } }) {
                       disabled={resSending || !resForm.name || !resForm.phone || !resForm.date}
                       className="w-full bg-violet-600 hover:bg-violet-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 rounded-xl transition-all active:scale-95"
                     >
-                      {resSending
-                        ? { ar: 'جاري الإرسال…', fr: 'Envoi en cours…', en: 'Sending…', es: 'Enviando…' }[lang] ?? 'Sending…'
-                        : { ar: 'تأكيد الحجز', fr: 'Confirmer la réservation', en: 'Confirm Reservation', es: 'Confirmar Reserva' }[lang] ?? 'Confirm'
-                      }
+                      {resSending ? rs('sending') : rs('confirm')}
                     </button>
                   </>
                 )}
