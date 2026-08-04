@@ -141,10 +141,15 @@ export async function emitKdsTicket(io: SocketIOServer, orderId: string): Promis
 // Room targeting per status (multi-tenant: all rooms are scoped to cafeId):
 //   room_{cafeId}        → admin dashboard + POS waiter
 //   kds_room_{cafeId}    → kitchen display
-//   table_room_*         → customer device (PREPARING / DELIVERED only)
+//   table_room_*         → customer device (PREPARING / DELIVERED / COMPLETED)
 //
 // Extra event when status = DELIVERED (kitchen done):
 //   waiter_order_ready → emitted to room_{cafeId} so POS waiter shows a badge
+//
+// Extra event when status = COMPLETED (checkout closed the bill):
+//   table_checked_out → emitted to the customer's table room so the QR
+//   tracking page (app/[subdomain]/t/[tableNumber]/page.tsx) can show the
+//   "thank you" / completed screen instead of freezing on the last status.
 
 export function emitOrderStatusUpdate(
   io: SocketIOServer,
@@ -161,6 +166,11 @@ export function emitOrderStatusUpdate(
   // Notify customer for every meaningful lifecycle change
   if (tableId && ['PREPARING', 'READY', 'DELIVERED'].includes(status)) {
     io.to(`table_room_${cafeId}_${tableId}`).emit('your_order_updated', payload)
+  }
+
+  // Bill closed — let the customer's QR tracking page know the order is done
+  if (tableId && status === 'COMPLETED') {
+    io.to(`table_room_${cafeId}_${tableId}`).emit('table_checked_out', payload)
   }
 
   // Alert waiter when kitchen marks order READY or DELIVERED

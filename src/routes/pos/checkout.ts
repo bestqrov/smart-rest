@@ -6,12 +6,14 @@
  */
 
 import express, { Request, Response } from 'express'
+import { Server as SocketIOServer } from 'socket.io'
 import prisma from '../../prisma'
 import logger from '../../logger'
 import authorizePOS from '../../middleware/authorizePOS'
 import requireUnlockedShift from '../../middleware/requireUnlockedShift'
 import requireActiveBilling from '../../middleware/requireActiveBilling'
 import { completeOrderFinancials, awardLoyaltyBestEffort } from '../../services/orderCompletion'
+import { emitOrderStatusUpdate } from '../../services/kds'
 
 const router = express.Router()
 
@@ -75,6 +77,8 @@ router.patch('/api/pos/orders/:orderId/checkout', authorizePOS, requireUnlockedS
 
     if (didComplete) {
       await awardLoyaltyBestEffort(cafeId, order.customerPhone, order.totalPrice, orderId)
+      const io = req.app.get('io') as SocketIOServer | undefined
+      if (io) emitOrderStatusUpdate(io, cafeId, orderId, 'COMPLETED', order.tableId ?? null)
     }
 
     logger.info({ msg: 'POS checkout', orderId, staffId, totalCommission, method, billStatus })
@@ -134,9 +138,11 @@ router.patch('/api/pos/tables/:tableId/checkout', authorizePOS, requireUnlockedS
       return results
     })
 
+    const io = req.app.get('io') as SocketIOServer | undefined
     for (const { result, didComplete } of updated) {
       if (didComplete) {
         await awardLoyaltyBestEffort(cafeId, result.customerPhone, result.totalPrice, result.id)
+        if (io) emitOrderStatusUpdate(io, cafeId, result.id, 'COMPLETED', result.tableId ?? null)
       }
     }
 

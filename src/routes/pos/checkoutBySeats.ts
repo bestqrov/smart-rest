@@ -10,11 +10,13 @@
  */
 
 import express, { Request, Response } from 'express'
+import { Server as SocketIOServer } from 'socket.io'
 import prisma from '../../prisma'
 import logger from '../../logger'
 import authorizePOS from '../../middleware/authorizePOS'
 import requireActiveBilling from '../../middleware/requireActiveBilling'
 import { completeOrderFinancials, awardLoyaltyBestEffort } from '../../services/orderCompletion'
+import { emitOrderStatusUpdate } from '../../services/kds'
 
 const router = express.Router()
 
@@ -118,9 +120,11 @@ router.post('/api/pos/checkout/by-seats', authorizePOS, requireActiveBilling, as
       return results
     })
 
+    const io = req.app.get('io') as SocketIOServer | undefined
     for (const { result, didComplete } of closedResults) {
       if (didComplete) {
         await awardLoyaltyBestEffort(cafeId, result.customerPhone, result.totalPrice, result.id)
+        if (io) emitOrderStatusUpdate(io, cafeId, result.id, 'COMPLETED', result.tableId ?? null)
       }
     }
 
