@@ -30,6 +30,7 @@ import logger from './logger'
 import errorHandler from './middleware/errorHandler'
 import { requestId } from './middleware/requestId'
 import prisma from './prisma'
+import { sendErrorAlert } from './services/alerting'
 
 // routers
 import authRouter from './routes/auth'
@@ -143,7 +144,24 @@ async function main() {
     }
   }
 
-  const dev = process.env.NODE_ENV !== 'production'
+  const nodeEnv = process.env.NODE_ENV
+  const dev = nodeEnv !== 'production'
+
+  // Make the effective mode loud and explicit at boot. Same `dev` boolean
+  // and fallback behavior as before (unset NODE_ENV still runs dev mode,
+  // so local `npm run dev` is unaffected) — this only adds visibility, so
+  // a forgotten NODE_ENV=production on a real deploy shows up in the first
+  // lines of the platform's logs instead of failing silently.
+  if (nodeEnv === 'production') {
+    logger.info({ msg: '🚀 Starting in PRODUCTION mode' })
+  } else if (nodeEnv === 'development' || nodeEnv === 'test') {
+    logger.info({ msg: `Starting in ${nodeEnv.toUpperCase()} mode` })
+  } else {
+    logger.warn({
+      msg: `NODE_ENV is not set to "production" (current value: ${nodeEnv ?? 'unset'}) — running in DEVELOPMENT mode. If this is a production deployment, set NODE_ENV=production.`,
+    })
+  }
+
   const nextApp = next({ dev, dir: '.' })
   const handle = nextApp.getRequestHandler()
 
@@ -448,9 +466,13 @@ async function main() {
 // ── Process-level safety nets ───────────────────────────────────────────────
 process.on('unhandledRejection', (reason) => {
   logger.error({ msg: 'Unhandled promise rejection', reason })
+  sendErrorAlert('process', 'Unhandled promise rejection', {
+    reason: reason instanceof Error ? reason.message : String(reason),
+  })
 })
 process.on('uncaughtException', (err) => {
   logger.error({ msg: 'Uncaught exception', err })
+  sendErrorAlert('process', 'Uncaught exception — process exiting', { reason: err?.message })
   process.exit(1)
 })
 

@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express'
 import logger from '../logger'
+import { sendErrorAlert } from '../services/alerting'
 
 const SENSITIVE_KEYS = new Set([
   'password', 'passwordHash', 'token', 'refreshToken', 'accessToken',
@@ -32,6 +33,12 @@ export function errorHandler(err: any, req: Request, res: Response, next: NextFu
       ? { message: err?.message, code: err?.code }
       : err,
   })
+
+  // Non-blocking — never awaited, never throws (see alerting.ts). Only
+  // genuine server errors (5xx), not client-side validation errors (4xx).
+  if (status >= 500) {
+    sendErrorAlert('http', err?.message ?? 'Unknown error', { requestId, path: req.path, status })
+  }
 
   if (res.headersSent) return next(err)
 

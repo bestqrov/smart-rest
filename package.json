@@ -2,6 +2,9 @@
   "name": "saas-restau",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": "20.x"
+  },
   "scripts": {
     "build": "./node_modules/.bin/prisma generate && next build",
     "start": "prisma db push && ts-node --transpile-only src/server.ts",
