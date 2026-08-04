@@ -327,8 +327,9 @@ export default function ComptoirPage() {
           )}
           <button onClick={() => { mp.setShowMarketplace(true); if (menuCats.length && !mp.mpCat) mp.setMpCat(menuCats[0].id) }}
             title="Enregistrer une commande d'une app de livraison (Glovo, Uber Eats...)"
-            className="p-2 rounded-xl text-amber-500 hover:bg-amber-950 transition-colors">
-            <Bike className="w-4 h-4" />
+            className="h-9 px-2 sm:px-3 rounded-xl flex items-center gap-1.5 text-amber-500 hover:bg-amber-950 transition-colors">
+            <Bike className="w-4 h-4 shrink-0" />
+            <span className="hidden sm:inline text-xs font-bold whitespace-nowrap">Livraison</span>
           </button>
           <ShiftTimingPill timing={cashierShift.timing} />
           <div className="flex items-center gap-0.5 bg-gray-950 border border-gray-800 rounded-lg p-0.5">

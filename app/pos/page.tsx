@@ -538,8 +538,9 @@ export default function POSPage() {
           )}
           <button onClick={() => { mp.setShowMarketplace(true); if (menuCats.length && !mp.mpCat) mp.setMpCat(menuCats[0].id) }}
             title="Log a delivery-app order (Glovo, Uber Eats...)"
-            className="w-9 h-9 rounded-xl flex items-center justify-center text-amber-500 hover:bg-amber-950 transition-colors">
-            <Bike className="w-4 h-4" />
+            className="h-9 px-2 sm:px-3 rounded-xl flex items-center gap-1.5 text-amber-500 hover:bg-amber-950 transition-colors">
+            <Bike className="w-4 h-4 shrink-0" />
+            <span className="hidden sm:inline text-xs font-bold whitespace-nowrap">Delivery</span>
           </button>
           <button onClick={() => setMuted(m => !m)}
             className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${muted ? 'text-gray-600 hover:text-gray-400' : 'text-emerald-500 hover:bg-emerald-950'}`}>
