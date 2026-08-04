@@ -535,17 +535,31 @@ export default function KitchenPage() {
                 const isPend  = t.status === 'PENDING'
                 const hasAlert = alertOrderIds.current.has(t.orderId)
 
+                // Aging tickets need to read at a glance from across the kitchen, not
+                // just via a 10px dot — the same tier already used in the detail panel
+                // now tints the row border/background here too (accepted-and-alerting
+                // states still take visual priority over plain aging).
+                const tierBorder =
+                  tier === 'critical' ? 'border-l-red-500' :
+                  tier === 'warning'  ? 'border-l-orange-400' :
+                  tier === 'caution'  ? 'border-l-yellow-400' : 'border-l-transparent'
+                const tierBg = tier === 'critical' ? 'bg-red-50/40' : ''
+                const timeColor =
+                  tier === 'critical' ? 'text-red-600 font-bold' :
+                  tier === 'warning'  ? 'text-orange-500 font-semibold' :
+                  tier === 'caution'  ? 'text-yellow-600 font-semibold' : 'text-slate-400'
+
                 return (
                   <div
                     key={t.orderId}
                     onClick={() => setSelectedId(isSel ? null : t.orderId)}
                     role="button" tabIndex={0}
-                    className={`w-full text-left px-4 py-4 border-b border-slate-100 transition-all flex items-center justify-between gap-2 cursor-pointer
+                    className={`w-full text-left px-4 py-4 border-b border-slate-100 transition-all flex items-center justify-between gap-2 cursor-pointer border-l-4
                       ${isSel
-                        ? 'bg-sky-50 border-l-4 border-l-sky-500'
+                        ? 'bg-sky-50 border-l-sky-500'
                         : hasAlert && isPend
-                          ? 'bg-red-50 border-l-4 border-l-red-500 hover:bg-red-100'
-                          : 'hover:bg-slate-50 border-l-4 border-l-transparent'}
+                          ? 'bg-red-50 border-l-red-500 hover:bg-red-100'
+                          : `hover:bg-slate-50 ${tierBorder} ${tierBg}`}
                     `}
                   >
                     <div className="flex flex-col gap-1.5 min-w-0">
@@ -559,8 +573,9 @@ export default function KitchenPage() {
                       {/* Table */}
                       <span className="text-2xl font-black text-slate-800 leading-none">{t.mergeLabel}</span>
                       {/* Item count */}
-                      <span className="text-xs text-slate-400">
+                      <span className={`text-xs ${timeColor}`}>
                         {t.seatGroups.flatMap(sg => sg.items).reduce((s, i) => s + i.quantity, 0)} items · {min === 0 ? tr.justNow : tr.minAgo(min)}
+                        {tier === 'critical' && ` · ${tr.urgent}`}
                       </span>
                     </div>
 
