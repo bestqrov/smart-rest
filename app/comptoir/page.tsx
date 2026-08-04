@@ -54,6 +54,14 @@ export default function ComptoirPage() {
   const [clientBusy, setClientBusy] = useState(false)
   const [newIsWholesale, setNewIsWholesale] = useState(false)
   const [newWholesalePct, setNewWholesalePct] = useState('10')
+  // Edit wholesale status on an already-selected customer — the backend
+  // (PATCH /api/pos/customers/:id) already supported this, there was just no
+  // UI action for it (wholesale status could only be set at creation time).
+  const [editClientOpen, setEditClientOpen] = useState(false)
+  const [editIsWholesale, setEditIsWholesale] = useState(false)
+  const [editWholesalePct, setEditWholesalePct] = useState('10')
+  const [editSaving, setEditSaving] = useState(false)
+  const [editError, setEditError] = useState('')
 
   // marketplace order logging (Glovo, Uber Eats...) — shared hook, see src/hooks/useMarketplaceCart.ts
   const mp = useMarketplaceCart(posToken, pName, {
@@ -180,6 +188,37 @@ export default function ComptoirPage() {
       }
     } finally {
       setClientBusy(false)
+    }
+  }
+
+  function openEditClient() {
+    if (!client) return
+    setEditIsWholesale(client.customerType === 'WHOLESALE')
+    setEditWholesalePct(String(client.wholesaleDiscountPct ?? 10))
+    setEditError('')
+    setEditClientOpen(true)
+  }
+
+  async function saveClientEdit() {
+    if (!posToken || !client) return
+    setEditSaving(true); setEditError('')
+    try {
+      const res = await fetch(`/api/pos/customers/${client.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${posToken}` },
+        body: JSON.stringify({
+          customerType: editIsWholesale ? 'WHOLESALE' : 'RETAIL',
+          wholesaleDiscountPct: editIsWholesale ? Number(editWholesalePct) || 0 : undefined,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setEditError(data.error || 'Échec de la mise à jour'); return }
+      setClient(data.customer)
+      setEditClientOpen(false)
+    } catch {
+      setEditError('Erreur réseau')
+    } finally {
+      setEditSaving(false)
     }
   }
 
@@ -424,9 +463,17 @@ export default function ComptoirPage() {
             ) : (
               <p className="text-amber-400 text-xs font-bold">⚠ Sélectionnez un client</p>
             )}
-            <button onClick={() => setClientPicker(true)} className="px-3 py-2 -m-1 text-emerald-400 text-xs font-bold hover:text-emerald-300 active:scale-95 transition-all">
-              {client ? 'Changer' : 'Choisir'}
-            </button>
+            <div className="flex items-center gap-1 shrink-0">
+              {client && (
+                <button onClick={openEditClient} title="Modifier le statut grossiste"
+                  className="w-9 h-9 flex items-center justify-center text-gray-400 hover:text-amber-400 active:scale-90 transition-all">
+                  ✎
+                </button>
+              )}
+              <button onClick={() => setClientPicker(true)} className="px-3 py-2 -m-1 text-emerald-400 text-xs font-bold hover:text-emerald-300 active:scale-95 transition-all">
+                {client ? 'Changer' : 'Choisir'}
+              </button>
+            </div>
           </div>
           <div className="flex-1 overflow-y-auto p-3 space-y-2">
             {cart.map(item => (
@@ -545,6 +592,42 @@ export default function ComptoirPage() {
                 </button>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Edit customer wholesale status — backend already supported this
+          (PATCH /api/pos/customers/:id), there was just no UI action for an
+          already-existing customer, only at creation time. ── */}
+      {editClientOpen && client && (
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setEditClientOpen(false)}>
+          <div className="bg-gray-900 rounded-3xl p-5 w-full max-w-sm shadow-2xl" onClick={e => e.stopPropagation()}>
+            <h3 className="font-black text-white mb-1">{client.name || client.phone}</h3>
+            <p className="text-gray-500 text-xs font-mono mb-4">{client.phone}</p>
+            <label className="flex items-center gap-2 text-sm text-gray-300 mb-3">
+              <input type="checkbox" checked={editIsWholesale} onChange={e => setEditIsWholesale(e.target.checked)}
+                className="w-4 h-4 accent-amber-500" />
+              Client grossiste (revendeur)
+            </label>
+            {editIsWholesale && (
+              <div className="flex items-center gap-2 mb-4">
+                <input type="number" value={editWholesalePct} onChange={e => setEditWholesalePct(e.target.value)}
+                  min="0" max="100" placeholder="10"
+                  className="w-20 px-3 py-2 bg-gray-950 border border-amber-700/50 text-white rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500" />
+                <span className="text-xs text-amber-500">% de remise sur chaque commande</span>
+              </div>
+            )}
+            {editError && <p className="text-red-400 text-xs mb-3">{editError}</p>}
+            <div className="flex gap-2">
+              <button onClick={() => setEditClientOpen(false)}
+                className="flex-1 py-2.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-xl font-bold text-sm active:scale-95 transition-all">
+                Annuler
+              </button>
+              <button onClick={saveClientEdit} disabled={editSaving}
+                className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white rounded-xl font-bold text-sm active:scale-95 transition-all">
+                {editSaving ? 'Enregistrement…' : 'Enregistrer'}
+              </button>
+            </div>
           </div>
         </div>
       )}
