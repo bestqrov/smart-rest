@@ -4,6 +4,8 @@
 **Scope:** Production environment configuration · Deployment readiness (incl. Docker/Coolify) · Database reliability · API availability · Logging & monitoring readiness
 **Method:** Read-only code audit. No code was modified.
 
+**Update 2026-08-04 (commit `fa41a50`):** All three P1s fixed. P1-A: NODE_ENV mode now logged loudly at boot with a warning if unset/ambiguous (`src/server.ts:146-162`), `dev` boolean fallback behavior unchanged. P1-B: `"engines": {"node": "20.x"}` pinned in `package.json`, matching the tested environment — no Dockerfile added, stays Nixpacks/Coolify-compatible. P1-C: new `src/services/alerting.ts` (non-blocking webhook, `N8N_ERROR_WEBHOOK`, optional) wired into `errorHandler.ts` (5xx) and `server.ts`'s crash handlers — no secrets/stack traces sent. All three verified standalone (see commit message). Remaining known risk: on `uncaughtException`, `process.exit(1)` fires immediately after the alert call, so the webhook may not complete delivery before the process exits — inherent to non-blocking-by-design, not fixed further per the "minimal hardening" scope.
+
 ---
 
 ## PASS/FAIL
