@@ -125,7 +125,29 @@ export default function MarginsPage() {
           {/* Products table */}
           {(displayItems?.length ?? 0) > 0 && (
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-              <table className="w-full text-sm">
+              {/* Mobile: stacked cards — a 5-column table has no room to breathe on a phone */}
+              <div className="md:hidden divide-y divide-gray-50">
+                {displayItems!.map(item => (
+                  <div key={item.id} className="p-4 flex items-center gap-3">
+                    {item.imageUrl
+                      ? <img src={item.imageUrl} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0" />
+                      : <div className="w-10 h-10 rounded-lg bg-gray-100 shrink-0" />}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-gray-900 truncate text-sm">{getName(item, lang)}</p>
+                      <p className="text-xs text-gray-400">{item.categoryName}</p>
+                      <div className="flex items-center gap-3 mt-1 text-xs text-gray-500 tabular-nums">
+                        <span>{L('sell')} <b className="text-gray-700">{item.sell.toFixed(2)}</b></span>
+                        <span>{L('cost')} <b className="text-amber-600">{item.cost.toFixed(2)}</b></span>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className={`font-bold tabular-nums text-sm ${item.profit >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>{item.profit.toFixed(2)}</p>
+                      <MarginBadge pct={item.marginPct} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <table className="hidden md:table w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-100 text-gray-400 text-xs uppercase tracking-wide">
                     <th className="px-4 py-3 text-left font-semibold">Produit</th>

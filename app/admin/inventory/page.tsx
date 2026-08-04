@@ -639,7 +639,52 @@ export default function InventoryPage() {
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          {/* Mobile: stacked cards — a real desktop table forces sideways scrolling
+              to see name + status + actions together, which doesn't work one-handed. */}
+          <div className="md:hidden divide-y divide-gray-50">
+            {filtered.map(item => (
+              <div key={item.id} className={`p-4 ${item.isLow ? 'bg-red-50/30' : ''}`}>
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <p className="font-semibold text-gray-900 text-sm leading-snug">{item.ingredientName}</p>
+                  <StockBadge item={item} />
+                </div>
+                <div className="flex items-center gap-4 text-xs text-gray-500 mb-3">
+                  <span>
+                    {L('الكمية', 'Quantité', 'Qty')}{' '}
+                    <b className={`font-mono ${item.isLow ? 'text-red-600' : 'text-gray-800'}`}>{item.currentQty.toFixed(1)}</b> {item.unit}
+                  </span>
+                  <span>
+                    {L('الحد الأدنى', 'Seuil min.', 'Min')}{' '}
+                    <b className="font-mono text-gray-600">{item.minimumThreshold}</b> {item.unit}
+                  </span>
+                  <span>
+                    {L('التكلفة', 'Coût/u', 'Cost/u')}{' '}
+                    <b className="font-mono text-gray-600">{item.costPerUnit.toFixed(2)}</b>
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setAdjustItem(item)}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-gray-200 text-gray-600 text-xs font-semibold active:scale-95 transition-all"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" /> {L('تعديل الكمية', 'Ajuster', 'Adjust')}
+                  </button>
+                  <button
+                    onClick={() => handleDelete(item.id)}
+                    disabled={deleting === item.id}
+                    className="w-11 h-11 flex items-center justify-center rounded-xl border border-gray-200 text-gray-400 disabled:opacity-40 active:scale-95 transition-all"
+                    title={L('حذف', 'Supprimer', 'Delete')}
+                  >
+                    {deleting === item.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Tablet/desktop: full data table */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 text-gray-500 text-xs font-semibold uppercase tracking-wider">
@@ -702,6 +747,7 @@ export default function InventoryPage() {
               </tbody>
             </table>
           </div>
+          </>
         )}
       </div>
 
