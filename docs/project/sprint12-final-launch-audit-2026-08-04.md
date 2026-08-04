@@ -4,6 +4,8 @@
 **Scope:** Authentication & Tenant Isolation · Billing & Subscription Lifecycle · POS Financial Integrity · Database Safety · API Security · Deployment Readiness · Complete User Journey Validation
 **Method:** Four parallel read-only code audits, each evidence-cited (file:line). No code was modified as part of this audit.
 
+**Update 2026-08-04 (commit `affa0dc`):** P0-1 fixed — `src/middleware/requireActiveBilling.ts` added and wired into all POS/Comptoir/Waiter revenue-generating routes. Verified against the live DB (ACTIVE allows, SUSPENDED blocks with 403, QR flow's `orders.ts` has zero diff). P1-6 (Atlas backup verification) is still an open manual action item, not a code fix. See [[project_sprint12_final_audit]] memory for the up-to-date status.
+
 ---
 
 ## Executive Summary
