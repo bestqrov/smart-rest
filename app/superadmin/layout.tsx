@@ -4,9 +4,8 @@ import { useState, useEffect, useRef, ReactNode } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
-  LayoutDashboard, Store, FileText, CreditCard, Megaphone,
-  Brain, Zap, Workflow, ShieldCheck, BarChart3, Map,
-  Users, Activity, Settings, AlertTriangle, LogOut,
+  LayoutDashboard, Store, CreditCard,
+  Brain, ShieldCheck, LogOut,
   ChevronDown, ChevronLeft, ChevronRight, Menu, X, KeyRound, HeartPulse,
   ShoppingBag, Tag, Package, Truck, ClipboardList, Warehouse, Contact,
 } from 'lucide-react'
@@ -24,30 +23,19 @@ const NAV = [
     section: 'Business',
     items: [
       { href: '/superadmin/restaurants', icon: Store,      label: 'Restaurants' },
-      { href: '/superadmin/demo',        icon: FileText,   label: 'Demo Requests' },
       { href: '/superadmin/billing',     icon: CreditCard, label: 'Billing' },
-      { href: '/superadmin/marketing',   icon: Megaphone,  label: 'Marketing' },
     ],
   },
   {
     section: 'Artificial Intelligence',
     items: [
       { href: '/superadmin/ai-center',   icon: Brain,      label: 'AI Center' },
-      { href: '/superadmin/ai-jobs',     icon: Zap,        label: 'AI Jobs' },
-      { href: '/superadmin/automation',  icon: Workflow,   label: 'Automation' },
     ],
   },
   {
     section: 'Trust',
     items: [
       { href: '/superadmin/certification', icon: ShieldCheck, label: 'Certification' },
-    ],
-  },
-  {
-    section: 'Analytics',
-    items: [
-      { href: '/superadmin/analytics',   icon: BarChart3,  label: 'Analytics' },
-      { href: '/superadmin/client-map',  icon: Map,        label: 'Client Map' },
     ],
   },
   {
@@ -72,10 +60,6 @@ const NAV = [
     items: [
       { href: '/superadmin/client',      icon: Contact,     label: 'Clients' },
       { href: '/superadmin/credentials', icon: KeyRound,   label: 'Credentials' },
-      { href: '/superadmin/users',       icon: Users,      label: 'Users' },
-      { href: '/superadmin/activity',    icon: Activity,   label: 'Activity Log' },
-      { href: '/superadmin/settings',    icon: Settings,   label: 'Settings' },
-      { href: '/superadmin/danger-zone', icon: AlertTriangle, label: 'Danger Zone' },
     ],
   },
 ]
