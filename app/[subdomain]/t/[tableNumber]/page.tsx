@@ -12,6 +12,7 @@
 import { useState, useEffect, useRef, useCallback, Suspense } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useParams, useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 import { io as socketIO, Socket } from 'socket.io-client'
 import LiveOrderTracker from './LiveOrderTracker'
 
@@ -83,6 +84,7 @@ const T = {
     optInConfirm: 'Yes, subscribe',
     optInSkip: 'No thanks',
     optInDone: '✅ Subscribed!',
+    loyaltyCta: '🎁 Check my loyalty points',
   },
   ar: {
     scanningTitle: 'جارٍ تجهيز طاولتك…',
@@ -147,6 +149,7 @@ const T = {
     optInConfirm: 'نعم، اشترك',
     optInSkip: 'لا شكراً',
     optInDone: '✅ تم الاشتراك!',
+    loyaltyCta: '🎁 تحقق من نقط الولاء ديالي',
   },
   fr: {
     scanningTitle: 'Préparation de votre table…',
@@ -211,6 +214,7 @@ const T = {
     optInConfirm: 'Oui, s\'abonner',
     optInSkip: 'Non merci',
     optInDone: '✅ Abonné !',
+    loyaltyCta: '🎁 Voir mes points de fidélité',
   },
   es: {
     scanningTitle: 'Preparando tu mesa…',
@@ -275,6 +279,7 @@ const T = {
     optInConfirm: 'Sí, suscribirme',
     optInSkip: 'No gracias',
     optInDone: '✅ ¡Suscrito!',
+    loyaltyCta: '🎁 Ver mis puntos de fidelidad',
   },
 } as const
 
@@ -1180,6 +1185,18 @@ function TablePageInner() {
             )}
           </motion.div>
         )}
+
+        {/* Loyalty — customer just ordered, this is the moment to remind them
+            points exist. The loyalty lookup page already works end-to-end
+            (points/tier/profile) but had no link from anywhere a customer
+            could actually reach it. */}
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.75 }}
+          className="w-full max-w-xs">
+          <Link href={`/${subdomain}/loyalty`}
+            className="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-300 font-bold text-sm active:scale-95 transition-all">
+            {tr.loyaltyCta}
+          </Link>
+        </motion.div>
 
         {/* Powered by */}
         <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.9 }}
