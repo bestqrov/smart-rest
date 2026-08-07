@@ -451,6 +451,9 @@ router.delete('/api/admin/staff/:id', authorizeAdmin, async (req: Request, res: 
 //   coffeeRefPrice, sandwichRefPrice,
 //   zones: [{ name, tableCount }],
 //   managerName, managerPin (4-8 alphanumeric characters)
+//   kitchenDisplayEnabled?, loyaltyEnabled?, takeawayOnlyMode? (optional,
+//   additive — capability flags from the redesigned 3-step onboarding wizard;
+//   older clients that omit them are unaffected)
 // }
 
 router.post('/api/admin/onboarding', authorizeAdmin, async (req: Request, res: Response) => {
@@ -462,6 +465,7 @@ router.post('/api/admin/onboarding', authorizeAdmin, async (req: Request, res: R
       zones,
       managerName, managerPin,
       tier,
+      kitchenDisplayEnabled, loyaltyEnabled, takeawayOnlyMode,
     } = req.body as {
       businessName:      string
       logoUrl?:          string
@@ -473,6 +477,9 @@ router.post('/api/admin/onboarding', authorizeAdmin, async (req: Request, res: R
       managerName:       string
       managerPin:        string
       tier?:             string
+      kitchenDisplayEnabled?: boolean
+      loyaltyEnabled?:        boolean
+      takeawayOnlyMode?:      boolean
     }
 
     if (!businessName?.trim())                return res.status(400).json({ error: 'businessName is required' })
@@ -499,6 +506,9 @@ router.post('/api/admin/onboarding', authorizeAdmin, async (req: Request, res: R
         totalSeats:       totalTables,
         ...(logoUrl ? { logoUrl: logoUrl.trim() } : {}),
         ...(tier === 'CAFE' || tier === 'RESTAURANT' ? { tier } : {}),
+        ...(typeof kitchenDisplayEnabled === 'boolean' ? { kitchenDisplayEnabled } : {}),
+        ...(typeof loyaltyEnabled === 'boolean' ? { loyaltyEnabled } : {}),
+        ...(typeof takeawayOnlyMode === 'boolean' ? { takeawayOnlyMode } : {}),
         isProfileComplete: true,
       },
     })

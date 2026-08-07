@@ -1,46 +1,42 @@
 'use client'
 
 /**
- * Smart Resto — Magic-Link Signup Page
+ * Smart Resto — Registration (Step 1)
+ *
+ * Philosophy: Hide Complexity, Reveal Power. Registration collects only the
+ * minimum needed to create a tenant — everything else (business type, service
+ * style, capabilities) is deferred to the onboarding wizard after Welcome.
  *
  * Supports 4 languages: Arabic (RTL), French, English, Spanish.
- * Language is selected by the user from a dropdown or read from ?lang= query param.
  *
  * Flow:
- *  1. User fills form (cafeName, subdomain, email, country)
+ *  1. User fills form (restaurant name, email) — subdomain and country are
+ *     derived automatically, never shown.
  *  2. POST /api/auth/magic-send → server validates whitelist, creates token, sends email
  *  3. Page shows "check your inbox" state
- *  4. User clicks email link → /api/auth/magic-verify → creates account → /verify-success
+ *  4. User clicks email link → /api/auth/magic-verify → creates account → /verify-success (Welcome)
  */
 
 import { useEffect, useState, useCallback, Suspense } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useSearchParams } from 'next/navigation'
-import { Globe } from 'lucide-react'
 
 // ─── i18n (client-side subset) ────────────────────────────────────────────────
 
 type Lang = 'ar' | 'fr' | 'en' | 'es'
 
 const D = {
-  page_title:       { ar: 'أنشئ حسابك مجاناً', fr: 'Créer votre compte', en: 'Create your account', es: 'Crea tu cuenta' },
-  page_subtitle:    { ar: 'جاهز في دقيقتين · بدون بطاقة بنكية', fr: 'Prêt en 2 min · Sans carte bancaire', en: 'Ready in 2 min · No credit card', es: 'Listo en 2 min · Sin tarjeta' },
+  page_title:       { ar: 'أنشئ حسابك', fr: 'Créer votre compte', en: 'Create your account', es: 'Crea tu cuenta' },
+  page_subtitle:    { ar: 'جاهز في أقل من دقيقتين · بدون بطاقة بنكية', fr: 'Prêt en moins de 2 min · Sans carte bancaire', en: 'Ready in under 2 minutes · No credit card', es: 'Listo en menos de 2 min · Sin tarjeta' },
   brand_tagline:    { ar: 'الحل الذكي الشامل للمطاعم والفنادق والتريتور', fr: 'La solution intelligente pour restaurants, hôtels & traiteurs', en: 'The all-in-one platform for restaurants, hotels & caterers', es: 'La plataforma inteligente para restaurantes, hoteles y catering' },
-  label_lang:       { ar: 'اللغة', fr: 'Langue', en: 'Language', es: 'Idioma' },
-  label_btype:      { ar: 'اختر نوع نشاطك', fr: 'Sélectionnez votre type d\'activité', en: 'Select your business type', es: 'Selecciona tu tipo de negocio' },
-  label_cafe:       { ar: 'اسم المطعم أو المقهى', fr: 'Nom du restaurant / café', en: 'Restaurant or café name', es: 'Nombre del restaurante / café' },
-  label_sub:        { ar: 'رابط المطعم (subdomain)', fr: 'Adresse web (sous-domaine)', en: 'Web address (subdomain)', es: 'Dirección web (subdominio)' },
+  label_name:       { ar: 'اسم المطعم', fr: 'Nom du restaurant', en: 'Restaurant name', es: 'Nombre del restaurante' },
+  ph_name:          { ar: 'مثال: مقهى النجمة', fr: 'Ex. Café des Étoiles', en: 'E.g. The Golden Star', es: 'Ej. Café La Estrella' },
   label_email:      { ar: 'البريد الإلكتروني', fr: 'Adresse e-mail', en: 'E-mail address', es: 'Correo electrónico' },
-  label_country:    { ar: 'الدولة', fr: 'Pays', en: 'Country', es: 'País' },
-  ph_btype:         { ar: 'اختر نوع المنشأة', fr: 'Choisissez un type', en: 'Select a type', es: 'Selecciona un tipo' },
-  ph_cafe:          { ar: 'مثال: مقهى النجمة', fr: 'Ex. Café des Étoiles', en: 'E.g. The Golden Star', es: 'Ej. Café La Estrella' },
-  ph_sub:           { ar: 'my-cafe', fr: 'mon-cafe', en: 'my-cafe', es: 'mi-cafe' },
   ph_email:         { ar: 'you@gmail.com', fr: 'vous@gmail.com', en: 'you@gmail.com', es: 'tu@gmail.com' },
-  sub_preview:      { ar: 'سيكون رابطك:', fr: 'Votre adresse sera :', en: 'Your link will be:', es: 'Tu enlace será:' },
   email_hint:       { ar: 'نقبل Gmail · Outlook · Hotmail · Yahoo فقط', fr: 'Nous acceptons Gmail · Outlook · Hotmail · Yahoo uniquement', en: 'We accept Gmail · Outlook · Hotmail · Yahoo only', es: 'Solo aceptamos Gmail · Outlook · Hotmail · Yahoo' },
-  btn_send:         { ar: 'إرسال رابط التفعيل', fr: 'Envoyer le lien magique', en: 'Send magic link', es: 'Enviar enlace mágico' },
-  btn_sending:      { ar: 'جارٍ الإرسال…', fr: 'Envoi en cours…', en: 'Sending…', es: 'Enviando…' },
+  btn_send:         { ar: 'إنشاء حسابي', fr: 'Créer mon compte', en: 'Create my account', es: 'Crear mi cuenta' },
+  btn_sending:      { ar: 'جارٍ الإنشاء…', fr: 'Création en cours…', en: 'Creating…', es: 'Creando…' },
   ok_title:         { ar: 'تحقق من بريدك ✉️', fr: 'Vérifiez votre boîte mail ✉️', en: 'Check your inbox ✉️', es: 'Revisa tu correo ✉️' },
   ok_body:          { ar: 'أرسلنا رابطاً سحرياً إلى {email}. صالح 15 دقيقة.', fr: 'Lien envoyé à {email}. Valide 15 minutes.', en: 'Magic link sent to {email}. Valid for 15 minutes.', es: 'Enlace enviado a {email}. Válido 15 minutos.' },
   ok_spam:          { ar: 'لم يصلك؟ تحقق من السبام.', fr: 'Pas reçu ? Vérifiez le spam.', en: 'Not received? Check your spam folder.', es: '¿No lo recibiste? Revisa spam.' },
@@ -53,7 +49,6 @@ const D = {
   badge_cancel:     { ar: '✓ إلغاء في أي وقت', fr: '✓ Annulation libre', en: '✓ Cancel anytime', es: '✓ Cancela cuando quieras' },
   err_fields:       { ar: 'يرجى ملء جميع الحقول.', fr: 'Remplissez tous les champs.', en: 'Please fill in all fields.', es: 'Completa todos los campos.' },
   err_email_fmt:    { ar: 'صيغة البريد غير صحيحة.', fr: 'Adresse e-mail invalide.', en: 'Invalid email format.', es: 'Formato de correo inválido.' },
-  err_sub_fmt:      { ar: 'الرابط: أحرف إنجليزية صغيرة وأرقام وشرطات فقط.', fr: 'Sous-domaine : lettres minuscules, chiffres, tirets.', en: 'Subdomain: lowercase letters, numbers and hyphens only.', es: 'Subdominio: minúsculas, números y guiones.' },
   err_network:      { ar: 'خطأ في الشبكة. حاول مجدداً.', fr: 'Erreur réseau. Réessayez.', en: 'Network error. Please try again.', es: 'Error de red. Inténtalo de nuevo.' },
 
   // Left panel (split-screen)
@@ -90,63 +85,6 @@ const LANG_OPTIONS: { code: Lang; native: string; flag: string }[] = [
   { code: 'es', native: 'Español',  flag: '🇪🇸' },
 ]
 
-const COUNTRIES: { code: string; label: Record<Lang, string> }[] = [
-  { code: 'MA', label: { ar: 'المغرب 🇲🇦',           fr: 'Maroc 🇲🇦',                en: 'Morocco 🇲🇦',       es: 'Marruecos 🇲🇦'      } },
-  { code: 'SA', label: { ar: 'السعودية 🇸🇦',          fr: 'Arabie Saoudite 🇸🇦',      en: 'Saudi Arabia 🇸🇦',  es: 'Arabia Saudita 🇸🇦' } },
-  { code: 'AE', label: { ar: 'الإمارات 🇦🇪',          fr: 'Émirats Arabes Unis 🇦🇪',  en: 'UAE 🇦🇪',           es: 'Emiratos 🇦🇪'       } },
-  { code: 'FR', label: { ar: 'فرنسا 🇫🇷',             fr: 'France 🇫🇷',               en: 'France 🇫🇷',        es: 'Francia 🇫🇷'        } },
-  { code: 'ES', label: { ar: 'إسبانيا 🇪🇸',           fr: 'Espagne 🇪🇸',              en: 'Spain 🇪🇸',         es: 'España 🇪🇸'         } },
-  { code: 'US', label: { ar: 'الولايات المتحدة 🇺🇸',  fr: 'États-Unis 🇺🇸',           en: 'United States 🇺🇸', es: 'Estados Unidos 🇺🇸' } },
-]
-
-// ── Business types ────────────────────────────────────────────────────────────
-// accountMode values: 'RESTAURANT' (default) | 'TRAITEUR'
-type BusinessType = {
-  value: string        // accountMode value stored in DB
-  icon:  string
-  label: Record<Lang, string>
-  desc:  Record<Lang, string>
-}
-
-const BUSINESS_TYPES: BusinessType[] = [
-  {
-    value: 'RESTAURANT',
-    icon:  '🍽️',
-    label: { ar: 'مطعم',      fr: 'Restaurant',   en: 'Restaurant',  es: 'Restaurante' },
-    desc:  { ar: 'أكل ومأكولات يومية', fr: 'Cuisine du jour', en: 'Daily meals', es: 'Comidas diarias' },
-  },
-  {
-    value: 'CAFE',
-    icon:  '☕',
-    label: { ar: 'مقهى',      fr: 'Café',          en: 'Café',        es: 'Cafetería' },
-    desc:  { ar: 'مشروبات وحلويات', fr: 'Boissons & snacks', en: 'Drinks & snacks', es: 'Bebidas y snacks' },
-  },
-  {
-    value: 'TRAITEUR',
-    icon:  '🎂',
-    label: { ar: 'تريتور',    fr: 'Traiteur',      en: 'Caterer',     es: 'Catering' },
-    desc:  { ar: 'تنظيم مناسبات وحفلات', fr: 'Événements & buffets', en: 'Events & catering', es: 'Eventos y catering' },
-  },
-  {
-    value: 'PASTRY',
-    icon:  '🧁',
-    label: { ar: 'حلويات',    fr: 'Pâtisserie',    en: 'Bakery',      es: 'Pastelería' },
-    desc:  { ar: 'حلويات ومعجنات', fr: 'Gâteaux & viennoiseries', en: 'Cakes & pastries', es: 'Pasteles y repostería' },
-  },
-  {
-    value: 'FOOD_TRUCK',
-    icon:  '🚚',
-    label: { ar: 'فود تراك',  fr: 'Food Truck',    en: 'Food Truck',  es: 'Food Truck' },
-    desc:  { ar: 'مطعم متنقل', fr: 'Restaurant mobile', en: 'Mobile restaurant', es: 'Restaurante móvil' },
-  },
-  {
-    value: 'HOTEL',
-    icon:  '🏨',
-    label: { ar: 'فندق',      fr: 'Hôtel',         en: 'Hotel',       es: 'Hotel' },
-    desc:  { ar: 'خدمة الغرف والمطعم', fr: 'Room service & restaurant', en: 'Room service & dining', es: 'Room service y restaurante' },
-  },
-]
-
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 
 function toSlug(name: string): string {
@@ -155,6 +93,10 @@ function toSlug(name: string): string {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
     .slice(0, 40)
+}
+
+function randomSuffix(): string {
+  return Math.random().toString(36).slice(2, 6)
 }
 
 // ─── Inner component (needs useSearchParams, must be inside Suspense) ─────────
@@ -178,9 +120,10 @@ function SignupInner() {
 
   const [logoUrl, setLogoUrl] = useState('/assets/logo.png')
   // Pre-fill from the landing page's email-capture CTA (?email=...), if present
-  const [form, setForm]   = useState({ cafeName: '', subdomain: '', email: params.get('email') ?? '', country: 'MA' })
-  const [businessType, setBusinessType] = useState<string>('')
-  const [manualSub, setManualSub] = useState(false)
+  const [form, setForm]   = useState({ cafeName: '', email: params.get('email') ?? '' })
+  // Detected silently — never shown to the user. Country drives currency at
+  // Cafe-creation time; subdomain is derived from the restaurant name.
+  const [country, setCountry] = useState('MA')
   const [loading, setLoading]     = useState(false)
   const [error,   setError]       = useState<string | null>(null)
   const [emailTaken, setEmailTaken] = useState(false)
@@ -195,13 +138,14 @@ function SignupInner() {
       .catch(() => {})
   }, [])
 
-  // IP-based language detection (only when no ?lang= param)
+  // IP-based language + country detection (only when no ?lang= param)
   useEffect(() => {
-    if (hasUrlLang) return
     fetch('https://ipapi.co/json/')
       .then(r => r.ok ? r.json() : {})
       .then((d: any) => {
         const cc: string = (d?.country_code ?? '').toUpperCase()
+        if (cc) setCountry(cc)
+        if (hasUrlLang) return
         if (ARAB_COUNTRIES.has(cc))   setLang('ar')
         else if (FRENCH_COUNTRIES.has(cc)) setLang('fr')
         else if (SPANISH_COUNTRIES.has(cc)) setLang('es')
@@ -216,61 +160,59 @@ function SignupInner() {
     if (ve) setError(decodeURIComponent(ve))
   }, [params])
 
-  // Auto-slug cafeName → subdomain
-  useEffect(() => {
-    if (!manualSub) setForm(f => ({ ...f, subdomain: toSlug(f.cafeName) }))
-  }, [form.cafeName, manualSub])
-
-  function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
+  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const { name, value } = e.target
-    if (name === 'subdomain') setManualSub(true)
     setForm(f => ({ ...f, [name]: value }))
     setError(null)
     setEmailTaken(false)
   }
 
+  // Sends the magic-link request with a given subdomain; on a subdomain
+  // collision (409, not an email-taken error) retries once with a random
+  // suffix — the subdomain field is never shown to the user, so a collision
+  // must be resolved silently rather than surfaced as an error.
+  const sendMagicLink = useCallback(async (subdomain: string, attempt = 0): Promise<void> => {
+    const res  = await fetch('/api/auth/magic-send', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ cafeName: form.cafeName, email: form.email, subdomain, country, lang })
+    })
+    const data = await res.json()
+    if (!res.ok) {
+      if (res.status === 409 && data.error?.toLowerCase().includes('email')) {
+        setEmailTaken(true)
+        return
+      }
+      if (res.status === 409 && attempt < 3) {
+        return sendMagicLink(`${subdomain}-${randomSuffix()}`, attempt + 1)
+      }
+      setError(data.error ?? tx('err_fields', lang))
+      return
+    }
+    setSentEmail(form.email.trim().toLowerCase())
+    setSent(true)
+  }, [form, country, lang])
+
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
 
-    if (!businessType) {
-      setError(lang === 'ar' ? 'يرجى اختيار نوع المنشأة' : lang === 'fr' ? 'Choisissez le type d\'établissement' : 'Please select your establishment type')
-      return
-    }
-    if (!form.cafeName.trim() || !form.subdomain.trim() || !form.email.trim()) {
+    if (!form.cafeName.trim() || !form.email.trim()) {
       setError(tx('err_fields', lang)); return
     }
     if (!EMAIL_RE.test(form.email.trim())) {
       setError(tx('err_email_fmt', lang)); return
     }
-    if (!/^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$/.test(form.subdomain.trim())) {
-      setError(tx('err_sub_fmt', lang)); return
-    }
 
     setLoading(true)
     try {
-      const res  = await fetch('/api/auth/magic-send', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ ...form, businessType, lang })
-      })
-      const data = await res.json()
-      if (!res.ok) {
-        if (res.status === 409 && data.error?.toLowerCase().includes('email')) {
-          setEmailTaken(true)
-          return
-        }
-        setError(data.error ?? tx('err_fields', lang))
-        return
-      }
-      setSentEmail(form.email.trim().toLowerCase())
-      setSent(true)
+      await sendMagicLink(toSlug(form.cafeName))
     } catch {
       setError(tx('err_network', lang))
     } finally {
       setLoading(false)
     }
-  }, [form, lang])
+  }, [form, lang, sendMagicLink])
 
   // ── Success screen ───────────────────────────────────────────────────────────
 
@@ -414,106 +356,31 @@ function SignupInner() {
         <div className="flex-1 flex items-center justify-center px-6 sm:px-10 py-4">
           <div className="w-full max-w-md">
 
-            <div className="mb-4">
+            <div className="mb-6">
               <span className="inline-block text-[11px] font-bold tracking-wide uppercase text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full mb-2">
                 {tx('step_label', lang)}
               </span>
-              <h1 className="text-xl sm:text-2xl font-extrabold text-gray-900">{tx('page_title', lang)}</h1>
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900">{tx('page_title', lang)}</h1>
               <p className="text-gray-500 text-sm mt-1">{tx('page_subtitle', lang)}</p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-3.5" noValidate>
+            <form onSubmit={handleSubmit} className="space-y-4" noValidate>
 
-              {/* Business type selector */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  {tx('label_btype', lang)}
-                </label>
-                <div className="grid grid-cols-3 gap-1.5">
-                  {BUSINESS_TYPES.map((bt) => {
-                    const selected = businessType === bt.value
-                    return (
-                      <button
-                        key={bt.value}
-                        type="button"
-                        onClick={() => { setBusinessType(bt.value); setError(null) }}
-                        className={`flex flex-col items-center gap-0.5 p-2 rounded-xl border-2 transition-all text-center ${
-                          selected
-                            ? 'border-blue-400 bg-blue-50 shadow-sm shadow-blue-100'
-                            : 'border-gray-200 hover:border-gray-300 bg-white'
-                        }`}
-                      >
-                        <span className="text-2xl leading-none">{bt.icon}</span>
-                        <span className={`text-xs font-bold leading-tight ${selected ? 'text-blue-700' : 'text-gray-700'}`}>
-                          {bt.label[lang]}
-                        </span>
-                        <span className={`text-[10px] leading-tight hidden sm:block ${selected ? 'text-blue-500' : 'text-gray-400'}`}>
-                          {bt.desc[lang]}
-                        </span>
-                      </button>
-                    )
-                  })}
-                </div>
-                {/* Traiteur highlight banner */}
-                {businessType === 'TRAITEUR' && (
-                  <div className="mt-3 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl px-4 py-3 text-xs text-blue-800 leading-relaxed">
-                    🎉{' '}
-                    {lang === 'ar'
-                      ? 'ستحصل على Smart Traîteur — لوحة تحكم متكاملة لإدارة الحجوزات والفعاليات والقوائم بشكل احترافي.'
-                      : lang === 'fr'
-                      ? 'Vous accéderez à Smart Traiteur — tableau de bord complet pour gérer vos événements, réservations et menus.'
-                      : 'You\'ll get Smart Caterer — a full dashboard to manage your events, bookings and menus professionally.'}
-                  </div>
-                )}
-              </div>
-
-              {/* Cafe name */}
+              {/* Restaurant name */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                  {businessType === 'TRAITEUR'
-                    ? (lang === 'ar' ? 'اسم شركة التريتور' : lang === 'fr' ? 'Nom de votre entreprise traiteur' : 'Catering company name')
-                    : tx('label_cafe', lang)
-                  }
+                  {tx('label_name', lang)}
                 </label>
                 <input
                   type="text"
                   name="cafeName"
                   value={form.cafeName}
                   onChange={handleChange}
-                  placeholder={tx('ph_cafe', lang)}
+                  placeholder={tx('ph_name', lang)}
                   required
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 text-gray-800 placeholder-gray-400 transition-shadow"
+                  autoFocus
+                  className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-400 text-gray-900 text-base placeholder-gray-400 transition-shadow"
                 />
-              </div>
-
-              {/* Subdomain */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1.5">{tx('label_sub', lang)}</label>
-                <div className={`flex items-stretch rounded-2xl overflow-hidden border-2 border-blue-100 bg-blue-50/40 focus-within:ring-4 focus-within:ring-blue-100 focus-within:border-blue-400 transition-all ${isRTL ? 'flex-row-reverse' : ''}`}>
-                  <span className={`flex items-center gap-2 px-4 text-blue-500 ${isRTL ? 'border-l' : 'border-r'} border-blue-100`}>
-                    <Globe className="w-4 h-4" />
-                  </span>
-                  <input
-                    type="text"
-                    name="subdomain"
-                    value={form.subdomain}
-                    onChange={handleChange}
-                    placeholder={tx('ph_sub', lang)}
-                    required
-                    pattern="[a-z0-9][a-z0-9-]*[a-z0-9]"
-                    dir="ltr"
-                    className="flex-1 px-3 py-3.5 focus:outline-none text-gray-800 placeholder-gray-400 bg-transparent min-w-0 text-base font-medium"
-                  />
-                  <span className={`flex items-center px-4 bg-blue-100/60 text-blue-700 text-sm font-semibold whitespace-nowrap ${isRTL ? 'border-l' : 'border-r'} border-blue-100`}>
-                    .smartrestau.com
-                  </span>
-                </div>
-                {form.subdomain && (
-                  <p className="text-xs text-emerald-600 mt-1.5 flex items-center gap-1">
-                    <span>{tx('sub_preview', lang)}</span>
-                    <span dir="ltr" className="font-mono font-bold">{form.subdomain}.smartrestau.com</span>
-                  </p>
-                )}
               </div>
 
               {/* Email */}
@@ -527,24 +394,9 @@ function SignupInner() {
                   placeholder={tx('ph_email', lang)}
                   required
                   dir="ltr"
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 text-gray-800 placeholder-gray-400 transition-shadow"
+                  className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-400 text-gray-900 text-base placeholder-gray-400 transition-shadow"
                 />
-                <p className="text-xs text-gray-400 mt-1">{tx('email_hint', lang)}</p>
-              </div>
-
-              {/* Country */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1.5">{tx('label_country', lang)}</label>
-                <select
-                  name="country"
-                  value={form.country}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 text-gray-800 bg-white transition-shadow"
-                >
-                  {COUNTRIES.map(c => (
-                    <option key={c.code} value={c.code}>{c.label[lang]}</option>
-                  ))}
-                </select>
+                <p className="text-xs text-gray-400 mt-1.5">{tx('email_hint', lang)}</p>
               </div>
 
               {/* Email already taken — show login prompt */}
@@ -581,11 +433,11 @@ function SignupInner() {
                 </div>
               )}
 
-              {/* Submit */}
+              {/* Submit — single large touch target */}
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 rounded-xl font-extrabold text-white text-base transition-all active:scale-[0.98] disabled:opacity-60 bg-gradient-to-r from-blue-400 to-blue-500 hover:from-blue-500 hover:to-blue-600 shadow-lg shadow-blue-200/60"
+                className="w-full py-4 rounded-2xl font-extrabold text-white text-base transition-all active:scale-[0.98] disabled:opacity-60 bg-gradient-to-r from-blue-400 to-blue-500 hover:from-blue-500 hover:to-blue-600 shadow-lg shadow-blue-200/60"
               >
                 {loading ? tx('btn_sending', lang) : tx('btn_send', lang)}
               </button>
