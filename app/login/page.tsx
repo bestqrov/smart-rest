@@ -19,11 +19,10 @@ const T: Record<Lang, Record<string, string>> = {
     password: 'Password', passwordPh: '••••••••',
     submit: 'Sign in', submitting: 'Signing in…',
     forgotPassword: 'Forgot password?',
-    forgotTitle: 'Request a temporary password',
-    forgotSub: 'Enter your email — our team will send you a temporary password valid for 10 minutes.',
-    forgotSend: 'Send request', forgotSending: 'Sending…',
-    forgotDone: '✅ Request sent! Check your inbox shortly.',
-    forgotNotFound: '❌ No account found with this email.',
+    forgotTitle: 'Sign in without a password',
+    forgotSub: 'Enter your email — if an account exists, we\'ll send you a sign-in link.',
+    forgotSend: 'Send link', forgotSending: 'Sending…',
+    forgotDone: '✅ If an account exists, a sign-in link is on its way — check your inbox.',
     noAccount: "No account yet?", signup: 'Sign up free',
     back: '← Back',
     copyright: 'Business OS · Food & Hospitality',
@@ -45,11 +44,10 @@ const T: Record<Lang, Record<string, string>> = {
     password: 'Mot de passe', passwordPh: '••••••••',
     submit: 'Se connecter', submitting: 'Connexion…',
     forgotPassword: 'Mot de passe oublié ?',
-    forgotTitle: 'Demander un mot de passe temporaire',
-    forgotSub: 'Entrez votre email — notre équipe vous enverra un mot de passe valable 10 minutes.',
-    forgotSend: 'Envoyer la demande', forgotSending: 'Envoi…',
-    forgotDone: '✅ Demande envoyée ! Vérifiez votre boîte mail sous peu.',
-    forgotNotFound: '❌ Aucun compte trouvé avec cet email.',
+    forgotTitle: 'Se connecter sans mot de passe',
+    forgotSub: 'Entrez votre email — si un compte existe, nous vous enverrons un lien de connexion.',
+    forgotSend: 'Envoyer le lien', forgotSending: 'Envoi…',
+    forgotDone: '✅ Si un compte existe, un lien de connexion arrive — vérifiez votre boîte mail.',
     noAccount: 'Pas encore de compte ?', signup: 'Inscription gratuite',
     back: '← Retour',
     copyright: 'Business OS · Food & Hospitality',
@@ -71,11 +69,10 @@ const T: Record<Lang, Record<string, string>> = {
     password: 'كلمة المرور', passwordPh: '••••••••',
     submit: 'دخول', submitting: 'جاري الدخول…',
     forgotPassword: 'نسيت كلمة المرور؟',
-    forgotTitle: 'طلب كلمة مرور مؤقتة',
-    forgotSub: 'أدخل بريدك — سيرسل لك فريقنا كلمة مرور مؤقتة صالحة 10 دقائق.',
-    forgotSend: 'إرسال الطلب', forgotSending: 'جاري الإرسال…',
-    forgotDone: '✅ تم إرسال الطلب! تحقق من بريدك قريباً.',
-    forgotNotFound: '❌ لا يوجد حساب بهذا البريد.',
+    forgotTitle: 'تسجيل الدخول بدون كلمة مرور',
+    forgotSub: 'أدخل بريدك — إذا كان لديك حساب، سنرسل لك رابط تسجيل الدخول.',
+    forgotSend: 'إرسال الرابط', forgotSending: 'جاري الإرسال…',
+    forgotDone: '✅ إذا كان لديك حساب، رابط تسجيل الدخول في الطريق — تحقق من بريدك.',
     noAccount: 'ليس لديك حساب؟', signup: 'ابدأ مجاناً',
     back: 'رجوع ←',
     copyright: 'Business OS · Food & Hospitality',
@@ -185,8 +182,10 @@ export default function LoginPage() {
     if (!forgotEmail.trim()) return
     setForgotLoading(true); setForgotError('')
     try {
-      const res = await fetch('/api/auth/request-password-reset', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: forgotEmail.trim() }) })
-      if (res.status === 404) { setForgotError(t('forgotNotFound')); return }
+      // magic-login-send emails a working sign-in link for password-less
+      // (magic-link) accounts. It always responds 200 regardless of whether
+      // the email exists, so we never reveal account existence here.
+      await fetch('/api/auth/magic-login-send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: forgotEmail.trim(), lang }) })
       setForgotDone(true)
     } catch { setForgotError(t('errNetwork')) }
     finally { setForgotLoading(false) }
