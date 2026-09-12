@@ -11,7 +11,7 @@
  *   everything else   → NetworkFirst → cache fallback
  */
 
-const SW_VERSION    = 'v2.1'
+const SW_VERSION    = 'v2.2'
 const STATIC_CACHE  = `sr-static-${SW_VERSION}`
 const MENU_CACHE    = `sr-menu-${SW_VERSION}`
 const IMAGE_CACHE   = `sr-images-${SW_VERSION}`
@@ -245,6 +245,21 @@ self.addEventListener('activate', event => {
 // FETCH — route every request to the right strategy
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Staff/owner app routes — never intercept these. This worker is scoped to
+// '/' only because it's registered from the customer-facing QR menu page
+// (whose URL is /{subdomain}/menu, so a path-scoped registration isn't
+// possible), which means it also controls the admin/POS/auth surface for
+// any browser that has ever opened a menu page. Caching or NetworkFirst-
+// wrapping those routes' fetches (including Next.js's client-navigation
+// RSC requests) caused the "Continue" button on /verify-success to
+// silently fail to navigate. Bail out early so the browser handles these
+// natively, un-intercepted.
+const STAFF_APP_PREFIXES = [
+  '/admin', '/login', '/signup', '/verify-success',
+  '/pos', '/comptoir', '/kitchen', '/waiter',
+  '/api/auth', '/api/admin',
+]
+
 self.addEventListener('fetch', event => {
   const { request } = event
   const url = new URL(request.url)
@@ -252,6 +267,10 @@ self.addEventListener('fetch', event => {
   // Only handle same-origin + known CDN patterns
   const isSameOrigin = url.origin === self.location.origin
   const isExternal   = !isSameOrigin
+
+  if (isSameOrigin && STAFF_APP_PREFIXES.some(p => url.pathname.startsWith(p))) {
+    return
+  }
 
   // ── POST /api/orders → offline queue ──────────────────────────────────────
   if (request.method === 'POST' && url.pathname === '/api/orders') {
