@@ -21,6 +21,7 @@ export default function MagicLoginPage() {
           localStorage.setItem('token', data.token)
           if (data.refreshToken) localStorage.setItem('refreshToken', data.refreshToken)
           localStorage.setItem('cafeId', String(data.cafeId))
+          if (data.email) localStorage.setItem('userEmail', data.email)
           setStatus('success')
           setTimeout(() => router.push('/admin/dashboard'), 1200)
         } else {

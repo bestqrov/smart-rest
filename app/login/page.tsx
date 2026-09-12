@@ -136,6 +136,16 @@ export default function LoginPage() {
     }
   }, [])
 
+  // Remembered from account activation (or a previous visit) — one less
+  // thing to retype on both the sign-in and magic-link forms.
+  useEffect(() => {
+    const savedEmail = localStorage.getItem('userEmail')
+    if (savedEmail) {
+      setEmail(savedEmail)
+      setForgotEmail(savedEmail)
+    }
+  }, [])
+
   function pickLang(l: Lang) {
     setLang(l)
     setLangPicked(true)
@@ -165,6 +175,7 @@ export default function LoginPage() {
       if (data.refreshToken) localStorage.setItem('refreshToken', data.refreshToken)
       localStorage.setItem('cafeId', data.cafeId)
       localStorage.setItem('subdomain', data.subdomain ?? '')
+      localStorage.setItem('userEmail', email)
       if (data.forcePasswordChange) {
         router.push('/admin/settings?force=1')
       } else {
@@ -186,6 +197,7 @@ export default function LoginPage() {
       // (magic-link) accounts. It always responds 200 regardless of whether
       // the email exists, so we never reveal account existence here.
       await fetch('/api/auth/magic-login-send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: forgotEmail.trim(), lang }) })
+      localStorage.setItem('userEmail', forgotEmail.trim())
       setForgotDone(true)
     } catch { setForgotError(t('errNetwork')) }
     finally { setForgotLoading(false) }

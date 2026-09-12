@@ -364,7 +364,7 @@ router.get('/api/auth/magic', async (req: Request, res: Response) => {
     if (!payload.magic) return res.status(401).json({ error: 'Not a magic link token' })
 
     const { accessToken, refreshToken } = await issueTokenPair(payload.userId, payload.cafeId, {}, req)
-    return res.json({ token: accessToken, refreshToken, userId: payload.userId, cafeId: payload.cafeId })
+    return res.json({ token: accessToken, refreshToken, userId: payload.userId, cafeId: payload.cafeId, email: payload.email })
   } catch (err) {
     return res.status(500).json({ error: 'Magic link exchange failed' })
   }
@@ -391,7 +391,7 @@ router.post('/api/auth/magic-login-send', async (req: Request, res: Response) =>
 
     if (user) {
       const loginToken = jwt.sign(
-        { userId: user.id, cafeId: user.cafeId, magic: true },
+        { userId: user.id, cafeId: user.cafeId, email: cleanEmail, magic: true },
         JWT_SECRET,
         { expiresIn: '15m' }
       )
@@ -656,7 +656,7 @@ router.get('/api/auth/magic-verify', async (req: Request, res: Response) => {
     )
     const base = process.env.FRONTEND_URL ?? 'https://smartrestau.com'
     return res.redirect(
-      `${base}/verify-success?token=${sessionToken}&cafeId=${cafe.id}&subdomain=${cafe.subdomain}&lang=${lang}&country=${cafeData.country}`
+      `${base}/verify-success?token=${sessionToken}&cafeId=${cafe.id}&subdomain=${cafe.subdomain}&lang=${lang}&country=${cafeData.country}&email=${encodeURIComponent(record.email)}`
     )
   } catch (err) {
     logger.error({ msg: 'magic-verify error', err })

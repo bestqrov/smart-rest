@@ -53,6 +53,7 @@ function VerifySuccessInner() {
     const token     = params.get('token')
     const cafeId    = params.get('cafeId')
     const subdomain = params.get('subdomain')
+    const email     = params.get('email')
 
     if (!token || !cafeId) { setState('error'); return }
 
@@ -60,6 +61,8 @@ function VerifySuccessInner() {
     localStorage.setItem('token',     token)
     localStorage.setItem('cafeId',    cafeId)
     localStorage.setItem('subdomain', subdomain ?? '')
+    // Remembered so /login can auto-fill it — one less thing to retype
+    if (email) localStorage.setItem('userEmail', email)
 
     setState('welcome')
   }, [params])
