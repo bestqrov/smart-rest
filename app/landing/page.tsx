@@ -953,14 +953,14 @@ export default function LandingPage() {
           </div>
 
           {/* Desktop nav links */}
-          <div className="hidden lg:flex items-center gap-6 text-sm font-medium" style={{ color: 'var(--ctm)' }}>
-            <a href="#who"      className="transition-colors hover:opacity-100" style={{ color: 'var(--ctm)' }} onMouseEnter={e => (e.currentTarget.style.color = 'var(--ca)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--ctm)')}>{t('whoLabel')}</a>
-            <a href="#platform" className="transition-colors" style={{ color: 'var(--ctm)' }} onMouseEnter={e => (e.currentTarget.style.color = 'var(--ca)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--ctm)')}>{t('architectureLabel')}</a>
-            <a href="#features" className="transition-colors" style={{ color: 'var(--ctm)' }} onMouseEnter={e => (e.currentTarget.style.color = 'var(--ca)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--ctm)')}>{t('featLabel')}</a>
-            <a href="#business-types" className="transition-colors" style={{ color: 'var(--ctm)' }} onMouseEnter={e => (e.currentTarget.style.color = 'var(--ca)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--ctm)')}>{t('businessTypesLabel')}</a>
-            <a href="#how"      className="transition-colors" style={{ color: 'var(--ctm)' }} onMouseEnter={e => (e.currentTarget.style.color = 'var(--ca)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--ctm)')}>{t('howLabel')}</a>
-            <a href="#pricing"  className="transition-colors" style={{ color: 'var(--ctm)' }} onMouseEnter={e => (e.currentTarget.style.color = 'var(--ca)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--ctm)')}>{t('pricingLabel')}</a>
-            <a href="#contact"  className="transition-colors" style={{ color: 'var(--ctm)' }} onMouseEnter={e => (e.currentTarget.style.color = 'var(--ca)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--ctm)')}>{t('contactLabel')}</a>
+          <div className="hidden lg:flex items-center gap-5 text-[13px] font-medium" style={{ color: 'var(--ctm)' }}>
+            <a href="#who"      className="whitespace-nowrap transition-colors hover:opacity-100" style={{ color: 'var(--ctm)' }} onMouseEnter={e => (e.currentTarget.style.color = 'var(--ca)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--ctm)')}>{t('whoLabel')}</a>
+            <a href="#platform" className="whitespace-nowrap transition-colors" style={{ color: 'var(--ctm)' }} onMouseEnter={e => (e.currentTarget.style.color = 'var(--ca)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--ctm)')}>{t('architectureLabel')}</a>
+            <a href="#features" className="whitespace-nowrap transition-colors" style={{ color: 'var(--ctm)' }} onMouseEnter={e => (e.currentTarget.style.color = 'var(--ca)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--ctm)')}>{t('featLabel')}</a>
+            <a href="#business-types" className="whitespace-nowrap transition-colors" style={{ color: 'var(--ctm)' }} onMouseEnter={e => (e.currentTarget.style.color = 'var(--ca)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--ctm)')}>{t('businessTypesLabel')}</a>
+            <a href="#how"      className="whitespace-nowrap transition-colors" style={{ color: 'var(--ctm)' }} onMouseEnter={e => (e.currentTarget.style.color = 'var(--ca)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--ctm)')}>{t('howLabel')}</a>
+            <a href="#pricing"  className="whitespace-nowrap transition-colors" style={{ color: 'var(--ctm)' }} onMouseEnter={e => (e.currentTarget.style.color = 'var(--ca)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--ctm)')}>{t('pricingLabel')}</a>
+            <a href="#contact"  className="whitespace-nowrap transition-colors" style={{ color: 'var(--ctm)' }} onMouseEnter={e => (e.currentTarget.style.color = 'var(--ca)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--ctm)')}>{t('contactLabel')}</a>
           </div>
 
           {/* Right: lang switcher + theme switcher + CTAs */}
