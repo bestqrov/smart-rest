@@ -656,7 +656,7 @@ router.get('/api/auth/magic-verify', async (req: Request, res: Response) => {
     )
     const base = process.env.FRONTEND_URL ?? 'https://smartrestau.com'
     return res.redirect(
-      `${base}/verify-success?token=${sessionToken}&cafeId=${cafe.id}&subdomain=${cafe.subdomain}&lang=${lang}`
+      `${base}/verify-success?token=${sessionToken}&cafeId=${cafe.id}&subdomain=${cafe.subdomain}&lang=${lang}&country=${cafeData.country}`
     )
   } catch (err) {
     logger.error({ msg: 'magic-verify error', err })

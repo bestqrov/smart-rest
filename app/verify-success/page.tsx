@@ -19,7 +19,10 @@ const T = {
   loading:      { ar: 'جارٍ التحقق من الرابط…',          fr: 'Vérification du lien…',                  en: 'Verifying your link…',            es: 'Verificando tu enlace…'       },
   welcome:      { ar: 'مرحباً بك في Smart Resto 🎉',      fr: 'Bienvenue sur Smart Resto 🎉',            en: 'Welcome to Smart Resto 🎉',        es: '¡Bienvenido a Smart Resto! 🎉'  },
   ready:        { ar: 'مطعمك جاهز.',                     fr: 'Votre restaurant est prêt.',              en: 'Your restaurant is ready.',        es: 'Tu restaurante está listo.'    },
-  personalize:  { ar: 'خلينا نخصصو مساحة العمل ديالك.',   fr: 'Personnalisons votre espace de travail.', en: "Let's personalize your workspace.", es: 'Personalicemos tu espacio de trabajo.' },
+  // Darija ("ديالك") reads naturally to Moroccan users but is unusual/off for
+  // other Arabic-speaking countries, which share the same `lang=ar` code —
+  // so this key alone branches on country (see `personalizeText` below).
+  personalize:  { ar: 'لنخصص مساحة عملك.', ar_ma: 'خلينا نخصصو مساحة العمل ديالك.', fr: 'Personnalisons votre espace de travail.', en: "Let's personalize your workspace.", es: 'Personalicemos tu espacio de trabajo.' },
   trial:        { ar: 'بدأ أسبوعك التجريبي المجاني الآن — استمتع بجميع الميزات 7 أيام', fr: 'Votre semaine d\'essai commence maintenant — 7 jours gratuits', en: 'Your 7-day free trial has started — enjoy all features', es: 'Tu prueba de 7 días ha comenzado — disfruta todas las funciones' },
   btn_continue: { ar: 'متابعة', fr: 'Continuer', en: 'Continue', es: 'Continuar' },
   error_title:  { ar: 'رابط غير صالح',                   fr: 'Lien invalide',                           en: 'Invalid link',                     es: 'Enlace inválido'               },
@@ -39,6 +42,10 @@ function VerifySuccessInner() {
     return (l === 'ar' || l === 'fr' || l === 'en' || l === 'es') ? l : 'ar'
   })()
   const dir = lang === 'ar' ? 'rtl' : 'ltr'
+  const country = (params.get('country') ?? '').toUpperCase()
+  const personalizeText = lang === 'ar'
+    ? (country === 'MA' ? T.personalize.ar_ma : T.personalize.ar)
+    : tx('personalize', lang)
 
   const [state, setState] = useState<'loading' | 'welcome' | 'error'>('loading')
 
@@ -81,7 +88,7 @@ function VerifySuccessInner() {
             <>
               <div className="text-5xl">🎉</div>
               <p className="text-gray-900 text-base font-bold">{tx('ready', lang)}</p>
-              <p className="text-gray-500 text-sm">{tx('personalize', lang)}</p>
+              <p className="text-gray-500 text-sm">{personalizeText}</p>
               <p className="text-gray-400 text-xs leading-relaxed">{tx('trial', lang)}</p>
               <button
                 onClick={() => router.push('/admin/onboarding')}
