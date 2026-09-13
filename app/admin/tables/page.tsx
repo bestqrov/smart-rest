@@ -9,7 +9,7 @@ import {
 
 type Seat = { id: string; seatNumber: number; qrToken: string }
 type TableRow = {
-  id: string; tableNumber: number; zone: string | null; isActive: boolean; qrToken: string
+  id: string; tableNumber: number; zone: string | null; zoneId: string | null; isActive: boolean; qrToken: string
   capacity: number; displayType: number; isPickupCounter: boolean
   seats: Seat[]
   mergedIntoTableId: string | null
@@ -18,6 +18,7 @@ type TableRow = {
   activeCount?: number
   vacantCount?: number
 }
+type ZoneOption = { id: string; name: string }
 
 const DISPLAY_TYPE_LABELS: Record<number, string> = {
   1: '🃏 Carte', 2: '⛺ Tente', 3: '🎋 Support', 4: '🔮 Acrylique',
@@ -144,7 +145,9 @@ export default function TablesPage() {
   const [editCapacity, setEditCapacity] = useState(4)
   const [editDisplay,  setEditDisplay]  = useState(1)
   const [editPickup,   setEditPickup]   = useState(false)
+  const [editZoneId,   setEditZoneId]   = useState<string>('')
   const [savingId, setSavingId]         = useState<string | null>(null)
+  const [zones, setZones]               = useState<ZoneOption[]>([])
 
   function authHeader() {
     return { Authorization: `Bearer ${localStorage.getItem('token')}` }
@@ -214,6 +217,13 @@ export default function TablesPage() {
         syncCountInputs(data)
         await renderQrCodes(data, sub, logo)
       }
+
+      const zonesRes = await fetch('/api/zones', { headers: { Authorization: `Bearer ${token}` } })
+      if (zonesRes.ok) {
+        const zonesData = await zonesRes.json()
+        setZones(zonesData.map((z: any) => ({ id: z.id, name: z.name })))
+      }
+
       setLoading(false)
     })()
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -244,13 +254,16 @@ export default function TablesPage() {
     const r = await fetch(`/api/admin/tables/${tableId}`, {
       method: 'PATCH',
       headers: { ...authHeader(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ capacity: editCapacity, displayType: editDisplay, isPickupCounter: editPickup })
+      body: JSON.stringify({
+        capacity: editCapacity, displayType: editDisplay, isPickupCounter: editPickup,
+        zoneId: editZoneId || null,
+      })
     })
     if (r.ok) {
       const updated = await r.json()
       setTables(prev => prev.map(t =>
         t.id === tableId
-          ? { ...t, capacity: updated.capacity, displayType: updated.displayType, isPickupCounter: updated.isPickupCounter }
+          ? { ...t, capacity: updated.capacity, displayType: updated.displayType, isPickupCounter: updated.isPickupCounter, zoneId: updated.zoneId, zone: updated.zone }
           : t
       ))
       setEditingId(null)
@@ -544,6 +557,19 @@ export default function TablesPage() {
                         🚚
                       </label>
                       <span className="text-gray-300 mx-0.5">|</span>
+                      {/* Zone assignment — real Zone relation, not free text */}
+                      <select
+                        value={editZoneId}
+                        onChange={e => setEditZoneId(e.target.value)}
+                        className="text-xs border-0 bg-transparent text-gray-700 focus:outline-none max-w-[100px]"
+                        title="المنطقة"
+                      >
+                        <option value="">بدون منطقة</option>
+                        {zones.map(z => (
+                          <option key={z.id} value={z.id}>{z.name}</option>
+                        ))}
+                      </select>
+                      <span className="text-gray-300 mx-0.5">|</span>
                       <button
                         onClick={() => saveTableEdit(table.id)}
                         disabled={savingId === table.id}
@@ -557,7 +583,7 @@ export default function TablesPage() {
                     </div>
                   ) : (
                     <button
-                      onClick={() => { setEditingId(table.id); setEditCapacity(table.capacity); setEditDisplay(table.displayType); setEditPickup(table.isPickupCounter) }}
+                      onClick={() => { setEditingId(table.id); setEditCapacity(table.capacity); setEditDisplay(table.displayType); setEditPickup(table.isPickupCounter); setEditZoneId(table.zoneId || '') }}
                       className="flex items-center gap-1 text-xs text-gray-400 hover:text-emerald-700 border border-gray-100 hover:border-emerald-300 px-2 py-1 rounded-lg transition-colors"
                       title="تعديل الطاقة ونوع الحامل"
                     >

@@ -38,6 +38,7 @@ router.get('/api/tables', authorizeAdmin, async (req: Request, res: Response) =>
         id: true,
         tableNumber: true,
         zone: true,
+        zoneId: true,
         isActive: true,
         qrToken: true,
         capacity: true,
@@ -437,7 +438,7 @@ router.post('/api/tables/sync', authorizeAdmin, async (req: Request, res: Respon
         where: { cafeId },
         orderBy: { tableNumber: 'asc' },
         select: {
-          id: true, tableNumber: true, zone: true, isActive: true,
+          id: true, tableNumber: true, zone: true, zoneId: true, isActive: true,
           qrToken: true, capacity: true, displayType: true,
           mergedIntoTableId: true,
           mergedIntoTable: { select: { id: true, tableNumber: true } },
@@ -776,10 +777,10 @@ router.patch('/api/admin/tables/:id', authorizeAdmin, async (req: Request, res: 
   try {
     const cafeId  = req.admin!.cafeId
     const tableId = String(req.params.id)
-    const { capacity, displayType, isPickupCounter } = req.body as { capacity?: number; displayType?: number; isPickupCounter?: boolean }
+    const { capacity, displayType, isPickupCounter, zoneId } = req.body as { capacity?: number; displayType?: number; isPickupCounter?: boolean; zoneId?: string | null }
 
-    if (capacity === undefined && displayType === undefined && isPickupCounter === undefined) {
-      return res.status(400).json({ error: 'Provide at least one of: capacity, displayType, isPickupCounter' })
+    if (capacity === undefined && displayType === undefined && isPickupCounter === undefined && zoneId === undefined) {
+      return res.status(400).json({ error: 'Provide at least one of: capacity, displayType, isPickupCounter, zoneId' })
     }
     if (capacity !== undefined && (!Number.isInteger(capacity) || capacity < 1 || capacity > 20)) {
       return res.status(400).json({ error: 'capacity must be an integer between 1 and 20' })
@@ -793,17 +794,32 @@ router.patch('/api/admin/tables/:id', authorizeAdmin, async (req: Request, res: 
       return res.status(404).json({ error: 'Table not found' })
     }
 
+    // Assigning a real Zone also keeps the legacy Table.zone display string
+    // (read by the waiter app, POS and Tables page) in sync with it;
+    // zoneId: null clears both.
+    let zoneName: string | null | undefined
+    if (zoneId !== undefined) {
+      if (zoneId === null) {
+        zoneName = null
+      } else {
+        const zone = await prisma.zone.findFirst({ where: { id: zoneId, cafeId }, select: { name: true } })
+        if (!zone) return res.status(404).json({ error: 'Zone not found' })
+        zoneName = zone.name
+      }
+    }
+
     const updated = await prisma.table.update({
       where: { id: tableId },
       data:  {
         ...(capacity        !== undefined && { capacity }),
         ...(displayType     !== undefined && { displayType }),
         ...(isPickupCounter !== undefined && { isPickupCounter }),
+        ...(zoneId          !== undefined && { zoneId, zone: zoneName }),
       },
-      select: { id: true, tableNumber: true, capacity: true, displayType: true, isPickupCounter: true }
+      select: { id: true, tableNumber: true, capacity: true, displayType: true, isPickupCounter: true, zoneId: true, zone: true }
     })
 
-    logger.info({ msg: 'table updated', cafeId, tableId, capacity, displayType, isPickupCounter })
+    logger.info({ msg: 'table updated', cafeId, tableId, capacity, displayType, isPickupCounter, zoneId })
     return res.json(updated)
   } catch (err) {
     logger.error({ msg: 'PATCH /api/admin/tables/:id error', err })

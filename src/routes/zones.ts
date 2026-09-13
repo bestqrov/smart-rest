@@ -131,6 +131,15 @@ router.patch('/api/zones/:zoneId', authorizeAdmin, async (req: Request, res: Res
       }
     })
 
+    // Keep the legacy Table.zone display string (read by the waiter app,
+    // POS and Tables admin page) in sync with the real Zone name.
+    if (name !== undefined) {
+      await prisma.table.updateMany({
+        where: { zoneId, cafeId },
+        data:  { zone: updated.name }
+      })
+    }
+
     return res.json(updated)
   } catch (err) {
     logger.error({ msg: 'PATCH /api/zones/:zoneId error', err })
@@ -190,10 +199,12 @@ router.delete('/api/zones/:zoneId', authorizeAdmin, async (req: Request, res: Re
       })
     }
 
-    // Unlink tables from this zone before deletion
+    // Unlink tables from this zone before deletion — also clear the legacy
+    // Table.zone display string so orphaned tables don't keep showing a
+    // zone name that no longer exists.
     await prisma.table.updateMany({
       where: { zoneId, cafeId },
-      data: { zoneId: null }
+      data: { zoneId: null, zone: null }
     })
 
     await prisma.zone.delete({ where: { id: zoneId } })
@@ -223,10 +234,12 @@ router.post('/api/zones/:zoneId/tables/:tableId', authorizeAdmin, async (req: Re
     if (!zone)  return res.status(404).json({ error: 'Zone not found' })
     if (!table) return res.status(404).json({ error: 'Table not found' })
 
+    // Set the real relation and keep the legacy Table.zone display string
+    // (read by the waiter app, POS and Tables admin page) in sync with it.
     const updated = await prisma.table.update({
       where: { id: tableId },
-      data: { zoneId },
-      select: { id: true, tableNumber: true, zoneId: true }
+      data: { zoneId, zone: zone.name },
+      select: { id: true, tableNumber: true, zoneId: true, zone: true }
     })
 
     return res.json(updated)

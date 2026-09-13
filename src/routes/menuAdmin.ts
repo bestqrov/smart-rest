@@ -529,12 +529,15 @@ router.post('/api/admin/onboarding', authorizeAdmin, async (req: Request, res: R
       let tableNumber = 1
       await prisma.$transaction(async tx => {
         for (const zone of zones) {
+          const zoneName = zone.name.trim()
+          const zoneRecord = await tx.zone.create({ data: { cafeId, name: zoneName } })
           for (let i = 0; i < zone.tableCount; i++) {
             await tx.table.create({
               data: {
                 cafeId,
                 tableNumber: tableNumber++,
-                zone:        zone.name.trim(),
+                zone:        zoneName,
+                zoneId:      zoneRecord.id,
                 qrToken:     randomUUID(),
                 isActive:    false,
               },
