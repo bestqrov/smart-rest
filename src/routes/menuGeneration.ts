@@ -486,19 +486,22 @@ router.post('/api/admin/menu-gen/publish-draft', authorizeAdmin, async (req: Req
 
 // ── POST /api/admin/menu-gen/fetch-images ─────────────────────────────────────
 // For each item without an image, searches TheMealDB (free, no key) then
-// falls back to Unsplash Source URL based on the product name.
+// falls back to Openverse (free, no key, CC-licensed photo search) based on
+// the product name. `source.unsplash.com` used to be the fallback here but
+// that service was shut down in 2023 — every item that missed TheMealDB was
+// getting a dead image URL, which is why some menu photos never loaded.
 
 router.post('/api/admin/menu-gen/fetch-images', authorizeAdmin, async (req: Request, res: Response) => {
   try {
     const { items } = req.body as { items: { index: number; nameEn: string; nameAr: string; category: string }[] }
     if (!items?.length) return res.status(400).json({ error: 'items[] required' })
 
-    const results: { index: number; imageUrl: string }[] = []
+    const results: { index: number; imageUrl: string | null }[] = []
 
     for (const item of items) {
       // Build a clean search term (English preferred, strip special chars)
       const query = (item.nameEn || item.nameAr || '').trim().replace(/[^a-zA-Z0-9 ]/g, '').slice(0, 40)
-      if (!query) continue
+      if (!query) { results.push({ index: item.index, imageUrl: null }); continue }
 
       let imageUrl: string | null = null
 
@@ -513,12 +516,21 @@ router.post('/api/admin/menu-gen/fetch-images', authorizeAdmin, async (req: Requ
         }
       } catch {}
 
-      // 2. Fallback: Unsplash Source (no key, random matching photo)
+      // 2. Fallback: Openverse (free, no key, real search over CC-licensed photos)
       if (!imageUrl) {
-        const foodTerms = `food,${encodeURIComponent(query)}`
-        imageUrl = `https://source.unsplash.com/300x300/?${foodTerms}`
+        try {
+          const openverseRes = await fetch(
+            `https://api.openverse.org/v1/images/?q=${encodeURIComponent(`${query} food`)}&page_size=1`
+          )
+          if (openverseRes.ok) {
+            const data = await openverseRes.json() as { results: { url: string; thumbnail: string }[] }
+            imageUrl = data.results?.[0]?.thumbnail || data.results?.[0]?.url || null
+          }
+        } catch {}
       }
 
+      // No image found — leave null so the client shows a placeholder
+      // instead of a broken <img>.
       results.push({ index: item.index, imageUrl })
     }
 

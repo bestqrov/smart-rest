@@ -26,6 +26,8 @@ type Profile = {
   tripadvisorUrl:         string
   reEngagementMessage:    string
   reEngagementDays:       number
+  traiteurEnabled:        boolean
+  cakeOrdersEnabled:      boolean
 }
 
 type StaffMember = {
@@ -128,6 +130,7 @@ function SettingsInner() {
     logoUrl: '', accentColor: '#059669', primaryFont: 'Cairo', localIp: '',
     reservationsEnabled: true, googleMapsUrl: '', tripadvisorUrl: '',
     reEngagementMessage: '', reEngagementDays: 7,
+    traiteurEnabled: true, cakeOrdersEnabled: true,
   })
 
   useEffect(() => {
@@ -150,6 +153,8 @@ function SettingsInner() {
           tripadvisorUrl:         d.tripadvisorUrl ?? '',
           reEngagementMessage:    d.reEngagementMessage ?? '',
           reEngagementDays:       d.reEngagementDays ?? 7,
+          traiteurEnabled:        d.traiteurEnabled ?? true,
+          cakeOrdersEnabled:      d.cakeOrdersEnabled ?? true,
         })
       })
   }, [router])
@@ -487,6 +492,60 @@ function SettingsInner() {
               className={`relative w-12 h-6 rounded-full transition-colors ${profile.reservationsEnabled ? 'bg-emerald-500' : 'bg-gray-300'}`}
             >
               <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${profile.reservationsEnabled ? 'translate-x-6' : 'translate-x-0.5'}`} />
+            </button>
+          </div>
+
+          {/* Traiteur toggle */}
+          <div className="flex items-center justify-between py-3 border-t border-gray-100">
+            <div>
+              <p className="text-sm font-semibold text-gray-800">🎉 خدمة الطلبات الجماعية (Traiteur)</p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                {profile.traiteurEnabled ? 'مفعّلة — تظهر في القائمة الجانبية' : 'موقوفة — مخفية من القائمة الجانبية'}
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                const next = !profile.traiteurEnabled
+                setProfile(p => ({ ...p, traiteurEnabled: next }))
+                fetch('/api/admin/cafe/profile', {
+                  method: 'PUT',
+                  headers: authHeader(),
+                  body: JSON.stringify({ traiteurEnabled: next }),
+                }).then(r => {
+                  if (r.ok) showToast(next ? 'تم التفعيل ✓' : 'تم الإيقاف ✓', 'success')
+                  else showToast('فشل التحديث', 'error')
+                })
+              }}
+              className={`relative w-12 h-6 rounded-full transition-colors ${profile.traiteurEnabled ? 'bg-emerald-500' : 'bg-gray-300'}`}
+            >
+              <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${profile.traiteurEnabled ? 'translate-x-6' : 'translate-x-0.5'}`} />
+            </button>
+          </div>
+
+          {/* Cake orders toggle */}
+          <div className="flex items-center justify-between py-3 border-t border-gray-100">
+            <div>
+              <p className="text-sm font-semibold text-gray-800">🎂 طلبات الحلويات المخصصة</p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                {profile.cakeOrdersEnabled ? 'مفعّلة — تظهر في القائمة الجانبية' : 'موقوفة — مخفية من القائمة الجانبية'}
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                const next = !profile.cakeOrdersEnabled
+                setProfile(p => ({ ...p, cakeOrdersEnabled: next }))
+                fetch('/api/admin/cafe/profile', {
+                  method: 'PUT',
+                  headers: authHeader(),
+                  body: JSON.stringify({ cakeOrdersEnabled: next }),
+                }).then(r => {
+                  if (r.ok) showToast(next ? 'تم التفعيل ✓' : 'تم الإيقاف ✓', 'success')
+                  else showToast('فشل التحديث', 'error')
+                })
+              }}
+              className={`relative w-12 h-6 rounded-full transition-colors ${profile.cakeOrdersEnabled ? 'bg-emerald-500' : 'bg-gray-300'}`}
+            >
+              <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${profile.cakeOrdersEnabled ? 'translate-x-6' : 'translate-x-0.5'}`} />
             </button>
           </div>
 

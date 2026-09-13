@@ -642,14 +642,14 @@ export default function MenuGenPage() {
         body: JSON.stringify({ items: itemsWithoutImage })
       })
       const data = await res.json()
-      if (!res.ok || !data.results) return
-      const results: { index: number; imageUrl: string }[] = data.results
+      if (!res.ok || !data.results) { setErrMsg('Image fetch failed'); return }
+      const results: { index: number; imageUrl: string | null }[] = data.results
       setItems(prev => prev.map((it, i) => {
         const found = results.find(r => r.index === i)
-        return found ? { ...it, imageUrl: found.imageUrl } : it
+        return found?.imageUrl ? { ...it, imageUrl: found.imageUrl } : it
       }))
       setImagesFetched(true)
-    } catch {}
+    } catch { setErrMsg('Network error') }
     finally { setFetchingImages(false) }
   }
 

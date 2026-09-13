@@ -75,6 +75,7 @@ function groupOf(pathname: string): NavGroup['group'] {
 
 export default function AdminSidebarNav({
   pathname, lang, isRTL, t, marketplaceEnabled, cafeInventoryEnabled, onNavigate,
+  traiteurEnabled = true, cakeOrdersEnabled = true,
   itemClassName = 'px-3 py-2.5 rounded-lg text-sm',
 }: {
   pathname: string
@@ -85,6 +86,8 @@ export default function AdminSidebarNav({
   marketplaceEnabled: boolean
   cafeInventoryEnabled: boolean | null
   onNavigate?: () => void
+  traiteurEnabled?: boolean
+  cakeOrdersEnabled?: boolean
   itemClassName?: string
 }) {
   const [expanded, setExpanded] = useState<NavGroup['group'] | null>(() => groupOf(pathname))
@@ -104,6 +107,10 @@ export default function AdminSidebarNav({
         const label = GROUP_LABEL[g.group][lang] ?? GROUP_LABEL[g.group].en
         // Single-item groups render their item directly — no accordion header.
         const isSingleItem = g.group === 'overview' || g.group === 'settingsGroup'
+        const items = g.items.filter(item =>
+          (item.key !== 'traiteur' || traiteurEnabled) &&
+          (item.key !== 'cakeOrders' || cakeOrdersEnabled)
+        )
 
         return (
           <div key={g.group} className="mb-1">
@@ -117,7 +124,7 @@ export default function AdminSidebarNav({
                 <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${isOpen ? 'rotate-0' : (isRTL ? 'rotate-90' : '-rotate-90')}`} />
               </button>
             )}
-            {isSingleItem ? g.items.map(item => (
+            {isSingleItem ? items.map(item => (
               <Link key={item.href} href={item.href} onClick={onNavigate} className={linkClass(pathname === item.href || pathname.startsWith(item.href + '/'))}>
                 <item.icon className="w-5 h-5 shrink-0" />
                 <span className="font-medium flex-1">{t[item.key]}</span>
@@ -125,7 +132,7 @@ export default function AdminSidebarNav({
             )) : (
               <div className={`grid transition-all duration-300 ease-in-out ${isOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
                 <div className="overflow-hidden">
-                  {g.items.map(item => {
+                  {items.map(item => {
                     const active = pathname === item.href || pathname.startsWith(item.href + '/')
                     return (
                       <Link key={item.href} href={item.href} onClick={onNavigate} className={linkClass(active)}>

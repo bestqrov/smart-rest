@@ -29,9 +29,11 @@ const T = {
     table:       'خدمة على الطاولة',
     takeaway:    'بيع للخروج فقط',
     both:        'الاثنين معاً',
-    step3_title: 'ما الأدوات التي تستخدمها بالفعل؟',
+    step3_title: 'خصص أدواتك',
     kitchen:     'شاشة المطبخ',
     loyalty:     'برنامج الولاء',
+    traiteur:    'خدمة الطلبات الجماعية (Traiteur)',
+    cakeOrders:  'طلبات الحلويات المخصصة',
     next:        'التالي',
     back:        'رجوع',
     finish:      'إنهاء الإعداد',
@@ -46,9 +48,11 @@ const T = {
     table:       'Service à table',
     takeaway:    'Vente à emporter uniquement',
     both:        'Les deux',
-    step3_title: 'Quels outils utilisez-vous déjà ?',
+    step3_title: 'Personnalisez vos outils',
     kitchen:     'Écran cuisine',
     loyalty:     'Programme de fidélité',
+    traiteur:    'Service traiteur',
+    cakeOrders:  'Commandes de gâteaux personnalisés',
     next:        'Suivant',
     back:        'Retour',
     finish:      "Terminer l'installation",
@@ -63,9 +67,11 @@ const T = {
     table:       'Table Service',
     takeaway:    'Take Away Only',
     both:        'Both',
-    step3_title: 'Which optional tools do you already use?',
+    step3_title: 'Customize your tools',
     kitchen:     'Kitchen Display',
     loyalty:     'Loyalty Program',
+    traiteur:    'Catering (Traiteur)',
+    cakeOrders:  'Custom Cake Orders',
     next:        'Next',
     back:        'Back',
     finish:      'Finish setup',
@@ -80,9 +86,11 @@ const T = {
     table:       'Servicio en mesa',
     takeaway:    'Solo para llevar',
     both:        'Ambos',
-    step3_title: '¿Qué herramientas ya usas?',
+    step3_title: 'Personaliza tus herramientas',
     kitchen:     'Pantalla de cocina',
     loyalty:     'Programa de fidelidad',
+    traiteur:    'Servicio de catering',
+    cakeOrders:  'Pedidos de pasteles personalizados',
     next:        'Siguiente',
     back:        'Atrás',
     finish:      'Finalizar configuración',
@@ -131,6 +139,8 @@ export default function OnboardingPage() {
   const [serviceStyle,  setServiceStyle]  = useState<ServiceStyle>('TABLE')
   const [kitchenDisplayEnabled, setKitchenDisplayEnabled] = useState(true)
   const [loyaltyEnabled,        setLoyaltyEnabled]        = useState(true)
+  const [traiteurEnabled,       setTraiteurEnabled]       = useState(false)
+  const [cakeOrdersEnabled,     setCakeOrdersEnabled]     = useState(false)
 
   // Profile fetched once — supplies businessName/country/currency so the
   // legacy required fields on POST /api/admin/onboarding can be filled in
@@ -176,6 +186,8 @@ export default function OnboardingPage() {
           kitchenDisplayEnabled,
           loyaltyEnabled,
           takeawayOnlyMode: serviceStyle === 'TAKEAWAY',
+          traiteurEnabled,
+          cakeOrdersEnabled,
         }),
       })
       const body = await res.json()
@@ -289,6 +301,8 @@ export default function OnboardingPage() {
                 {([
                   ['kitchen', t.kitchen, kitchenDisplayEnabled, setKitchenDisplayEnabled],
                   ['loyalty', t.loyalty, loyaltyEnabled, setLoyaltyEnabled],
+                  ['traiteur', t.traiteur, traiteurEnabled, setTraiteurEnabled],
+                  ['cakeOrders', t.cakeOrders, cakeOrdersEnabled, setCakeOrdersEnabled],
                 ] as [string, string, boolean, (v: boolean) => void][]).map(([key, label, value, setValue]) => (
                   <div key={key} className="w-full flex items-center justify-between px-6 py-5 rounded-2xl border-2 border-gray-200 bg-white">
                     <span className="text-base font-bold text-gray-700">{label}</span>

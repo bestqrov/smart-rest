@@ -40,6 +40,8 @@ type CafeState = {
   subscriptionTier: string | null
   logoUrl: string | null
   isSmartInventoryEnabled: boolean
+  traiteurEnabled: boolean
+  cakeOrdersEnabled: boolean
 }
 
 // ── Payment Gate translations ─────────────────────────────────────────────────
@@ -322,6 +324,14 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
         router.replace('/admin/onboarding')
         return
       }
+      if (pathname.startsWith('/admin/traiteur') && profile.traiteurEnabled === false) {
+        router.replace('/admin/dashboard')
+        return
+      }
+      if (pathname.startsWith('/admin/cake-orders') && profile.cakeOrdersEnabled === false) {
+        router.replace('/admin/dashboard')
+        return
+      }
       setCafe({
         name:                    profile.businessName || profile.name,
         subdomain:               profile.subdomain,
@@ -334,6 +344,8 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
         subscriptionTier:        finance?.subscriptionTier ?? profile.subscriptionTier ?? null,
         logoUrl:                 profile.logoUrl ?? null,
         isSmartInventoryEnabled: profile.isSmartInventoryEnabled ?? false,
+        traiteurEnabled:         profile.traiteurEnabled ?? true,
+        cakeOrdersEnabled:       profile.cakeOrdersEnabled ?? true,
       })
     }
   }
@@ -540,6 +552,8 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
             t={t}
             marketplaceEnabled={marketplaceEnabled}
             cafeInventoryEnabled={cafe ? cafe.isSmartInventoryEnabled : null}
+            traiteurEnabled={cafe ? cafe.traiteurEnabled : true}
+            cakeOrdersEnabled={cafe ? cafe.cakeOrdersEnabled : true}
           />
         </nav>
 
@@ -607,6 +621,8 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
                 t={t}
                 marketplaceEnabled={marketplaceEnabled}
                 cafeInventoryEnabled={cafe ? cafe.isSmartInventoryEnabled : null}
+                traiteurEnabled={cafe ? cafe.traiteurEnabled : true}
+                cakeOrdersEnabled={cafe ? cafe.cakeOrdersEnabled : true}
                 onNavigate={() => setOpen(false)}
                 itemClassName="px-3 py-3 rounded-xl"
               />

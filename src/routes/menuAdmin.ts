@@ -180,7 +180,7 @@ router.delete('/api/admin/products/:id', authorizeAdmin, async (req: Request, re
 router.put('/api/admin/cafe/profile', authorizeAdmin, async (req: Request, res: Response) => {
   try {
     const cafeId = req.admin!.cafeId
-    const { businessName, logoUrl, socialLinks, hasSocialShareAddon, lat, lng, accentColor, primaryFont, localIp, reservationsEnabled, googleMapsUrl, tripadvisorUrl, reEngagementMessage, reEngagementDays } = req.body
+    const { businessName, logoUrl, socialLinks, hasSocialShareAddon, lat, lng, accentColor, primaryFont, localIp, reservationsEnabled, googleMapsUrl, tripadvisorUrl, reEngagementMessage, reEngagementDays, traiteurEnabled, cakeOrdersEnabled } = req.body
     const cafe = await prisma.cafe.update({
       where: { id: cafeId },
       data: {
@@ -198,6 +198,8 @@ router.put('/api/admin/cafe/profile', authorizeAdmin, async (req: Request, res: 
         ...(tripadvisorUrl !== undefined && { tripadvisorUrl: tripadvisorUrl || null }),
         ...(reEngagementMessage !== undefined && { reEngagementMessage: reEngagementMessage || null }),
         ...(reEngagementDays !== undefined && { reEngagementDays: Number(reEngagementDays) }),
+        ...(traiteurEnabled !== undefined && { traiteurEnabled: Boolean(traiteurEnabled) }),
+        ...(cakeOrdersEnabled !== undefined && { cakeOrdersEnabled: Boolean(cakeOrdersEnabled) }),
       }
     })
     return res.json(cafe)
@@ -222,7 +224,8 @@ router.get('/api/admin/cafe/profile', authorizeAdmin, async (req: Request, res: 
         accentColor: true, primaryFont: true, localIp: true,
         reservationsEnabled: true, isSmartInventoryEnabled: true,
         googleMapsUrl: true, tripadvisorUrl: true,
-        reEngagementMessage: true, reEngagementDays: true
+        reEngagementMessage: true, reEngagementDays: true,
+        traiteurEnabled: true, cakeOrdersEnabled: true
       }
     })
     return res.json(cafe)
@@ -451,9 +454,10 @@ router.delete('/api/admin/staff/:id', authorizeAdmin, async (req: Request, res: 
 //   coffeeRefPrice, sandwichRefPrice,
 //   zones: [{ name, tableCount }],
 //   managerName, managerPin (4-8 alphanumeric characters)
-//   kitchenDisplayEnabled?, loyaltyEnabled?, takeawayOnlyMode? (optional,
-//   additive — capability flags from the redesigned 3-step onboarding wizard;
-//   older clients that omit them are unaffected)
+//   kitchenDisplayEnabled?, loyaltyEnabled?, takeawayOnlyMode?, traiteurEnabled?,
+//   cakeOrdersEnabled? (optional, additive — capability flags from the
+//   redesigned 3-step onboarding wizard; older clients that omit them are
+//   unaffected)
 // }
 
 router.post('/api/admin/onboarding', authorizeAdmin, async (req: Request, res: Response) => {
@@ -466,6 +470,7 @@ router.post('/api/admin/onboarding', authorizeAdmin, async (req: Request, res: R
       managerName, managerPin,
       tier,
       kitchenDisplayEnabled, loyaltyEnabled, takeawayOnlyMode,
+      traiteurEnabled, cakeOrdersEnabled,
     } = req.body as {
       businessName:      string
       logoUrl?:          string
@@ -480,6 +485,8 @@ router.post('/api/admin/onboarding', authorizeAdmin, async (req: Request, res: R
       kitchenDisplayEnabled?: boolean
       loyaltyEnabled?:        boolean
       takeawayOnlyMode?:      boolean
+      traiteurEnabled?:       boolean
+      cakeOrdersEnabled?:     boolean
     }
 
     if (!businessName?.trim())                return res.status(400).json({ error: 'businessName is required' })
@@ -509,6 +516,8 @@ router.post('/api/admin/onboarding', authorizeAdmin, async (req: Request, res: R
         ...(typeof kitchenDisplayEnabled === 'boolean' ? { kitchenDisplayEnabled } : {}),
         ...(typeof loyaltyEnabled === 'boolean' ? { loyaltyEnabled } : {}),
         ...(typeof takeawayOnlyMode === 'boolean' ? { takeawayOnlyMode } : {}),
+        ...(typeof traiteurEnabled === 'boolean' ? { traiteurEnabled } : {}),
+        ...(typeof cakeOrdersEnabled === 'boolean' ? { cakeOrdersEnabled } : {}),
         isProfileComplete: true,
       },
     })
