@@ -384,6 +384,19 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
     setIsDemo(localStorage.getItem('isDemo') === '1')
   }, [])
 
+  // Demo tenants only get a curated slice of the panel (dashboard, menu, QR
+  // ordering) — bounce any direct-URL visit to the full operator toolset
+  // (staff, financials, inventory, payroll...) back to the demo dashboard.
+  useEffect(() => {
+    if (!isDemo) return
+    const allowed =
+      pathname === '/admin' ||
+      pathname === '/admin/dashboard' || pathname.startsWith('/admin/dashboard/') ||
+      pathname === '/admin/menu'      || pathname.startsWith('/admin/menu/') ||
+      pathname === '/admin/tables'    || pathname.startsWith('/admin/tables/')
+    if (!allowed) router.replace('/admin/dashboard')
+  }, [isDemo, pathname, router])
+
   useEffect(() => { loadCafe() }, [router, pathname])
 
   useEffect(() => {
@@ -561,6 +574,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
             traiteurEnabled={cafe ? cafe.traiteurEnabled : true}
             cakeOrdersEnabled={cafe ? cafe.cakeOrdersEnabled : true}
             reservationsEnabled={cafe ? cafe.reservationsEnabled : true}
+            isDemo={isDemo}
           />
         </nav>
 
@@ -631,6 +645,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
                 traiteurEnabled={cafe ? cafe.traiteurEnabled : true}
                 cakeOrdersEnabled={cafe ? cafe.cakeOrdersEnabled : true}
                 reservationsEnabled={cafe ? cafe.reservationsEnabled : true}
+                isDemo={isDemo}
                 onNavigate={() => setOpen(false)}
                 itemClassName="px-3 py-3 rounded-xl"
               />
@@ -658,7 +673,9 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
           <AdminWeatherWidget authHeader={authHeader} />
           <div className="w-px h-6 bg-gray-200" />
           <div className="flex items-center gap-1.5">
-            {STAFF_LINKS.map(item => (
+            {/* Demo tenants only get the quick-launch links relevant to the
+                curated demo scope (menu + QR ordering + a simple POS). */}
+            {STAFF_LINKS.filter(item => !isDemo || item.key === 'miniPos').map(item => (
               <a key={item.href} href={cafe?.subdomain ? `${item.href}?sub=${cafe.subdomain}` : item.href} target="_blank" rel="noopener noreferrer"
                 title={t[item.key as keyof AdminT]}
                 className={`p-2 rounded-lg transition-colors ${item.color}`}>

@@ -73,9 +73,15 @@ function groupOf(pathname: string): NavGroup['group'] {
   return 'overview'
 }
 
+// Live demo tenants (isDemo=true) show a small, curated slice of the panel —
+// not the full ~20-section operator toolset (staff, financials, inventory,
+// payroll...) meant for a paying restaurant's back office.
+const DEMO_ALLOWED_KEYS: (keyof AdminT)[] = ['dashboard', 'menu', 'tables']
+
 export default function AdminSidebarNav({
   pathname, lang, isRTL, t, marketplaceEnabled, cafeInventoryEnabled, onNavigate,
   traiteurEnabled = true, cakeOrdersEnabled = true, reservationsEnabled = true,
+  isDemo = false,
   itemClassName = 'px-3 py-2.5 rounded-lg text-sm',
 }: {
   pathname: string
@@ -89,6 +95,7 @@ export default function AdminSidebarNav({
   traiteurEnabled?: boolean
   cakeOrdersEnabled?: boolean
   reservationsEnabled?: boolean
+  isDemo?: boolean
   itemClassName?: string
 }) {
   const [expanded, setExpanded] = useState<NavGroup['group'] | null>(() => groupOf(pathname))
@@ -111,8 +118,10 @@ export default function AdminSidebarNav({
         const items = g.items.filter(item =>
           (item.key !== 'traiteur' || traiteurEnabled) &&
           (item.key !== 'cakeOrders' || cakeOrdersEnabled) &&
-          (item.key !== 'reservations' || reservationsEnabled)
+          (item.key !== 'reservations' || reservationsEnabled) &&
+          (!isDemo || DEMO_ALLOWED_KEYS.includes(item.key))
         )
+        if (items.length === 0) return null
 
         return (
           <div key={g.group} className="mb-1">
