@@ -42,6 +42,7 @@ type CafeState = {
   isSmartInventoryEnabled: boolean
   traiteurEnabled: boolean
   cakeOrdersEnabled: boolean
+  reservationsEnabled: boolean
 }
 
 // ── Payment Gate translations ─────────────────────────────────────────────────
@@ -332,6 +333,10 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
         router.replace('/admin/dashboard')
         return
       }
+      if (pathname.startsWith('/admin/reservations') && profile.reservationsEnabled === false) {
+        router.replace('/admin/dashboard')
+        return
+      }
       setCafe({
         name:                    profile.businessName || profile.name,
         subdomain:               profile.subdomain,
@@ -346,6 +351,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
         isSmartInventoryEnabled: profile.isSmartInventoryEnabled ?? false,
         traiteurEnabled:         profile.traiteurEnabled ?? true,
         cakeOrdersEnabled:       profile.cakeOrdersEnabled ?? true,
+        reservationsEnabled:     profile.reservationsEnabled ?? true,
       })
     }
   }
@@ -554,6 +560,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
             cafeInventoryEnabled={cafe ? cafe.isSmartInventoryEnabled : null}
             traiteurEnabled={cafe ? cafe.traiteurEnabled : true}
             cakeOrdersEnabled={cafe ? cafe.cakeOrdersEnabled : true}
+            reservationsEnabled={cafe ? cafe.reservationsEnabled : true}
           />
         </nav>
 
@@ -623,6 +630,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
                 cafeInventoryEnabled={cafe ? cafe.isSmartInventoryEnabled : null}
                 traiteurEnabled={cafe ? cafe.traiteurEnabled : true}
                 cakeOrdersEnabled={cafe ? cafe.cakeOrdersEnabled : true}
+                reservationsEnabled={cafe ? cafe.reservationsEnabled : true}
                 onNavigate={() => setOpen(false)}
                 itemClassName="px-3 py-3 rounded-xl"
               />

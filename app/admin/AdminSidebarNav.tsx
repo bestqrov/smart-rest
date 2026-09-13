@@ -75,7 +75,7 @@ function groupOf(pathname: string): NavGroup['group'] {
 
 export default function AdminSidebarNav({
   pathname, lang, isRTL, t, marketplaceEnabled, cafeInventoryEnabled, onNavigate,
-  traiteurEnabled = true, cakeOrdersEnabled = true,
+  traiteurEnabled = true, cakeOrdersEnabled = true, reservationsEnabled = true,
   itemClassName = 'px-3 py-2.5 rounded-lg text-sm',
 }: {
   pathname: string
@@ -88,6 +88,7 @@ export default function AdminSidebarNav({
   onNavigate?: () => void
   traiteurEnabled?: boolean
   cakeOrdersEnabled?: boolean
+  reservationsEnabled?: boolean
   itemClassName?: string
 }) {
   const [expanded, setExpanded] = useState<NavGroup['group'] | null>(() => groupOf(pathname))
@@ -109,7 +110,8 @@ export default function AdminSidebarNav({
         const isSingleItem = g.group === 'overview' || g.group === 'settingsGroup'
         const items = g.items.filter(item =>
           (item.key !== 'traiteur' || traiteurEnabled) &&
-          (item.key !== 'cakeOrders' || cakeOrdersEnabled)
+          (item.key !== 'cakeOrders' || cakeOrdersEnabled) &&
+          (item.key !== 'reservations' || reservationsEnabled)
         )
 
         return (

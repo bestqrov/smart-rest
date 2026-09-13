@@ -48,9 +48,12 @@ router.post('/api/reservations', async (req: Request, res: Response) => {
     // Resolve cafeId from tableToken
     const table = await prisma.table.findFirst({
       where:  { qrToken: tableToken, isActive: true },
-      select: { cafeId: true }
+      select: { cafeId: true, cafe: { select: { reservationsEnabled: true } } }
     })
     if (!table) return res.status(404).json({ error: 'Invalid or expired table token' })
+    if (table.cafe.reservationsEnabled === false) {
+      return res.status(403).json({ error: 'Reservations are disabled for this restaurant' })
+    }
 
     const reservation = await prisma.reservation.create({
       data: {
