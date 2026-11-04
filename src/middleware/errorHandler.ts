@@ -48,4 +48,27 @@ export function errorHandler(err: any, req: Request, res: Response, next: NextFu
   })
 }
 
+// For route catch blocks that answer a 500 themselves instead of calling
+// next(err): same logging, alerting and prod redaction as errorHandler, so
+// raw internal messages (Prisma errors, stack details) never reach clients.
+export function sendServerError(res: Response, err: unknown, fallback = 'Internal server error') {
+  const req       = res.req as Request
+  const requestId = req?.id ?? 'unknown'
+  const message   = (err as any)?.message
+
+  logger.error({
+    msg:    'Route error',
+    requestId,
+    method: req?.method,
+    path:   req?.path,
+    err:    isProd ? { message, code: (err as any)?.code } : err,
+  })
+  sendErrorAlert('http', message ?? fallback, { requestId, path: req?.path, status: 500 })
+
+  return res.status(500).json({
+    error: isProd ? fallback : (message ?? fallback),
+    requestId,
+  })
+}
+
 export default errorHandler

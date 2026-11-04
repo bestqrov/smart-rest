@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { getAllBillingSettings, updateBillingSetting } from '../billing'
 import { requireSuperAdmin, saEmail } from './_billingAuthGuard'
 import logger from '../logger'
+import { sendServerError } from '../middleware/errorHandler'
 
 const router = Router()
 
@@ -13,7 +14,7 @@ router.get('/api/superadmin/billing/settings', async (req, res) => {
     res.json({ settings })
   } catch (err: any) {
     logger.error({ msg: '[billing/settings] list failed', err: err.message })
-    res.status(500).json({ error: err.message })
+    sendServerError(res, err)
   }
 })
 

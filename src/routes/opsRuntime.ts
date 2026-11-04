@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { getAllSettings, updateSetting } from '../ops/runtime/RuntimeConfig'
 import { isSuperAdminRequest } from '../middleware/superAdminAuth'
+import { sendServerError } from '../middleware/errorHandler'
 
 const router = Router()
 
@@ -15,7 +16,7 @@ router.get('/api/superadmin/ops/runtime', requireSuperAdmin, async (_req, res) =
     const settings = await getAllSettings()
     res.json({ settings })
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message })
+    sendServerError(res, err)
   }
 })
 

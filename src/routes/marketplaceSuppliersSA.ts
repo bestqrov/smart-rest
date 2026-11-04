@@ -8,6 +8,7 @@ import {
 } from '../marketplace/suppliers/SupplierService'
 import type { SupplierStatus } from '../marketplace/types'
 import { isSuperAdminRequest } from '../middleware/superAdminAuth'
+import { sendServerError } from '../middleware/errorHandler'
 
 const router = Router()
 
@@ -27,7 +28,7 @@ router.get('/api/superadmin/marketplace/suppliers', async (req: Request, res: Re
     const suppliers = await getAllSuppliers(status)
     res.json({ suppliers })
   } catch (err: any) {
-    res.status(500).json({ error: err.message })
+    sendServerError(res, err)
   }
 })
 
@@ -39,7 +40,7 @@ router.get('/api/superadmin/marketplace/suppliers/:id', async (req: Request, res
     if (!supplier) return res.status(404).json({ error: 'Supplier not found' }) as any
     res.json({ supplier })
   } catch (err: any) {
-    res.status(500).json({ error: err.message })
+    sendServerError(res, err)
   }
 })
 

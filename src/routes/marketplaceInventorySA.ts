@@ -8,6 +8,7 @@ import {
   setLowStockThreshold,
 } from '../marketplace/inventory/InventoryService'
 import { isSuperAdminRequest } from '../middleware/superAdminAuth'
+import { sendServerError } from '../middleware/errorHandler'
 
 const router = Router()
 
@@ -26,7 +27,7 @@ router.get('/api/superadmin/marketplace/inventory', async (req: Request, res: Re
     const inventory = await getAllInventory()
     res.json({ inventory })
   } catch (err: any) {
-    res.status(500).json({ error: err.message })
+    sendServerError(res, err)
   }
 })
 
@@ -37,7 +38,7 @@ router.get('/api/superadmin/marketplace/inventory/low-stock', async (req: Reques
     const items = await getLowStockProducts()
     res.json({ items })
   } catch (err: any) {
-    res.status(500).json({ error: err.message })
+    sendServerError(res, err)
   }
 })
 
@@ -49,7 +50,7 @@ router.get('/api/superadmin/marketplace/inventory/:productId', async (req: Reque
     if (!inv) return res.status(404).json({ error: 'Inventory record not found' }) as any
     res.json({ inventory: inv })
   } catch (err: any) {
-    res.status(500).json({ error: err.message })
+    sendServerError(res, err)
   }
 })
 

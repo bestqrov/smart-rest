@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { listBillingAudit } from '../billing'
 import { requireSuperAdmin } from './_billingAuthGuard'
 import logger from '../logger'
+import { sendServerError } from '../middleware/errorHandler'
 
 const router = Router()
 
@@ -35,7 +36,7 @@ router.get('/api/superadmin/billing/audit', async (req, res) => {
     res.json(result)
   } catch (err: any) {
     logger.error({ msg: '[billing/audit] list failed', err: err.message })
-    res.status(500).json({ error: err.message })
+    sendServerError(res, err)
   }
 })
 

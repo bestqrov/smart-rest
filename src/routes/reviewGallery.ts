@@ -3,6 +3,7 @@ import prisma from '../prisma'
 import logger from '../logger'
 import { authorizeAdmin } from '../middleware/authorizeAdmin'
 import { requireInternal } from '../middleware/requireInternal'
+import { sendServerError } from '../middleware/errorHandler'
 
 const router = Router()
 
@@ -65,7 +66,7 @@ router.post('/api/v1/review-gallery', requireInternal, async (req: Request, res:
     res.json({ reviewGalleryId: review.id })
   } catch (err: any) {
     logger.error({ msg: '[reviewGallery] POST error', err })
-    res.status(500).json({ error: err.message })
+    sendServerError(res, err)
   }
 })
 
@@ -81,7 +82,7 @@ router.get('/api/v1/review-gallery/:id/full', requireInternal, async (req: Reque
     if (!review) return res.status(404).json({ error: 'Not found' })
     res.json(review)
   } catch (err: any) {
-    res.status(500).json({ error: err.message })
+    sendServerError(res, err)
   }
 })
 
@@ -114,7 +115,7 @@ router.patch('/api/v1/review-gallery/:id/published', requireInternal, async (req
 
     res.json({ success: true, id: updated.id })
   } catch (err: any) {
-    res.status(500).json({ error: err.message })
+    sendServerError(res, err)
   }
 })
 
@@ -141,7 +142,7 @@ router.get('/api/admin/review-gallery', authorizeAdmin, async (req: Request, res
 
     res.json({ reviews, total, page: Number(page), limit: Number(limit) })
   } catch (err: any) {
-    res.status(500).json({ error: err.message })
+    sendServerError(res, err)
   }
 })
 
@@ -183,7 +184,7 @@ router.patch('/api/admin/review-gallery/:id/moderate', authorizeAdmin, async (re
 
     res.json({ success: true, moderationStatus })
   } catch (err: any) {
-    res.status(500).json({ error: err.message })
+    sendServerError(res, err)
   }
 })
 
@@ -198,7 +199,7 @@ router.post('/api/v1/notifications/manager', requireInternal, async (req: Reques
     })
     res.json({ success: true })
   } catch (err: any) {
-    res.status(500).json({ error: err.message })
+    sendServerError(res, err)
   }
 })
 

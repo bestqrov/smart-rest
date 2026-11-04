@@ -8,6 +8,7 @@ import {
   inferLanguage,
 } from '../marketing-brain/MarketingGenerationService'
 import { isSuperAdminRequest } from '../middleware/superAdminAuth'
+import { sendServerError } from '../middleware/errorHandler'
 
 function requireSuperAdmin(req: Request, res: Response, next: NextFunction) {
   if (!isSuperAdminRequest(req)) return res.status(401).json({ error: 'Unauthorized' })
@@ -91,7 +92,7 @@ router.get('/api/superadmin/demo-requests', requireSuperAdmin, async (req: Reque
     })
     return res.json(requests)
   } catch (err: any) {
-    return res.status(500).json({ error: err.message })
+    return sendServerError(res, err)
   }
 })
 
@@ -189,7 +190,7 @@ router.post('/api/superadmin/demo-requests/:id/activate', requireSuperAdmin, asy
     return res.json({ success: true, cafeId: cafe.id, subdomain })
   } catch (err: any) {
     logger.error({ msg: '[demo-activate] failed', err })
-    return res.status(500).json({ error: err.message })
+    return sendServerError(res, err)
   }
 })
 
@@ -203,7 +204,7 @@ router.patch('/api/superadmin/demo-requests/:id/reject', requireSuperAdmin, asyn
     })
     return res.json({ success: true })
   } catch (err: any) {
-    return res.status(500).json({ error: err.message })
+    return sendServerError(res, err)
   }
 })
 

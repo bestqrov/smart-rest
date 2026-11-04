@@ -20,6 +20,7 @@ import {
 import { getProducts } from '../marketplace/catalog/CatalogService'
 import type { ProductType, ProductVisibility, SupportedModule } from '../marketplace/types'
 import { isSuperAdminRequest } from '../middleware/superAdminAuth'
+import { sendServerError } from '../middleware/errorHandler'
 
 const router = Router()
 
@@ -50,7 +51,7 @@ router.get('/api/superadmin/marketplace/products', async (req: Request, res: Res
     })
     res.json(result)
   } catch (err: any) {
-    res.status(500).json({ error: err.message })
+    sendServerError(res, err)
   }
 })
 
@@ -66,7 +67,7 @@ router.get('/api/superadmin/marketplace/products/:id', async (req: Request, res:
     if (!product) return res.status(404).json({ error: 'Product not found' }) as any
     res.json({ product, pricing, inventory })
   } catch (err: any) {
-    res.status(500).json({ error: err.message })
+    sendServerError(res, err)
   }
 })
 

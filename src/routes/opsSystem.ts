@@ -3,6 +3,7 @@ import { getSystemHealth } from '../ops/health/HealthService'
 import { runDiagnostics } from '../ops/diagnostics/DiagnosticsService'
 import { collectSystemMetrics } from '../ops/metrics/SystemMetrics'
 import { isSuperAdminRequest } from '../middleware/superAdminAuth'
+import { sendServerError } from '../middleware/errorHandler'
 
 const router = Router()
 
@@ -17,7 +18,7 @@ router.get('/api/superadmin/system/health', requireSuperAdmin, async (_req, res)
     const health = await getSystemHealth()
     res.json(health)
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message })
+    sendServerError(res, err)
   }
 })
 
@@ -27,7 +28,7 @@ router.get('/api/superadmin/system/metrics', requireSuperAdmin, async (_req, res
     const metrics = await collectSystemMetrics()
     res.json(metrics)
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message })
+    sendServerError(res, err)
   }
 })
 
@@ -37,7 +38,7 @@ router.post('/api/superadmin/system/diagnostics', requireSuperAdmin, async (_req
     const report = await runDiagnostics()
     res.json(report)
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message })
+    sendServerError(res, err)
   }
 })
 

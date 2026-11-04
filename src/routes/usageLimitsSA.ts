@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { getAllRemainingQuotas, getRemainingQuota, resetUsageCounters } from '../billing'
 import { requireSuperAdmin, saEmail } from './_billingAuthGuard'
 import logger from '../logger'
+import { sendServerError } from '../middleware/errorHandler'
 
 const router = Router()
 
@@ -16,7 +17,7 @@ router.get('/api/superadmin/billing/usage-limits/:tenantId/remaining', async (re
     res.json({ remaining: result })
   } catch (err: any) {
     logger.error({ msg: '[billing/usage-limits] remaining failed', tenantId: req.params.tenantId, err: err.message })
-    res.status(500).json({ error: err.message })
+    sendServerError(res, err)
   }
 })
 
@@ -29,7 +30,7 @@ router.post('/api/superadmin/billing/usage-limits/:tenantId/reset', async (req, 
     res.json({ ok: true })
   } catch (err: any) {
     logger.error({ msg: '[billing/usage-limits] reset failed', tenantId: req.params.tenantId, err: err.message })
-    res.status(500).json({ error: err.message })
+    sendServerError(res, err)
   }
 })
 

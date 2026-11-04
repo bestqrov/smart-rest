@@ -3,6 +3,7 @@ import multer from 'multer'
 import { v2 as cloudinary } from 'cloudinary'
 import prisma from '../prisma'
 import { isSuperAdminRequest } from '../middleware/superAdminAuth'
+import { sendServerError } from '../middleware/errorHandler'
 
 const router = express.Router()
 
@@ -61,7 +62,7 @@ router.post(
         const url = await uploadToCloudinary(req.file.buffer)
         return res.json({ url })
       } catch (e: any) {
-        return res.status(500).json({ error: e?.message ?? 'Cloudinary upload failed' })
+        return sendServerError(res, e, 'Cloudinary upload failed')
       }
     })
   }

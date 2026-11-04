@@ -8,6 +8,7 @@ import {
   archiveCategory,
 } from '../marketplace/categories/CategoryService'
 import { isSuperAdminRequest } from '../middleware/superAdminAuth'
+import { sendServerError } from '../middleware/errorHandler'
 
 const router = Router()
 
@@ -32,7 +33,7 @@ router.get('/api/superadmin/marketplace/categories', async (req: Request, res: R
       res.json({ categories })
     }
   } catch (err: any) {
-    res.status(500).json({ error: err.message })
+    sendServerError(res, err)
   }
 })
 
@@ -44,7 +45,7 @@ router.get('/api/superadmin/marketplace/categories/:id', async (req: Request, re
     if (!category) return res.status(404).json({ error: 'Category not found' }) as any
     res.json({ category })
   } catch (err: any) {
-    res.status(500).json({ error: err.message })
+    sendServerError(res, err)
   }
 })
 

@@ -12,6 +12,7 @@ import {
 } from '../billing'
 import type { Plan } from '../billing/plans/PlanCatalogService'
 import { isSuperAdminRequest } from '../middleware/superAdminAuth'
+import { sendServerError } from '../middleware/errorHandler'
 
 const router = Router()
 
@@ -36,7 +37,7 @@ router.get('/api/superadmin/billing/plan-catalog', async (req, res) => {
   try {
     const plans = await listPlansWithPricing()
     res.json({ plans })
-  } catch (err: any) { res.status(500).json({ error: err.message }) }
+  } catch (err: any) { sendServerError(res, err) }
 })
 
 router.get('/api/superadmin/billing/plan-catalog/:plan', async (req, res) => {
@@ -44,7 +45,7 @@ router.get('/api/superadmin/billing/plan-catalog/:plan', async (req, res) => {
   try {
     const plan = await getPlanWithPricing(req.params.plan as Plan)
     res.json({ plan })
-  } catch (err: any) { res.status(500).json({ error: err.message }) }
+  } catch (err: any) { sendServerError(res, err) }
 })
 
 // ─── Subscription endpoints ───────────────────────────────────────────────────
@@ -55,7 +56,7 @@ router.get('/api/superadmin/billing/subscriptions/:tenantId', async (req, res) =
     const subscription = await subscriptions.getSubscription(req.params.tenantId)
     if (!subscription) return res.status(404).json({ error: 'Subscription not found' })
     res.json({ subscription })
-  } catch (err: any) { res.status(500).json({ error: err.message }) }
+  } catch (err: any) { sendServerError(res, err) }
 })
 
 router.post('/api/superadmin/billing/subscriptions/:tenantId/plan', async (req, res) => {
@@ -64,7 +65,7 @@ router.post('/api/superadmin/billing/subscriptions/:tenantId/plan', async (req, 
     const { plan, module: mod } = req.body
     const result = await subscriptions.changePlan(req.params.tenantId, mod, plan as Plan)
     res.json(result)
-  } catch (err: any) { res.status(500).json({ error: err.message }) }
+  } catch (err: any) { sendServerError(res, err) }
 })
 
 router.post('/api/superadmin/billing/subscriptions/:tenantId/cancel', async (req, res) => {
@@ -73,7 +74,7 @@ router.post('/api/superadmin/billing/subscriptions/:tenantId/cancel', async (req
     const { module: mod } = req.body
     const result = await subscriptions.cancelSubscription(req.params.tenantId, mod)
     res.json(result)
-  } catch (err: any) { res.status(500).json({ error: err.message }) }
+  } catch (err: any) { sendServerError(res, err) }
 })
 
 router.post('/api/superadmin/billing/subscriptions/:tenantId/suspend', async (req, res) => {
@@ -83,7 +84,7 @@ router.post('/api/superadmin/billing/subscriptions/:tenantId/suspend', async (re
     const by = saEmail(req)
     const result = await subscriptions.suspendSubscription(req.params.tenantId, mod, reason, by)
     res.json(result)
-  } catch (err: any) { res.status(500).json({ error: err.message }) }
+  } catch (err: any) { sendServerError(res, err) }
 })
 
 router.post('/api/superadmin/billing/subscriptions/:tenantId/reactivate', async (req, res) => {
@@ -92,7 +93,7 @@ router.post('/api/superadmin/billing/subscriptions/:tenantId/reactivate', async 
     const by = saEmail(req)
     const result = await subscriptions.reactivateSubscription(req.params.tenantId, by)
     res.json(result)
-  } catch (err: any) { res.status(500).json({ error: err.message }) }
+  } catch (err: any) { sendServerError(res, err) }
 })
 
 // ─── Invoice endpoints ────────────────────────────────────────────────────────
@@ -109,7 +110,7 @@ router.get('/api/superadmin/billing/invoices', async (req, res) => {
       limit:   limit ? Number(limit) : undefined,
     })
     res.json(result)
-  } catch (err: any) { res.status(500).json({ error: err.message }) }
+  } catch (err: any) { sendServerError(res, err) }
 })
 
 router.get('/api/superadmin/billing/invoices/:id', async (req, res) => {
@@ -118,7 +119,7 @@ router.get('/api/superadmin/billing/invoices/:id', async (req, res) => {
     const invoice = await invoices.getInvoice(req.params.id)
     if (!invoice) return res.status(404).json({ error: 'Invoice not found' })
     res.json({ invoice })
-  } catch (err: any) { res.status(500).json({ error: err.message }) }
+  } catch (err: any) { sendServerError(res, err) }
 })
 
 router.post('/api/superadmin/billing/invoices/generate', async (req, res) => {
@@ -136,7 +137,7 @@ router.post('/api/superadmin/billing/invoices/generate', async (req, res) => {
       notes,
     })
     res.status(201).json({ invoice })
-  } catch (err: any) { res.status(500).json({ error: err.message }) }
+  } catch (err: any) { sendServerError(res, err) }
 })
 
 router.post('/api/superadmin/billing/invoices/:id/pay', async (req, res) => {
@@ -145,7 +146,7 @@ router.post('/api/superadmin/billing/invoices/:id/pay', async (req, res) => {
     const { tenantId, module: mod } = req.body
     const result = await recordPayment(req.params.id, tenantId, mod)
     res.json(result)
-  } catch (err: any) { res.status(500).json({ error: err.message }) }
+  } catch (err: any) { sendServerError(res, err) }
 })
 
 router.post('/api/superadmin/billing/invoices/:id/cancel', async (req, res) => {
@@ -153,7 +154,7 @@ router.post('/api/superadmin/billing/invoices/:id/cancel', async (req, res) => {
   try {
     const result = await invoices.cancelInvoice(req.params.id)
     res.json(result)
-  } catch (err: any) { res.status(500).json({ error: err.message }) }
+  } catch (err: any) { sendServerError(res, err) }
 })
 
 router.post('/api/superadmin/billing/invoices/mark-overdue', async (req, res) => {
@@ -161,7 +162,7 @@ router.post('/api/superadmin/billing/invoices/mark-overdue', async (req, res) =>
   try {
     const count = await markOverdueInvoices()
     res.json({ marked: count })
-  } catch (err: any) { res.status(500).json({ error: err.message }) }
+  } catch (err: any) { sendServerError(res, err) }
 })
 
 // ─── Usage / quota endpoints ──────────────────────────────────────────────────
@@ -172,7 +173,7 @@ router.get('/api/superadmin/billing/usage/:tenantId', async (req, res) => {
     const { period } = req.query as Record<string, string>
     const result = await usage.getUsageSummary(req.params.tenantId, period)
     res.json(result)
-  } catch (err: any) { res.status(500).json({ error: err.message }) }
+  } catch (err: any) { sendServerError(res, err) }
 })
 
 router.get('/api/superadmin/billing/quotas/:tenantId', async (req, res) => {
@@ -180,7 +181,7 @@ router.get('/api/superadmin/billing/quotas/:tenantId', async (req, res) => {
   try {
     const result = await quotas.checkAllQuotas(req.params.tenantId)
     res.json({ quotas: result })
-  } catch (err: any) { res.status(500).json({ error: err.message }) }
+  } catch (err: any) { sendServerError(res, err) }
 })
 
 export default router

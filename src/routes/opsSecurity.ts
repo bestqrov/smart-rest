@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { getSecurityOverview } from '../ops/security/SecurityService'
 import { isSuperAdminRequest } from '../middleware/superAdminAuth'
+import { sendServerError } from '../middleware/errorHandler'
 
 const router = Router()
 
@@ -15,7 +16,7 @@ router.get('/api/superadmin/ops/security', requireSuperAdmin, async (_req, res) 
     const overview = await getSecurityOverview()
     res.json(overview)
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message })
+    sendServerError(res, err)
   }
 })
 

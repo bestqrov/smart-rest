@@ -16,6 +16,7 @@ import type { Server as SocketIOServer } from 'socket.io'
 import { authorizeAdmin } from '../middleware/authorizeAdmin'
 import logger from '../logger'
 import prisma from '../prisma'
+import { sendServerError } from '../middleware/errorHandler'
 
 const router = express.Router()
 
@@ -504,7 +505,7 @@ router.post('/api/v1/notifications/daily-fraud-report', authorizeAdmin, async (r
     return res.json({ ok: true, message })
   } catch (err) {
     logger.error({ msg: 'daily-fraud-report error', err })
-    return res.status(500).json({ error: err instanceof Error ? err.message : 'Report failed' })
+    return sendServerError(res, err, 'Report failed')
   }
 })
 

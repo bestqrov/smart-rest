@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { getRevenueDashboard, getMRR, getSubscriptionCounts, getFailedPaymentsCount } from '../billing'
 import { requireSuperAdmin } from './_billingAuthGuard'
 import logger from '../logger'
+import { sendServerError } from '../middleware/errorHandler'
 
 const router = Router()
 
@@ -12,7 +13,7 @@ router.get('/api/superadmin/billing/metrics/dashboard', async (req, res) => {
     res.json(dashboard)
   } catch (err: any) {
     logger.error({ msg: '[billing/metrics/dashboard] failed', err: err.message })
-    res.status(500).json({ error: err.message })
+    sendServerError(res, err)
   }
 })
 
@@ -23,7 +24,7 @@ router.get('/api/superadmin/billing/metrics/mrr', async (req, res) => {
     res.json(result)
   } catch (err: any) {
     logger.error({ msg: '[billing/metrics/mrr] failed', err: err.message })
-    res.status(500).json({ error: err.message })
+    sendServerError(res, err)
   }
 })
 
@@ -34,7 +35,7 @@ router.get('/api/superadmin/billing/metrics/subscriptions', async (req, res) => 
     res.json(result)
   } catch (err: any) {
     logger.error({ msg: '[billing/metrics/subscriptions] failed', err: err.message })
-    res.status(500).json({ error: err.message })
+    sendServerError(res, err)
   }
 })
 
@@ -45,7 +46,7 @@ router.get('/api/superadmin/billing/metrics/failed-payments', async (req, res) =
     res.json({ failedPayments: count })
   } catch (err: any) {
     logger.error({ msg: '[billing/metrics/failed-payments] failed', err: err.message })
-    res.status(500).json({ error: err.message })
+    sendServerError(res, err)
   }
 })
 

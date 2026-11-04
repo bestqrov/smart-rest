@@ -10,6 +10,7 @@ import Groq from 'groq-sdk'
 import { authorizeAdmin } from '../middleware/authorizeAdmin'
 import logger from '../logger'
 import prisma from '../prisma'
+import { sendServerError } from '../middleware/errorHandler'
 
 const router = express.Router()
 
@@ -201,7 +202,7 @@ router.post('/api/v1/restaurant/sync-menu', authorizeAdmin, async (req: Request,
 
   } catch (err: any) {
     logger.error({ msg: 'sync-menu error', err: err?.message })
-    return res.status(500).json({ error: err?.message ?? 'Sync failed' })
+    return sendServerError(res, err, 'Sync failed')
   }
 })
 

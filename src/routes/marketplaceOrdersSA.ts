@@ -12,6 +12,7 @@ import {
   fulfillOrder,
 } from '../marketplace/approval/ApprovalService'
 import { isSuperAdminRequest } from '../middleware/superAdminAuth'
+import { sendServerError } from '../middleware/errorHandler'
 
 const router = Router()
 
@@ -47,7 +48,7 @@ router.get('/api/superadmin/marketplace/orders', async (req: Request, res: Respo
     })
     res.json(result)
   } catch (err: any) {
-    res.status(500).json({ error: err.message })
+    sendServerError(res, err)
   }
 })
 
@@ -63,7 +64,7 @@ router.get('/api/superadmin/marketplace/orders/:id', async (req: Request, res: R
     if (!order) return res.status(404).json({ error: 'Order not found' }) as any
     res.json({ order, items })
   } catch (err: any) {
-    res.status(500).json({ error: err.message })
+    sendServerError(res, err)
   }
 })
 

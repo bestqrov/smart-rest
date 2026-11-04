@@ -19,6 +19,7 @@ import Groq from 'groq-sdk'
 import { authorizeAdmin } from '../middleware/authorizeAdmin'
 import logger from '../logger'
 import prisma from '../prisma'
+import { sendServerError } from '../middleware/errorHandler'
 
 const router = express.Router()
 const ALLOWED_MENU_MIMES = new Set([
@@ -480,7 +481,7 @@ router.post('/api/admin/menu-gen/publish-draft', authorizeAdmin, async (req: Req
     return res.json({ ok: true, created: created.length, status })
   } catch (err: any) {
     logger.error({ msg: 'publish-draft error', err })
-    return res.status(500).json({ error: err?.message ?? 'Publish failed' })
+    return sendServerError(res, err, 'Publish failed')
   }
 })
 
@@ -537,7 +538,7 @@ router.post('/api/admin/menu-gen/fetch-images', authorizeAdmin, async (req: Requ
     return res.json({ results })
   } catch (err: any) {
     logger.error({ msg: 'fetch-images error', err })
-    return res.status(500).json({ error: err?.message ?? 'Image fetch failed' })
+    return sendServerError(res, err, 'Image fetch failed')
   }
 })
 

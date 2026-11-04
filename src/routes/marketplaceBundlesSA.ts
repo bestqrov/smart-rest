@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import * as BundleEngine from '../marketplace/ai/BundleEngine'
 import { isSuperAdminRequest } from '../middleware/superAdminAuth'
+import { sendServerError } from '../middleware/errorHandler'
 
 const router = Router()
 
@@ -19,7 +20,7 @@ router.get('/api/superadmin/marketplace/bundles', async (req, res) => {
     const activeOnly = req.query.active !== '0'
     const bundles = await BundleEngine.listBundles(activeOnly)
     res.json({ bundles })
-  } catch (err: any) { res.status(500).json({ error: err.message }) }
+  } catch (err: any) { sendServerError(res, err) }
 })
 
 // Get single bundle
@@ -29,7 +30,7 @@ router.get('/api/superadmin/marketplace/bundles/:id', async (req, res) => {
     const bundle = await BundleEngine.getBundle(String(req.params.id))
     if (!bundle) return res.status(404).json({ error: 'Not found' })
     res.json({ bundle })
-  } catch (err: any) { res.status(500).json({ error: err.message }) }
+  } catch (err: any) { sendServerError(res, err) }
 })
 
 // Create bundle
@@ -42,7 +43,7 @@ router.post('/api/superadmin/marketplace/bundles', async (req, res) => {
     }
     const bundle = await BundleEngine.createBundle({ name, slug, description, type, bundlePrice, currency, productIds })
     res.status(201).json({ bundle })
-  } catch (err: any) { res.status(500).json({ error: err.message }) }
+  } catch (err: any) { sendServerError(res, err) }
 })
 
 // Update bundle
@@ -51,7 +52,7 @@ router.patch('/api/superadmin/marketplace/bundles/:id', async (req, res) => {
   try {
     const bundle = await BundleEngine.updateBundle(String(req.params.id), req.body)
     res.json({ bundle })
-  } catch (err: any) { res.status(500).json({ error: err.message }) }
+  } catch (err: any) { sendServerError(res, err) }
 })
 
 // Toggle active
@@ -62,7 +63,7 @@ router.patch('/api/superadmin/marketplace/bundles/:id/toggle', async (req, res) 
     if (!current) return res.status(404).json({ error: 'Not found' })
     const bundle = await BundleEngine.updateBundle(String(req.params.id), { active: !current.active })
     res.json({ bundle })
-  } catch (err: any) { res.status(500).json({ error: err.message }) }
+  } catch (err: any) { sendServerError(res, err) }
 })
 
 export default router

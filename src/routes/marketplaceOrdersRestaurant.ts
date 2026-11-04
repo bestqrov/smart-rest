@@ -11,6 +11,7 @@ import {
 }               from '../marketplace/orders/OrderService'
 import { getOrderItems } from '../marketplace/order-items/OrderItemService'
 import type { OrderModule } from '../marketplace/types'
+import { sendServerError } from '../middleware/errorHandler'
 
 const router = Router()
 
@@ -152,7 +153,7 @@ router.get('/api/restaurant/marketplace/orders', async (req: Request, res: Respo
     })
     res.json(result)
   } catch (err: any) {
-    res.status(500).json({ error: err.message })
+    sendServerError(res, err)
   }
 })
 
@@ -171,7 +172,7 @@ router.get('/api/restaurant/marketplace/orders/:id', async (req: Request, res: R
     }
     res.json({ order, items })
   } catch (err: any) {
-    res.status(500).json({ error: err.message })
+    sendServerError(res, err)
   }
 })
 

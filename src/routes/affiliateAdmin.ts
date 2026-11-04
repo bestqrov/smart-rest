@@ -4,6 +4,7 @@ import {
   approveCommission, markCommissionPaid, getCommissionHistory, getAffiliateSummary,
 } from '../affiliate/AffiliateService'
 import { requireSuperAdmin } from './_billingAuthGuard'
+import { sendServerError } from '../middleware/errorHandler'
 
 const router = Router()
 
@@ -13,7 +14,7 @@ router.get('/api/superadmin/affiliates', async (req, res) => {
   try {
     const affiliates = await listAffiliates(req.query.status as string | undefined)
     res.json({ affiliates })
-  } catch (err: any) { res.status(500).json({ error: err.message }) }
+  } catch (err: any) { sendServerError(res, err) }
 })
 
 // POST /api/superadmin/affiliates — body: { name, email, phone?, commissionType?, commissionValue? }
@@ -35,7 +36,7 @@ router.get('/api/superadmin/affiliates/:id/summary', async (req, res) => {
   try {
     const summary = await getAffiliateSummary(req.params.id)
     res.json(summary)
-  } catch (err: any) { res.status(500).json({ error: err.message }) }
+  } catch (err: any) { sendServerError(res, err) }
 })
 
 // GET /api/superadmin/affiliates/:id/commissions
@@ -44,7 +45,7 @@ router.get('/api/superadmin/affiliates/:id/commissions', async (req, res) => {
   try {
     const commissions = await getCommissionHistory(req.params.id)
     res.json({ commissions })
-  } catch (err: any) { res.status(500).json({ error: err.message }) }
+  } catch (err: any) { sendServerError(res, err) }
 })
 
 // POST /api/superadmin/referrals/track — body: { referralCode, referredCafeId }
@@ -65,7 +66,7 @@ router.get('/api/superadmin/referrals/code/:code', async (req, res) => {
     const affiliate = await getAffiliateByCode(req.params.code)
     if (!affiliate) return res.status(404).json({ error: 'Referral code not found' })
     res.json({ affiliate })
-  } catch (err: any) { res.status(500).json({ error: err.message }) }
+  } catch (err: any) { sendServerError(res, err) }
 })
 
 // PATCH /api/superadmin/commissions/:id/approve

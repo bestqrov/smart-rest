@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { getLogs, getLogModules } from '../ops/logs/LogService'
 import type { LogFilter, LogSeverity, LogSource } from '../ops/types'
 import { isSuperAdminRequest } from '../middleware/superAdminAuth'
+import { sendServerError } from '../middleware/errorHandler'
 
 const router = Router()
 
@@ -28,7 +29,7 @@ router.get('/api/superadmin/ops/logs', requireSuperAdmin, async (req, res) => {
     const result = await getLogs(filter)
     res.json(result)
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message })
+    sendServerError(res, err)
   }
 })
 
@@ -38,7 +39,7 @@ router.get('/api/superadmin/ops/logs/modules', requireSuperAdmin, async (_req, r
     const modules = await getLogModules()
     res.json({ modules })
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message })
+    sendServerError(res, err)
   }
 })
 

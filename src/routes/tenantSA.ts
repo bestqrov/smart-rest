@@ -11,6 +11,7 @@ import {
 } from '../tenant'
 import type { SuspensionType, Plan } from '../tenant'
 import { isSuperAdminRequest } from '../middleware/superAdminAuth'
+import { sendServerError } from '../middleware/errorHandler'
 
 const router = Router()
 
@@ -39,7 +40,7 @@ router.get('/api/superadmin/tenants', async (req, res) => {
       limit: limit ? Number(limit) : 20,
     })
     res.json(result)
-  } catch (err: any) { res.status(500).json({ error: err.message }) }
+  } catch (err: any) { sendServerError(res, err) }
 })
 
 // ─── Get single tenant ────────────────────────────────────────────────────────
@@ -49,7 +50,7 @@ router.get('/api/superadmin/tenants/:tenantId', async (req, res) => {
     const profile = await getProfile(String(req.params.tenantId))
     if (!profile) return res.status(404).json({ error: 'Tenant not found' })
     res.json({ profile })
-  } catch (err: any) { res.status(500).json({ error: err.message }) }
+  } catch (err: any) { sendServerError(res, err) }
 })
 
 // ─── Provision (create) tenant ────────────────────────────────────────────────
@@ -176,7 +177,7 @@ router.get('/api/superadmin/tenants/:tenantId/suspension-logs', async (req, res)
   try {
     const logs = await getSuspensionLogs(String(req.params.tenantId))
     res.json({ logs })
-  } catch (err: any) { res.status(500).json({ error: err.message }) }
+  } catch (err: any) { sendServerError(res, err) }
 })
 
 // ─── Usage ────────────────────────────────────────────────────────────────────
@@ -189,7 +190,7 @@ router.get('/api/superadmin/tenants/:tenantId/usage', async (req, res) => {
       getUsageHistory(String(req.params.tenantId)),
     ])
     res.json({ usage: summary, history })
-  } catch (err: any) { res.status(500).json({ error: err.message }) }
+  } catch (err: any) { sendServerError(res, err) }
 })
 
 // ─── Resolved Features ────────────────────────────────────────────────────────
@@ -198,7 +199,7 @@ router.get('/api/superadmin/tenants/:tenantId/features', async (req, res) => {
   try {
     const resolved = await resolveFeatures(String(req.params.tenantId))
     res.json({ features: resolved })
-  } catch (err: any) { res.status(500).json({ error: err.message }) }
+  } catch (err: any) { sendServerError(res, err) }
 })
 
 export default router

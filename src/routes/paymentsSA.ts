@@ -2,6 +2,7 @@ import { Router } from 'express'
 import * as PaymentService from '../payments/services/PaymentService'
 import type { ProviderName, PaymentMethod } from '../payments/types'
 import { isSuperAdminRequest } from '../middleware/superAdminAuth'
+import { sendServerError } from '../middleware/errorHandler'
 
 const router = Router()
 
@@ -32,7 +33,7 @@ router.get('/api/superadmin/payments/transactions', async (req, res) => {
       limit:    limit ? Number(limit) : 20,
     })
     res.json(result)
-  } catch (err: any) { res.status(500).json({ error: err.message }) }
+  } catch (err: any) { sendServerError(res, err) }
 })
 
 // ─── Get single transaction ───────────────────────────────────────────────────
@@ -42,7 +43,7 @@ router.get('/api/superadmin/payments/transactions/:id', async (req, res) => {
     const tx = await PaymentService.getTransaction(String(req.params.id))
     if (!tx) return res.status(404).json({ error: 'Transaction not found' })
     res.json({ transaction: tx })
-  } catch (err: any) { res.status(500).json({ error: err.message }) }
+  } catch (err: any) { sendServerError(res, err) }
 })
 
 // ─── Create transaction manually ──────────────────────────────────────────────
@@ -64,7 +65,7 @@ router.post('/api/superadmin/payments/transactions', async (req, res) => {
       reference, notes,
     })
     res.status(201).json({ transaction: tx })
-  } catch (err: any) { res.status(500).json({ error: err.message }) }
+  } catch (err: any) { sendServerError(res, err) }
 })
 
 // ─── Authorize ────────────────────────────────────────────────────────────────
@@ -144,7 +145,7 @@ router.get('/api/superadmin/payments/stats', async (req, res) => {
         totalPaid: paidSum._sum.amount ?? 0,
       },
     })
-  } catch (err: any) { res.status(500).json({ error: err.message }) }
+  } catch (err: any) { sendServerError(res, err) }
 })
 
 export default router

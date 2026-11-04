@@ -3,6 +3,7 @@ import prisma from '../prisma'
 import logger from '../logger'
 import { CertificationService, evaluate } from '../certification'
 import { isSuperAdminRequest } from '../middleware/superAdminAuth'
+import { sendServerError } from '../middleware/errorHandler'
 
 const router = express.Router()
 
@@ -100,7 +101,7 @@ router.post('/api/superadmin/certification/:tenantId/evaluate', requireSuperAdmi
     return res.json({ ok: true, result })
   } catch (err: any) {
     logger.error({ msg: 'POST superadmin/certification/evaluate error', err })
-    return res.status(500).json({ error: err?.message ?? 'Evaluation failed' })
+    return sendServerError(res, err, 'Evaluation failed')
   }
 })
 

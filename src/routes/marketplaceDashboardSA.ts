@@ -5,6 +5,7 @@ import { getAllInventory, getLowStockProducts } from '../marketplace/inventory/I
 import { getOrders }           from '../marketplace/orders/OrderService'
 import { getProductPricing }   from '../marketplace/pricing/PricingService'
 import { isSuperAdminRequest } from '../middleware/superAdminAuth'
+import { sendServerError } from '../middleware/errorHandler'
 
 const router = Router()
 
@@ -88,7 +89,7 @@ router.get('/api/superadmin/marketplace/dashboard', async (req: Request, res: Re
       topCategories,
     })
   } catch (err: any) {
-    res.status(500).json({ error: err.message })
+    sendServerError(res, err)
   }
 })
 

@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { triggerBackup, getBackupHistory, getBackup, deleteBackup } from '../ops/backup/BackupService'
 import { isSuperAdminRequest } from '../middleware/superAdminAuth'
+import { sendServerError } from '../middleware/errorHandler'
 
 const router = Router()
 
@@ -16,7 +17,7 @@ router.get('/api/superadmin/ops/backup', requireSuperAdmin, async (req, res) => 
     const history = await getBackupHistory(limit)
     res.json({ backups: history })
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message })
+    sendServerError(res, err)
   }
 })
 
@@ -27,7 +28,7 @@ router.get('/api/superadmin/ops/backup/:id', requireSuperAdmin, async (req, res)
     if (!record) return res.status(404).json({ error: 'Backup not found' })
     res.json(record)
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message })
+    sendServerError(res, err)
   }
 })
 
@@ -42,7 +43,7 @@ router.post('/api/superadmin/ops/backup/trigger', requireSuperAdmin, async (req,
     const record = await triggerBackup(label, email)
     res.json({ ok: true, backup: record })
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message })
+    sendServerError(res, err)
   }
 })
 
@@ -52,7 +53,7 @@ router.delete('/api/superadmin/ops/backup/:id', requireSuperAdmin, async (req, r
     await deleteBackup(String(req.params['id']))
     res.json({ ok: true })
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message })
+    sendServerError(res, err)
   }
 })
 

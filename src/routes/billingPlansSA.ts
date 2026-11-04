@@ -4,6 +4,7 @@ import { Router } from 'express'
 import * as PlanService from '../billing/plans/PlanService'
 import { PlanValidationError } from '../billing/plans/PlanValidation'
 import { isSuperAdminRequest } from '../middleware/superAdminAuth'
+import { sendServerError } from '../middleware/errorHandler'
 
 const router = Router()
 
@@ -21,7 +22,7 @@ function saEmail(req: any): string {
 
 function handleError(res: any, err: unknown) {
   if (err instanceof PlanValidationError) return res.status(400).json({ error: err.message })
-  return res.status(500).json({ error: err instanceof Error ? err.message : 'Internal error' })
+  return sendServerError(res, err, 'Internal error')
 }
 
 // GET /api/superadmin/billing/plans
