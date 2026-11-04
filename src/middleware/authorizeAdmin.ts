@@ -19,6 +19,19 @@ declare global {
   }
 }
 
+// Bearer-token verification only (no cafeId/orderId cross-checks). Used by
+// routers whose handlers resolve auth inline instead of via the middleware,
+// so the token rule itself lives in one place.
+export function verifyAdminToken(req: Request): AdminTokenPayload | null {
+  const auth = req.header('authorization')
+  if (!auth || !auth.startsWith('Bearer ')) return null
+  try {
+    return jwt.verify(auth.split(' ')[1], JWT_SECRET) as AdminTokenPayload
+  } catch {
+    return null
+  }
+}
+
 export async function authorizeAdmin(req: Request, res: Response, next: NextFunction) {
   try {
     const auth = req.header('authorization')

@@ -7,11 +7,10 @@
  */
 
 import express, { Request, Response, NextFunction } from 'express'
-import jwt from 'jsonwebtoken'
+import { verifyAdminToken } from '../middleware/authorizeAdmin'
 
 import prisma from '../prisma'
 import logger from '../logger'
-import { JWT_SECRET } from '../config'
 
 const router = express.Router()
 
@@ -23,17 +22,10 @@ interface AdminPayload {
 }
 
 function requireAdmin(req: Request, res: Response, next: NextFunction) {
-  const header = req.headers.authorization
-  if (!header?.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'No token' })
-  }
-  try {
-    const payload = jwt.verify(header.slice(7), JWT_SECRET) as AdminPayload
-    ;(req as any).adminPayload = payload
-    return next()
-  } catch {
-    return res.status(401).json({ error: 'Invalid token' })
-  }
+  const payload = verifyAdminToken(req)
+  if (!payload) return res.status(401).json({ error: 'Unauthorized' })
+  ;(req as any).adminPayload = payload
+  return next()
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────

@@ -1,6 +1,6 @@
 // ─── Restaurant: Billing Routes ───────────────────────────────────────────────
 import { Router }  from 'express'
-import jwt         from 'jsonwebtoken'
+import { verifyAdminToken } from '../middleware/authorizeAdmin'
 import {
   getSubscription,
   listInvoices,
@@ -12,10 +12,8 @@ import {
 const router = Router()
 
 function authRestaurant(req: any): { cafeId: string } {
-  const auth  = (req.headers.authorization as string | undefined) ?? ''
-  const token = auth.replace('Bearer ', '')
-  if (!token) throw new Error('No token')
-  const payload = jwt.verify(token, process.env.JWT_SECRET!) as any
+  const payload = verifyAdminToken(req)
+  if (!payload) throw new Error('Unauthorized')
   return { cafeId: String(payload.cafeId) }
 }
 

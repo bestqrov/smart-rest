@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express'
-import jwt from 'jsonwebtoken'
+import { verifyAdminToken } from '../middleware/authorizeAdmin'
 import {
   createOrder,
   addItemToOrder,
@@ -24,18 +24,12 @@ interface AuthPayload {
 }
 
 function requireAuth(req: Request, res: Response): AuthPayload | null {
-  const token = (req.headers.authorization ?? '').replace('Bearer ', '')
-  if (!token) {
+  const payload = verifyAdminToken(req)
+  if (!payload) {
     res.status(401).json({ error: 'Unauthorized' })
     return null
   }
-  try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET!) as AuthPayload
-    return payload
-  } catch {
-    res.status(401).json({ error: 'Invalid token' })
-    return null
-  }
+  return payload
 }
 
 // ─── Routes ───────────────────────────────────────────────────────────────────

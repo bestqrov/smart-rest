@@ -1,5 +1,5 @@
 import { Router }  from 'express'
-import jwt          from 'jsonwebtoken'
+import { verifyAdminToken } from '../middleware/authorizeAdmin'
 import * as RecommendationService from '../marketplace/ai/RecommendationService'
 import * as BundleEngine          from '../marketplace/ai/BundleEngine'
 import * as SmartAlerts           from '../marketplace/ai/SmartAlerts'
@@ -8,10 +8,8 @@ import { checkCompatibility }     from '../marketplace/ai/CompatibilityEngine'
 const router = Router()
 
 function authRestaurant(req: any): { cafeId: string; userId?: string } {
-  const auth  = (req.headers.authorization as string | undefined) ?? ''
-  const token = auth.replace('Bearer ', '')
-  if (!token) throw new Error('No token')
-  const payload = jwt.verify(token, process.env.JWT_SECRET!) as any
+  const payload = verifyAdminToken(req)
+  if (!payload) throw new Error('Unauthorized')
   return { cafeId: String(payload.cafeId), userId: payload.userId ? String(payload.userId) : undefined }
 }
 
