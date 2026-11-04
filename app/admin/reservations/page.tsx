@@ -4,13 +4,13 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   CalendarDays, List, RefreshCw, Loader2, Search, X,
   ChevronLeft, ChevronRight, Clock, CheckCircle2, XCircle,
-  CalendarCheck, Users, Phone, FileText, Hash, AlertCircle,
+  CalendarCheck, Users, Phone, FileText, Hash, AlertCircle, LogIn, UserX,
 } from 'lucide-react'
 import { useLang } from '../lang-context'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type ResStatus = 'PENDING' | 'ACCEPTED' | 'COMPLETED' | 'CANCELLED'
+type ResStatus = 'PENDING' | 'ACCEPTED' | 'CHECKED_IN' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW'
 
 interface Reservation {
   id:          string
@@ -46,6 +46,8 @@ const T = {
     accepted:     'مقبول',
     completed:    'مكتمل',
     cancelled:    'ملغي',
+    checkedIn:    'حضر',
+    noShow:       'لم يحضر',
     guests:       'ضيوف',
     table:        'طاولة',
     notes:        'ملاحظات',
@@ -82,6 +84,8 @@ const T = {
     accepted:     'Acceptée',
     completed:    'Terminée',
     cancelled:    'Annulée',
+    checkedIn:    'Arrivé',
+    noShow:       'Absent',
     guests:       'Couverts',
     table:        'Table',
     notes:        'Notes',
@@ -118,6 +122,8 @@ const T = {
     accepted:     'Accepted',
     completed:    'Completed',
     cancelled:    'Cancelled',
+    checkedIn:    'Checked in',
+    noShow:       'No-show',
     guests:       'Guests',
     table:        'Table',
     notes:        'Notes',
@@ -154,6 +160,8 @@ const T = {
     accepted:     'Aceptada',
     completed:    'Completada',
     cancelled:    'Cancelada',
+    checkedIn:    'Llegó',
+    noShow:       'No se presentó',
     guests:       'Huéspedes',
     table:        'Mesa',
     notes:        'Notas',
@@ -201,13 +209,15 @@ function fmtTime(dateStr: string) {
   return new Date(dateStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
-type TLabel = { pending: string; accepted: string; completed: string; cancelled: string }
+type TLabel = { pending: string; accepted: string; checkedIn: string; completed: string; cancelled: string; noShow: string }
 
 const STATUS_META: Record<ResStatus, { label: (t: TLabel) => string; color: string; bg: string; border: string; Icon: React.ElementType }> = {
   PENDING:   { label: t => t.pending,   color: 'text-amber-400',   bg: 'bg-amber-500/15',   border: 'border-amber-500/30',   Icon: Clock         },
   ACCEPTED:  { label: t => t.accepted,  color: 'text-emerald-400', bg: 'bg-emerald-500/15', border: 'border-emerald-500/30', Icon: CheckCircle2  },
+  CHECKED_IN:{ label: t => t.checkedIn, color: 'text-violet-400',  bg: 'bg-violet-500/15',  border: 'border-violet-500/30',  Icon: LogIn         },
   COMPLETED: { label: t => t.completed, color: 'text-blue-400',    bg: 'bg-blue-500/15',    border: 'border-blue-500/30',    Icon: CalendarCheck },
   CANCELLED: { label: t => t.cancelled, color: 'text-slate-500',   bg: 'bg-slate-500/15',   border: 'border-slate-500/30',   Icon: XCircle       },
+  NO_SHOW:   { label: t => t.noShow,    color: 'text-rose-400',    bg: 'bg-rose-500/15',    border: 'border-rose-500/30',    Icon: UserX         },
 }
 
 const FILTER_TABS: FilterStatus[] = ['ALL', 'PENDING', 'ACCEPTED', 'COMPLETED', 'CANCELLED']
@@ -668,6 +678,8 @@ export default function ReservationsPage() {
                           className={`text-[10px] rounded px-1 truncate font-medium ${
                             r.status === 'PENDING'   ? 'bg-amber-500/30 text-amber-300' :
                             r.status === 'ACCEPTED'  ? 'bg-emerald-500/30 text-emerald-300' :
+                            r.status === 'CHECKED_IN'? 'bg-violet-500/30 text-violet-300' :
+                            r.status === 'NO_SHOW'   ? 'bg-rose-500/30 text-rose-300' :
                             r.status === 'COMPLETED' ? 'bg-blue-500/30 text-blue-300' :
                             'bg-slate-500/30 text-slate-400'
                           }`}
