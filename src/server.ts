@@ -254,9 +254,13 @@ async function main() {
     legacyHeaders:   false,
     message: { error: 'Too many login attempts, please try again in 15 minutes.' },
   })
+  // A whole restaurant — every staff device plus customers on the venue's
+  // WiFi scanning QR menus — shares one public IP, and a single admin page
+  // load fires ~10 API calls. 60/min got real restaurants 429'd during
+  // normal use; brute-force-sensitive routes have their own tighter limiters.
   const apiLimiter = rateLimit({
     windowMs: 60 * 1000, // 1 minute
-    max: 60,
+    max: 300,
     standardHeaders: true,
     legacyHeaders:   false,
     message: { error: 'Too many requests, please try again later.' },
