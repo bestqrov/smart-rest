@@ -43,9 +43,19 @@ router.post('/api/pos/checkout/by-seats', authorizePOS, requireActiveBilling, as
     // Verify the table belongs to this cafe
     const table = await prisma.table.findFirst({
       where:  { id: tableId, cafeId },
-      select: { id: true, tableNumber: true }
+      select: {
+        id: true, tableNumber: true, mergedIntoTableId: true,
+        mergedTables: { select: { id: true } }
+      }
     })
     if (!table) return res.status(404).json({ error: 'Table not found' })
+
+    // Merging moves open orders onto the master table, so checking out from a
+    // merged (child) table must look them up on the master — same resolution
+    // as GET /api/orders/table/:tableId in orders.ts.
+    const masterTableId = table.mergedIntoTableId ?? tableId
+    const childIds      = table.mergedIntoTableId ? [] : table.mergedTables.map((t) => t.id)
+    const allTableIds   = [masterTableId, ...childIds]
 
     // Validate seatNumbers when provided
     const seats: number[] = Array.isArray(seatNumbers)
@@ -57,7 +67,7 @@ router.post('/api/pos/checkout/by-seats', authorizePOS, requireActiveBilling, as
     // Find all open orders for the table
     const openOrders = await prisma.order.findMany({
       where: {
-        tableId,
+        tableId:    { in: allTableIds },
         cafeId,
         isPaid:     false,
         billStatus: { in: ['OPENED', 'BILL_REQUESTED'] },

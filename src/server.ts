@@ -162,6 +162,27 @@ async function main() {
     })
   }
 
+  // Integrations the app boots without (so not in src/config.ts's fail-fast
+  // list) but whose features silently stop working when unset. Warn loudly
+  // in production so a missing key shows up in the first lines of the logs.
+  if (nodeEnv === 'production') {
+    const SOFT_REQUIRED_VARS = [
+      'STRIPE_SECRET_KEY',
+      'STRIPE_WEBHOOK_SECRET',
+      'GROQ_API_KEY',
+      'N8N_WEBHOOK_URL',
+      'N8N_WEBHOOK_SECRET',
+    ]
+    const missingSoft = SOFT_REQUIRED_VARS.filter((key) => !process.env[key])
+    if (missingSoft.length > 0) {
+      logger.warn({ msg: `Optional integrations not configured — related features are disabled: ${missingSoft.join(', ')}` })
+    }
+    // HSTS / upgrade-insecure-requests assume TLS is terminated in front of us.
+    if (process.env.FRONTEND_URL && !process.env.FRONTEND_URL.startsWith('https://')) {
+      logger.warn({ msg: `FRONTEND_URL is not https:// (${process.env.FRONTEND_URL}) — links in emails/WhatsApp will be insecure` })
+    }
+  }
+
   const nextApp = next({ dev, dir: '.' })
   const handle = nextApp.getRequestHandler()
 

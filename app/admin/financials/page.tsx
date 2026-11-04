@@ -269,7 +269,7 @@ export default function FinancialsPage() {
       }
       // Refetch so state (approved flag, and the report tab via wages expense)
       // reflects the persisted server truth rather than an optimistic guess.
-      await fetchPayroll()
+      await Promise.all([fetchPayroll(), fetchReport()])
     } catch {
       setApproveErr(prev => ({ ...prev, [staffId]: 'Network error — payment was not recorded' }))
     } finally {

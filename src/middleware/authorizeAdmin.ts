@@ -50,8 +50,11 @@ export async function authorizeAdmin(req: Request, res: Response, next: NextFunc
       }
     }
 
-    // If body contains cafeId, ensure it matches
+    // If body or query contains cafeId, ensure it matches
     if (req.body?.cafeId && req.body.cafeId !== payload.cafeId) {
+      return res.status(403).json({ error: 'Forbidden: cafe mismatch' })
+    }
+    if (req.query?.cafeId && req.query.cafeId !== payload.cafeId) {
       return res.status(403).json({ error: 'Forbidden: cafe mismatch' })
     }
 
