@@ -1,11 +1,12 @@
 import { Router } from 'express'
 import * as PaymentService from '../payments/services/PaymentService'
 import type { ProviderName, PaymentMethod } from '../payments/types'
+import { isSuperAdminRequest } from '../middleware/superAdminAuth'
 
 const router = Router()
 
 function requireSuperAdmin(req: any, res: any): boolean {
-  if (req.headers['x-superadmin-secret'] !== process.env.SUPERADMIN_SECRET) {
+  if (!isSuperAdminRequest(req)) {
     res.status(401).json({ error: 'Unauthorized' })
     return false
   }

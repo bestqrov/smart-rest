@@ -4,13 +4,12 @@ import { getAllSuppliers }     from '../marketplace/suppliers/SupplierService'
 import { getAllInventory, getLowStockProducts } from '../marketplace/inventory/InventoryService'
 import { getOrders }           from '../marketplace/orders/OrderService'
 import { getProductPricing }   from '../marketplace/pricing/PricingService'
+import { isSuperAdminRequest } from '../middleware/superAdminAuth'
 
 const router = Router()
 
 function requireSuperAdmin(req: Request, res: Response): boolean {
-  const secret = req.headers['x-superadmin-secret']
-  const email  = req.headers['x-superadmin-email']
-  if (secret !== process.env.SUPERADMIN_SECRET || !email) {
+  if (!isSuperAdminRequest(req)) {
     res.status(401).json({ error: 'Unauthorized' })
     return false
   }

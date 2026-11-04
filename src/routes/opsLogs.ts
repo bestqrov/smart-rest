@@ -1,16 +1,13 @@
 import { Router } from 'express'
 import { getLogs, getLogModules } from '../ops/logs/LogService'
 import type { LogFilter, LogSeverity, LogSource } from '../ops/types'
+import { isSuperAdminRequest } from '../middleware/superAdminAuth'
 
 const router = Router()
 
 function requireSuperAdmin(req: any, res: any, next: any) {
-  const secret = req.headers['x-superadmin-secret']
-  const email  = req.headers['x-superadmin-email']
-  if (!secret || !email || secret !== process.env.SUPERADMIN_SECRET) {
-    return res.status(401).json({ error: 'Unauthorized' })
-  }
-  next()
+  if (!isSuperAdminRequest(req)) return res.status(401).json({ error: 'Unauthorized' })
+  return next()
 }
 
 // GET /api/superadmin/ops/logs

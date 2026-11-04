@@ -23,23 +23,14 @@ import {
   registryStatus,
 } from '../marketing-brain/providers'
 import { getProviderStats, getAllProviderStats, getPlatformTotals } from '../services/aiCenterStats'
+import { isSuperAdminRequest } from '../middleware/superAdminAuth'
 
 const router = Router()
 
 // ─── Auth middleware ──────────────────────────────────────────────────────────
 
 function requireSuperAdmin(req: Request, res: Response, next: NextFunction) {
-  const secret        = req.header('x-superadmin-secret')
-  const email         = req.header('x-superadmin-email')
-  const expectedSecret = process.env.SUPERADMIN_SECRET
-  const expectedEmail  = process.env.SUPERADMIN_EMAIL
-
-  if (!expectedSecret || secret !== expectedSecret) {
-    return res.status(401).json({ error: 'Unauthorized' })
-  }
-  if (expectedEmail && email !== expectedEmail) {
-    return res.status(401).json({ error: 'Unauthorized' })
-  }
+  if (!isSuperAdminRequest(req)) return res.status(401).json({ error: 'Unauthorized' })
   return next()
 }
 

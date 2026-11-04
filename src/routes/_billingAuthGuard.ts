@@ -2,12 +2,10 @@
 // (billingMetricsSA, billingSettingsSA, billingAuditSA, usageLimitsSA).
 // Consolidates what was previously copy-pasted identically in each of them.
 
+import { isSuperAdminRequest } from '../middleware/superAdminAuth'
+
 export function requireSuperAdmin(req: any, res: any): boolean {
-  if (req.headers['x-superadmin-secret'] !== process.env.SUPERADMIN_SECRET) {
-    res.status(401).json({ error: 'Unauthorized' })
-    return false
-  }
-  if (!req.headers['x-superadmin-email']) {
+  if (!isSuperAdminRequest(req)) {
     res.status(401).json({ error: 'Unauthorized' })
     return false
   }

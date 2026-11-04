@@ -7,17 +7,14 @@ import {
 } from '../intelligence/ai-copilot'
 import { detectAutomationOpportunities } from '../intelligence/automation-advisor'
 import { normalizeSuccess, normalizeError, createIntelligenceGatewayLimiter } from '../intelligence/gateway'
+import { isSuperAdminRequest } from '../middleware/superAdminAuth'
 
 const router = Router()
 const copilotLimiter = createIntelligenceGatewayLimiter()
 
 function requireSuperAdmin(req: any, res: any, next: any) {
-  const secret = req.headers['x-superadmin-secret']
-  const email  = req.headers['x-superadmin-email']
-  if (!secret || !email || secret !== process.env.SUPERADMIN_SECRET) {
-    return res.status(401).json({ error: 'Unauthorized' })
-  }
-  next()
+  if (!isSuperAdminRequest(req)) return res.status(401).json({ error: 'Unauthorized' })
+  return next()
 }
 
 // POST /api/superadmin/intelligence/copilot/chat — Copilot API (K67)

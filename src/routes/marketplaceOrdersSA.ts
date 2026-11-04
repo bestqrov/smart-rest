@@ -11,15 +11,14 @@ import {
   rejectOrder,
   fulfillOrder,
 } from '../marketplace/approval/ApprovalService'
+import { isSuperAdminRequest } from '../middleware/superAdminAuth'
 
 const router = Router()
 
 // ─── SuperAdmin auth guard ────────────────────────────────────────────────────
 
 function requireSuperAdmin(req: Request, res: Response): boolean {
-  const secret = req.headers['x-superadmin-secret']
-  const email  = req.headers['x-superadmin-email']
-  if (secret !== process.env.SUPERADMIN_SECRET || !email) {
+  if (!isSuperAdminRequest(req)) {
     res.status(401).json({ error: 'Unauthorized' })
     return false
   }

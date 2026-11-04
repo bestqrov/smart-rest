@@ -3,15 +3,14 @@
 import { Router } from 'express'
 import * as PlanService from '../billing/plans/PlanService'
 import { PlanValidationError } from '../billing/plans/PlanValidation'
+import { isSuperAdminRequest } from '../middleware/superAdminAuth'
 
 const router = Router()
 
 function requireSA(req: any, res: any): boolean {
-  if (req.headers['x-superadmin-secret'] !== process.env.SUPERADMIN_SECRET) {
-    res.status(401).json({ error: 'Unauthorized' }); return false
-  }
-  if (!req.headers['x-superadmin-email']) {
-    res.status(401).json({ error: 'Unauthorized' }); return false
+  if (!isSuperAdminRequest(req)) {
+    res.status(401).json({ error: 'Unauthorized' })
+    return false
   }
   return true
 }

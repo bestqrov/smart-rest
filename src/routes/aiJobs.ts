@@ -2,20 +2,14 @@ import express, { Request, Response, NextFunction } from 'express'
 import prisma from '../prisma'
 import logger from '../logger'
 import { cancelJob, retryJob } from '../services/aiJobService'
+import { isSuperAdminRequest } from '../middleware/superAdminAuth'
 
 const router = express.Router()
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 
 function requireSuperAdmin(req: Request, res: Response, next: NextFunction) {
-  const secret = req.header('x-superadmin-secret')
-  const email  = req.header('x-superadmin-email')
-  if (
-    secret !== process.env.SUPERADMIN_SECRET ||
-    email  !== process.env.SUPERADMIN_EMAIL
-  ) {
-    return res.status(403).json({ error: 'Forbidden' })
-  }
+  if (!isSuperAdminRequest(req)) return res.status(403).json({ error: 'Forbidden' })
   return next()
 }
 

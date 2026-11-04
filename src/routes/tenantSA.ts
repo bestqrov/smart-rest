@@ -10,11 +10,12 @@ import {
   listPlans,
 } from '../tenant'
 import type { SuspensionType, Plan } from '../tenant'
+import { isSuperAdminRequest } from '../middleware/superAdminAuth'
 
 const router = Router()
 
 function requireSuperAdmin(req: any, res: any): boolean {
-  if (req.headers['x-superadmin-secret'] !== process.env.SUPERADMIN_SECRET) {
+  if (!isSuperAdminRequest(req)) {
     res.status(401).json({ error: 'Unauthorized' })
     return false
   }
