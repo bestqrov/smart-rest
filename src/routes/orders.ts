@@ -1,5 +1,6 @@
 import express, { Request, Response } from 'express'
 import { Server as SocketIOServer } from 'socket.io'
+import type { OrderStatus } from '@prisma/client'
 import { authorizeAdmin } from '../middleware/authorizeAdmin'
 import logger from '../logger'
 import prisma from '../prisma'
@@ -9,6 +10,8 @@ import { completeOrderFinancials, awardLoyaltyBestEffort } from '../services/ord
 import { autoCheckInReservationForTable } from '../reservations/ReservationService'
 
 const router = express.Router()
+
+const TERMINAL_STATUSES: OrderStatus[] = ['COMPLETED', 'CANCELLED']
 
 type ChosenModifierInput = {
   groupId:        string
@@ -234,6 +237,17 @@ router.patch('/api/orders/:orderId/status', authorizeAdmin, async (req: Request,
     if (order.cafeId !== cafeId) return res.status(403).json({ error: 'Forbidden' })
     if (order.status === status) return res.json({ message: 'No change', status })
 
+    // COMPLETED and CANCELLED are terminal. Re-opening a COMPLETED order and
+    // completing it again would re-run commission, inventory deduction and
+    // loyalty (none are idempotent per order), and cancelling a COMPLETED
+    // order has no reversal of any of them.
+    if (TERMINAL_STATUSES.includes(order.status)) {
+      return res.status(422).json({
+        error:   `Invalid transition: ${order.status} → ${status}`,
+        current: order.status
+      })
+    }
+
     const cafe = await prisma.cafe.findUnique({ where: { id: cafeId }, select: { country: true } })
 
     // didComplete tracks whether THIS request is the one that actually flipped
@@ -241,6 +255,7 @@ router.patch('/api/orders/:orderId/status', authorizeAdmin, async (req: Request,
     // { not: 'COMPLETED' } in the where clause), not just the pre-read above,
     // so two concurrent requests for the same order can't both run financials.
     let didComplete = false
+    let didUpdate   = false
 
     await prisma.$transaction(async (tx) => {
       const updateData: any = { status }
@@ -250,19 +265,23 @@ router.patch('/api/orders/:orderId/status', authorizeAdmin, async (req: Request,
         updateData.preparedAt = new Date()
       }
 
-      if (status === 'COMPLETED') {
-        const result = await tx.order.updateMany({
-          where: { id: orderId, status: { not: 'COMPLETED' } },
-          data:  updateData
-        })
-        didComplete = result.count === 1
-        if (didComplete) {
-          await completeOrderFinancials(tx, cafeId, orderId, order.totalPrice, cafe?.country ?? 'MA', order._count.items)
-        }
-      } else {
-        await tx.order.update({ where: { id: orderId }, data: updateData })
+      // The terminal-status guard is repeated in the write itself so a request
+      // racing a concurrent checkout/cancel can't slip past the pre-read above.
+      const result = await tx.order.updateMany({
+        where: { id: orderId, status: { notIn: TERMINAL_STATUSES } },
+        data:  updateData
+      })
+      didUpdate = result.count === 1
+
+      if (status === 'COMPLETED' && didUpdate) {
+        didComplete = true
+        await completeOrderFinancials(tx, cafeId, orderId, order.totalPrice, cafe?.country ?? 'MA', order._count.items)
       }
     })
+
+    if (!didUpdate) {
+      return res.status(409).json({ error: 'Order was closed by another request' })
+    }
 
     // Award loyalty points via the shared, best-effort helper (outside the
     // transaction — see orderCompletion.ts for why).
