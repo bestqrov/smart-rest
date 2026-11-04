@@ -248,8 +248,22 @@ async function main() {
     message: { error: 'Too many opt-in attempts, please try again later.' },
   })
 
+  // Staff PIN logins. Only failed attempts count, so a busy restaurant whose
+  // staff all share one IP isn't locked out by normal shift open/close traffic.
+  const pinLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 10,                   // 10 failed PIN attempts per IP per window
+    skipSuccessfulRequests: true,
+    skip: (req) => req.method !== 'POST',
+    standardHeaders: true,
+    legacyHeaders:   false,
+    message: { error: 'Too many PIN attempts, please try again in 15 minutes.' },
+  })
+
   // More specific limiters must come BEFORE the general /api limiter
   app.use('/api/auth',                    authLimiter)
+  app.use('/api/pos/shift',               pinLimiter)
+  app.use('/api/waiters/qr-login',        pinLimiter)
   app.use('/api/customers/optin',         optInLimiter)
   app.use('/api',                         apiLimiter)
 
