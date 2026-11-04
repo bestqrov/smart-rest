@@ -83,6 +83,13 @@ async function openShiftFor(
 }
 
 async function closeShiftFor(staffId: string, cafeId: string, countedCash?: number) {
+  if (countedCash !== undefined && countedCash !== null &&
+      (typeof countedCash !== 'number' || !Number.isFinite(countedCash) || countedCash < 0)) {
+    const err: any = new Error('countedCash must be a non-negative number')
+    err.status = 400
+    throw err
+  }
+
   const shift = await prisma.cashierShift.findFirst({
     where: { staffId, cafeId, status: 'OPEN' }
   })
@@ -109,8 +116,10 @@ async function closeShiftFor(staffId: string, cafeId: string, countedCash?: numb
     discrepancy = countedCash - (shift.initialCash + totalCollectedCash)
   }
 
-  return prisma.cashierShift.update({
-    where: { id: shift.id },
+  // status: 'OPEN' in the where clause: a double-tap on "Clôturer" must not
+  // close the same shift twice (second request would overwrite endTime/counts).
+  const result = await prisma.cashierShift.updateMany({
+    where: { id: shift.id, status: 'OPEN' },
     data: {
       status:             'CLOSED',
       endTime:            new Date(),
@@ -119,6 +128,13 @@ async function closeShiftFor(staffId: string, cafeId: string, countedCash?: numb
       discrepancy
     }
   })
+  if (result.count === 0) {
+    const err: any = new Error('Shift was already closed')
+    err.status = 409
+    throw err
+  }
+
+  return prisma.cashierShift.findUniqueOrThrow({ where: { id: shift.id } })
 }
 
 // ─── POST /api/pos/shift ──────────────────────────────────────────────────────

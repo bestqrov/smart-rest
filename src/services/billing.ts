@@ -260,6 +260,9 @@ export function calculateContextualFee(
 ): number {
   if (isSocialAction) return SOCIAL_FEE[country] ?? SOCIAL_FEE['MA']
 
+  // A free (or zero-total) order carries no commission.
+  if (orderTotal <= 0) return 0
+
   const tiers = COUNTRY_TIERS[country] ?? MA_TIERS
   let fee = tiers[tiers.length - 1].fee
   for (const tier of tiers) {

@@ -193,12 +193,15 @@ router.patch('/api/public/loyalty/:subdomain/:phone', async (req: Request, res: 
 })
 
 // ─── DELETE /api/customers/optout ─────────────────────────────────────────────
-// Customer can unsubscribe. Called if they tap "إلغاء الاشتراك" in a future flow.
+// Unsubscribe a customer from WhatsApp marketing. Admin-only: it used to be
+// public and trust cafeId from the body, so anyone could opt out any phone
+// of any cafe. A customer-facing flow will need its own signed link.
 
-router.delete('/api/customers/optout', async (req: Request, res: Response) => {
+router.delete('/api/customers/optout', authorizeAdmin, async (req: Request, res: Response) => {
   try {
-    const { phone, cafeId } = req.body
-    if (!phone || !cafeId) return res.status(400).json({ error: 'phone and cafeId required' })
+    const { phone } = req.body
+    const cafeId = req.admin!.cafeId
+    if (!phone) return res.status(400).json({ error: 'phone required' })
 
     await prisma.cafeCustomer.updateMany({
       where: { phone, cafeId },
