@@ -46,22 +46,30 @@ export async function runDailyDebtDetection(): Promise<{
     select: { id: true, walletBalance: true, country: true, subdomain: true }
   })
 
+  // Each cafe is isolated: one cafe's DB error must not stop the sweep for
+  // every other cafe (or skip Sweep B entirely).
+  let suspended = 0
   for (const cafe of gracePeriodExpired) {
-    await prisma.cafe.update({
-      where: { id: cafe.id },
-      data: {
-        isActive:          false,
-        billingStatus:     'SUSPENDED',
-        suspendedAt:       now,
-        gracePeriodEndsAt: null,
-      }
-    })
-    logger.warn({
-      msg:     '[CRON] Cafe SUSPENDED — grace period elapsed',
-      cafeId:  cafe.id,
-      balance: cafe.walletBalance,
-    })
-    await fireBillingWebhook(cafe.id, cafe.subdomain, cafe.walletBalance, cafe.country, 'CAFE_SUSPENDED')
+    try {
+      await prisma.cafe.update({
+        where: { id: cafe.id },
+        data: {
+          isActive:          false,
+          billingStatus:     'SUSPENDED',
+          suspendedAt:       now,
+          gracePeriodEndsAt: null,
+        }
+      })
+      suspended++
+      logger.warn({
+        msg:     '[CRON] Cafe SUSPENDED — grace period elapsed',
+        cafeId:  cafe.id,
+        balance: cafe.walletBalance,
+      })
+      await fireBillingWebhook(cafe.id, cafe.subdomain, cafe.walletBalance, cafe.country, 'CAFE_SUSPENDED')
+    } catch (err) {
+      logger.error({ msg: '[CRON] Failed to suspend cafe', cafeId: cafe.id, err })
+    }
   }
 
   // ── Sweep B: First-time debt detected → PAST_DUE ─────────────────────────────
@@ -80,22 +88,28 @@ export async function runDailyDebtDetection(): Promise<{
     select: { id: true, walletBalance: true, country: true, subdomain: true }
   })
 
+  let pastDue = 0
   for (const cafe of newlyInDebt) {
-    const gracePeriodEndsAt = new Date(now.getTime() + GRACE_PERIOD_DAYS * 24 * 60 * 60 * 1000)
-    await prisma.cafe.update({
-      where: { id: cafe.id },
-      data:  { billingStatus: 'PAST_DUE', gracePeriodEndsAt }
-    })
-    logger.warn({
-      msg:              '[CRON] Cafe PAST_DUE — 7-day grace period started',
-      cafeId:           cafe.id,
-      balance:          cafe.walletBalance,
-      gracePeriodEndsAt,
-    })
-    await fireBillingWebhook(cafe.id, cafe.subdomain, cafe.walletBalance, cafe.country, 'CAFE_PAST_DUE')
+    try {
+      const gracePeriodEndsAt = new Date(now.getTime() + GRACE_PERIOD_DAYS * 24 * 60 * 60 * 1000)
+      await prisma.cafe.update({
+        where: { id: cafe.id },
+        data:  { billingStatus: 'PAST_DUE', gracePeriodEndsAt }
+      })
+      pastDue++
+      logger.warn({
+        msg:              '[CRON] Cafe PAST_DUE — 7-day grace period started',
+        cafeId:           cafe.id,
+        balance:          cafe.walletBalance,
+        gracePeriodEndsAt,
+      })
+      await fireBillingWebhook(cafe.id, cafe.subdomain, cafe.walletBalance, cafe.country, 'CAFE_PAST_DUE')
+    } catch (err) {
+      logger.error({ msg: '[CRON] Failed to mark cafe PAST_DUE', cafeId: cafe.id, err })
+    }
   }
 
-  return { suspended: gracePeriodExpired.length, pastDue: newlyInDebt.length }
+  return { suspended, pastDue }
 }
 
 async function fireBillingWebhook(
