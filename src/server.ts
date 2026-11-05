@@ -183,7 +183,13 @@ async function main() {
     }
   }
 
-  const nextApp = next({ dev, dir: '.' })
+  // hostname/port are what Next's image optimizer uses to fetch local images
+  // (/_next/image?url=/assets/...) back from this same process. Without
+  // them it fetches http://localhost:3000, which in the production container
+  // can resolve to IPv6 ::1 (we listen on IPv4 0.0.0.0) or hit the wrong
+  // port — every optimized local image then 500s ("upstream response is
+  // invalid"), e.g. the admin sidebar logo.
+  const nextApp = next({ dev, dir: '.', hostname: '127.0.0.1', port: Number(process.env.PORT || 3000) })
   const handle = nextApp.getRequestHandler()
 
   await nextApp.prepare().catch((err: unknown) => {
