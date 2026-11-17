@@ -706,6 +706,45 @@ function TablePageInner() {
   }, [])
 
   const cartTotal = cart.reduce((s, c) => s + c.price * c.quantity, 0)
+
+  // ── Coupon (preview only — the server recomputes the discount at order time) ─
+  const [couponInput, setCouponInput]   = useState('')
+  const [coupon, setCoupon]             = useState<{ code: string; discount: number } | null>(null)
+  const [couponErr, setCouponErr]       = useState('')
+  const [couponBusy, setCouponBusy]     = useState(false)
+  const CPN = {
+    ar: { ph: 'كود الخصم', apply: 'تطبيق', remove: 'إزالة', discount: 'الخصم', NOT_FOUND: 'الكود غير صحيح', INACTIVE: 'الكود غير مفعّل', NOT_STARTED: 'العرض لم يبدأ بعد', EXPIRED: 'انتهت صلاحية الكود', USED_UP: 'تم استنفاد هذا الكود', MIN_ORDER: 'الحد الأدنى للطلب', err: 'تعذّر التحقق من الكود' },
+    en: { ph: 'Discount code', apply: 'Apply', remove: 'Remove', discount: 'Discount', NOT_FOUND: 'Invalid code', INACTIVE: 'Code is not active', NOT_STARTED: 'Offer has not started yet', EXPIRED: 'Code has expired', USED_UP: 'Code has been fully used', MIN_ORDER: 'Minimum order', err: 'Could not check the code' },
+    fr: { ph: 'Code promo', apply: 'Appliquer', remove: 'Retirer', discount: 'Remise', NOT_FOUND: 'Code invalide', INACTIVE: 'Code inactif', NOT_STARTED: "L'offre n'a pas commencé", EXPIRED: 'Code expiré', USED_UP: 'Code épuisé', MIN_ORDER: 'Commande minimum', err: 'Vérification impossible' },
+    es: { ph: 'Código de descuento', apply: 'Aplicar', remove: 'Quitar', discount: 'Descuento', NOT_FOUND: 'Código inválido', INACTIVE: 'Código inactivo', NOT_STARTED: 'La oferta aún no empieza', EXPIRED: 'Código caducado', USED_UP: 'Código agotado', MIN_ORDER: 'Pedido mínimo', err: 'No se pudo verificar' },
+  }[lang as 'ar' | 'en' | 'fr' | 'es'] ?? null
+  function couponErrorText(code: string, minOrder?: number) {
+    const c = CPN!
+    const k = code.replace(/^COUPON_/, '') as keyof typeof c
+    const base = (c[k] as string | undefined) ?? c.err
+    return k === 'MIN_ORDER' && minOrder != null ? `${base}: ${minOrder}` : base
+  }
+  async function checkCoupon(code: string) {
+    if (!scan || !code.trim()) return
+    setCouponBusy(true); setCouponErr('')
+    try {
+      const r = await fetch('/api/coupons/preview', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId: scan.sessionId, code, subtotal: cartTotal }),
+      })
+      const d = await r.json()
+      if (r.ok) setCoupon({ code: d.code, discount: d.discount })
+      else { setCoupon(null); setCouponErr(couponErrorText(d.code ?? '', d.minOrder)) }
+    } catch { setCouponErr(CPN!.err) }
+    finally { setCouponBusy(false) }
+  }
+  // Keep the preview in sync when the cart changes
+  useEffect(() => {
+    if (coupon && cart.length) checkCoupon(coupon.code)
+    if (!cart.length) { setCoupon(null); setCouponErr('') }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cartTotal])
+  const payableTotal = Math.max(0, cartTotal - (coupon?.discount ?? 0))
   const cartCount = cart.reduce((s, c) => s + c.quantity, 0)
 
   // ── Place order ───────────────────────────────────────────────────────────
@@ -719,9 +758,16 @@ function TablePageInner() {
         body: JSON.stringify({
           sessionId: scan.sessionId,
           items: cart.map(c => ({ productId: c.productId, quantity: c.quantity, notes: c.notes || undefined })),
+          couponCode: coupon?.code || undefined,
         }),
       })
       const data = await r.json()
+
+      if (r.status === 400 && typeof data.code === 'string' && data.code.startsWith('COUPON_')) {
+        setCoupon(null)
+        setCouponErr(couponErrorText(data.code, data.minOrder))
+        return
+      }
 
       if (r.status === 401 && data.code === 'SESSION_EXPIRED') {
         setPhase('expired')
@@ -730,10 +776,11 @@ function TablePageInner() {
       }
       if (!r.ok) { setOrderMsg(tr.failedOrder); return }
 
-      const newOrder = { orderId: data.orderId, status: 'PENDING', items: cart.map(c => ({ productId: c.productId, name: c.name, quantity: c.quantity, status: 'PENDING' })), totalPrice: cartTotal, queueNumber: data.queueNumber }
+      const newOrder = { orderId: data.orderId, status: 'PENDING', items: cart.map(c => ({ productId: c.productId, name: c.name, quantity: c.quantity, status: 'PENDING' })), totalPrice: data.totalPrice ?? cartTotal, queueNumber: data.queueNumber }
       setActiveOrder(newOrder)
       sharedOrderRef.current = ''
       setCart([])
+      setCoupon(null); setCouponInput(''); setCouponErr('')
       setCartOpen(false)
       setOrderMsg(tr.orderPlaced)
       setTimeout(() => setOrderMsg(''), 4000)
@@ -1559,9 +1606,31 @@ function TablePageInner() {
                   </div>
                 ))}
               </div>
+              {CPN && (
+                <div className="border-t border-gray-700 pt-3 mb-2">
+                  {coupon ? (
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-emerald-400 font-bold">🏷️ {coupon.code} · {CPN.discount} −{coupon.discount.toFixed(2)}</span>
+                      <button onClick={() => { setCoupon(null); setCouponInput('') }} className="text-xs text-gray-400 underline">{CPN.remove}</button>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <input value={couponInput} onChange={e => { setCouponInput(e.target.value.toUpperCase()); setCouponErr('') }}
+                        placeholder={CPN.ph} maxLength={20} dir="ltr"
+                        className="flex-1 min-w-0 bg-gray-800/60 text-white placeholder-gray-500 rounded-lg px-3 py-2 text-sm uppercase outline-none focus:ring-2 focus:ring-emerald-500" />
+                      <button onClick={() => checkCoupon(couponInput)} disabled={couponBusy || !couponInput.trim()}
+                        className="px-4 rounded-lg bg-gray-700 text-white text-sm font-bold disabled:opacity-50">{CPN.apply}</button>
+                    </div>
+                  )}
+                  {couponErr && <p className="text-xs text-red-400 mt-1">{couponErr}</p>}
+                </div>
+              )}
               <div className="border-t border-gray-700 pt-3 flex items-center justify-between mb-4">
                 <span className="font-bold">{tr.total}</span>
-                <span className="font-black text-emerald-400 text-lg">{cartTotal.toFixed(2)}</span>
+                <span className="font-black text-emerald-400 text-lg">
+                  {coupon && <span className="text-gray-500 line-through text-sm me-2">{cartTotal.toFixed(2)}</span>}
+                  {payableTotal.toFixed(2)}
+                </span>
               </div>
               <button onClick={placeOrder} disabled={placing}
                 className="w-full py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-white font-black text-base active:scale-95 transition-all">

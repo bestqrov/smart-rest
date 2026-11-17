@@ -546,6 +546,7 @@ model Order {
   totalCommission  Float       @default(0)
   // POS Core (K11) — order-level discount, applied on top of item subtotal
   discountAmount   Float?
+  couponCode       String? // QR coupon applied at order time (see Coupon)
   // Order Management Core (K11) — DINE_IN | TAKEAWAY | DELIVERY (defaults to DINE_IN in code when absent)
   orderType        String?
   // POS Advanced (K16) — order-level notes, and hold/resume timestamp (null = not held)
@@ -2953,4 +2954,26 @@ model BillingPlan {
   @@index([isActive])
   @@index([displayOrder])
   @@map("billing_plans")
+}
+
+// ─── Discount coupons (restaurant-created codes, applied on QR orders) ───────
+model Coupon {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId      String    @db.ObjectId
+  code        String // stored UPPERCASE, unique per cafe
+  type        String // PERCENT | FIXED
+  value       Float // percent (1-100) or fixed amount in cafe currency
+  minOrder    Float     @default(0)
+  maxDiscount Float? // cap for PERCENT coupons
+  maxUses     Int? // null = unlimited
+  usedCount   Int       @default(0)
+  startsAt    DateTime?
+  endsAt      DateTime?
+  isActive    Boolean   @default(true)
+  note        String    @default("")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([cafeId, code])
+  @@index([cafeId, isActive])
 }

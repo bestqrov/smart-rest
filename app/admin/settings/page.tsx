@@ -165,7 +165,7 @@ function SettingsInner() {
     try {
       const res = await fetch('/api/admin/cafe/payment-config', {
         method:  'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('adminToken')}` },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
         body:    JSON.stringify(payConfig),
       })
       setPayMsg(res.ok ? 'ok' : 'err')
@@ -256,7 +256,7 @@ function SettingsInner() {
     if (activeTab !== 'payments') return
     setPayLoading(true)
     fetch('/api/admin/cafe/payment-config', {
-      headers: { Authorization: `Bearer ${localStorage.getItem('adminToken')}` },
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
     })
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d) setPayConfig(d) })

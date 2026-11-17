@@ -4,6 +4,7 @@ import type { OrderStatus } from '@prisma/client'
 import { authorizeAdmin } from '../middleware/authorizeAdmin'
 import logger from '../logger'
 import prisma from '../prisma'
+import { redeemCoupon, CouponError } from '../coupons/CouponService'
 import { applyOrderFee } from '../services/billing'
 import { emitKdsTicket, emitOrderStatusUpdate } from '../services/kds'
 import { completeOrderFinancials, awardLoyaltyBestEffort } from '../services/orderCompletion'
@@ -32,11 +33,12 @@ type OrderItemInput = {
 
 router.post('/api/orders', async (req: Request, res: Response) => {
   try {
-    const { tableToken, seatToken, sessionId, customerPhone, items } = req.body as {
+    const { tableToken, seatToken, sessionId, customerPhone, items, couponCode } = req.body as {
       tableToken?:    string
       seatToken?:     string
       sessionId?:     string   // Dynamic QR flow — new single-QR-per-table approach
       customerPhone?: string
+      couponCode?:    string
       items:          OrderItemInput[]
     }
 
@@ -119,11 +121,29 @@ router.post('/api/orders', async (req: Request, res: Response) => {
     const productIds = items.map((i) => i.productId)
     const products = await prisma.product.findMany({
       where: { id: { in: productIds }, isAvailable: true, category: { cafeId } },
-      select: { id: true, price: true }
+      select: { id: true, price: true, modifierGroups: true }
     })
 
-    if (products.length !== productIds.length) {
+    if (products.length !== new Set(productIds).size) {
       return res.status(400).json({ error: 'One or more products are unavailable or do not belong to this cafe' })
+    }
+
+    // Resolve chosen modifiers against the product's OWN modifier config —
+    // never trust client-sent priceAdjustment / labels (a negative adjustment
+    // sent from the browser would otherwise make items free).
+    const productMap = new Map(products.map(p => [p.id, p]))
+    for (const it of items) {
+      const groups = productMap.get(it.productId)?.modifierGroups ?? []
+      const resolved = []
+      for (const m of it.chosenModifiers ?? []) {
+        const g   = groups.find(g => g.id === m.groupId)
+        const opt = g?.options.find(o => o.id === m.optionId)
+        if (!g || !opt) {
+          return res.status(400).json({ error: 'Invalid modifier selection', code: 'BAD_MODIFIER' })
+        }
+        resolved.push({ groupId: g.id, groupName: g.name, optionId: opt.id, optionLabel: opt.label, priceAdjustment: opt.priceAdjustment })
+      }
+      it.chosenModifiers = resolved
     }
 
     const priceMap = new Map<string, number>(products.map((p) => [p.id, p.price]))
@@ -156,6 +176,17 @@ router.post('/api/orders', async (req: Request, res: Response) => {
         queueNumber = (await tx.order.count({ where: { cafeId, queueNumber: { not: null }, createdAt: { gte: todayStart } } })) + 1
       }
 
+      // Coupon — validated and consumed inside this transaction so a failed
+      // order never burns a use. Discount is server-computed from DB prices.
+      let discountAmount = 0
+      let appliedCode: string | null = null
+      if (couponCode && String(couponCode).trim()) {
+        const r = await redeemCoupon(tx, cafeId, String(couponCode), total)
+        discountAmount = r.discount
+        appliedCode    = r.code
+      }
+      const finalTotal = parseFloat(Math.max(0, total - discountAmount).toFixed(2))
+
       const order = await tx.order.create({
         data: {
           cafeId,
@@ -166,7 +197,9 @@ router.post('/api/orders', async (req: Request, res: Response) => {
           sessionId:       resolvedSessionId ?? undefined,
           customerPhone:   customerPhone || null,
           queueNumber,
-          totalPrice:      total,
+          totalPrice:      finalTotal,
+          discountAmount:  discountAmount || undefined,
+          couponCode:      appliedCode ?? undefined,
           paymentMethod:   'CASH',
           isPaid:          false
         }
@@ -205,8 +238,11 @@ router.post('/api/orders', async (req: Request, res: Response) => {
 
     await autoCheckInReservationForTable(cafeId, physicalTableId)
 
-    return res.status(201).json({ orderId: result.id, totalPrice: total, billingTableId, physicalTableId, seatNumber, queueNumber: result.queueNumber })
+    return res.status(201).json({ orderId: result.id, totalPrice: result.totalPrice, discountAmount: result.discountAmount ?? 0, couponCode: result.couponCode ?? null, billingTableId, physicalTableId, seatNumber, queueNumber: result.queueNumber })
   } catch (err: any) {
+    if (err instanceof CouponError) {
+      return res.status(400).json({ error: 'Coupon not valid', code: 'COUPON_' + err.code, minOrder: err.minOrder })
+    }
     logger.error({ msg: 'Create order error', err })
     return res.status(500).json({ error: 'Failed to create order' })
   }

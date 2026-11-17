@@ -22,6 +22,13 @@ const TXT = {
     pendSub:  'قد يستغرق التأكيد لحظات. سيصل التحديث للمطعم تلقائياً.',
     error:    'تعذّر التحقق من الدفع',
     back:     'العودة إلى الطاولة',
+    receipt:  'أرسل الإيصال على واتساب',
+    phonePh:  'رقم واتساب (مثال ‎+9665…)',
+    send:     'إرسال',
+    sent:     'تم إرسال الإيصال ✅',
+    badPhone: 'رقم غير صحيح، استعمل الصيغة الدولية',
+    already:  'تم إرسال الإيصال مسبقاً',
+    sendErr:  'تعذّر الإرسال، حاول لاحقاً',
   },
   en: {
     checking: 'Confirming your payment…',
@@ -34,6 +41,13 @@ const TXT = {
     pendSub:  'Confirmation can take a moment. The restaurant will be updated automatically.',
     error:    'Could not verify the payment',
     back:     'Back to the table',
+    receipt:  'Send receipt to WhatsApp',
+    phonePh:  'WhatsApp number (e.g. +9715…)',
+    send:     'Send',
+    sent:     'Receipt sent ✅',
+    badPhone: 'Invalid number, use international format',
+    already:  'Receipt was already sent',
+    sendErr:  'Could not send, try again later',
   },
 } as const
 
@@ -42,6 +56,21 @@ function ReturnInner() {
   const payId  = params.get('p') ?? ''
   const [status, setStatus] = useState<Status>('checking')
   const [lang, setLang]     = useState<'ar' | 'en'>('ar')
+  const [phone, setPhone]   = useState('')
+  const [rcpt, setRcpt]     = useState<'idle' | 'sending' | 'sent' | string>('idle')
+
+  async function sendReceipt() {
+    setRcpt('sending')
+    try {
+      const r = await fetch(`/api/payment/online/${payId}/receipt`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, lang }),
+      })
+      const d = await r.json().catch(() => ({}))
+      if (r.ok && d.status === 'SENT') return setRcpt('sent')
+      setRcpt(d.code === 'BAD_PHONE' ? 'badPhone' : d.code === 'ALREADY_SENT' ? 'already' : 'sendErr')
+    } catch { setRcpt('sendErr') }
+  }
 
   useEffect(() => {
     if (typeof navigator !== 'undefined' && !navigator.language.startsWith('ar')) setLang('en')
@@ -88,6 +117,26 @@ function ReturnInner() {
         )}
         <h1 className="text-xl font-extrabold" style={{ color }}>{title}</h1>
         {sub && <p className="text-sm text-gray-500">{sub}</p>}
+        {status === 'PAID' && (
+          rcpt === 'sent' ? (
+            <p className="text-sm font-semibold text-emerald-600">{t.sent}</p>
+          ) : (
+            <div className="space-y-2 text-start">
+              <p className="text-sm font-bold text-gray-700">💬 {t.receipt}</p>
+              <div className="flex gap-2">
+                <input type="tel" dir="ltr" value={phone} onChange={e => { setPhone(e.target.value); if (rcpt !== 'sending') setRcpt('idle') }}
+                  placeholder={t.phonePh} className="flex-1 min-w-0 border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500" />
+                <button onClick={sendReceipt} disabled={rcpt === 'sending' || phone.replace(/\D/g, '').length < 8}
+                  className="px-4 rounded-xl text-sm font-bold text-white disabled:opacity-50" style={{ backgroundColor: '#25D366' }}>
+                  {t.send}
+                </button>
+              </div>
+              {['badPhone', 'already', 'sendErr'].includes(rcpt) && (
+                <p className="text-xs text-red-600">{t[rcpt as 'badPhone' | 'already' | 'sendErr']}</p>
+              )}
+            </div>
+          )
+        )}
         {status !== 'checking' && (
           <a href={backHref} className="block w-full py-3 rounded-xl font-bold text-white" style={{ backgroundColor: '#111827' }}>
             {t.back}

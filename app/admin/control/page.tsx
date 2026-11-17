@@ -142,12 +142,12 @@ export default function ControlPage() {
 
   // ── Auth token ──────────────────────────────────────────────────────────────
   useEffect(() => {
-    tokenRef.current = localStorage.getItem('adminToken')
+    tokenRef.current = localStorage.getItem('token')
   }, [])
 
   // ── Fetch staff ─────────────────────────────────────────────────────────────
   async function fetchStaff() {
-    const token = tokenRef.current ?? localStorage.getItem('adminToken')
+    const token = tokenRef.current ?? localStorage.getItem('token')
     if (!token) return
     try {
       const res = await fetch('/api/admin/staff', {
@@ -172,7 +172,7 @@ export default function ControlPage() {
   useEffect(() => {
     const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || ''
     if (!SOCKET_URL) return
-    const token = localStorage.getItem('adminToken') ?? ''
+    const token = localStorage.getItem('token') ?? ''
     const cafeId = localStorage.getItem('cafeId') ?? ''
     if (!cafeId) return
 

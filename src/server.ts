@@ -67,6 +67,7 @@ import reservationsRouter from './routes/reservations'
 import posParserRouter from './routes/posParser'
 import paymentRouter from './routes/payment'
 import onlinePaymentRouter from './routes/onlinePayment'
+import couponsRouter from './routes/coupons'
 import whatsappWebhookRouter from './routes/whatsappWebhook'
 import recipesRouter from './routes/recipes'
 import antiFraudRouter from './routes/antiFraud'
@@ -335,6 +336,7 @@ async function main() {
   app.use(posParserRouter)
   app.use(paymentRouter)
   app.use(onlinePaymentRouter)
+  app.use(couponsRouter)
   app.use(whatsappWebhookRouter)
   app.use(recipesRouter)
   app.use(antiFraudRouter)

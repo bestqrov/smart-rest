@@ -5,6 +5,7 @@
  *     POST /api/payment/online/start                 { sessionId } → { redirectUrl }
  *     POST /api/payment/online/:payId/verify         → { status }
  *     GET|POST /api/payment/online/callback/:payId   provider server callback → verify
+ *     POST /api/payment/online/:payId/receipt        { phone, lang } → WhatsApp receipt (PAID only, once)
  *
  *   Admin
  *     GET  /api/admin/cafe/online-gateway            → { provider, secretHint, encryptionReady }
@@ -20,6 +21,7 @@ import prisma from '../prisma'
 import logger from '../logger'
 import { authorizeAdmin } from '../middleware/authorizeAdmin'
 import { startBillPayment, verifyBillPayment, BillPaymentError } from '../payments/online/BillPaymentService'
+import { sendBillReceipt } from '../payments/online/receipt'
 import { encryptSecret, isEncryptionConfigured } from '../payments/online/secretBox'
 import { ONLINE_PROVIDERS, looksLikeSecretKey, testCredentials, type OnlineProvider } from '../payments/online/gateways'
 
@@ -56,6 +58,16 @@ router.post('/api/payment/online/:payId/verify', async (req: Request, res: Respo
     return res.json(await verifyBillPayment(payId, io))
   } catch (err) {
     return sendError(res, err, 'Could not verify payment')
+  }
+})
+
+router.post('/api/payment/online/:payId/receipt', async (req: Request, res: Response) => {
+  try {
+    const payId = String(req.params.payId)
+    if (!OBJECT_ID.test(payId)) return res.status(400).json({ error: 'Invalid id' })
+    return res.json(await sendBillReceipt(payId, String(req.body?.phone ?? ''), String(req.body?.lang ?? 'ar')))
+  } catch (err) {
+    return sendError(res, err, 'Could not send receipt')
   }
 })
 

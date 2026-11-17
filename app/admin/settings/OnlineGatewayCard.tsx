@@ -104,7 +104,7 @@ export default function OnlineGatewayCard({ lang }: { lang: string }) {
   const [editing, setEditing]     = useState(false)
   const [msg, setMsg]             = useState<{ ok: boolean; text: string } | null>(null)
 
-  const headers = () => ({ 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('adminToken')}` })
+  const headers = () => ({ 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` })
 
   useEffect(() => {
     fetch('/api/admin/cafe/online-gateway', { headers: headers() })
