@@ -273,10 +273,14 @@ router.put('/api/admin/cafe/payment-config', authorizeAdmin, async (req: Request
       whatsappNumber,
     } = req.body
 
+    // Merge — never drop fields this form doesn't own (e.g. the encrypted
+    // online-gateway secret managed by /api/admin/cafe/online-gateway).
+    const existing = await prisma.cafe.findUnique({ where: { id: cafeId }, select: { paymentConfig: true } })
     await prisma.cafe.update({
       where: { id: cafeId },
       data:  {
         paymentConfig: {
+          ...(existing?.paymentConfig ?? {}),
           orangeMoneyNumber:     orangeMoneyNumber     ?? '',
           mtnMoMoNumber:         mtnMoMoNumber         ?? '',
           waveWallet:            waveWallet            ?? '',

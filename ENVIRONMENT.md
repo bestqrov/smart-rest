@@ -86,14 +86,12 @@ Used for magic-link WhatsApp delivery and n8n automation notifications.
 
 | Variable | Description |
 |----------|-------------|
-| `STRIPE_SECRET_KEY` | Stripe secret key (sk_live_...) |
-| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret (whsec_...). **Required** when Stripe is enabled |
+| `PAYMENT_ENCRYPTION_KEY` | 32-byte key (`openssl rand -hex 32`) that encrypts each restaurant's own Tap / Moyasar / Stripe secret key. **Required** for online bill payment. Rotating it forces restaurants to reconnect. |
 
 ## Payments — Moyasar (Optional — Gulf pack)
 
 | Variable | Description |
 |----------|-------------|
-| `MOYASAR_SECRET_KEY` | Moyasar secret key. **Required** when Moyasar is enabled — signature verification is enforced |
 
 ## Payments — Mobile Money (Optional — Africa pack)
 
@@ -125,5 +123,5 @@ Used for magic-link WhatsApp delivery and n8n automation notifications.
 - Never commit `.env` to git — it is in `.gitignore`
 - Rotate `JWT_SECRET` to invalidate all active sessions system-wide
 - `SUPERADMIN_SECRET` must be kept off any frontend — it is backend-only
-- `MOYASAR_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` are required in production; the server rejects unsigned webhooks when they are configured
+- `PAYMENT_ENCRYPTION_KEY` is required in production for Gulf online payments. Payment callbacks are never trusted: the server always re-fetches status from the provider with the restaurant's key.
 - Store production secrets in a secrets manager, not in plain text files

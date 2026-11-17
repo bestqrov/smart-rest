@@ -66,6 +66,7 @@ import suppliersRouter from './routes/suppliers'
 import reservationsRouter from './routes/reservations'
 import posParserRouter from './routes/posParser'
 import paymentRouter from './routes/payment'
+import onlinePaymentRouter from './routes/onlinePayment'
 import whatsappWebhookRouter from './routes/whatsappWebhook'
 import recipesRouter from './routes/recipes'
 import antiFraudRouter from './routes/antiFraud'
@@ -167,8 +168,7 @@ async function main() {
   // in production so a missing key shows up in the first lines of the logs.
   if (nodeEnv === 'production') {
     const SOFT_REQUIRED_VARS = [
-      'STRIPE_SECRET_KEY',
-      'STRIPE_WEBHOOK_SECRET',
+      'PAYMENT_ENCRYPTION_KEY', // restaurants can't connect Tap / Moyasar / Stripe without it
       'GROQ_API_KEY',
       'N8N_WEBHOOK_URL',
       'N8N_WEBHOOK_SECRET',
@@ -247,8 +247,6 @@ async function main() {
   app.use(requestId)
 
   // ── Body parsing ─────────────────────────────────────────────────────────────
-  // Stripe webhook needs raw body — mount BEFORE bodyParser.json()
-  app.use('/api/payment/gulf/stripe-webhook', express.raw({ type: 'application/json' }))
 
   app.use(bodyParser.json({ limit: '10mb' }))
 
@@ -336,6 +334,7 @@ async function main() {
   app.use(reservationsRouter)
   app.use(posParserRouter)
   app.use(paymentRouter)
+  app.use(onlinePaymentRouter)
   app.use(whatsappWebhookRouter)
   app.use(recipesRouter)
   app.use(antiFraudRouter)

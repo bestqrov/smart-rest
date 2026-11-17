@@ -64,7 +64,10 @@ router.get('/api/menu/public', async (req: Request, res: Response) => {
       hasMtnMomo:           !!pc.mtnMoMoNumber,
       hasWave:              !!pc.waveWallet,
       moyasarPublishableKey: pc.moyasarPublishableKey || null,
-      hasStripe:            !!pc.stripeAccountId || !!process.env.STRIPE_SECRET_KEY,
+      hasStripe:            false,
+      // Restaurant connected its own Tap / Moyasar / Stripe account
+      onlinePayment:        !!(pc.onlineProvider && pc.onlineSecretEnc),
+      onlineProvider:       pc.onlineSecretEnc ? (pc.onlineProvider || null) : null,
       whatsappNumber:       pc.whatsappNumber || null,
     } : null
 

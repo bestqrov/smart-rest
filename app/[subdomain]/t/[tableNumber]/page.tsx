@@ -476,9 +476,11 @@ function TablePageInner() {
       moyasarPublishableKey: string | null
       hasStripe: boolean
       whatsappNumber: string | null
+      onlinePayment?: boolean
     } | null
   }>({ socialLinks: null, hasSocialShareAddon: false, isDemo: false, googleMapsUrl: null, tripadvisorUrl: null, paymentGateway: null })
 
+  const [payingOnline, setPayingOnline] = useState(false)
   const socketRef       = useRef<Socket | null>(null)
   const heartbeatRef    = useRef<ReturnType<typeof setInterval> | null>(null)
   const sharedOrderRef  = useRef('')
@@ -991,9 +993,45 @@ function TablePageInner() {
     reader.readAsDataURL(file)
   }
 
+  // ── Pay the bill online — restaurant's own Tap / Moyasar / Stripe account ─
+  async function payOnline() {
+    if (!scan || payingOnline) return
+    setPayingOnline(true)
+    try {
+      const r = await fetch('/api/payment/online/start', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ sessionId: scan.sessionId }),
+      })
+      const data = await r.json()
+      if (r.ok && data.redirectUrl) {
+        try { localStorage.setItem('sm_pay_return', window.location.pathname + window.location.search) } catch {}
+        window.location.href = data.redirectUrl
+        return
+      }
+      setBillMsg(data.code === 'NOTHING_TO_PAY'
+        ? (isRTL ? 'لا توجد طلبات غير مدفوعة' : lang === 'fr' ? 'Aucune commande à payer' : 'Nothing left to pay')
+        : (isRTL ? 'تعذّر بدء الدفع، حاول مجدداً' : lang === 'fr' ? 'Paiement indisponible, réessayez' : 'Could not start payment, try again'))
+      setTimeout(() => setBillMsg(''), 4000)
+    } catch {
+      setBillMsg(isRTL ? 'تعذّر بدء الدفع، حاول مجدداً' : 'Could not start payment, try again')
+      setTimeout(() => setBillMsg(''), 4000)
+    } finally {
+      setPayingOnline(false)
+    }
+  }
+
   // ── Dynamic payment options — built from paymentGateway config ───────────
   const pg = cafeShare.paymentGateway
   const paymentOptions: { emoji: string; label: string; sub: string; action: () => void }[] = [
+    ...(pg?.onlinePayment ? [{
+      emoji: '📱',
+      label: isRTL ? 'ادفع الآن من هاتفك' : lang === 'fr' ? 'Payer maintenant' : 'Pay now on your phone',
+      sub:   payingOnline
+        ? (isRTL ? 'جارٍ التحويل…' : lang === 'fr' ? 'Redirection…' : 'Redirecting…')
+        : 'mada · Apple Pay · Visa / Mastercard',
+      action: () => { payOnline() },
+    }] : []),
     {
       emoji: '💵',
       label: tr.payCash,
