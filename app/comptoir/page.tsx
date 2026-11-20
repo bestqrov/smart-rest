@@ -12,22 +12,30 @@ import MarketplaceOrderModal from '../../src/components/pos/MarketplaceOrderModa
 import PosPinLogin from '../../src/components/pos/PosPinLogin'
 import { printReceipt } from '../../src/lib/posReceipt'
 import { lineTotal, type MenuItem, type MenuCat, type CartItem } from '../../src/lib/posCart'
+import { tr, getLang, setLang as saveLang, isRTL, roleLabel, POS_LANGS, type Lang } from '../../src/lib/posI18n'
 
 interface Staff { id: string; name: string; role: string }
 interface TodaySummaryOrder { id: string; status: string; totalPrice: number; paymentMethod: string; createdAt: string; table: { tableNumber: number } | null }
 interface ShiftLiveSummary  { openingFloat: number; totalCollectedCash: number; count: number; orders: TodaySummaryOrder[] }
 
-function pName(item: { nameEn: string; nameAr: string; nameFr: string }) {
-  return item.nameFr || item.nameEn || item.nameAr
-}
-
 export default function ComptoirPage() {
+  const [lang, setLangState] = useState<Lang>('ar')
+  useEffect(() => { setLangState(getLang()) }, [])
+  const L = (key: Parameters<typeof tr>[0]) => tr(key, lang)
+  const dir = isRTL(lang) ? 'rtl' : 'ltr'
+
+  function pName(item: { nameEn: string; nameAr: string; nameFr: string }) {
+    return lang === 'ar' ? (item.nameAr || item.nameEn || item.nameFr)
+         : lang === 'fr' ? (item.nameFr || item.nameEn || item.nameAr)
+         : (item.nameEn || item.nameFr || item.nameAr)
+  }
+
   // auth (mirrors app/pos/page.tsx's login flow)
   const [posToken,    setPosToken]    = useState<string | null>(null)
   const [staff,       setStaff]       = useState<Staff | null>(null)
   const [cafeId,      setCafeId]      = useState('')
   const [cafeName,    setCafeName]    = useState('Café')
-  const [currency,    setCurrency]    = useState('MAD')
+  const [currency,    setCurrency]    = useState('')
   const [pin,         setPin]         = useState('')
   const [subdomain,   setSubdomain]   = useState('')
   const [loginErr,    setLoginErr]    = useState('')
@@ -65,7 +73,7 @@ export default function ComptoirPage() {
 
   // marketplace order logging (Glovo, Uber Eats...) — shared hook, see src/hooks/useMarketplaceCart.ts
   const mp = useMarketplaceCart(posToken, pName, {
-    choosePlatform: 'Choisis une plateforme', requestFailed: 'Échec', networkError: 'Erreur réseau',
+    choosePlatform: L('mp_choose'), requestFailed: L('request_failed'), networkError: L('network_error'),
   })
 
   const [orderType,   setOrderType]   = useState<'TAKEAWAY' | 'DINE_IN'>('TAKEAWAY')
@@ -109,7 +117,7 @@ export default function ComptoirPage() {
     if (!res.ok) return
     const data = await res.json()
     setMenuCats(data.categories ?? [])
-    setCurrency(data.currency ?? 'MAD')
+    setCurrency(data.currency ?? '')
     if (data.categories?.length) setActiveCat(data.categories[0].id)
   }, [])
 
@@ -217,11 +225,11 @@ export default function ComptoirPage() {
         }),
       })
       const data = await res.json()
-      if (!res.ok) { setEditError(data.error || 'Échec de la mise à jour'); return }
+      if (!res.ok) { console.error('[Comptoir] customer update failed:', data.error); setEditError(L('update_failed')); return }
       setClient(data.customer)
       setEditClientOpen(false)
     } catch {
-      setEditError('Erreur réseau')
+      setEditError(L('network_error'))
     } finally {
       setEditSaving(false)
     }
@@ -242,7 +250,7 @@ export default function ComptoirPage() {
         }),
       })
       const createData = await createRes.json()
-      if (!createRes.ok) { setConfirmErr(createData.error ?? 'Échec de la création'); return }
+      if (!createRes.ok) { console.error('[Comptoir] create order failed:', createData.error); setConfirmErr(L('order_create_failed')); return }
 
       const orderId = createData.order.id
       const checkoutRes = await fetch(`/api/pos/orders/${orderId}/checkout`, {
@@ -251,12 +259,12 @@ export default function ComptoirPage() {
         body: JSON.stringify({ paymentMethod: payMethod, printReceipt: true }),
       })
       const checkoutData = await checkoutRes.json()
-      if (!checkoutRes.ok) { setConfirmErr(checkoutData.error ?? 'Échec du paiement'); return }
+      if (!checkoutRes.ok) { console.error('[Comptoir] checkout failed:', checkoutData.error); setConfirmErr(L('checkout_failed')); return }
 
       printReceipt(
         cafeName,
-        orderType === 'TAKEAWAY' ? 'Emporter' : 'Sur place',
-        checkoutData.order.items.map((i: any) => ({ name: i.product?.nameFr || i.product?.nameEn || i.product?.nameAr, quantity: i.quantity, unitPrice: i.unitPrice })),
+        orderType === 'TAKEAWAY' ? L('takeaway') : L('dine_in'),
+        checkoutData.order.items.map((i: any) => ({ name: i.product ? pName(i.product) : '', quantity: i.quantity, unitPrice: i.unitPrice })),
         checkoutData.order.totalPrice,
         currency
       )
@@ -275,7 +283,7 @@ export default function ComptoirPage() {
       const res  = await fetch('/api/pos/shift', { method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ subdomain: subdomain.trim(), pinCode: pin.trim(), action: 'login' }) })
       const data = await res.json()
-      if (!res.ok) { setLoginErr(data.error ?? 'Login failed'); return }
+      if (!res.ok) { console.error('[Comptoir] login failed:', data.error); setLoginErr(L('login_failed')); return }
       const payload = JSON.parse(atob(data.token.split('.')[1]))
       lastPinRef.current = pin.trim()
       localStorage.setItem('posToken', data.token)
@@ -284,7 +292,7 @@ export default function ComptoirPage() {
       localStorage.setItem('staffName', data.staff?.name ?? '')
       setPin('')
       setPosToken(data.token); setCafeId(payload.cafeId); setStaff(data.staff)
-    } catch { setLoginErr('Network error') }
+    } catch { setLoginErr(L('network_error')) }
     finally   { setLogging(false) }
   }
 
@@ -294,14 +302,14 @@ export default function ComptoirPage() {
       const res  = await fetch('/api/pos/shift', { method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ subdomain: subdomain.trim(), demoStaffId: staffId, action: 'login' }) })
       const data = await res.json()
-      if (!res.ok) { setLoginErr(data.error ?? 'Login failed'); return }
+      if (!res.ok) { console.error('[Comptoir] login failed:', data.error); setLoginErr(L('login_failed')); return }
       const payload = JSON.parse(atob(data.token.split('.')[1]))
       localStorage.setItem('posToken', data.token)
       localStorage.setItem('cafeId', payload.cafeId)
       localStorage.setItem('posLastSubdomain', subdomain.trim())
       localStorage.setItem('staffName', data.staff?.name ?? '')
       setPosToken(data.token); setCafeId(payload.cafeId); setStaff(data.staff)
-    } catch { setLoginErr('Network error') }
+    } catch { setLoginErr(L('network_error')) }
     finally   { setLogging(false) }
   }
 
@@ -313,17 +321,26 @@ export default function ComptoirPage() {
   // ─── PIN Login ──────────────────────────────────────────────────────────────
   if (!posToken) {
     return (
+      <div dir={dir}>
       <PosPinLogin
         cafeName={cafeName}
         icon="🧾"
-        subtitle="Comptoir — Staff Login"
+        subtitle={L('counter_subtitle')}
         subdomain={subdomain} setSubdomain={setSubdomain}
         pin={pin} setPin={setPin}
         loginErr={loginErr} logging={logging}
-        isDemoMode={isDemoMode} demoStaff={demoStaff} demoLabel="🧪 Demo"
+        isDemoMode={isDemoMode} demoStaff={demoStaff} demoLabel={L('demo_pick')}
+        labels={{ subdomainPlaceholder: L('pin_subdomain'), login: L('login_btn'), roleLabel: r => roleLabel(r, lang) }}
         onDemoLogin={handleDemoLogin}
         onSubmit={handleLogin}
+        langSwitcher={POS_LANGS.map(l => (
+          <button key={l.code} onClick={() => { saveLang(l.code); setLangState(l.code) }}
+            className={`w-8 h-8 rounded-lg text-sm transition-all ${lang === l.code ? 'bg-emerald-600' : 'bg-gray-800 hover:bg-gray-700'}`}>
+            {l.flag}
+          </button>
+        ))}
       />
+      </div>
     )
   }
 
@@ -332,6 +349,7 @@ export default function ComptoirPage() {
     return (
       <CaisseDepartScreen
         staffName={staff?.name ?? ''}
+        lang={lang}
         onSubmit={async ({ initialCash, plannedEndTime }) => {
           const result = await cashierShift.openShift({
             pinCode: isDemoMode ? undefined : lastPinRef.current,
@@ -348,21 +366,21 @@ export default function ComptoirPage() {
 
   // ─── Poste verrouillé ────────────────────────────────────────────────────────
   if (cashierShift.isLocked) {
-    return <LockedOverlay staffName={staff?.name ?? ''} plannedEndTime={cashierShift.shift?.plannedEndTime ?? null} />
+    return <LockedOverlay staffName={staff?.name ?? ''} plannedEndTime={cashierShift.shift?.plannedEndTime ?? null} lang={lang} />
   }
 
   // ─── Main Comptoir UI ───────────────────────────────────────────────────────
   return (
-    <div className="h-screen bg-gray-950 flex flex-col overflow-hidden">
+    <div className="h-screen bg-gray-950 flex flex-col overflow-hidden" dir={dir}>
       <header className="bg-gray-900 border-b border-gray-800 px-4 h-16 flex items-center justify-between shrink-0">
         <div>
           <p className="text-white font-extrabold text-sm leading-none">{cafeName}</p>
-          <p className="text-gray-500 text-xs mt-0.5">{staff?.name} · {staff?.role}</p>
+          <p className="text-gray-500 text-xs mt-0.5">{staff?.name} · {roleLabel(staff?.role, lang)}</p>
         </div>
         <div className="flex items-center gap-2">
           {liveSummary && (
             <div className="hidden md:flex items-center gap-2 bg-gray-950 border border-gray-800 rounded-xl px-2.5 py-1">
-              <span className="text-[10px] text-gray-500 font-bold uppercase">Caisse</span>
+              <span className="text-[10px] text-gray-500 font-bold uppercase">{L('drawer')}</span>
               <span className="text-xs text-gray-400">{liveSummary.openingFloat.toFixed(2)}</span>
               <span className="text-gray-700">+</span>
               <span className="text-xs text-emerald-400 font-bold">{liveSummary.totalCollectedCash.toFixed(2)}</span>
@@ -370,29 +388,29 @@ export default function ComptoirPage() {
             </div>
           )}
           <button onClick={() => { mp.setShowMarketplace(true); if (menuCats.length && !mp.mpCat) mp.setMpCat(menuCats[0].id) }}
-            title="Enregistrer une commande d'une app de livraison (Glovo, Uber Eats...)"
+            title={L('delivery_hint')} aria-label={L('delivery_hint')}
             className="h-9 px-2 sm:px-3 rounded-xl flex items-center gap-1.5 text-amber-500 hover:bg-amber-950 transition-colors">
             <Bike className="w-4 h-4 shrink-0" />
-            <span className="hidden sm:inline text-xs font-bold whitespace-nowrap">Livraison</span>
+            <span className="hidden sm:inline text-xs font-bold whitespace-nowrap">{L('delivery')}</span>
           </button>
-          <ShiftTimingPill timing={cashierShift.timing} />
+          <ShiftTimingPill timing={cashierShift.timing} plannedEndTime={cashierShift.shift?.plannedEndTime ?? null} lang={lang} />
           <div className="flex items-center gap-0.5 bg-gray-950 border border-gray-800 rounded-lg p-0.5">
             <button onClick={() => setPosView('live')}
               className={`px-2.5 py-1.5 rounded-md text-xs font-bold transition-all ${posView === 'live' ? 'bg-emerald-600 text-white' : 'text-gray-500 hover:text-gray-300'}`}>
-              Live
+              {L('view_live')}
             </button>
             <button onClick={() => { setPosView('today'); if (posToken) fetchLiveSummary(posToken) }}
               className={`px-2.5 py-1.5 rounded-md text-xs font-bold transition-all ${posView === 'today' ? 'bg-emerald-600 text-white' : 'text-gray-500 hover:text-gray-300'}`}>
-              Aujourd'hui {liveSummary && liveSummary.count > 0 && <span className="ml-1 opacity-80">({liveSummary.count})</span>}
+              {L('nav_today')} {liveSummary && liveSummary.count > 0 && <span className="ml-1 opacity-80">({liveSummary.count})</span>}
             </button>
           </div>
           {cashierShift.shift && (
             <button onClick={() => setShowCloture(true)}
               className="px-3 py-2 text-xs font-bold text-gray-400 hover:text-white rounded-xl hover:bg-gray-800 transition-colors">
-              Clôture
+              {L('shift_close')}
             </button>
           )}
-          <button onClick={logout} className="flex items-center gap-1.5 px-3 py-2 text-gray-500 hover:text-red-400 text-xs font-medium rounded-xl hover:bg-gray-800 transition-colors">
+          <button onClick={logout} title={L('nav_logout')} aria-label={L('nav_logout')} className="flex items-center gap-1.5 px-3 py-2 text-gray-500 hover:text-red-400 text-xs font-medium rounded-xl hover:bg-gray-800 transition-colors">
             <LogOut className="w-4 h-4" />
           </button>
         </div>
@@ -404,16 +422,16 @@ export default function ComptoirPage() {
             {(!liveSummary || liveSummary.orders.length === 0) && (
               <div className="text-center py-20 text-gray-600">
                 <p className="text-3xl mb-3">🧾</p>
-                <p className="text-sm">Aucune vente enregistrée aujourd'hui</p>
+                <p className="text-sm">{L('today_no_sales')}</p>
               </div>
             )}
             {liveSummary?.orders.map(o => (
               <div key={o.id} className="flex items-center justify-between bg-gray-900 border border-gray-800 rounded-xl px-4 py-3">
                 <div>
-                  <p className="text-white text-sm font-bold">{o.table ? `Table ${o.table.tableNumber}` : 'Comptoir'} <span className="text-gray-600 font-normal">· {o.paymentMethod}</span></p>
+                  <p className="text-white text-sm font-bold">{o.table ? `${L('table')} ${o.table.tableNumber}` : L('counter')} <span className="text-gray-600 font-normal">· {o.paymentMethod === 'CASH' ? L('pay_cash') : o.paymentMethod === 'CARD' ? L('pay_card') : o.paymentMethod === 'ONLINE' ? L('pay_online') : o.paymentMethod}</span></p>
                   <p className="text-gray-500 text-xs">{new Date(o.createdAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}</p>
                 </div>
-                <span className="text-emerald-400 font-extrabold text-sm">{o.totalPrice.toFixed(2)} {currency}</span>
+                <span dir="ltr" className="text-emerald-400 font-extrabold text-sm">{o.totalPrice.toFixed(2)} {currency}</span>
               </div>
             ))}
           </div>
@@ -423,10 +441,10 @@ export default function ComptoirPage() {
       <div className="flex-1 flex overflow-hidden">
         {/* Left: categories */}
         <div className="w-44 shrink-0 bg-gray-900 border-r border-gray-800 p-3 flex flex-col gap-1 overflow-y-auto">
-          <div className="text-[10px] font-bold text-gray-600 uppercase tracking-widest px-2 pb-2">Catégories</div>
+          <div className="text-[10px] font-bold text-gray-600 uppercase tracking-widest px-2 pb-2">{L('categories')}</div>
           {menuCats.map(cat => (
             <button key={cat.id} onClick={() => setActiveCat(cat.id)}
-              className={`text-left px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
+              className={`text-start px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
                 activeCat === cat.id ? 'bg-emerald-600 text-white' : 'text-gray-300 hover:bg-gray-800'
               }`}>
               {pName(cat)}
@@ -439,10 +457,10 @@ export default function ComptoirPage() {
           <div className="grid grid-cols-3 gap-3">
             {activeItems.map(item => (
               <button key={item.id} onClick={() => addToCart(item)}
-                className="bg-gray-900 border border-gray-800 hover:border-emerald-700 rounded-2xl p-3 text-left transition-colors active:scale-95">
+                className="bg-gray-900 border border-gray-800 hover:border-emerald-700 rounded-2xl p-3 text-start transition-colors active:scale-95">
                 <p className="text-white font-bold text-sm truncate">{pName(item)}</p>
                 <div className="flex items-center justify-between mt-2">
-                  <span className="text-emerald-400 font-extrabold text-sm">{item.price.toFixed(2)} {currency}{item.unitType === 'WEIGHT' ? '/kg' : ''}</span>
+                  <span dir="ltr" className="text-emerald-400 font-extrabold text-sm">{item.price.toFixed(2)} {currency}{item.unitType === 'WEIGHT' ? '/kg' : ''}</span>
                   <span className="w-7 h-7 rounded-lg bg-emerald-900/60 text-emerald-400 flex items-center justify-center font-bold">+</span>
                 </div>
               </button>
@@ -456,27 +474,27 @@ export default function ComptoirPage() {
             {client ? (
               <div>
                 <p className="text-white text-sm font-bold flex items-center gap-1.5">
-                  {client.name || 'Client'}
+                  {client.name || L('customer')}
                   {client.customerType === 'WHOLESALE' && (
                     <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-900/50 text-amber-400 border border-amber-700/50">
-                      Gros −{client.wholesaleDiscountPct}%
+                      {L('wholesale')} −{client.wholesaleDiscountPct}%
                     </span>
                   )}
                 </p>
                 <p className="text-gray-500 text-xs font-mono">{client.phone}</p>
               </div>
             ) : (
-              <p className="text-amber-400 text-xs font-bold">⚠ Sélectionnez un client</p>
+              <p className="text-amber-400 text-xs font-bold">{L('select_customer')}</p>
             )}
             <div className="flex items-center gap-1 shrink-0">
               {client && (
-                <button onClick={openEditClient} title="Modifier le statut grossiste"
+                <button onClick={openEditClient} title={L('edit_wholesale')} aria-label={L('edit_wholesale')}
                   className="w-9 h-9 flex items-center justify-center text-gray-400 hover:text-amber-400 active:scale-90 transition-all">
                   ✎
                 </button>
               )}
               <button onClick={() => setClientPicker(true)} className="px-3 py-2 -m-1 text-emerald-400 text-xs font-bold hover:text-emerald-300 active:scale-95 transition-all">
-                {client ? 'Changer' : 'Choisir'}
+                {client ? L('change_btn') : L('choose_btn')}
               </button>
             </div>
           </div>
@@ -493,24 +511,24 @@ export default function ComptoirPage() {
               </div>
             ))}
             {cart.length === 0 && (
-              <p className="text-gray-600 text-sm text-center py-10">Aucun article — touchez un produit pour l'ajouter</p>
+              <p className="text-gray-600 text-sm text-center py-10">{L('counter_empty')}</p>
             )}
           </div>
           {wholesaleDiscount > 0 && (
             <div className="px-4 pt-2 flex items-baseline justify-between text-xs">
-              <span className="text-gray-500">Sous-total</span>
-              <span className="text-gray-400 font-mono">{cartSubtotal.toFixed(2)} {currency}</span>
+              <span className="text-gray-500">{L('subtotal')}</span>
+              <span dir="ltr" className="text-gray-400 font-mono">{cartSubtotal.toFixed(2)} {currency}</span>
             </div>
           )}
           {wholesaleDiscount > 0 && (
             <div className="px-4 flex items-baseline justify-between text-xs">
-              <span className="text-amber-500">Remise gros (−{client?.wholesaleDiscountPct}%)</span>
-              <span className="text-amber-400 font-mono">−{wholesaleDiscount.toFixed(2)} {currency}</span>
+              <span className="text-amber-500">{L('wholesale_disc')} (−{client?.wholesaleDiscountPct}%)</span>
+              <span dir="ltr" className="text-amber-400 font-mono">−{wholesaleDiscount.toFixed(2)} {currency}</span>
             </div>
           )}
           <div className="border-t border-dashed border-gray-800 px-4 py-3 flex items-baseline justify-between">
-            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Total</span>
-            <span className="text-white font-extrabold text-xl font-mono">{cartTotal.toFixed(2)} {currency}</span>
+            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{L('total')}</span>
+            <span dir="ltr" className="text-white font-extrabold text-xl font-mono">{cartTotal.toFixed(2)} {currency}</span>
           </div>
         </div>
       </div>
@@ -519,27 +537,27 @@ export default function ComptoirPage() {
         <div className="flex rounded-xl border border-gray-700 overflow-hidden">
           <button onClick={() => setOrderType('TAKEAWAY')}
             className={`px-4 py-2.5 text-xs font-bold ${orderType === 'TAKEAWAY' ? 'bg-emerald-600 text-white' : 'bg-gray-800 text-gray-400'}`}>
-            Emporter
+            {L('takeaway')}
           </button>
           <button onClick={() => setOrderType('DINE_IN')}
             className={`px-4 py-2.5 text-xs font-bold ${orderType === 'DINE_IN' ? 'bg-emerald-600 text-white' : 'bg-gray-800 text-gray-400'}`}>
-            Sur place
+            {L('dine_in')}
           </button>
         </div>
 
         <div className="flex rounded-xl border border-gray-700 overflow-hidden">
           <button onClick={() => setPayMethod('CASH')}
             className={`px-4 py-2.5 text-xs font-bold ${payMethod === 'CASH' ? 'bg-emerald-600 text-white' : 'bg-gray-800 text-gray-400'}`}>
-            Cash
+            {L('pay_cash')}
           </button>
           <button onClick={() => setPayMethod('CARD')}
             className={`px-4 py-2.5 text-xs font-bold ${payMethod === 'CARD' ? 'bg-emerald-600 text-white' : 'bg-gray-800 text-gray-400'}`}>
-            Carte
+            {L('pay_card')}
           </button>
         </div>
 
         {confirmErr && <span className="text-red-400 text-xs font-semibold">{confirmErr}</span>}
-        {lastSale !== null && <span className="text-emerald-400 text-xs font-bold">✓ Vente enregistrée — {lastSale.toFixed(2)} {currency}</span>}
+        {lastSale !== null && <span className="text-emerald-400 text-xs font-bold">{L('sale_recorded')} — <bdi dir="ltr">{lastSale.toFixed(2)} {currency}</bdi></span>}
 
         <span className="flex-1" />
 
@@ -548,7 +566,7 @@ export default function ComptoirPage() {
           disabled={confirming || !client || cart.length === 0}
           className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-30 text-white font-extrabold text-sm rounded-xl active:scale-95 transition-all"
         >
-          {confirming ? 'Traitement…' : `Confirmer & Imprimer — ${cartTotal.toFixed(2)} ${currency}`}
+          {confirming ? L('processing') : <>{L('confirm_print')} — <bdi dir="ltr">{cartTotal.toFixed(2)} {currency}</bdi></>}
         </button>
       </div>
       </>
@@ -557,43 +575,43 @@ export default function ComptoirPage() {
       {clientPicker && (
         <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setClientPicker(false)}>
           <div className="bg-gray-900 rounded-3xl p-5 w-full max-w-sm shadow-2xl" onClick={e => e.stopPropagation()}>
-            <h3 className="font-black text-white mb-3">Client</h3>
+            <h3 className="font-black text-white mb-3">{L('customer')}</h3>
             <input
               type="text" autoFocus value={clientSearch} onChange={e => searchClients(e.target.value)}
-              placeholder="Nom ou téléphone (+212...)"
+              placeholder={L('client_search_ph')}
               className="w-full px-4 py-3 bg-gray-950 border border-gray-700 text-white rounded-xl text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
             <div className="space-y-1 max-h-52 overflow-y-auto mb-3">
               {clientResults.map(c => (
                 <button key={c.id} onClick={() => { setClient(c); setClientPicker(false); setClientSearch(''); setClientResults([]) }}
-                  className="w-full text-left px-3 py-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 flex items-center justify-between">
-                  <span className="text-white text-sm font-semibold">{c.name || 'Sans nom'}</span>
-                  <span className="text-gray-500 text-xs font-mono">{c.phone}</span>
+                  className="w-full text-start px-3 py-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 flex items-center justify-between">
+                  <span className="text-white text-sm font-semibold">{c.name || L('no_name')}</span>
+                  <span dir="ltr" className="text-gray-500 text-xs font-mono">{c.phone}</span>
                 </button>
               ))}
             </div>
             {clientResults.length === 0 && /^\+?\d{7,15}$/.test(clientSearch.replace(/[\s\-().]/g, '')) && (
               <div className="border-t border-gray-800 pt-3 space-y-2">
-                <p className="text-gray-500 text-xs">Nouveau client — {clientSearch}</p>
+                <p className="text-gray-500 text-xs">{L('new_customer')} — <bdi dir="ltr">{clientSearch}</bdi></p>
                 <input type="text" value={clientNewName} onChange={e => setClientNewName(e.target.value)}
-                  placeholder="Nom (optionnel)"
+                  placeholder={L('name_optional')}
                   className="w-full px-4 py-2.5 bg-gray-950 border border-gray-700 text-white rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
                 <label className="flex items-center gap-2 text-xs text-gray-400">
                   <input type="checkbox" checked={newIsWholesale} onChange={e => setNewIsWholesale(e.target.checked)}
                     className="w-4 h-4 accent-amber-500" />
-                  Client grossiste (revendeur)
+                  {L('wholesale_client')}
                 </label>
                 {newIsWholesale && (
                   <div className="flex items-center gap-2">
                     <input type="number" value={newWholesalePct} onChange={e => setNewWholesalePct(e.target.value)}
                       min="0" max="100" placeholder="10"
                       className="w-20 px-3 py-2 bg-gray-950 border border-amber-700/50 text-white rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500" />
-                    <span className="text-xs text-amber-500">% de remise sur chaque commande</span>
+                    <span className="text-xs text-amber-500">{L('discount_each')}</span>
                   </div>
                 )}
                 <button onClick={createClient} disabled={clientBusy}
                   className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white rounded-xl font-bold text-sm">
-                  {clientBusy ? 'Création…' : 'Créer et sélectionner'}
+                  {clientBusy ? L('creating') : L('create_select')}
                 </button>
               </div>
             )}
@@ -612,25 +630,25 @@ export default function ComptoirPage() {
             <label className="flex items-center gap-2 text-sm text-gray-300 mb-3">
               <input type="checkbox" checked={editIsWholesale} onChange={e => setEditIsWholesale(e.target.checked)}
                 className="w-4 h-4 accent-amber-500" />
-              Client grossiste (revendeur)
+              {L('wholesale_client')}
             </label>
             {editIsWholesale && (
               <div className="flex items-center gap-2 mb-4">
                 <input type="number" value={editWholesalePct} onChange={e => setEditWholesalePct(e.target.value)}
                   min="0" max="100" placeholder="10"
                   className="w-20 px-3 py-2 bg-gray-950 border border-amber-700/50 text-white rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500" />
-                <span className="text-xs text-amber-500">% de remise sur chaque commande</span>
+                <span className="text-xs text-amber-500">{L('discount_each')}</span>
               </div>
             )}
             {editError && <p className="text-red-400 text-xs mb-3">{editError}</p>}
             <div className="flex gap-2">
               <button onClick={() => setEditClientOpen(false)}
                 className="flex-1 py-2.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-xl font-bold text-sm active:scale-95 transition-all">
-                Annuler
+                {L('cancel')}
               </button>
               <button onClick={saveClientEdit} disabled={editSaving}
                 className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white rounded-xl font-bold text-sm active:scale-95 transition-all">
-                {editSaving ? 'Enregistrement…' : 'Enregistrer'}
+                {editSaving ? L('saving') : L('save')}
               </button>
             </div>
           </div>
@@ -641,6 +659,7 @@ export default function ComptoirPage() {
         <ClotureModal
           shift={cashierShift.shift}
           currency={currency}
+          lang={lang}
           onClose={() => setShowCloture(false)}
           onConfirm={async (countedCash) => {
             return await cashierShift.closeShift({
@@ -654,7 +673,7 @@ export default function ComptoirPage() {
 
       {/* ── Marketplace Order Modal (Glovo, Uber Eats...) — shared with /pos ────── */}
       <MarketplaceOrderModal
-        locale="fr"
+        lang={lang}
         open={mp.showMarketplace}
         onClose={() => mp.setShowMarketplace(false)}
         menuCats={menuCats}

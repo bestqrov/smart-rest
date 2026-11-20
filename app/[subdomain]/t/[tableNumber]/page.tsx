@@ -81,7 +81,7 @@ const T = {
     paymentSub: 'Choose how you would like to settle your bill.',
     optInTitle: '🎁 Get exclusive offers!',
     optInSub: 'Leave your WhatsApp to be the first to know about special deals.',
-    optInPhone: 'WhatsApp number (+212…)',
+    optInPhone: 'WhatsApp number ({dial}…)',
     optInName: 'Your name (optional)',
     optInConfirm: 'Yes, subscribe',
     optInSkip: 'No thanks',
@@ -145,13 +145,13 @@ const T = {
     paymentTitle: 'جاهز للدفع؟',
     paymentSub: 'اختر طريقة الدفع المناسبة لك.',
     optInTitle: '🎁 احصل على عروض حصرية!',
-    optInSub: 'خليّ رقم واتساب باش تكون أول من يعرف بالعروض الخاصة.',
-    optInPhone: 'رقم واتساب (+212…)',
+    optInSub: 'اترك رقم واتساب لتكون أول من يعلم بالعروض الخاصة.',
+    optInPhone: 'رقم واتساب ({dial}…)',
     optInName: 'اسمك (اختياري)',
     optInConfirm: 'نعم، اشترك',
     optInSkip: 'لا شكراً',
     optInDone: '✅ تم الاشتراك!',
-    loyaltyCta: '🎁 تحقق من نقط الولاء ديالي',
+    loyaltyCta: '🎁 تحقق من نقاط الولاء الخاصة بي',
   },
   fr: {
     scanningTitle: 'Préparation de votre table…',
@@ -211,7 +211,7 @@ const T = {
     paymentSub: 'Choisissez votre mode de paiement.',
     optInTitle: '🎁 Recevez des offres exclusives !',
     optInSub: 'Laissez votre WhatsApp pour être le premier informé des promotions.',
-    optInPhone: 'Numéro WhatsApp (+212…)',
+    optInPhone: 'Numéro WhatsApp ({dial}…)',
     optInName: 'Votre prénom (optionnel)',
     optInConfirm: 'Oui, s\'abonner',
     optInSkip: 'Non merci',
@@ -276,7 +276,7 @@ const T = {
     paymentSub: 'Elige cómo quieres pagar.',
     optInTitle: '🎁 ¡Recibe ofertas exclusivas!',
     optInSub: 'Deja tu WhatsApp para ser el primero en saber de las promociones.',
-    optInPhone: 'Número WhatsApp (+212…)',
+    optInPhone: 'Número WhatsApp ({dial}…)',
     optInName: 'Tu nombre (opcional)',
     optInConfirm: 'Sí, suscribirme',
     optInSkip: 'No gracias',
@@ -478,7 +478,9 @@ function TablePageInner() {
       whatsappNumber: string | null
       onlinePayment?: boolean
     } | null
-  }>({ socialLinks: null, hasSocialShareAddon: false, isDemo: false, googleMapsUrl: null, tripadvisorUrl: null, paymentGateway: null })
+    currency: string | null
+    country: string | null
+  }>({ socialLinks: null, hasSocialShareAddon: false, isDemo: false, googleMapsUrl: null, tripadvisorUrl: null, paymentGateway: null, currency: null, country: null })
 
   const [payingOnline, setPayingOnline] = useState(false)
   const socketRef       = useRef<Socket | null>(null)
@@ -608,6 +610,8 @@ function TablePageInner() {
           googleMapsUrl:       data.googleMapsUrl ?? null,
           tripadvisorUrl:      data.tripadvisorUrl ?? null,
           paymentGateway:      data.paymentGateway ?? null,
+          currency:            data.currency ?? null,
+          country:             data.country ?? null,
         })
       }
     } catch {}
@@ -706,6 +710,10 @@ function TablePageInner() {
   }, [])
 
   const cartTotal = cart.reduce((s, c) => s + c.price * c.quantity, 0)
+  // Price label with the venue's currency (guests in the Gulf expect "SAR 44.00", not a bare number)
+  const money = (n: number) => `${n.toFixed(2)}${cafeShare.currency ? ' ' + cafeShare.currency : ''}`
+  const DIAL: Record<string, string> = { SA: '+966', AE: '+971', OM: '+968', KW: '+965', QA: '+974', BH: '+973', MA: '+212' }
+  const dialCode = DIAL[cafeShare.country ?? ''] ?? '+'
 
   // ── Coupon (preview only — the server recomputes the discount at order time) ─
   const [couponInput, setCouponInput]   = useState('')
@@ -1502,7 +1510,7 @@ function TablePageInner() {
                           {product.description && (
                             <p className="text-xs text-gray-500 mt-0.5 line-clamp-2 leading-relaxed">{product.description}</p>
                           )}
-                          <p className="text-emerald-400 font-black text-sm mt-1.5">{product.price.toFixed(2)}</p>
+                          <p className="text-emerald-400 font-black text-sm mt-1.5">{money(product.price)}</p>
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">
                           {inCart ? (
@@ -1566,7 +1574,7 @@ function TablePageInner() {
           {cartCount > 0 && (
             <span className="flex items-center gap-2">
               <span className="bg-white/20 text-white text-xs font-black px-2 py-0.5 rounded-full">{cartCount}</span>
-              <span className="font-black">{cartTotal.toFixed(2)}</span>
+              <span className="font-black">{money(cartTotal)}</span>
             </span>
           )}
         </button>
@@ -1588,7 +1596,7 @@ function TablePageInner() {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="font-bold text-sm">{item.name}</p>
-                        <p className="text-xs text-gray-400">{(item.price * item.quantity).toFixed(2)}</p>
+                        <p className="text-xs text-gray-400">{money(item.price * item.quantity)}</p>
                       </div>
                       <div className="flex items-center gap-2">
                         <button onClick={() => removeFromCart(item.productId)} className="w-11 h-11 rounded-full bg-gray-700 flex items-center justify-center font-bold active:scale-90 transition-transform">−</button>
@@ -1629,7 +1637,7 @@ function TablePageInner() {
                 <span className="font-bold">{tr.total}</span>
                 <span className="font-black text-emerald-400 text-lg">
                   {coupon && <span className="text-gray-500 line-through text-sm me-2">{cartTotal.toFixed(2)}</span>}
-                  {payableTotal.toFixed(2)}
+                  {money(payableTotal)}
                 </span>
               </div>
               <button onClick={placeOrder} disabled={placing}
@@ -1835,7 +1843,7 @@ function TablePageInner() {
                       type="tel"
                       value={optInPhone}
                       onChange={e => setOptInPhone(e.target.value)}
-                      placeholder={tr.optInPhone}
+                      placeholder={tr.optInPhone.replace('{dial}', dialCode)}
                       inputMode="tel"
                       className="w-full bg-gray-800 text-white placeholder-gray-500 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500 font-mono"
                     />

@@ -97,7 +97,7 @@ router.get('/api/kitchen/orders/queue', authorizeKitchen, async (req: Request, r
         items: {
           select: {
             quantity: true, notes: true,
-            product: { select: { id: true, nameEn: true } },
+            product: { select: { id: true, nameEn: true, nameAr: true, nameFr: true } },
           },
         },
       },
@@ -128,7 +128,7 @@ router.get('/api/kitchen/orders/today', authorizeKitchen, async (req: Request, r
         items: {
           select: {
             quantity: true,
-            product: { select: { id: true, nameEn: true } },
+            product: { select: { id: true, nameEn: true, nameAr: true, nameFr: true } },
           },
         },
       },

@@ -26,7 +26,7 @@ router.get('/api/pos/waiter/ready', authorizePOS, async (req: Request, res: Resp
       orderBy: { createdAt: 'asc' },
       include: {
         items: {
-          include: { product: { select: { nameEn: true } } }
+          include: { product: { select: { nameEn: true, nameAr: true, nameFr: true } } }
         },
         table:         { select: { tableNumber: true } },
         originalTable: { select: { tableNumber: true } },
@@ -59,7 +59,7 @@ router.get('/api/pos/waiter/today', authorizePOS, async (req: Request, res: Resp
         items: {
           select: {
             quantity: true,
-            product: { select: { id: true, nameEn: true } },
+            product: { select: { id: true, nameEn: true, nameAr: true, nameFr: true } },
           },
         },
       },

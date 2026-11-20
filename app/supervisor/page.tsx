@@ -9,6 +9,16 @@ import {
 } from 'lucide-react'
 import { tr, getLang, setLang, isRTL, POS_LANGS, type Lang } from '../../src/lib/posI18n'
 
+
+// Local strings not (yet) in posI18n — identical keys in every language.
+const WT = {
+  ar: { loginFailed: 'رمز PIN غير صحيح، يرجى المحاولة مجدداً', networkError: 'خطأ في الاتصال بالشبكة', checkoutFailed: 'تعذّر إتمام الدفع، يرجى المحاولة مجدداً', subdomainPh: 'المعرّف المختصر', rcReceipt: 'إيصال', rcTable: 'الطاولة', rcDate: 'التاريخ', rcItem: 'الصنف', rcQty: 'الكمية', rcPrice: 'السعر', rcTotal: 'الإجمالي', rcThanks: 'شكراً لزيارتكم' },
+  fr: { loginFailed: 'PIN incorrect, réessayez', networkError: 'Erreur réseau', checkoutFailed: "Échec de l'encaissement, réessayez", subdomainPh: 'sous-domaine', rcReceipt: 'Reçu', rcTable: 'Table', rcDate: 'Date', rcItem: 'Article', rcQty: 'Qté', rcPrice: 'Prix', rcTotal: 'TOTAL', rcThanks: 'Merci de votre visite' },
+  en: { loginFailed: 'Wrong PIN, please try again', networkError: 'Network error', checkoutFailed: 'Checkout failed, please try again', subdomainPh: 'subdomain', rcReceipt: 'Receipt', rcTable: 'Table', rcDate: 'Date', rcItem: 'Item', rcQty: 'Qty', rcPrice: 'Price', rcTotal: 'TOTAL', rcThanks: 'Thank you for your visit' },
+  es: { loginFailed: 'PIN incorrecto, inténtalo de nuevo', networkError: 'Error de red', checkoutFailed: 'Error al cobrar, inténtalo de nuevo', subdomainPh: 'subdominio', rcReceipt: 'Recibo', rcTable: 'Mesa', rcDate: 'Fecha', rcItem: 'Artículo', rcQty: 'Cant.', rcPrice: 'Precio', rcTotal: 'TOTAL', rcThanks: 'Gracias por su visita' },
+}
+const wt = (lang: string): (typeof WT)['ar'] => (WT as Record<string, (typeof WT)['ar']>)[lang] ?? WT.ar
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type TableStatus = 'EMPTY' | 'OPEN_QR' | 'OPEN_MANUAL' | 'BILL_REQUESTED' | 'INACTIVE'
@@ -36,13 +46,15 @@ function isLongOpen(openedAt: string | null): boolean {
   return Date.now() - new Date(openedAt).getTime() > 90 * 60 * 1000
 }
 
-function printReceipt(cafeName: string, tableNumber: number, items: TableItem[], total: number, currency: string) {
+function printReceipt(cafeName: string, tableNumber: number, items: TableItem[], total: number, currency: string, lang: string) {
+  const w = wt(lang)
+  const rtlDoc = lang === 'ar'
   const lines = items.map(i => `<tr>
     <td>${i.name}</td><td style="text-align:center">${i.quantity}</td>
     <td style="text-align:right">${(i.unitPrice * i.quantity).toFixed(2)}</td></tr>`).join('')
   const win = window.open('', '_blank', 'width=340,height=600')
   if (!win) return
-  win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Receipt</title>
+  win.document.write(`<!DOCTYPE html><html dir="${rtlDoc ? 'rtl' : 'ltr'}"><head><meta charset="utf-8"/><title>${w.rcReceipt}</title>
   <style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Courier New',monospace;font-size:12px;width:80mm;padding:8px}
   .c{text-align:center}.b{font-weight:bold}.d{border-top:1px dashed #000;margin:6px 0}
   table{width:100%;border-collapse:collapse}th{font-size:10px;text-align:left;border-bottom:1px solid #000;padding:2px 0}
@@ -50,11 +62,11 @@ function printReceipt(cafeName: string, tableNumber: number, items: TableItem[],
   @media print{body{width:80mm}@page{margin:0;size:80mm auto}}</style></head>
   <body><div class="c b" style="font-size:16px">${cafeName}</div>
   <div class="c" style="font-size:10px;color:#555">Smart Menu POS</div><div class="d"></div>
-  <div>Table: <b>${tableNumber}</b></div><div>Date: ${new Date().toLocaleString()}</div><div class="d"></div>
-  <table><thead><tr><th>Item</th><th style="text-align:center">Qty</th><th style="text-align:right">Price</th></tr></thead>
+  <div>${w.rcTable}: <b>${tableNumber}</b></div><div>${w.rcDate}: ${new Date().toLocaleString(lang)}</div><div class="d"></div>
+  <table><thead><tr><th>${w.rcItem}</th><th style="text-align:center">${w.rcQty}</th><th style="text-align:right">${w.rcPrice}</th></tr></thead>
   <tbody>${lines}</tbody>
-  <tfoot><tr class="tot"><td colspan="2">TOTAL</td><td style="text-align:right">${total.toFixed(2)} ${currency}</td></tr></tfoot>
-  </table><div class="d"></div><div class="c" style="font-size:10px">Thank you · شكراً · Merci</div>
+  <tfoot><tr class="tot"><td colspan="2">${w.rcTotal}</td><td style="text-align:right">${total.toFixed(2)} ${currency}</td></tr></tfoot>
+  </table><div class="d"></div><div class="c" style="font-size:10px">${w.rcThanks}</div>
   <script>window.onload=()=>{window.print();window.onafterprint=()=>window.close()}<\/script></body></html>`)
   win.document.close()
 }
@@ -80,7 +92,7 @@ export default function SupervisorPage() {
   const [posToken, setPosToken] = useState<string | null>(null)
   const [cafeId,   setCafeId]   = useState('')
   const [cafeName, setCafeName] = useState('')
-  const [currency, setCurrency] = useState('MAD')
+  const [currency, setCurrency] = useState('')
   const [staff,    setStaff]    = useState<{ name: string; role: string } | null>(null)
 
   // login form
@@ -115,7 +127,7 @@ export default function SupervisorPage() {
   useEffect(() => {
     const tok = localStorage.getItem('supervisorToken')
     const cid = localStorage.getItem('supervisorCafeId')
-    const cur = localStorage.getItem('supervisorCurrency') || 'MAD'
+    const cur = localStorage.getItem('supervisorCurrency') || ''
     const cn  = localStorage.getItem('supervisorCafeName') || ''
     const st  = localStorage.getItem('supervisorStaff')
     if (tok && cid) {
@@ -170,7 +182,7 @@ export default function SupervisorPage() {
         body: JSON.stringify({ subdomain: subdomain.trim(), pinCode: pin.trim(), action: 'login' })
       })
       const data = await res.json()
-      if (!res.ok) { setLoginErr(data.error ?? 'Login failed'); return }
+      if (!res.ok) { setLoginErr(wt(lang).loginFailed); return }
 
       const payload = JSON.parse(atob(data.token.split('.')[1]))
       if (data.staff?.role !== 'SUPERVISOR' && data.staff?.role !== 'CASHIER') {
@@ -185,12 +197,12 @@ export default function SupervisorPage() {
       if (prof.ok) {
         const pd = await prof.json()
         localStorage.setItem('supervisorCafeName', pd.name ?? '')
-        localStorage.setItem('supervisorCurrency', pd.currency ?? 'MAD')
-        setCafeName(pd.name ?? ''); setCurrency(pd.currency ?? 'MAD')
+        localStorage.setItem('supervisorCurrency', pd.currency ?? '')
+        setCafeName(pd.name ?? ''); setCurrency(pd.currency ?? '')
       }
       setPin('')
       setPosToken(data.token); setCafeId(payload.cafeId); setStaff(data.staff)
-    } catch { setLoginErr('Network error') }
+    } catch { setLoginErr(wt(lang).networkError) }
     finally   { setLogging(false) }
   }
 
@@ -209,10 +221,10 @@ export default function SupervisorPage() {
         method: 'PATCH', headers: { Authorization: `Bearer ${posToken}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ paymentMethod: payMethod, printReceipt: doPrint })
       })
-      if (!res.ok) { const d = await res.json(); setCheckoutErr(d.error ?? 'Failed'); return }
+      if (!res.ok) { const d = await res.json(); setCheckoutErr(wt(lang).checkoutFailed); return }
       if (doPrint) {
         const d = await res.json()
-        printReceipt(cafeName, selTable.tableNumber, d.items, d.totalPrice, currency)
+        printReceipt(cafeName, selTable.tableNumber, d.items, d.totalPrice, currency, lang)
       }
       setDoneTable(selTable.tableNumber)
       setTimeout(() => { setSelTable(null); setDoneTable(null); fetchTables(posToken) }, 2000)
@@ -250,7 +262,7 @@ export default function SupervisorPage() {
             <label className="block text-gray-400 text-xs font-semibold mb-1">{L('pin_subdomain')}</label>
             <input value={subdomain} onChange={e => setSubdomain(e.target.value)}
               className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-purple-500"
-              placeholder="plage" autoComplete="off" />
+              placeholder={wt(lang).subdomainPh} autoComplete="off" />
           </div>
           <div>
             <label className="block text-gray-400 text-xs font-semibold mb-1">{L('pin_code')}</label>

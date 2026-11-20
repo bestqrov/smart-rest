@@ -8,7 +8,7 @@ import {
   UtensilsCrossed, LayoutGrid, Plus, Minus, Trash2,
   Printer, Check, Loader2, AlertTriangle, RefreshCw, Bike
 } from 'lucide-react'
-import { tr, getLang, setLang as saveLang, isRTL, POS_LANGS, type Lang } from '../../src/lib/posI18n'
+import { tr, getLang, setLang as saveLang, isRTL, roleLabel, POS_LANGS, type Lang } from '../../src/lib/posI18n'
 import { printReceipt, type ReceiptItem } from '../../src/lib/posReceipt'
 import { useCashierShift } from '../../src/hooks/useCashierShift'
 import { useMarketplaceCart } from '../../src/hooks/useMarketplaceCart'
@@ -25,6 +25,7 @@ import { lineTotal, type MenuItem, type MenuCat, type CartItem } from '../../src
 type TableColor = 'EMPTY' | 'OPEN_QR' | 'OPEN_MANUAL' | 'BILL_REQUESTED' | 'INACTIVE'
 type MobileTab  = 'tables' | 'menu' | 'cart'
 type PayMethod  = 'CASH' | 'CARD' | 'ONLINE'
+type PayOptId   = 'cash' | 'card' | 'apple' | 'google' | 'orange'
 
 interface PosTable  { id: string; tableNumber: number; qrToken: string; isActive: boolean; capacity: number; status: TableColor }
 interface Staff     { id: string; name: string; role: string }
@@ -73,6 +74,14 @@ export default function POSPage() {
     INACTIVE: '—', EMPTY: '', OPEN_QR: L('table_qr'), OPEN_MANUAL: L('table_manual'), BILL_REQUESTED: L('table_bill'),
   }
 
+  const payOptions: { id: PayOptId; method: PayMethod; label: string; icon: string; sub: string }[] = [
+    { id: 'cash',   method: 'CASH',   label: L('pay_cash'),      icon: '💵', sub: L('pay_cash_sub') },
+    { id: 'card',   method: 'CARD',   label: L('pay_card_term'), icon: '💳', sub: L('pay_card_sub') },
+    { id: 'apple',  method: 'ONLINE', label: 'Apple Pay',        icon: '🍎', sub: 'NFC · iPhone' },
+    { id: 'google', method: 'ONLINE', label: 'Google Pay',       icon: '🤖', sub: 'NFC · Android' },
+    { id: 'orange', method: 'ONLINE', label: 'Orange Money',     icon: '🟠', sub: L('pay_mobile_sub') },
+  ]
+
   function pName(item: { nameAr: string; nameEn: string; nameFr: string }) {
     return lang === 'ar' ? (item.nameAr || item.nameEn)
          : lang === 'fr' ? (item.nameFr || item.nameEn)
@@ -85,7 +94,7 @@ export default function POSPage() {
   const [cafeId,      setCafeId]      = useState('')
   const [cafeName,    setCafeName]    = useState('Café')
   const [cafeLogoUrl, setCafeLogoUrl] = useState<string | null>(null)
-  const [currency,    setCurrency]    = useState('MAD')
+  const [currency,    setCurrency]    = useState('')
   // login
   const [pin,         setPin]         = useState('')
   const [subdomain,   setSubdomain]   = useState('')
@@ -113,9 +122,9 @@ export default function POSPage() {
   const [cart,        setCart]        = useState<CartItem[]>([])
   // checkout
   const [payMethod,   setPayMethod]   = useState<PayMethod>('CASH')
-  const [payLabel,    setPayLabel]    = useState('Espèces')
+  const [payOptId,    setPayOptId]    = useState<PayOptId>('cash')
   const [payModalOpen, setPayModalOpen] = useState(false)
-  const [payPending,  setPayPending]  = useState<{ method: PayMethod; label: string; icon: string } | null>(null)
+  const [payPending,  setPayPending]  = useState<{ id: PayOptId; method: PayMethod; label: string; icon: string; sub: string } | null>(null)
   const [cashInput,   setCashInput]   = useState('')
   const [checkingOut, setCheckingOut] = useState(false)
   const [checkoutErr, setCheckoutErr] = useState('')
@@ -133,7 +142,7 @@ export default function POSPage() {
 
   // marketplace order logging (Glovo, Uber Eats...) — shared hook, see src/hooks/useMarketplaceCart.ts
   const mp = useMarketplaceCart(posToken, pName, {
-    choosePlatform: 'Choose a platform', requestFailed: 'Failed', networkError: 'Network error',
+    choosePlatform: L('mp_choose'), requestFailed: L('request_failed'), networkError: L('network_error'),
   })
   // refs
   const mutedRef    = useRef(false)
@@ -201,7 +210,7 @@ export default function POSPage() {
       const res  = await fetch('/api/pos/shift', { method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ subdomain: subdomain.trim(), pinCode: pin.trim(), action: 'login' }) })
       const data = await res.json()
-      if (!res.ok) { setLoginErr(data.error ?? 'Login failed'); return }
+      if (!res.ok) { console.error('[POS] login failed:', data.error); setLoginErr(L('login_failed')); return }
       const payload = JSON.parse(atob(data.token.split('.')[1]))
       localStorage.setItem('posToken', data.token)
       localStorage.setItem('cafeId', payload.cafeId)
@@ -211,7 +220,7 @@ export default function POSPage() {
       setPin('')
       if (data.staff?.role === 'WAITER') { window.location.href = '/waiter'; return }
       setPosToken(data.token); setCafeId(payload.cafeId); setStaff(data.staff)
-    } catch { setLoginErr('Network error') }
+    } catch { setLoginErr(L('network_error')) }
     finally   { setLogging(false) }
   }
 
@@ -222,7 +231,7 @@ export default function POSPage() {
       const res  = await fetch('/api/pos/shift', { method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ subdomain: subdomain.trim(), demoStaffId: staffId, action: 'login' }) })
       const data = await res.json()
-      if (!res.ok) { setLoginErr(data.error ?? 'Login failed'); return }
+      if (!res.ok) { console.error('[POS] login failed:', data.error); setLoginErr(L('login_failed')); return }
       const payload = JSON.parse(atob(data.token.split('.')[1]))
       localStorage.setItem('posToken', data.token)
       localStorage.setItem('cafeId', payload.cafeId)
@@ -230,7 +239,7 @@ export default function POSPage() {
       localStorage.setItem('staffName', data.staff?.name ?? '')
       if (data.staff?.role === 'WAITER') { window.location.href = '/waiter'; return }
       setPosToken(data.token); setCafeId(payload.cafeId); setStaff(data.staff)
-    } catch { setLoginErr('Network error') }
+    } catch { setLoginErr(L('network_error')) }
     finally   { setLogging(false) }
   }
 
@@ -257,7 +266,7 @@ export default function POSPage() {
       if (!res.ok) return
       const data = await res.json()
       setMenuCats(data.categories ?? [])
-      setCurrency(data.currency ?? 'MAD')
+      setCurrency(data.currency ?? '')
       if (data.categories?.length) setActiveCat(data.categories[0].id)
     } catch {}
   }, [])
@@ -324,7 +333,7 @@ export default function POSPage() {
   async function openTable(table: PosTable) {
     if (table.status === 'INACTIVE') return
     setSelTable(table); setTableOrders([]); setCheckoutErr(''); setCart([])
-    setPayMethod('CASH'); setCashInput(''); setDoneTable(null)
+    setPayMethod('CASH'); setPayOptId('cash'); setCashInput(''); setDoneTable(null)
     setMobileTab('menu')
     if (table.status === 'EMPTY') return
     setLoadOrder(true)
@@ -367,7 +376,7 @@ export default function POSPage() {
           method: 'POST', headers: { Authorization: `Bearer ${posToken}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({ tableId: selTable.id, items: cart.map(c => ({ productId: c.productId, quantity: c.qty })), paymentMethod: payMethod })
         })
-        if (!createRes.ok) { const d = await createRes.json(); setCheckoutErr(d.error ?? 'Failed'); return }
+        if (!createRes.ok) { const d = await createRes.json(); console.error('[POS] create order failed:', d.error); setCheckoutErr(L('order_create_failed')); return }
       }
 
       // Close ALL open orders for this table in one call
@@ -375,7 +384,7 @@ export default function POSPage() {
         method: 'PATCH', headers: { Authorization: `Bearer ${posToken}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ paymentMethod: payMethod, printReceipt: doPrint })
       })
-      if (!res.ok) { const d = await res.json(); setCheckoutErr(d.error ?? 'Checkout failed'); return }
+      if (!res.ok) { const d = await res.json(); console.error('[POS] checkout failed:', d.error); setCheckoutErr(L('checkout_failed')); return }
 
       const d = await res.json()
       if (doPrint) {
@@ -403,7 +412,8 @@ export default function POSPage() {
       })
       if (!res.ok) {
         const d = await res.json()
-        setCheckoutErr(d.error ?? 'Split checkout failed')
+        console.error('[POS] split checkout failed:', d.error)
+        setCheckoutErr(L('checkout_failed'))
         return
       }
       const d = await res.json()
@@ -461,6 +471,7 @@ export default function POSPage() {
     return (
       <CaisseDepartScreen
         staffName={staff?.name ?? ''}
+        lang={lang}
         onSubmit={async ({ initialCash, plannedEndTime }) => {
           const isDemo = isDemoMode
           const result = await cashierShift.openShift({
@@ -478,7 +489,7 @@ export default function POSPage() {
 
   // ─── Poste verrouillé ────────────────────────────────────────────────────────
   if (cashierShift.isLocked) {
-    return <LockedOverlay staffName={staff?.name ?? ''} plannedEndTime={cashierShift.shift?.plannedEndTime ?? null} />
+    return <LockedOverlay staffName={staff?.name ?? ''} plannedEndTime={cashierShift.shift?.plannedEndTime ?? null} lang={lang} />
   }
 
   // ─── PIN Login ──────────────────────────────────────────────────────────────
@@ -490,11 +501,12 @@ export default function POSPage() {
           cafeLogoUrl={cafeLogoUrl}
           loadingCafe={loadingCafe}
           icon="☕"
-          subtitle="Point of Sale — Staff Login"
+          subtitle={L('pos_subtitle')}
           subdomain={subdomain} setSubdomain={setSubdomain}
           pin={pin} setPin={setPin}
           loginErr={loginErr} logging={logging}
-          isDemoMode={isDemoMode} demoStaff={demoStaff} demoLabel="🧪 Demo — اختر موظفاً للدخول"
+          isDemoMode={isDemoMode} demoStaff={demoStaff} demoLabel={L('demo_pick')}
+          labels={{ subdomainPlaceholder: L('pin_subdomain'), login: L('login_btn'), roleLabel: r => roleLabel(r, lang) }}
           onDemoLogin={handleDemoLogin}
           onSubmit={handleLogin}
           langSwitcher={POS_LANGS.map(l => (
@@ -510,7 +522,7 @@ export default function POSPage() {
 
   // ─── Main POS ───────────────────────────────────────────────────────────────
   return (
-    <div className="h-screen bg-gray-950 flex flex-col overflow-hidden select-none" dir="ltr">
+    <div className="h-screen bg-gray-950 flex flex-col overflow-hidden select-none" dir={isRTL(lang) ? 'rtl' : 'ltr'}>
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <header className="bg-gray-900 border-b border-gray-800 px-4 h-14 flex items-center justify-between shrink-0 z-10">
@@ -520,13 +532,13 @@ export default function POSPage() {
             : <Image src="/assets/logo.png" alt="SmartMenu" width={32} height={32} className="rounded-lg" />}
           <div className="hidden sm:block">
             <p className="text-white font-extrabold text-sm leading-none">{cafeName}</p>
-            <p className="text-gray-500 text-xs mt-0.5">{staff?.name} · {staff?.role}</p>
+            <p className="text-gray-500 text-xs mt-0.5">{staff?.name} · {roleLabel(staff?.role, lang)}</p>
           </div>
           {/* Selected table chip */}
           {selTable && (
             <div className="flex items-center gap-1.5 bg-emerald-900/50 border border-emerald-700 text-emerald-300 text-xs font-bold px-2.5 py-1 rounded-full">
               <LayoutGrid className="w-3 h-3" />
-              Table {selTable.tableNumber}
+              {L('table')} {selTable.tableNumber}
             </div>
           )}
         </div>
@@ -539,33 +551,33 @@ export default function POSPage() {
             </div>
           )}
           <button onClick={() => { mp.setShowMarketplace(true); if (menuCats.length && !mp.mpCat) mp.setMpCat(menuCats[0].id) }}
-            title="Log a delivery-app order (Glovo, Uber Eats...)"
+            title={L('delivery_hint')} aria-label={L('delivery_hint')}
             className="h-9 px-2 sm:px-3 rounded-xl flex items-center gap-1.5 text-amber-500 hover:bg-amber-950 transition-colors">
             <Bike className="w-4 h-4 shrink-0" />
-            <span className="hidden sm:inline text-xs font-bold whitespace-nowrap">Delivery</span>
+            <span className="hidden sm:inline text-xs font-bold whitespace-nowrap">{L('delivery')}</span>
           </button>
-          <button onClick={() => setMuted(m => !m)}
+          <button onClick={() => setMuted(m => !m)} title={L('mute')} aria-label={L('mute')}
             className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${muted ? 'text-gray-600 hover:text-gray-400' : 'text-emerald-500 hover:bg-emerald-950'}`}>
             {muted ? <BellOff className="w-4 h-4" /> : <Bell className="w-4 h-4" />}
           </button>
-          <button onClick={() => fetchTables(posToken!)} disabled={loadTables}
+          <button onClick={() => fetchTables(posToken!)} disabled={loadTables} title={L('refresh')} aria-label={L('refresh')}
             className="w-9 h-9 rounded-xl flex items-center justify-center text-gray-500 hover:text-white transition-colors">
             <RefreshCw className={`w-4 h-4 ${loadTables ? 'animate-spin' : ''}`} />
           </button>
           {liveSummary && (
             <div className="hidden md:flex items-center gap-2 bg-gray-900 border border-gray-800 rounded-xl px-2.5 py-1 mr-1">
-              <span className="text-[10px] text-gray-500 font-bold uppercase">Caisse</span>
+              <span className="text-[10px] text-gray-500 font-bold uppercase">{L('drawer')}</span>
               <span className="text-xs text-gray-400">{liveSummary.openingFloat.toFixed(2)}</span>
               <span className="text-gray-700">+</span>
               <span className="text-xs text-emerald-400 font-bold">{liveSummary.totalCollectedCash.toFixed(2)}</span>
               <span className="text-[10px] text-gray-600">{currency}</span>
             </div>
           )}
-          <ShiftTimingPill timing={cashierShift.timing} />
+          <ShiftTimingPill timing={cashierShift.timing} plannedEndTime={cashierShift.shift?.plannedEndTime ?? null} lang={lang} />
           <div className="flex items-center gap-0.5 bg-gray-900 border border-gray-800 rounded-lg p-0.5 mr-1">
             <button onClick={() => setPosView('live')}
               className={`px-2.5 py-1.5 rounded-md text-xs font-bold transition-all ${posView === 'live' ? 'bg-emerald-600 text-white' : 'text-gray-500 hover:text-gray-300'}`}>
-              Live
+              {L('view_live')}
             </button>
             <button onClick={() => { setPosView('today'); if (posToken) fetchLiveSummary(posToken) }}
               className={`px-2.5 py-1.5 rounded-md text-xs font-bold transition-all ${posView === 'today' ? 'bg-emerald-600 text-white' : 'text-gray-500 hover:text-gray-300'}`}>
@@ -575,7 +587,7 @@ export default function POSPage() {
           {cashierShift.shift && (
             <button onClick={() => setShowCloture(true)}
               className="px-3 py-2 text-xs font-bold text-gray-400 hover:text-white rounded-xl hover:bg-gray-800 transition-colors">
-              Clôture
+              {L('shift_close')}
             </button>
           )}
           {/* Lang selector */}
@@ -597,8 +609,8 @@ export default function POSPage() {
       {/* Price update banner */}
       {priceBanner && (
         <div className="flex items-center justify-between bg-amber-950/80 border-b border-amber-800/50 px-4 py-2 text-xs text-amber-400 shrink-0">
-          <span>⚠️ Menu prices updated — manual orders may need repricing</span>
-          <button onClick={() => setPriceBanner(false)} className="text-amber-600 hover:text-amber-400 ml-4">✕</button>
+          <span>{L('prices_updated')}</span>
+          <button onClick={() => setPriceBanner(false)} aria-label={L('close')} className="text-amber-600 hover:text-amber-400 ml-4">✕</button>
         </div>
       )}
 
@@ -615,10 +627,10 @@ export default function POSPage() {
             {liveSummary?.orders.map(o => (
               <div key={o.id} className="flex items-center justify-between bg-gray-900 border border-gray-800 rounded-xl px-4 py-3">
                 <div>
-                  <p className="text-white text-sm font-bold">{o.table ? `Table ${o.table.tableNumber}` : '—'} <span className="text-gray-600 font-normal">· {o.paymentMethod}</span></p>
+                  <p className="text-white text-sm font-bold">{o.table ? `${L('table')} ${o.table.tableNumber}` : '—'} <span className="text-gray-600 font-normal">· {o.paymentMethod === 'CASH' ? L('pay_cash') : o.paymentMethod === 'CARD' ? L('pay_card') : o.paymentMethod === 'ONLINE' ? L('pay_online') : o.paymentMethod}</span></p>
                   <p className="text-gray-500 text-xs">{new Date(o.createdAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}</p>
                 </div>
-                <span className="text-emerald-400 font-extrabold text-sm">{o.totalPrice.toFixed(2)} {currency}</span>
+                <span dir="ltr" className="text-emerald-400 font-extrabold text-sm">{o.totalPrice.toFixed(2)} {currency}</span>
               </div>
             ))}
           </div>
@@ -636,8 +648,8 @@ export default function POSPage() {
               <span className="text-[10px] font-bold text-gray-600 uppercase tracking-widest">{L('nav_tables')}</span>
               <span className="flex-1" />
               <span className="flex items-center gap-1 text-[10px] text-gray-700"><span className="w-1.5 h-1.5 rounded-full bg-sky-500"/>QR</span>
-              <span className="flex items-center gap-1 text-[10px] text-gray-700"><span className="w-1.5 h-1.5 rounded-full bg-amber-500"/>POS</span>
-              <span className="flex items-center gap-1 text-[10px] text-gray-700"><span className="w-1.5 h-1.5 rounded-full bg-red-500"/>Bill</span>
+              <span className="flex items-center gap-1 text-[10px] text-gray-700"><span className="w-1.5 h-1.5 rounded-full bg-amber-500"/>{L('legend_pos')}</span>
+              <span className="flex items-center gap-1 text-[10px] text-gray-700"><span className="w-1.5 h-1.5 rounded-full bg-red-500"/>{L('legend_bill')}</span>
             </div>
             <div className="flex gap-2 overflow-x-auto scrollbar-none" style={{touchAction:'pan-x'}}>
               {sortedTables.map(t => {
@@ -697,7 +709,7 @@ export default function POSPage() {
                 {activeItems.map(item => (
                   <button key={item.id} onClick={() => { if (selTable) addToCart(item) }}
                     disabled={!selTable}
-                    className={`bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden text-left transition-all active:scale-95
+                    className={`bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden text-start transition-all active:scale-95
                       ${selTable ? 'hover:border-emerald-700 hover:bg-gray-800 cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}>
                     {item.imageUrl ? (
                       <img src={item.imageUrl} alt={item.nameEn} className="w-full aspect-[4/3] object-cover" />
@@ -709,7 +721,7 @@ export default function POSPage() {
                     <div className="p-2.5">
                       <p className="text-white font-bold text-xs leading-tight truncate">{pName(item)}</p>
                       <div className="flex items-center justify-between mt-1.5">
-                        <p className="text-emerald-400 font-extrabold text-sm">{item.price.toFixed(2)} <span className="text-[10px] font-normal text-gray-500">{currency}{item.unitType === 'WEIGHT' ? '/kg' : ''}</span></p>
+                        <p dir="ltr" className="text-emerald-400 font-extrabold text-sm">{item.price.toFixed(2)} <span className="text-[10px] font-normal text-gray-500">{currency}{item.unitType === 'WEIGHT' ? '/kg' : ''}</span></p>
                         <div className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors
                           ${selTable ? 'bg-emerald-900/60 text-emerald-400' : 'bg-gray-800 text-gray-600'}`}>
                           <Plus className="w-3.5 h-3.5" />
@@ -720,12 +732,12 @@ export default function POSPage() {
                 ))}
               </div>
               {menuCats.length > 0 && activeItems.length === 0 && (
-                <p className="text-gray-600 text-sm text-center py-8">No items in this category</p>
+                <p className="text-gray-600 text-sm text-center py-8">{L('no_items_cat')}</p>
               )}
               {!selTable && menuCats.length > 0 && (
                 <div className="mt-4 bg-gray-900 border border-gray-800 rounded-2xl p-4 text-center">
                   <LayoutGrid className="w-6 h-6 text-gray-600 mx-auto mb-2" />
-                  <p className="text-gray-500 text-sm">Select a table to add items</p>
+                  <p className="text-gray-500 text-sm">{L('select_table_hint')}</p>
                 </div>
               )}
             </div>
@@ -745,17 +757,17 @@ export default function POSPage() {
                     className="md:hidden w-8 h-8 rounded-xl bg-gray-800 flex items-center justify-center text-gray-400 hover:text-white">
                     <ChevronLeft className="w-4 h-4" />
                   </button>
-                  <span className="font-extrabold text-white">Table {selTable.tableNumber}</span>
+                  <span className="font-extrabold text-white">{L('table')} {selTable.tableNumber}</span>
                   {selTable.status !== 'EMPTY' && (
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                       selTable.status === 'OPEN_QR'     ? 'bg-sky-900 text-sky-300' :
                       selTable.status === 'OPEN_MANUAL' ? 'bg-amber-900 text-amber-300' :
                       'bg-red-900 text-red-300'
-                    }`}>{selTable.status === 'OPEN_QR' ? 'QR Order' : selTable.status === 'OPEN_MANUAL' ? 'POS Order' : '⚡ Bill Req.'}</span>
+                    }`}>{selTable.status === 'OPEN_QR' ? L('table_qr') : selTable.status === 'OPEN_MANUAL' ? L('table_manual') : `⚡ ${L('table_bill')}`}</span>
                   )}
                 </div>
                 {(cart.length > 0 || tableOrders.length > 0) && (
-                  <span className="text-emerald-400 font-extrabold text-sm">{orderTotal.toFixed(2)} {currency}</span>
+                  <span dir="ltr" className="text-emerald-400 font-extrabold text-sm">{orderTotal.toFixed(2)} {currency}</span>
                 )}
               </div>
 
@@ -763,7 +775,7 @@ export default function POSPage() {
               <div className="flex-1 overflow-y-auto p-3 space-y-2" style={{touchAction:'pan-y'}}>
                 {loadOrder && (
                   <div className="flex items-center justify-center py-12 gap-2 text-gray-500 text-sm">
-                    <Loader2 className="w-5 h-5 animate-spin" /> Loading order…
+                    <Loader2 className="w-5 h-5 animate-spin" /> {L('loading_order')}
                   </div>
                 )}
 
@@ -773,8 +785,8 @@ export default function POSPage() {
                     <div className="w-16 h-16 rounded-full bg-emerald-600 flex items-center justify-center">
                       <Check className="w-8 h-8 text-white" />
                     </div>
-                    <p className="text-white font-extrabold text-lg">Table {doneTable} — Done!</p>
-                    <p className="text-gray-400 text-sm">Payment recorded</p>
+                    <p className="text-white font-extrabold text-lg">{L('table')} {doneTable} — {L('payment_done')}</p>
+                    <p className="text-gray-400 text-sm">{L('paid_success')}</p>
                   </div>
                 )}
 
@@ -831,8 +843,8 @@ export default function POSPage() {
                     {tableOrders.length === 0 && cart.length === 0 && !loadOrder && (
                       <div className="flex flex-col items-center justify-center py-12 gap-3 text-center">
                         <ShoppingCart className="w-10 h-10 text-gray-700" />
-                        <p className="text-gray-500 text-sm font-medium">No order yet</p>
-                        <p className="text-gray-600 text-xs">Browse the menu on the left<br/>to add items to this table</p>
+                        <p className="text-gray-500 text-sm font-medium">{L('no_order_yet')}</p>
+                        <p className="text-gray-600 text-xs">{L('browse_menu_table')}</p>
                       </div>
                     )}
                   </>
@@ -844,8 +856,8 @@ export default function POSPage() {
                 <div className="shrink-0 border-t border-gray-800 p-4 space-y-3">
                   {/* Total row */}
                   <div className="flex items-center justify-between">
-                    <span className="text-gray-400 font-semibold">TOTAL</span>
-                    <span className="text-2xl font-extrabold text-white">{orderTotal.toFixed(2)} <span className="text-base font-bold text-gray-400">{currency}</span></span>
+                    <span className="text-gray-400 font-semibold">{L('total')}</span>
+                    <span dir="ltr" className="text-2xl font-extrabold text-white">{orderTotal.toFixed(2)} <span className="text-base font-bold text-gray-400">{currency}</span></span>
                   </div>
 
                   {/* Payment method — trigger */}
@@ -853,9 +865,9 @@ export default function POSPage() {
                     onClick={() => { setPayPending(null); setPayModalOpen(true) }}
                     className="w-full py-3 bg-gray-900 border-2 border-gray-700 hover:border-emerald-600 rounded-xl flex items-center justify-between px-4 transition-all active:scale-95"
                   >
-                    <span className="text-gray-400 text-xs font-semibold">Paiement</span>
+                    <span className="text-gray-400 text-xs font-semibold">{L('payment')}</span>
                     <span className="text-white font-extrabold text-sm flex items-center gap-2">
-                      {payLabel}
+                      {payOptions.find(o => o.id === payOptId)?.label}
                       <span className="text-gray-500 text-xs">▾</span>
                     </span>
                   </button>
@@ -865,7 +877,7 @@ export default function POSPage() {
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
                         <input type="number" value={cashInput} onChange={e => setCashInput(e.target.value)}
-                          placeholder={`Amount received (${currency})`}
+                          placeholder={`${L('cash_given')} (${currency})`}
                           className="flex-1 px-4 py-2.5 bg-gray-900 border border-gray-700 text-white rounded-xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500" />
                         {[1, 5, 10].map(add => (
                           <button key={add} onClick={() => setCashInput(v => String((parseFloat(v)||0) + add))}
@@ -876,8 +888,8 @@ export default function POSPage() {
                       </div>
                       {change !== null && (
                         <div className={`flex items-center justify-between px-4 py-2.5 rounded-xl text-sm font-bold ${change >= 0 ? 'bg-emerald-950/50 text-emerald-400' : 'bg-red-950/50 text-red-400'}`}>
-                          <span>Change</span>
-                          <span>{change >= 0 ? change.toFixed(2) : `Short ${Math.abs(change).toFixed(2)}`} {currency}</span>
+                          <span>{L('change')}</span>
+                          <span>{change >= 0 ? <bdi dir="ltr">{change.toFixed(2)} {currency}</bdi> : <>{L('short_amount')} <bdi dir="ltr">{Math.abs(change).toFixed(2)} {currency}</bdi></>}</span>
                         </div>
                       )}
                     </div>
@@ -896,11 +908,11 @@ export default function POSPage() {
                       disabled={checkingOut}
                       className="w-full py-3 bg-blue-900/40 hover:bg-blue-800/60 border border-blue-500/40 text-blue-300 rounded-xl font-bold text-sm active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                     >
-                      🪑 Split Bill by Seat
+                      {L('split_by_seat')}
                     </button>
                   ) : selTable && (
                     <p className="text-center text-[11px] text-gray-600">
-                      Split bill isn't available — this table only has 1 seat
+                      {L('split_unavailable')}
                     </p>
                   )}
 
@@ -909,14 +921,14 @@ export default function POSPage() {
                     <button onClick={() => handleCheckout(true)} disabled={checkingOut}
                       className="py-4 bg-gray-800 hover:bg-gray-700 disabled:opacity-50 text-white rounded-xl font-bold text-sm active:scale-95 transition-all flex flex-col items-center gap-1">
                       {checkingOut ? <Loader2 className="w-5 h-5 animate-spin" /> : <Printer className="w-5 h-5" />}
-                      {checkingOut ? 'Processing…' : 'Print & Pay'}
+                      {checkingOut ? L('processing') : L('print_receipt')}
                     </button>
                     <button onClick={() => handleCheckout(false)} disabled={checkingOut}
                       className="py-4 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-2xl font-extrabold text-base active:scale-95 transition-all shadow-lg shadow-emerald-900/50 flex flex-col items-center gap-1">
                       {checkingOut
                         ? <Loader2 className="w-5 h-5 animate-spin" />
                         : <Check className="w-5 h-5" />}
-                      {checkingOut ? 'Processing…' : 'CHARGE'}
+                      {checkingOut ? L('processing') : L('charge')}
                     </button>
                   </div>
                 </div>
@@ -929,8 +941,8 @@ export default function POSPage() {
                 <LayoutGrid className="w-8 h-8 text-gray-700" />
               </div>
               <div>
-                <p className="text-gray-400 font-semibold">No table selected</p>
-                <p className="text-gray-600 text-sm mt-1">Tap a table on the left to view or create an order</p>
+                <p className="text-gray-400 font-semibold">{L('no_table_sel')}</p>
+                <p className="text-gray-600 text-sm mt-1">{L('tap_table_hint')}</p>
               </div>
             </div>
           )}
@@ -947,10 +959,10 @@ export default function POSPage() {
       {/* ── Mobile bottom tabs ──────────────────────────────────────────────── */}
       <div className="md:hidden shrink-0 border-t border-gray-800 bg-gray-900 flex items-stretch h-16">
         {([
-          { key: 'tables', icon: LayoutGrid,  label: 'Tables',  badge: alertCount },
-          { key: 'menu',   icon: UtensilsCrossed, label: 'Menu', badge: 0 },
-          { key: 'cart',   icon: ShoppingCart, label: 'Order',  badge: cartCount + (tableOrders.length > 0 ? 1 : 0) },
-        ] as const).map(({ key, icon: Icon, label, badge }) => (
+          { key: 'tables' as MobileTab, icon: LayoutGrid,  label: L('nav_tables'),  badge: alertCount },
+          { key: 'menu' as MobileTab,   icon: UtensilsCrossed, label: L('nav_menu'), badge: 0 },
+          { key: 'cart' as MobileTab,   icon: ShoppingCart, label: L('nav_order'),  badge: cartCount + (tableOrders.length > 0 ? 1 : 0) },
+        ]).map(({ key, icon: Icon, label, badge }) => (
           <button key={key} onClick={() => {
             setPosView('live')
             setMobileTab(key)
@@ -981,18 +993,12 @@ export default function POSPage() {
 
             {!payPending ? (
               <>
-                <h3 className="font-black text-lg text-white mb-1">Mode de paiement</h3>
-                <p className="text-gray-500 text-sm mb-5">Choisissez le mode utilisé par le client</p>
+                <h3 className="font-black text-lg text-white mb-1">{L('pay_mode_title')}</h3>
+                <p className="text-gray-500 text-sm mb-5">{L('pay_mode_sub')}</p>
                 <div className="space-y-2">
-                  {([
-                    { method: 'CASH'   as PayMethod, label: 'Espèces',      icon: '💵', sub: 'Cash / نقدي' },
-                    { method: 'CARD'   as PayMethod, label: 'TPE / Visa',   icon: '💳', sub: 'Carte bancaire' },
-                    { method: 'ONLINE' as PayMethod, label: 'Apple Pay',    icon: '🍎', sub: 'NFC · iPhone' },
-                    { method: 'ONLINE' as PayMethod, label: 'Google Pay',   icon: '🤖', sub: 'NFC · Android' },
-                    { method: 'ONLINE' as PayMethod, label: 'Orange Money', icon: '🟠', sub: 'Paiement mobile' },
-                  ]).map((opt, i) => (
+                  {payOptions.map((opt, i) => (
                     <button key={i} onClick={() => setPayPending(opt)}
-                      className="w-full flex items-center gap-4 px-4 py-3.5 bg-gray-800 hover:bg-gray-700 border border-gray-700 hover:border-gray-500 rounded-2xl transition-all active:scale-95 text-left">
+                      className="w-full flex items-center gap-4 px-4 py-3.5 bg-gray-800 hover:bg-gray-700 border border-gray-700 hover:border-gray-500 rounded-2xl transition-all active:scale-95 text-start">
                       <span className="text-2xl">{opt.icon}</span>
                       <div>
                         <p className="text-white font-bold text-sm">{opt.label}</p>
@@ -1003,7 +1009,7 @@ export default function POSPage() {
                 </div>
                 <button onClick={() => { setPayModalOpen(false); setPayPending(null) }}
                   className="w-full mt-4 py-3 bg-gray-800 hover:bg-gray-700 text-gray-400 rounded-xl font-bold text-sm active:scale-95 transition-all">
-                  Annuler
+                  {L('cancel')}
                 </button>
               </>
             ) : (
@@ -1011,30 +1017,30 @@ export default function POSPage() {
                 <div className="text-center mb-6">
                   <span className="text-5xl">{payPending.icon}</span>
                   <h3 className="font-black text-xl text-white mt-3">{payPending.label}</h3>
-                  <p className="text-gray-400 text-sm mt-1">Confirmez-vous ce mode de paiement ?</p>
+                  <p className="text-gray-400 text-sm mt-1">{L('pay_confirm_q')}</p>
                 </div>
                 <div className="bg-amber-950/40 border border-amber-800/50 rounded-2xl px-4 py-3 mb-5 text-center">
                   <p className="text-amber-300 text-xs font-semibold">
                     {payPending.method === 'CASH'
-                      ? '✔ Assurez-vous d\'avoir reçu les espèces avant de confirmer'
+                      ? L('pay_check_cash')
                       : payPending.method === 'CARD'
-                      ? '✔ Assurez-vous que le TPE a validé le paiement avant de confirmer'
-                      : '✔ Assurez-vous que le paiement mobile est confirmé avant de continuer'}
+                      ? L('pay_check_card')
+                      : L('pay_check_mobile')}
                   </p>
                 </div>
                 <div className="flex gap-3">
                   <button onClick={() => setPayPending(null)}
                     className="flex-1 py-3 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-xl font-bold text-sm active:scale-95 transition-all">
-                    ← Retour
+                    {isRTL(lang) ? '→' : '←'} {L('back')}
                   </button>
                   <button onClick={() => {
                     setPayMethod(payPending.method)
-                    setPayLabel(payPending.label)
+                    setPayOptId(payPending.id)
                     setPayModalOpen(false)
                     setPayPending(null)
                   }}
                     className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-sm active:scale-95 transition-all flex items-center justify-center gap-2">
-                    <Check className="w-4 h-4" /> Confirmer
+                    <Check className="w-4 h-4" /> {L('confirm')}
                   </button>
                 </div>
               </>
@@ -1048,6 +1054,7 @@ export default function POSPage() {
         <ClotureModal
           shift={cashierShift.shift}
           currency={currency}
+          lang={lang}
           onClose={() => setShowCloture(false)}
           onConfirm={async (countedCash) => {
             const isDemo = isDemoMode
@@ -1062,7 +1069,7 @@ export default function POSPage() {
 
       {/* ── Marketplace Order Modal (Glovo, Uber Eats...) — shared with /comptoir ── */}
       <MarketplaceOrderModal
-        locale="en"
+        lang={lang}
         open={mp.showMarketplace}
         onClose={() => mp.setShowMarketplace(false)}
         menuCats={menuCats}
@@ -1085,9 +1092,9 @@ export default function POSPage() {
           <div className="bg-gray-900 rounded-3xl p-6 w-full max-w-sm shadow-2xl"
             onClick={e => e.stopPropagation()}>
             <h3 className="font-black text-lg text-white mb-1">
-              Split Bill — Table {selTable.tableNumber}
+              {L('split_bill')} — {L('table')} {selTable.tableNumber}
             </h3>
-            <p className="text-gray-400 text-sm mb-5">Select seats to close</p>
+            <p className="text-gray-400 text-sm mb-5">{L('split_select')}</p>
 
             <div className="grid grid-cols-4 gap-3 mb-6">
               {Array.from({ length: selTable.capacity || 6 }, (_, i) => i + 1).map(seat => (
@@ -1110,7 +1117,7 @@ export default function POSPage() {
             <div className="flex gap-3">
               <button onClick={() => setSplitOpen(false)}
                 className="flex-1 py-3 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-xl font-bold text-sm active:scale-95 transition-all">
-                Cancel
+                {L('cancel')}
               </button>
               <button
                 onClick={handleSplitCheckout}
@@ -1120,7 +1127,7 @@ export default function POSPage() {
                 {checkingOut
                   ? <Loader2 className="w-4 h-4 animate-spin" />
                   : <Check className="w-4 h-4" />}
-                Close {splitSeats.length > 0 ? `${splitSeats.length} seat${splitSeats.length > 1 ? 's' : ''}` : '…'}
+                {L('close')} {splitSeats.length > 0 ? `(${splitSeats.length})` : '…'}
               </button>
             </div>
           </div>

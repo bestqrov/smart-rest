@@ -32,11 +32,11 @@ const T = {
     waiter:     'النادل',
     waiterSub:  'خدمة الطاولات',
     wrongRole:  'رمز PIN غير صحيح أو الدور غير مطابق',
-    errorNet:   'خطأ في الشبكة',
+    errorNet:   'تعذّر الاتصال، يرجى المحاولة مجدداً',
     back:       'رجوع',
-    cafeSub:    'أدخل الاسم المختصر للمقهى',
-    cafeLabel:  'المقهى',
-    login:      'دخول',
+    cafeSub:    'أدخل المعرّف المختصر للمنشأة',
+    cafeLabel:  'المنشأة',
+    login:      'تسجيل الدخول',
   },
   fr: {
     welcome: 'Bienvenue',
@@ -144,7 +144,7 @@ export default function StaffPortal() {
         body: JSON.stringify({ subdomain: subdomain.trim().toLowerCase(), pinCode: pin, action: 'login' }),
       })
       const data = await res.json()
-      if (!res.ok) { setError(data.error ?? t.wrongRole); setPin(''); setLoading(false); return }
+      if (!res.ok) { setError(res.status >= 500 ? t.errorNet : t.wrongRole); setPin(''); setLoading(false); return }
 
       const { token, staff } = data as { token: string; staff: { id: string; name: string; role: string } }
       const cfg = ROLES.find(c => c.role === role)!

@@ -23,6 +23,8 @@ interface Props {
   onDemoLogin: (staffId: string) => void
   onSubmit: (e: React.FormEvent) => void
   langSwitcher?: ReactNode
+  /** Translated labels; English fallbacks keep older callers working. */
+  labels?: { subdomainPlaceholder?: string; login?: string; roleLabel?: (role: string) => string }
 }
 
 // PIN-entry login screen shared by /pos and /comptoir. Both are staff-facing
@@ -32,7 +34,7 @@ export default function PosPinLogin(props: Props) {
   const {
     cafeName, cafeLogoUrl, loadingCafe, icon, subtitle,
     subdomain, setSubdomain, pin, setPin, loginErr, logging,
-    isDemoMode, demoStaff, demoLabel, onDemoLogin, onSubmit, langSwitcher,
+    isDemoMode, demoStaff, demoLabel, onDemoLogin, onSubmit, langSwitcher, labels,
   } = props
 
   return (
@@ -71,9 +73,9 @@ export default function PosPinLogin(props: Props) {
                 <div className="w-10 h-10 rounded-xl bg-emerald-600/20 border border-emerald-500/30 flex items-center justify-center text-lg shrink-0">
                   {s.role === 'CASHIER' ? '💳' : s.role === 'SUPERVISOR' ? '👔' : '🛎️'}
                 </div>
-                <div className="text-left">
+                <div className="text-start">
                   <p className="text-white font-bold text-sm">{s.name}</p>
-                  <p className="text-gray-500 text-xs">{s.role}</p>
+                  <p className="text-gray-500 text-xs">{labels?.roleLabel ? labels.roleLabel(s.role) : s.role}</p>
                 </div>
                 {logging ? <Loader2 className="w-4 h-4 animate-spin text-emerald-400 ml-auto" /> : (
                   <ChevronLeft className="w-4 h-4 text-gray-600 ml-auto rotate-180" />
@@ -90,7 +92,7 @@ export default function PosPinLogin(props: Props) {
           <form onSubmit={onSubmit} className="space-y-4">
             {!subdomain && (
               <input type="text" value={subdomain} onChange={e => setSubdomain(e.target.value)}
-                placeholder="Cafe subdomain" required
+                placeholder={labels?.subdomainPlaceholder ?? 'Cafe subdomain'} required
                 className="w-full px-4 py-3.5 bg-gray-900 border border-gray-700 text-white rounded-2xl text-center text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500" />
             )}
 
@@ -128,7 +130,7 @@ export default function PosPinLogin(props: Props) {
 
             <button type="submit" disabled={logging || !subdomain || pin.length < 4}
               className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white font-extrabold text-lg rounded-2xl transition-all active:scale-95 shadow-lg shadow-emerald-900/40">
-              {logging ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'LOGIN'}
+              {logging ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : (labels?.login ?? 'LOGIN')}
             </button>
           </form>
         )}
