@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Save, Package, RefreshCw, CheckCircle2, Archive } from 'lucide-react'
+import { ArrowRight, Save, Package, RefreshCw, CheckCircle2, Archive } from 'lucide-react'
 import { useSAAuth } from '../../../context'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -61,7 +61,7 @@ const MODULES = ['RESTAURANT','HOTEL','CLINIC','RETAIL','ALL']
 
 export default function ProductEditPage() {
   const params = useParams()
-  const [lang, setLang]       = useState<'ar' | 'en'>('ar')
+  const lang = 'ar' as 'ar' | 'en' // console is Arabic-only
   const { header } = useSAAuth()
   const [product, setProduct] = useState<Product | null>(null)
   const [pricing, setPricing] = useState<Pricing | null>(null)
@@ -111,11 +111,6 @@ export default function ProductEditPage() {
   }, [header, id])
 
   useEffect(() => { load() }, [load])
-  useEffect(() => {
-    const l = localStorage.getItem('lang') as 'ar' | 'en' | null
-    if (l) setLang(l)
-  }, [])
-
   function flash() { setSavedMsg(true); setTimeout(() => setSavedMsg(false), 2000) }
 
   async function saveGeneral() {
@@ -196,7 +191,7 @@ export default function ProductEditPage() {
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
             <Link href="/superadmin/marketplace/products" className="p-2 bg-zinc-800 rounded-lg hover:bg-zinc-700">
-              <ArrowLeft className="w-4 h-4" />
+              <ArrowRight className="w-4 h-4" />
             </Link>
             <div>
               <h1 className="text-xl font-bold flex items-center gap-3"><Package className="w-6 h-6 text-blue-400" />{product?.name ?? '...'}</h1>
@@ -204,7 +199,6 @@ export default function ProductEditPage() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <button onClick={() => setLang(l => l === 'ar' ? 'en' : 'ar')} className="px-3 py-1.5 text-sm bg-zinc-800 rounded-lg">{lang === 'ar' ? 'EN' : 'ع'}</button>
             {savedMsg && <span className="flex items-center gap-1 text-sm text-green-400"><CheckCircle2 className="w-4 h-4" />{t.saved}</span>}
             <button onClick={load} disabled={loading} className="p-2 bg-zinc-800 rounded-lg hover:bg-zinc-700">
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /></button>
@@ -249,7 +243,7 @@ export default function ProductEditPage() {
                     </Field>
                     <Field label={t.category}>
                       <select value={general.categoryId} onChange={e => setGeneral(f => ({...f,categoryId:e.target.value}))} className={selectCls}>
-                        <option value="">— Select —</option>
+                        <option value="">— اختر —</option>
                         {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                       </select>
                     </Field>
@@ -260,7 +254,7 @@ export default function ProductEditPage() {
                     </Field>
                     <Field label={t.supplier}>
                       <select value={general.supplierId} onChange={e => setGeneral(f => ({...f,supplierId:e.target.value}))} className={selectCls}>
-                        <option value="">— None —</option>
+                        <option value="">— بدون —</option>
                         {suppliers.map(s => <option key={s.id} value={s.id}>{s.company}</option>)}
                       </select>
                     </Field>
@@ -305,9 +299,9 @@ export default function ProductEditPage() {
                   {inventory && (
                     <div className="grid grid-cols-3 gap-3 mb-4">
                       {[
-                        { label: 'Stock', value: inventory.stock, color: 'text-zinc-200' },
-                        { label: 'Reserved', value: inventory.reserved, color: 'text-yellow-400' },
-                        { label: 'Available', value: inventory.available, color: 'text-emerald-400' },
+                        { label: 'المخزون', value: inventory.stock, color: 'text-zinc-200' },
+                        { label: 'محجوز', value: inventory.reserved, color: 'text-yellow-400' },
+                        { label: 'متاح', value: inventory.available, color: 'text-emerald-400' },
                       ].map(({ label, value, color }) => (
                         <div key={label} className="bg-zinc-800 rounded-lg p-3 text-center">
                           <div className={`text-2xl font-bold ${color}`}>{value}</div>

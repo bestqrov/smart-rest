@@ -45,6 +45,8 @@ const SEV_COLOR: Record<Severity, string> = {
   error: 'text-red-400',
 }
 
+const SEV_LABEL: Record<string, string> = { debug: 'تصحيح', info: 'معلومة', warn: 'تحذير', error: 'خطأ' }
+
 export default function LogsPage() {
   const lang: Lang = 'ar'
   const t   = T[lang]
@@ -125,7 +127,7 @@ export default function LogsPage() {
         <select value={severity} onChange={e => setSeverity(e.target.value)}
           className="bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-zinc-600">
           <option value="">{t.allSeverities}</option>
-          {severities.map(s => <option key={s} value={s}>{s}</option>)}
+          {severities.map(s => <option key={s} value={s}>{SEV_LABEL[s] ?? s}</option>)}
         </select>
       </div>
 
@@ -145,7 +147,7 @@ export default function LogsPage() {
             {data?.entries.map(entry => (
               <tr key={entry.id} className="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors">
                 <td className="px-4 py-2.5">
-                  <span className={`text-xs font-medium uppercase ${SEV_COLOR[entry.severity]}`}>{entry.severity}</span>
+                  <span className={`text-xs font-medium uppercase ${SEV_COLOR[entry.severity]}`}>{SEV_LABEL[entry.severity] ?? entry.severity}</span>
                 </td>
                 <td className="px-4 py-2.5">
                   <span className="text-xs bg-zinc-800 text-zinc-300 px-2 py-0.5 rounded-md">{entry.module}</span>

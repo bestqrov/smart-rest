@@ -18,7 +18,7 @@ interface OrderPage { orders: Order[]; total: number; page: number; pages: numbe
 
 const T = {
   ar: {
-    title: 'الطلبات', subtitle: 'إدارة طلبات المارکت‌بليس',
+    title: 'الطلبات', subtitle: 'إدارة طلبات سوق المنصة',
     search: 'بحث برقم الطلب...', refresh: 'تحديث', loading: 'جاري التحميل...',
     orderNumber: 'رقم الطلب', module: 'الوحدة', status: 'الحالة',
     total: 'الإجمالي', date: 'التاريخ', actions: 'إجراءات', view: 'عرض',
@@ -50,7 +50,7 @@ const STATUS_COLOR: Record<string, string> = {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function OrdersPage() {
-  const [lang, setLang]         = useState<'ar' | 'en'>('ar')
+  const lang = 'ar' as 'ar' | 'en' // console is Arabic-only
   const { header } = useSAAuth()
   const [data, setData]         = useState<OrderPage | null>(null)
   const [loading, setLoading]   = useState(true)
@@ -74,11 +74,6 @@ export default function OrdersPage() {
 
   useEffect(() => { load() }, [statusFilter, moduleFilter])
   useEffect(() => { load() }, [page])
-  useEffect(() => {
-    const l = localStorage.getItem('lang') as 'ar' | 'en' | null
-    if (l) setLang(l)
-  }, [])
-
   return (
     <div dir={isRTL ? 'rtl' : 'ltr'} className="min-h-screen bg-zinc-950 text-zinc-100 p-6">
       <div className="flex items-center justify-between mb-6">
@@ -87,7 +82,6 @@ export default function OrdersPage() {
           <p className="text-zinc-400 text-sm mt-1">{t.subtitle}</p>
         </div>
         <div className="flex items-center gap-3">
-          <button onClick={() => setLang(l => l === 'ar' ? 'en' : 'ar')} className="px-3 py-1.5 text-sm bg-zinc-800 rounded-lg">{lang === 'ar' ? 'EN' : 'ع'}</button>
           <button onClick={() => load()} disabled={loading} className="p-2 bg-zinc-800 rounded-lg hover:bg-zinc-700">
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /></button>
         </div>
@@ -145,7 +139,7 @@ export default function OrdersPage() {
                   {o.total.toLocaleString()} {o.currency}
                 </td>
                 <td className="px-4 py-3 hidden xl:table-cell text-zinc-500 text-xs">
-                  {new Date(o.createdAt).toLocaleDateString(isRTL ? 'ar' : 'en')}
+                  {new Date(o.createdAt).toLocaleDateString('ar-u-nu-latn')}
                 </td>
                 <td className="px-4 py-3 text-end">
                   <Link href={`/superadmin/marketplace/orders/${o.id}`}

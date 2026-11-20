@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  Save, Plus, Trash2, ArrowLeft, Loader2, CheckCircle,
+  Save, Plus, Trash2, ArrowRight, Loader2, CheckCircle,
   Star, Image as ImageIcon, Phone, Mail, BarChart3, MessageSquare, Globe2 as Globe2Icon,
 } from 'lucide-react'
 
@@ -105,13 +105,15 @@ function SectionTitle({ icon: Icon, title }: { icon: any; title: string }) {
   )
 }
 
+const LANG_AR = { en: 'الإنجليزية', fr: 'الفرنسية', ar: 'العربية' } as const
+
 function LangTabs({ active, onChange }: { active: 'en' | 'fr' | 'ar'; onChange: (l: 'en' | 'fr' | 'ar') => void }) {
   return (
     <div className="flex gap-1 bg-slate-100 p-0.5 rounded-lg w-fit mb-3">
       {(['en', 'fr', 'ar'] as const).map(l => (
         <button key={l} onClick={() => onChange(l)}
           className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${active === l ? 'bg-white shadow text-slate-800' : 'text-slate-500 hover:text-slate-700'}`}>
-          {l.toUpperCase()}
+          {LANG_AR[l]}
         </button>
       ))}
     </div>
@@ -158,13 +160,13 @@ export default function LandingEditorPage() {
       })
       if (!r.ok) {
         const d = await r.json().catch(() => ({}))
-        setSaveErr(d.error ?? `Error ${r.status}`)
+        setSaveErr(d.error ?? `خطأ ${r.status}`)
         return
       }
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
     } catch {
-      setSaveErr('Network error')
+      setSaveErr('خطأ في الشبكة')
     } finally {
       setSaving(false)
     }
@@ -234,14 +236,14 @@ export default function LandingEditorPage() {
   if (!authed) return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-8 w-full max-w-sm space-y-4">
-        <h1 className="font-extrabold text-slate-800 text-xl text-center">Landing Editor</h1>
-        <p className="text-xs text-slate-400 text-center">Sign in with your superadmin credentials</p>
+        <h1 className="font-extrabold text-slate-800 text-xl text-center">محرر الصفحة الرئيسية</h1>
+        <p className="text-xs text-slate-400 text-center">سجّل الدخول ببيانات المشرف العام</p>
         <input
           type="email"
           value={email}
           onChange={e => setEmail(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && login()}
-          placeholder="Email"
+          placeholder="البريد الإلكتروني"
           dir="ltr"
           className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
         />
@@ -250,13 +252,13 @@ export default function LandingEditorPage() {
           value={secret}
           onChange={e => setSecret(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && login()}
-          placeholder="Password"
+          placeholder="كلمة المرور"
           className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
         />
-        {authErr && <p className="text-red-500 text-xs text-center">Wrong secret</p>}
+        {authErr && <p className="text-red-500 text-xs text-center">بيانات الدخول غير صحيحة</p>}
         <button onClick={login} disabled={loading}
           className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2">
-          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Continue'}
+          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'متابعة'}
         </button>
       </div>
     </div>
@@ -268,26 +270,26 @@ export default function LandingEditorPage() {
       <header className="bg-white border-b border-slate-200 px-4 py-4 flex items-center justify-between sticky top-0 z-10">
         <div className="flex items-center gap-3">
           <button onClick={() => router.push('/superadmin')} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
-            <ArrowLeft className="w-4 h-4 text-slate-500" />
+            <ArrowRight className="w-4 h-4 text-slate-500" />
           </button>
           <div>
-            <h1 className="font-extrabold text-slate-800">Landing Page Editor</h1>
-            <p className="text-xs text-slate-400">Changes go live immediately after saving</p>
+            <h1 className="font-extrabold text-slate-800">محرر الصفحة الرئيسية</h1>
+            <p className="text-xs text-slate-400">تُنشر التغييرات فور الحفظ</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <a href="/landing" target="_blank" rel="noopener noreferrer"
             className="text-xs text-emerald-600 hover:underline font-medium px-3 py-1.5 border border-emerald-200 rounded-lg">
-            Preview →
+            معاينة ←
           </a>
           {saveErr && <span className="text-xs text-red-500 font-medium">{saveErr}</span>}
           <button onClick={() => save()} disabled={saving}
             className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white rounded-xl font-bold text-sm transition-all">
             {saving
-              ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</>
+              ? <><Loader2 className="w-4 h-4 animate-spin" /> جارٍ الحفظ…</>
               : saved
-              ? <><CheckCircle className="w-4 h-4" /> Saved!</>
-              : <><Save className="w-4 h-4" /> Save Changes</>
+              ? <><CheckCircle className="w-4 h-4" /> تم الحفظ</>
+              : <><Save className="w-4 h-4" /> حفظ التغييرات</>
             }
           </button>
         </div>
@@ -297,13 +299,13 @@ export default function LandingEditorPage() {
 
         {/* ── Logo ────────────────────────────────────────────────────────── */}
         <section className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
-          <SectionTitle icon={ImageIcon} title="Logo (Navbar & Footer)" />
+          <SectionTitle icon={ImageIcon} title="الشعار (شريط التنقل والتذييل)" />
 
           <div className="mb-3">
             <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-xl text-sm font-semibold transition-colors">
               {uploadingLogo
-                ? <><Loader2 className="w-4 h-4 animate-spin" /> Uploading…</>
-                : <><ImageIcon className="w-4 h-4" /> Upload Logo</>
+                ? <><Loader2 className="w-4 h-4 animate-spin" /> جارٍ الرفع…</>
+                : <><ImageIcon className="w-4 h-4" /> رفع الشعار</>
               }
               <input
                 type="file"
@@ -328,10 +330,10 @@ export default function LandingEditorPage() {
                       setCfg(updated)
                       await save(updated)
                     } else {
-                      alert(d.error ?? 'Upload failed')
+                      alert(d.error ?? 'فشل الرفع')
                     }
                   } catch {
-                    alert('Network error during upload')
+                    alert('خطأ في الشبكة أثناء الرفع')
                   } finally {
                     setUploadingLogo(false)
                     e.target.value = ''
@@ -339,10 +341,10 @@ export default function LandingEditorPage() {
                 }}
               />
             </label>
-            <span className="text-xs text-slate-400 ml-3">Max 5 MB · PNG / WebP recommended</span>
+            <span className="text-xs text-slate-400 ms-3">الحد الأقصى 5 MB · يُفضَّل PNG / WebP</span>
           </div>
 
-          <p className="text-xs text-slate-400 mb-1.5">Or enter a URL manually:</p>
+          <p className="text-xs text-slate-400 mb-1.5">أو أدخل الرابط يدوياً:</p>
           <input
             value={cfg.logoImageUrl}
             onChange={e => setCfg(c => ({ ...c, logoImageUrl: e.target.value }))}
@@ -359,8 +361,8 @@ export default function LandingEditorPage() {
 
         {/* ── Hero Text ───────────────────────────────────────────────────── */}
         <section className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
-          <SectionTitle icon={MessageSquare} title="Hero Text Overrides" />
-          <p className="text-xs text-slate-400 mb-4">Leave blank to use the hardcoded defaults. Fill in to override for that language.</p>
+          <SectionTitle icon={MessageSquare} title="نصوص الواجهة الرئيسية" />
+          <p className="text-xs text-slate-400 mb-4">اترك الحقل فارغاً لاستخدام النص الافتراضي، أو املأه لاستبداله في تلك اللغة.</p>
           <LangTabs active={activeLang} onChange={setActiveLang} />
           {(() => {
             const L = activeLang
@@ -395,15 +397,15 @@ export default function LandingEditorPage() {
               },
             }
             const fields: { key: keyof HeroTextLang; label: string }[] = [
-              { key: 'tagline', label: 'Tagline (badge above h1)' },
-              { key: 'h1a', label: 'H1 Line 1 (h1a)' },
-              { key: 'h1b', label: 'H1 Line 2 — gradient (h1b)' },
-              { key: 'h1c', label: 'H1 Line 3 — subtext (h1c)' },
-              { key: 'desc', label: 'Description paragraph' },
-              { key: 'cta1', label: 'CTA Button 1' },
-              { key: 'cta2', label: 'CTA Button 2' },
-              { key: 'featTitle', label: 'Features section title' },
-              { key: 'featSub', label: 'Features section subtitle' },
+              { key: 'tagline', label: 'الشعار النصي (الشارة فوق العنوان)' },
+              { key: 'h1a', label: 'العنوان — السطر 1 (h1a)' },
+              { key: 'h1b', label: 'العنوان — السطر 2 بتدرّج لوني (h1b)' },
+              { key: 'h1c', label: 'العنوان — السطر 3 نص فرعي (h1c)' },
+              { key: 'desc', label: 'فقرة الوصف' },
+              { key: 'cta1', label: 'زر الدعوة 1' },
+              { key: 'cta2', label: 'زر الدعوة 2' },
+              { key: 'featTitle', label: 'عنوان قسم الميزات' },
+              { key: 'featSub', label: 'العنوان الفرعي لقسم الميزات' },
             ]
             return (
               <div className="space-y-3">
@@ -426,14 +428,14 @@ export default function LandingEditorPage() {
 
         {/* ── Hero Image ──────────────────────────────────────────────────── */}
         <section className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
-          <SectionTitle icon={ImageIcon} title="Hero Image" />
+          <SectionTitle icon={ImageIcon} title="صورة الواجهة" />
 
           {/* Upload button */}
           <div className="mb-3">
             <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-xl text-sm font-semibold transition-colors">
               {uploadingHero
-                ? <><Loader2 className="w-4 h-4 animate-spin" /> Uploading…</>
-                : <><ImageIcon className="w-4 h-4" /> Upload Image</>
+                ? <><Loader2 className="w-4 h-4 animate-spin" /> جارٍ الرفع…</>
+                : <><ImageIcon className="w-4 h-4" /> رفع صورة</>
               }
               <input
                 type="file"
@@ -458,10 +460,10 @@ export default function LandingEditorPage() {
                       setCfg(updated)
                       await save(updated)
                     } else {
-                      alert(d.error ?? 'Upload failed')
+                      alert(d.error ?? 'فشل الرفع')
                     }
                   } catch {
-                    alert('Network error during upload')
+                    alert('خطأ في الشبكة أثناء الرفع')
                   } finally {
                     setUploadingHero(false)
                     e.target.value = ''
@@ -469,11 +471,11 @@ export default function LandingEditorPage() {
                 }}
               />
             </label>
-            <span className="text-xs text-slate-400 ml-3">Max 5 MB · JPG / PNG / WebP</span>
+            <span className="text-xs text-slate-400 ms-3">الحد الأقصى 5 MB · JPG / PNG / WebP</span>
           </div>
 
           {/* Manual URL fallback */}
-          <p className="text-xs text-slate-400 mb-1.5">Or enter a URL manually:</p>
+          <p className="text-xs text-slate-400 mb-1.5">أو أدخل الرابط يدوياً:</p>
           <input
             value={cfg.heroImageUrl}
             onChange={e => setCfg(c => ({ ...c, heroImageUrl: e.target.value }))}
@@ -491,13 +493,13 @@ export default function LandingEditorPage() {
 
         {/* ── Platform Image ──────────────────────────────────────────────── */}
         <section className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
-          <SectionTitle icon={ImageIcon} title="Platform Image (after «Everything in One Platform»)" />
+          <SectionTitle icon={ImageIcon} title="صورة المنصة (بعد قسم «كل ما تحتاجه في منصة واحدة»)" />
 
           <div className="mb-3">
             <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-xl text-sm font-semibold transition-colors">
               {uploadingPlatform
-                ? <><Loader2 className="w-4 h-4 animate-spin" /> Uploading…</>
-                : <><ImageIcon className="w-4 h-4" /> Upload Image</>
+                ? <><Loader2 className="w-4 h-4 animate-spin" /> جارٍ الرفع…</>
+                : <><ImageIcon className="w-4 h-4" /> رفع صورة</>
               }
               <input
                 type="file"
@@ -522,10 +524,10 @@ export default function LandingEditorPage() {
                       setCfg(updated)
                       await save(updated)
                     } else {
-                      alert(d.error ?? 'Upload failed')
+                      alert(d.error ?? 'فشل الرفع')
                     }
                   } catch {
-                    alert('Network error during upload')
+                    alert('خطأ في الشبكة أثناء الرفع')
                   } finally {
                     setUploadingPlatform(false)
                     e.target.value = ''
@@ -533,10 +535,10 @@ export default function LandingEditorPage() {
                 }}
               />
             </label>
-            <span className="text-xs text-slate-400 ml-3">Max 5 MB · JPG / PNG / WebP</span>
+            <span className="text-xs text-slate-400 ms-3">الحد الأقصى 5 MB · JPG / PNG / WebP</span>
           </div>
 
-          <p className="text-xs text-slate-400 mb-1.5">Or enter a URL manually:</p>
+          <p className="text-xs text-slate-400 mb-1.5">أو أدخل الرابط يدوياً:</p>
           <input
             value={cfg.platformImageUrl}
             onChange={e => setCfg(c => ({ ...c, platformImageUrl: e.target.value }))}
@@ -553,7 +555,7 @@ export default function LandingEditorPage() {
 
         {/* ── Stats ────────────────────────────────────────────────────────── */}
         <section className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
-          <SectionTitle icon={BarChart3} title="Stats Bar (4 numbers)" />
+          <SectionTitle icon={BarChart3} title="شريط الإحصائيات (4 أرقام)" />
           <div className="space-y-3">
             {cfg.stats.map((s, i) => (
               <div key={i} className="grid grid-cols-4 gap-2 items-center">
@@ -561,27 +563,27 @@ export default function LandingEditorPage() {
                   placeholder="500+"
                   className="px-3 py-2 border border-slate-200 rounded-lg text-sm font-bold text-center focus:outline-none focus:ring-2 focus:ring-emerald-400" />
                 <input value={s.en} onChange={e => updateStat(i, 'en', e.target.value)}
-                  placeholder="Label EN"
+                  placeholder="التسمية بالإنجليزية"
                   className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400" />
                 <input value={s.fr} onChange={e => updateStat(i, 'fr', e.target.value)}
-                  placeholder="Label FR"
+                  placeholder="التسمية بالفرنسية"
                   className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400" />
                 <input value={s.ar} onChange={e => updateStat(i, 'ar', e.target.value)}
-                  placeholder="التسمية AR" dir="rtl"
+                  placeholder="التسمية بالعربية" dir="rtl"
                   className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400" />
               </div>
             ))}
           </div>
-          <p className="text-xs text-slate-400 mt-3">Columns: Value · EN label · FR label · AR label</p>
+          <p className="text-xs text-slate-400 mt-3">الأعمدة: القيمة · التسمية بالإنجليزية · بالفرنسية · بالعربية</p>
         </section>
 
         {/* ── Contact ──────────────────────────────────────────────────────── */}
         <section className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
-          <SectionTitle icon={Phone} title="Contact Info" />
+          <SectionTitle icon={Phone} title="معلومات التواصل" />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="text-xs font-semibold text-slate-500 mb-1.5 block flex items-center gap-1">
-                <Phone className="w-3 h-3" /> WhatsApp / Phone
+                <Phone className="w-3 h-3" /> واتساب / الهاتف
               </label>
               <input
                 value={cfg.contact.whatsapp}
@@ -592,7 +594,7 @@ export default function LandingEditorPage() {
             </div>
             <div>
               <label className="text-xs font-semibold text-slate-500 mb-1.5 block flex items-center gap-1">
-                <Mail className="w-3 h-3" /> Email
+                <Mail className="w-3 h-3" /> البريد الإلكتروني
               </label>
               <input
                 value={cfg.contact.email}
@@ -611,13 +613,13 @@ export default function LandingEditorPage() {
               <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
                 <MessageSquare className="w-4 h-4 text-emerald-600" />
               </div>
-              <h2 className="font-bold text-slate-800">Testimonials</h2>
+              <h2 className="font-bold text-slate-800">آراء العملاء</h2>
             </div>
             <div className="flex items-center gap-2">
               <LangTabs active={activeTestiLang} onChange={setActiveTestiLang} />
               <button onClick={addTestimonial}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg text-xs font-bold transition-colors">
-                <Plus className="w-3.5 h-3.5" /> Add
+                <Plus className="w-3.5 h-3.5" /> إضافة
               </button>
             </div>
           </div>
@@ -628,10 +630,10 @@ export default function LandingEditorPage() {
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 grid grid-cols-2 gap-2">
                     <input value={tm.name} onChange={e => updateTesti(i, 'name', e.target.value)}
-                      placeholder="Customer name"
+                      placeholder="اسم العميل"
                       className="col-span-2 px-3 py-2 border border-slate-200 rounded-lg text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-400" />
                     <input value={tm.avatarUrl ?? ''} onChange={e => updateTesti(i, 'avatarUrl', e.target.value)}
-                      placeholder="Avatar URL (optional)"
+                      placeholder="رابط الصورة الشخصية (اختياري)"
                       className="col-span-2 px-3 py-2 border border-slate-200 rounded-lg text-xs text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-400" />
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
@@ -650,14 +652,14 @@ export default function LandingEditorPage() {
                   <input
                     value={tm.role[activeTestiLang]}
                     onChange={e => updateTestiLang(i, 'role', activeTestiLang, e.target.value)}
-                    placeholder={`Role (${activeTestiLang.toUpperCase()})`}
+                    placeholder={`الصفة (${LANG_AR[activeTestiLang]})`}
                     dir={activeTestiLang === 'ar' ? 'rtl' : 'ltr'}
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-400"
                   />
                   <textarea
                     value={tm.text[activeTestiLang]}
                     onChange={e => updateTestiLang(i, 'text', activeTestiLang, e.target.value)}
-                    placeholder={`Review text (${activeTestiLang.toUpperCase()})`}
+                    placeholder={`نص الرأي (${LANG_AR[activeTestiLang]})`}
                     rows={3}
                     dir={activeTestiLang === 'ar' ? 'rtl' : 'ltr'}
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-400"
@@ -675,17 +677,17 @@ export default function LandingEditorPage() {
               <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
                 <MessageSquare className="w-4 h-4 text-emerald-600" />
               </div>
-              <h2 className="font-bold text-slate-800">FAQ</h2>
+              <h2 className="font-bold text-slate-800">الأسئلة الشائعة</h2>
             </div>
             <button onClick={addFaq}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg text-xs font-bold transition-colors">
-              <Plus className="w-3.5 h-3.5" /> Add FAQ
+              <Plus className="w-3.5 h-3.5" /> إضافة سؤال
             </button>
           </div>
 
           {cfg.faqs.length === 0 && (
             <p className="text-xs text-slate-400 italic mb-3">
-              Using default FAQs — add a custom one to override all
+              تُستخدم الأسئلة الافتراضية — أضف سؤالاً مخصصاً لاستبدالها كلها
             </p>
           )}
 
@@ -693,25 +695,25 @@ export default function LandingEditorPage() {
             {cfg.faqs.map((faq, i) => (
               <div key={i} className="border border-slate-100 rounded-xl p-4 space-y-3">
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-bold text-slate-500">FAQ #{i + 1}</span>
+                  <span className="text-xs font-bold text-slate-500">سؤال رقم {i + 1}</span>
                   <button onClick={() => removeFaq(i)} className="p-1.5 text-slate-300 hover:text-red-500 rounded-lg transition-colors">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
                 {(['en', 'fr', 'ar'] as const).map(lang => (
                   <div key={lang} className="space-y-1.5">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase">{lang}</span>
+                    <span className="text-[10px] font-bold text-slate-400 ">{LANG_AR[lang]}</span>
                     <input
                       value={faq[lang].q}
                       onChange={e => updateFaq(i, lang, 'q', e.target.value)}
-                      placeholder={`Question (${lang.toUpperCase()})`}
+                      placeholder={`السؤال (${LANG_AR[lang]})`}
                       dir={lang === 'ar' ? 'rtl' : 'ltr'}
                       className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
                     />
                     <textarea
                       value={faq[lang].a}
                       onChange={e => updateFaq(i, lang, 'a', e.target.value)}
-                      placeholder={`Answer (${lang.toUpperCase()})`}
+                      placeholder={`الجواب (${LANG_AR[lang]})`}
                       rows={2}
                       dir={lang === 'ar' ? 'rtl' : 'ltr'}
                       className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-400"
@@ -725,11 +727,11 @@ export default function LandingEditorPage() {
 
         {/* ── Footer ───────────────────────────────────────────────────────── */}
         <section className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
-          <SectionTitle icon={Globe2Icon} title="Footer" />
+          <SectionTitle icon={Globe2Icon} title="التذييل" />
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="text-xs font-semibold text-slate-500 mb-1.5 block">Brand Name</label>
+              <label className="text-xs font-semibold text-slate-500 mb-1.5 block">اسم العلامة</label>
               <input
                 value={cfg.footer.brandName}
                 onChange={e => setCfg(c => ({ ...c, footer: { ...c.footer, brandName: e.target.value } }))}
@@ -738,7 +740,7 @@ export default function LandingEditorPage() {
               />
             </div>
             <div>
-              <label className="text-xs font-semibold text-slate-500 mb-1.5 block">Copyright Text</label>
+              <label className="text-xs font-semibold text-slate-500 mb-1.5 block">نص حقوق النشر</label>
               <input
                 value={cfg.footer.copyright}
                 onChange={e => setCfg(c => ({ ...c, footer: { ...c.footer, copyright: e.target.value } }))}
@@ -748,7 +750,7 @@ export default function LandingEditorPage() {
             </div>
             <div>
               <label className="text-xs font-semibold text-slate-500 mb-1.5 block flex items-center gap-1">
-                <Phone className="w-3 h-3" /> Footer Phone / WhatsApp
+                <Phone className="w-3 h-3" /> هاتف / واتساب التذييل
               </label>
               <input
                 value={cfg.footer.whatsapp}
@@ -759,7 +761,7 @@ export default function LandingEditorPage() {
             </div>
             <div>
               <label className="text-xs font-semibold text-slate-500 mb-1.5 block flex items-center gap-1">
-                <Mail className="w-3 h-3" /> Footer Email
+                <Mail className="w-3 h-3" /> بريد التذييل
               </label>
               <input
                 value={cfg.footer.email}
@@ -769,7 +771,7 @@ export default function LandingEditorPage() {
               />
             </div>
             <div className="sm:col-span-2">
-              <label className="text-xs font-semibold text-slate-500 mb-1.5 block">Country Flags (comma separated emojis)</label>
+              <label className="text-xs font-semibold text-slate-500 mb-1.5 block">أعلام الدول (رموز تعبيرية مفصولة بفواصل)</label>
               <input
                 value={cfg.footer.flags}
                 onChange={e => setCfg(c => ({ ...c, footer: { ...c.footer, flags: e.target.value } }))}
@@ -777,14 +779,14 @@ export default function LandingEditorPage() {
                 className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
                 dir="ltr"
               />
-              <p className="text-xs text-slate-400 mt-1">Example: 🇲🇦,🇸🇦,🇦🇪,🇫🇷</p>
+              <p className="text-xs text-slate-400 mt-1">مثال: 🇲🇦,🇸🇦,🇦🇪,🇫🇷</p>
             </div>
           </div>
 
           {/* Live preview */}
           {cfg.footer.flags && (
             <div className="mt-4 p-3 bg-slate-50 rounded-xl flex items-center gap-2 flex-wrap">
-              <span className="text-xs text-slate-400 mr-1">Preview:</span>
+              <span className="text-xs text-slate-400 me-1">معاينة:</span>
               {cfg.footer.flags.split(',').map((f, i) => <span key={i} className="text-xl">{f.trim()}</span>)}
             </div>
           )}
@@ -794,7 +796,7 @@ export default function LandingEditorPage() {
         <div className="flex justify-end pb-8">
           <button onClick={() => save()} disabled={saving}
             className="flex items-center gap-2 px-8 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white rounded-xl font-bold transition-all shadow-lg shadow-emerald-900/20">
-            {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</> : saved ? <><CheckCircle className="w-4 h-4" /> Saved!</> : <><Save className="w-4 h-4" /> Save All Changes</>}
+            {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> جارٍ الحفظ…</> : saved ? <><CheckCircle className="w-4 h-4" /> تم الحفظ</> : <><Save className="w-4 h-4" /> حفظ كل التغييرات</>}
           </button>
         </div>
       </main>

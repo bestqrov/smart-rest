@@ -60,10 +60,10 @@ export default function ActivityLog() {
               <div key={i} className="flex items-center justify-between px-5 py-2.5">
                 <div>
                   <span className="text-white text-xs font-medium">{e.action}</span>
-                  <span className="text-gray-500 text-xs mr-1.5">· {e.tenantName}</span>
+                  <span className="text-gray-500 text-xs ms-1.5">· {e.tenantName}</span>
                 </div>
                 <span className="text-gray-700 text-[10px]">
-                  {new Date(e.timestamp).toLocaleString('ar-MA', { hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric' })}
+                  {new Date(e.timestamp).toLocaleString('ar-u-nu-latn', { hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric' })}
                 </span>
               </div>
             ))

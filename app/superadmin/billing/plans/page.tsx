@@ -46,39 +46,22 @@ const T = {
     description: 'الوصف', monthlyPrice: 'السعر الشهري',
     yearlyPrice: 'السعر السنوي', currency: 'العملة',
     displayOrder: 'ترتيب العرض', maxUsers: 'أقصى مستخدمين',
-    maxStorageGB: 'التخزين (GB)', aiCredits: 'رصيد AI',
-    marketplace: 'المارکت‌بليس', automation: 'الأتمتة',
-    certification: 'الشهادات', apiAccess: 'وصول API',
+    maxStorageGB: 'التخزين (جيغابايت)', aiCredits: 'رصيد الذكاء الاصطناعي',
+    marketplace: 'السوق', automation: 'الأتمتة',
+    certification: 'الشهادات', apiAccess: 'الوصول إلى واجهة API',
     supportLevel: 'مستوى الدعم', deleteConfirm: 'هل أنت متأكد من الحذف؟',
     createTitle: 'إنشاء خطة جديدة', editTitle: 'تعديل الخطة',
   },
-  en: {
-    title: 'Billing Plans', subtitle: 'Manage subscription plans',
-    add: 'Add Plan', search: 'Search...', refresh: 'Refresh',
-    name: 'Name', code: 'Code', price: 'Monthly Price',
-    features: 'Features', status: 'Status', default: 'Default',
-    actions: 'Actions', edit: 'Edit', duplicate: 'Duplicate',
-    activate: 'Activate', deactivate: 'Deactivate',
-    setDefault: 'Set Default', delete: 'Delete',
-    active: 'Active', inactive: 'Inactive',
-    loading: 'Loading...', noPlans: 'No plans found',
-    save: 'Save', cancel: 'Cancel',
-    description: 'Description', monthlyPrice: 'Monthly Price',
-    yearlyPrice: 'Yearly Price', currency: 'Currency',
-    displayOrder: 'Display Order', maxUsers: 'Max Users',
-    maxStorageGB: 'Storage (GB)', aiCredits: 'AI Credits',
-    marketplace: 'Marketplace', automation: 'Automation',
-    certification: 'Certification', apiAccess: 'API Access',
-    supportLevel: 'Support Level', deleteConfirm: 'Are you sure you want to delete this plan?',
-    createTitle: 'Create New Plan', editTitle: 'Edit Plan',
-  },
+}
+
+const SUPPORT_LABEL: Record<string, string> = {
+  COMMUNITY: 'المجتمع', EMAIL: 'البريد الإلكتروني', PRIORITY: 'أولوية', DEDICATED: 'مخصّص',
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function PlansPage() {
-  const [lang, setLang] = useState<'ar' | 'en'>('ar')
-  const { header } = useSAAuth()
+    const { header } = useSAAuth()
   const [plans, setPlans] = useState<BillingPlan[]>([])
   const [filtered, setFiltered] = useState<BillingPlan[]>([])
   const [loading, setLoading] = useState(true)
@@ -89,13 +72,7 @@ export default function PlansPage() {
   const [form, setForm] = useState<Partial<BillingPlan>>({})
   const [error, setError] = useState<string | null>(null)
 
-  const t = T[lang]
-  const isRTL = lang === 'ar'
-
-  useEffect(() => {
-    const l = localStorage.getItem('lang') as 'ar' | 'en' | null
-    if (l) setLang(l)
-  }, [])
+  const t = T.ar
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -139,11 +116,11 @@ export default function PlansPage() {
         body: JSON.stringify(form),
       })
       const json = await res.json()
-      if (!res.ok) { setError(json.error ?? 'Error'); return }
+      if (!res.ok) { setError(json.error ?? 'حدث خطأ'); return }
       setShowModal(false)
       load()
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Unknown error')
+      setError(e instanceof Error ? e.message : 'خطأ غير معروف')
     } finally { setSaving(false) }
   }
 
@@ -159,7 +136,7 @@ export default function PlansPage() {
   }
 
   return (
-    <div dir={isRTL ? 'rtl' : 'ltr'} className="min-h-screen bg-zinc-950 text-zinc-100 p-6">
+    <div dir="rtl" className="min-h-screen bg-zinc-950 text-zinc-100 p-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -170,10 +147,6 @@ export default function PlansPage() {
           <p className="text-zinc-400 text-sm mt-1">{t.subtitle}</p>
         </div>
         <div className="flex items-center gap-3">
-          <button onClick={() => setLang(l => l === 'ar' ? 'en' : 'ar')}
-            className="px-3 py-1.5 text-sm bg-zinc-800 rounded-lg hover:bg-zinc-700 transition">
-            {lang === 'ar' ? 'EN' : 'ع'}
-          </button>
           <button onClick={() => load()} disabled={loading}
             className="p-2 bg-zinc-800 rounded-lg hover:bg-zinc-700 transition" title={t.refresh}>
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -231,13 +204,13 @@ export default function PlansPage() {
                   <td className="px-4 py-3 hidden xl:table-cell">
                     <div className="flex flex-wrap gap-1">
                       {plan.marketplaceEnabled && (
-                        <span className="text-xs bg-blue-900 text-blue-300 px-1.5 py-0.5 rounded">MP</span>
+                        <span className="text-xs bg-blue-900 text-blue-300 px-1.5 py-0.5 rounded">السوق</span>
                       )}
                       {plan.automationEnabled && (
-                        <span className="text-xs bg-violet-900 text-violet-300 px-1.5 py-0.5 rounded">AUTO</span>
+                        <span className="text-xs bg-violet-900 text-violet-300 px-1.5 py-0.5 rounded">أتمتة</span>
                       )}
                       {plan.certificationEnabled && (
-                        <span className="text-xs bg-emerald-900 text-emerald-300 px-1.5 py-0.5 rounded">CERT</span>
+                        <span className="text-xs bg-emerald-900 text-emerald-300 px-1.5 py-0.5 rounded">شهادات</span>
                       )}
                       {plan.apiAccess && (
                         <span className="text-xs bg-cyan-900 text-cyan-300 px-1.5 py-0.5 rounded">API</span>
@@ -366,7 +339,7 @@ export default function PlansPage() {
                 <select value={form.supportLevel ?? 'COMMUNITY'} onChange={e => setForm(f => ({ ...f, supportLevel: e.target.value }))}
                   className="bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100">
                   {['COMMUNITY', 'EMAIL', 'PRIORITY', 'DEDICATED'].map(sl => (
-                    <option key={sl} value={sl}>{sl}</option>
+                    <option key={sl} value={sl}>{SUPPORT_LABEL[sl] ?? sl}</option>
                   ))}
                 </select>
               </div>

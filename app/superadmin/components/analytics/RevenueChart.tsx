@@ -9,8 +9,8 @@ export default function RevenueChart({ data }: Props) {
     <div className="bg-gray-900/80 border border-gray-800 rounded-2xl p-5">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h3 className="font-bold text-white text-sm">الإيراد الشهري</h3>
-          <p className="text-gray-500 text-xs mt-0.5">آخر 6 أشهر (MAD)</p>
+          <h3 className="font-bold text-white text-sm">عمولات الطلبات المدفوعة شهرياً</h3>
+          <p className="text-gray-500 text-xs mt-0.5">آخر 6 أشهر — مجموع خام لكل المطاعم بعملات مختلفة، غير محوَّل</p>
         </div>
         <span className="text-xs text-emerald-400 font-bold bg-emerald-950/50 border border-emerald-800/40 px-2.5 py-1 rounded-lg">
           {data[data.length - 1]?.value.toFixed(0) ?? '—'} هذا الشهر

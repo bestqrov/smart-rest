@@ -39,12 +39,16 @@ const LEVEL_CONFIG: Record<Level, { color: string; bg: string; border: string; e
   DIAMOND:  { color: 'text-sky-400',    bg: 'bg-sky-950',     border: 'border-sky-800',    emoji: '💎' },
 }
 
+const LEVEL_AR: Record<Level, string> = {
+  NONE: 'بدون', BRONZE: 'برونزي', SILVER: 'فضي', GOLD: 'ذهبي', PLATINUM: 'بلاتيني', DIAMOND: 'ماسي',
+}
+
 const LEVELS: Level[] = ['NONE', 'BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'DIAMOND']
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' })
+  return new Date(iso).toLocaleDateString('ar-u-nu-latn', { day: 'numeric', month: 'short', year: '2-digit' })
 }
 function isExpired(iso: string) { return new Date(iso) < new Date() }
 
@@ -53,7 +57,7 @@ function LevelBadge({ level }: { level: Level | null }) {
   const cfg = LEVEL_CONFIG[level]
   return (
     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold border ${cfg.bg} ${cfg.color} ${cfg.border}`}>
-      {cfg.emoji} {level}
+      {cfg.emoji} {LEVEL_AR[level] ?? level}
     </span>
   )
 }
@@ -82,10 +86,10 @@ function StatsBar({ stats }: { stats: Stats | null }) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
       {[
-        { label: 'Total Evaluated', value: stats.total,     icon: BarChart3,    color: 'text-zinc-400' },
-        { label: 'Completed',       value: stats.completed, icon: CheckCircle2, color: 'text-emerald-400' },
-        { label: 'Expired',         value: stats.expired,   icon: AlertTriangle, color: 'text-amber-400' },
-        { label: 'Gold+',
+        { label: 'إجمالي المقيَّمين', value: stats.total,     icon: BarChart3,    color: 'text-zinc-400' },
+        { label: 'مكتملة',       value: stats.completed, icon: CheckCircle2, color: 'text-emerald-400' },
+        { label: 'منتهية',          value: stats.expired,   icon: AlertTriangle, color: 'text-amber-400' },
+        { label: 'ذهبي فأعلى',
           value: (stats.byLevel['GOLD'] ?? 0) + (stats.byLevel['PLATINUM'] ?? 0) + (stats.byLevel['DIAMOND'] ?? 0),
           icon: Award, color: 'text-yellow-400' },
       ].map(({ label, value, icon: Icon, color }) => (
@@ -106,7 +110,7 @@ function LevelDistribution({ stats }: { stats: Stats | null }) {
   const total = Object.values(stats.byLevel).reduce((s, v) => s + v, 0) || 1
   return (
     <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 mb-6">
-      <p className="text-xs text-zinc-500 mb-3 font-semibold uppercase tracking-wide">Level Distribution</p>
+      <p className="text-xs text-zinc-500 mb-3 font-semibold">توزيع المستويات</p>
       <div className="flex gap-2 h-2 rounded-full overflow-hidden">
         {LEVELS.filter(l => l !== 'NONE').map(lvl => {
           const count = stats.byLevel[lvl] ?? 0
@@ -114,7 +118,7 @@ function LevelDistribution({ stats }: { stats: Stats | null }) {
           if (pct === 0) return null
           const cfg = LEVEL_CONFIG[lvl]
           const fill = lvl === 'DIAMOND' ? 'bg-sky-400' : lvl === 'PLATINUM' ? 'bg-violet-400' : lvl === 'GOLD' ? 'bg-yellow-400' : lvl === 'SILVER' ? 'bg-slate-400' : 'bg-amber-500'
-          return <div key={lvl} className={`${fill} rounded-full`} style={{ width: `${pct}%` }} title={`${lvl}: ${count}`} />
+          return <div key={lvl} className={`${fill} rounded-full`} style={{ width: `${pct}%` }} title={`${LEVEL_AR[lvl]}: ${count}`} />
         })}
       </div>
       <div className="flex flex-wrap gap-3 mt-3">
@@ -122,7 +126,7 @@ function LevelDistribution({ stats }: { stats: Stats | null }) {
           const cfg = LEVEL_CONFIG[lvl]
           return (
             <span key={lvl} className={`text-xs ${cfg.color}`}>
-              {cfg.emoji} {lvl} <span className="text-zinc-600">({stats.byLevel[lvl]})</span>
+              {cfg.emoji} {LEVEL_AR[lvl]} <span className="text-zinc-600">({stats.byLevel[lvl]})</span>
             </span>
           )
         })}
@@ -181,13 +185,13 @@ export default function SuperAdminCertificationPage() {
       })
       const body = await res.json()
       if (res.ok) {
-        setToast({ msg: `${cafeName} → ${body.result?.level ?? 'done'}`, ok: true })
+        setToast({ msg: `${cafeName} → ${(body.result?.level ? LEVEL_AR[body.result.level as Level] ?? body.result.level : 'تم')}`, ok: true })
         await load(page)
       } else {
-        setToast({ msg: body.error ?? 'Evaluation failed', ok: false })
+        setToast({ msg: body.error ?? 'فشل التقييم', ok: false })
       }
     } catch {
-      setToast({ msg: 'Network error', ok: false })
+      setToast({ msg: 'خطأ في الشبكة', ok: false })
     } finally {
       setEvaluating(prev => { const s = new Set(prev); s.delete(tenantId); return s })
     }
@@ -204,14 +208,14 @@ export default function SuperAdminCertificationPage() {
       })
       const body = await res.json()
       if (res.ok) {
-        setToast({ msg: `${body.succeeded}/${body.total} evaluated`, ok: true })
+        setToast({ msg: `تم تقييم ${body.succeeded} من ${body.total}`, ok: true })
         setSelected(new Set())
         await load(page)
       } else {
-        setToast({ msg: body.error ?? 'Bulk evaluation failed', ok: false })
+        setToast({ msg: body.error ?? 'فشل التقييم الجماعي', ok: false })
       }
     } catch {
-      setToast({ msg: 'Network error', ok: false })
+      setToast({ msg: 'خطأ في الشبكة', ok: false })
     } finally {
       setBulk(false)
     }
@@ -240,7 +244,7 @@ export default function SuperAdminCertificationPage() {
     <div className="p-6 min-h-screen bg-zinc-950 text-white">
       {/* Toast */}
       {toast && (
-        <div className={`fixed top-5 right-5 z-50 px-4 py-3 rounded-2xl shadow-xl text-sm font-medium text-white ${toast.ok ? 'bg-emerald-600' : 'bg-red-600'}`}>
+        <div className={`fixed top-5 end-5 z-50 px-4 py-3 rounded-2xl shadow-xl text-sm font-medium text-white ${toast.ok ? 'bg-emerald-600' : 'bg-red-600'}`}>
           {toast.msg}
         </div>
       )}
@@ -252,15 +256,15 @@ export default function SuperAdminCertificationPage() {
             <ShieldCheck className="h-5 w-5 text-violet-400" />
           </div>
           <div>
-            <h1 className="text-lg font-bold text-white">Certification Management</h1>
-            <p className="text-xs text-zinc-500">Monitor and evaluate all restaurant certifications</p>
+            <h1 className="text-lg font-bold text-white">إدارة الشهادات</h1>
+            <p className="text-xs text-zinc-500">متابعة وتقييم شهادات جميع المطاعم</p>
           </div>
         </div>
         <button
           onClick={() => load(page)}
           className="flex items-center gap-2 px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 text-sm hover:text-white transition-colors"
         >
-          <RefreshCw className="h-3.5 w-3.5" /> Refresh
+          <RefreshCw className="h-3.5 w-3.5" /> تحديث
         </button>
       </div>
 
@@ -270,12 +274,12 @@ export default function SuperAdminCertificationPage() {
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3 mb-4">
         <div className="relative flex-1 min-w-48">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-500" />
+          <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-500" />
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Search restaurants…"
-            className="w-full bg-zinc-900 border border-zinc-800 rounded-xl pl-9 pr-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-600"
+            placeholder="ابحث عن مطعم…"
+            className="w-full bg-zinc-900 border border-zinc-800 rounded-xl ps-9 pe-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-600"
           />
         </div>
         <select
@@ -283,9 +287,9 @@ export default function SuperAdminCertificationPage() {
           onChange={e => setLevel(e.target.value as Level | '')}
           className="bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-zinc-600"
         >
-          <option value="">All levels</option>
+          <option value="">كل المستويات</option>
           {LEVELS.map(l => (
-            <option key={l} value={l}>{LEVEL_CONFIG[l].emoji} {l}</option>
+            <option key={l} value={l}>{LEVEL_CONFIG[l].emoji} {LEVEL_AR[l]}</option>
           ))}
         </select>
         {selected.size > 0 && (
@@ -295,7 +299,7 @@ export default function SuperAdminCertificationPage() {
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-600 text-white text-sm font-semibold hover:bg-violet-500 transition-colors disabled:opacity-50"
           >
             {bulkRunning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5" />}
-            Evaluate {selected.size} selected
+            تقييم {selected.size} محدد
           </button>
         )}
       </div>
@@ -313,12 +317,12 @@ export default function SuperAdminCertificationPage() {
                   className="rounded accent-violet-500"
                 />
               </th>
-              <th className="px-4 py-3 text-start text-xs font-semibold text-zinc-500 uppercase tracking-wide">Restaurant</th>
-              <th className="px-4 py-3 text-start text-xs font-semibold text-zinc-500 uppercase tracking-wide">Level</th>
-              <th className="px-4 py-3 text-start text-xs font-semibold text-zinc-500 uppercase tracking-wide">Score</th>
-              <th className="px-4 py-3 text-start text-xs font-semibold text-zinc-500 uppercase tracking-wide hidden md:table-cell">Evaluated</th>
-              <th className="px-4 py-3 text-start text-xs font-semibold text-zinc-500 uppercase tracking-wide hidden md:table-cell">Expires</th>
-              <th className="px-4 py-3 text-end text-xs font-semibold text-zinc-500 uppercase tracking-wide">Actions</th>
+              <th className="px-4 py-3 text-start text-xs font-semibold text-zinc-500">المطعم</th>
+              <th className="px-4 py-3 text-start text-xs font-semibold text-zinc-500">المستوى</th>
+              <th className="px-4 py-3 text-start text-xs font-semibold text-zinc-500">النتيجة</th>
+              <th className="px-4 py-3 text-start text-xs font-semibold text-zinc-500 hidden md:table-cell">تاريخ التقييم</th>
+              <th className="px-4 py-3 text-start text-xs font-semibold text-zinc-500 hidden md:table-cell">تاريخ الانتهاء</th>
+              <th className="px-4 py-3 text-end text-xs font-semibold text-zinc-500">إجراءات</th>
             </tr>
           </thead>
           <tbody>
@@ -332,7 +336,7 @@ export default function SuperAdminCertificationPage() {
             {!loading && rows.length === 0 && (
               <tr>
                 <td colSpan={7} className="px-4 py-12 text-center text-zinc-600 text-sm">
-                  No restaurants found
+                  لا توجد مطاعم
                 </td>
               </tr>
             )}
@@ -355,12 +359,12 @@ export default function SuperAdminCertificationPage() {
                   </td>
                   <td className="px-4 py-3">
                     <p className="font-medium text-white">{row.cafeName}</p>
-                    <p className="text-xs text-zinc-500">{row.subdomain}</p>
+                    <p className="text-xs text-zinc-500" dir="ltr">{row.subdomain}</p>
                   </td>
                   <td className="px-4 py-3">
                     <LevelBadge level={cert?.level ?? null} />
                     {expired && cert && (
-                      <span className="block text-[10px] text-amber-500 mt-0.5">expired</span>
+                      <span className="block text-[10px] text-amber-500 mt-0.5">منتهية</span>
                     )}
                   </td>
                   <td className="px-4 py-3">
@@ -382,7 +386,7 @@ export default function SuperAdminCertificationPage() {
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-300 text-xs font-medium hover:border-zinc-500 hover:text-white transition-colors disabled:opacity-50"
                     >
                       {isEval ? <Loader2 className="h-3 w-3 animate-spin" /> : <Zap className="h-3 w-3" />}
-                      Evaluate
+                      تقييم
                     </button>
                   </td>
                 </tr>
@@ -395,14 +399,14 @@ export default function SuperAdminCertificationPage() {
       {/* Pagination */}
       {pages > 1 && (
         <div className="flex items-center justify-between mt-4 text-sm text-zinc-500">
-          <span>{total} restaurants</span>
+          <span>{total} مطعم</span>
           <div className="flex items-center gap-2">
             <button
               onClick={() => { const p = Math.max(1, page - 1); setPage(p); load(p) }}
               disabled={page <= 1}
               className="px-3 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 disabled:opacity-30 hover:border-zinc-600 transition-colors"
             >
-              ← Prev
+              → السابق
             </button>
             <span className="tabular-nums">{page} / {pages}</span>
             <button
@@ -410,7 +414,7 @@ export default function SuperAdminCertificationPage() {
               disabled={page >= pages}
               className="px-3 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 disabled:opacity-30 hover:border-zinc-600 transition-colors"
             >
-              Next →
+              التالي ←
             </button>
           </div>
         </div>

@@ -424,6 +424,24 @@ router.get('/api/superadmin/billing/overview', requireSuperAdmin, async (_req: R
         prisma.cafe.aggregate({ _sum: { monthlyFee: true }, where: { billingStatus: 'COLLECTING_DEBT', monthlyFee: { not: null } } })
       ])
 
+    // Real platform revenue = invoices restaurants actually PAID us, per
+    // currency (MAD and SAR must never be summed together or shown as "$").
+    const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0)
+    const [paidAll, paidMonth, salesByCafe] = await Promise.all([
+      prisma.billingInvoice.groupBy({ by: ['currency'], where: { status: 'PAID' }, _sum: { amount: true }, _count: true }),
+      prisma.billingInvoice.groupBy({ by: ['currency'], where: { status: 'PAID', paidAt: { gte: monthStart } }, _sum: { amount: true } }),
+      prisma.order.groupBy({ by: ['cafeId'], where: { status: 'COMPLETED', isPaid: true }, _sum: { totalPrice: true } }),
+    ])
+    const cafeCurrency = new Map(
+      (await prisma.cafe.findMany({ where: { id: { in: salesByCafe.map(x => x.cafeId) } }, select: { id: true, currency: true } }))
+        .map(c => [c.id, c.currency || 'MAD'])
+    )
+    const restaurantSales: Record<string, number> = {}
+    for (const r of salesByCafe) {
+      const cur = cafeCurrency.get(r.cafeId) ?? 'MAD'
+      restaurantSales[cur] = Math.round(((restaurantSales[cur] ?? 0) + (r._sum.totalPrice ?? 0)) * 100) / 100
+    }
+
     return res.json({
       totalCafes,
       activeCafes,
@@ -432,8 +450,14 @@ router.get('/api/superadmin/billing/overview', requireSuperAdmin, async (_req: R
       economyCafes,
       advancedCafes,
       totalAccruedDebt: Math.abs(debtAgg._sum.walletBalance ?? 0),
+      // Kept for older clients — this is restaurants' guest SALES (mixed currencies), NOT platform revenue.
       totalRevenue:     revenueAgg._sum.totalPrice ?? 0,
-      mrr:              mrrAgg._sum.monthlyFee ?? 0
+      mrr:              mrrAgg._sum.monthlyFee ?? 0,
+      platformRevenue: {
+        allTime:   paidAll.map(r => ({ currency: r.currency, amount: r._sum.amount ?? 0, invoices: r._count })),
+        thisMonth: paidMonth.map(r => ({ currency: r.currency, amount: r._sum.amount ?? 0 })),
+      },
+      restaurantSales: Object.entries(restaurantSales).map(([currency, amount]) => ({ currency, amount })),
     })
   } catch (err) {
     logger.error({ msg: 'billing overview error', err })
@@ -993,7 +1017,7 @@ router.get('/api/superadmin/revenue-history', requireSuperAdmin, async (_req: Re
         where: { isPaid: true, createdAt: { gte: start, lt: end } }
       })
       months.push({
-        month: start.toLocaleDateString('fr-MA', { month: 'short', year: '2-digit' }),
+        month: start.toLocaleDateString('ar-u-nu-latn', { month: 'short', year: '2-digit' }),
         value: parseFloat((agg._sum.totalCommission ?? 0).toFixed(2))
       })
     }

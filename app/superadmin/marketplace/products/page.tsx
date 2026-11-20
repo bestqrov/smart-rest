@@ -21,7 +21,7 @@ interface ProductPage { products: Product[]; total: number; page: number; pages:
 
 const T = {
   ar: {
-    title: 'المنتجات', subtitle: 'إدارة منتجات المارکت‌بليس',
+    title: 'المنتجات', subtitle: 'إدارة منتجات سوق المنصة',
     add: 'إضافة منتج', search: 'بحث...', filter: 'تصفية', refresh: 'تحديث',
     sku: 'الرمز', name: 'الاسم', type: 'النوع', status: 'الحالة',
     visibility: 'الظهور', modules: 'الوحدات', actions: 'إجراءات',
@@ -64,7 +64,7 @@ const TYPE_COLOR: Record<string, string> = {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ProductsPage() {
-  const [lang, setLang]       = useState<'ar' | 'en'>('ar')
+  const lang = 'ar' as 'ar' | 'en' // console is Arabic-only
   const { header } = useSAAuth()
   const [data, setData]       = useState<ProductPage | null>(null)
   const [loading, setLoading] = useState(true)
@@ -97,11 +97,6 @@ export default function ProductsPage() {
   }, [search, typeFilter, statusFilter])
 
   useEffect(() => { load() }, [page, sortBy, sortOrder])
-  useEffect(() => {
-    const l = localStorage.getItem('lang') as 'ar' | 'en' | null
-    if (l) setLang(l)
-  }, [])
-
   function toggleSort(col: string) {
     if (sortBy === col) setSortOrder(o => o === 'asc' ? 'desc' : 'asc')
     else { setSortBy(col); setSortOrder('desc') }
@@ -132,7 +127,6 @@ export default function ProductsPage() {
           <p className="text-zinc-400 text-sm mt-1">{t.subtitle}</p>
         </div>
         <div className="flex items-center gap-3">
-          <button onClick={() => setLang(l => l === 'ar' ? 'en' : 'ar')} className="px-3 py-1.5 text-sm bg-zinc-800 rounded-lg">{lang === 'ar' ? 'EN' : 'ع'}</button>
           <button onClick={() => load()} disabled={loading} className="p-2 bg-zinc-800 rounded-lg hover:bg-zinc-700">
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /></button>
           <Link href="/superadmin/marketplace/products/new"

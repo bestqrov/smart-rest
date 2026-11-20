@@ -74,8 +74,6 @@ export interface ModalState {
   preview:  { tier: string; monthlyFee: number; weeklyOrderCount: number } | null
 }
 
-export type Theme = 'A' | 'B' | 'C'
-
 export interface PremiumPlan {
   country:          string
   currency:         string
@@ -113,7 +111,6 @@ export interface ThemeProps {
   demoLoading:     boolean
   activatingDemo:  string | null
   mrrOpen:         boolean
-  theme:           Theme
 
   // ── Callbacks ────────────────────────────────────────────────────
   onLoadAll:           (p?: number, append?: boolean) => void
@@ -139,7 +136,6 @@ export interface ThemeProps {
   onSetFilterTier:     (v: string) => void
   onSetSortBal:        (v: 'asc' | 'desc') => void
   onSetMrrOpen:        (v: boolean) => void
-  onSetTheme:          (t: Theme) => void
   onLoadMore:          () => void
   onOpenPurge?:        () => void
 

@@ -44,6 +44,13 @@ const STATUS_BADGE: Record<string, string> = {
   SUSPENDED: 'bg-red-500/15 text-red-300',
 }
 
+const STATUS_LABEL: Record<string, string> = {
+  PENDING: 'قيد الانتظار', APPROVED: 'معتمد', PAID: 'مدفوع', ACTIVE: 'نشط', SUSPENDED: 'موقوف',
+  CONVERTED: 'يدفع', TRACKED: 'مسجّل',
+}
+const TIER_LABEL: Record<Tier, string> = { SILVER: 'فضي', GOLD: 'ذهبي', PLATINUM: 'بلاتيني' }
+const statusLabel = (s: string) => STATUS_LABEL[s] ?? s
+
 const money = (n: number, cur?: string | null) => `${(n ?? 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}${cur ? ' ' + cur : ''}`
 const signupLink = (code: string) => `${typeof window !== 'undefined' ? window.location.origin : ''}/signup?ref=${code}`
 
@@ -51,7 +58,7 @@ function CopyBtn({ text }: { text: string }) {
   const [ok, setOk] = useState(false)
   return (
     <button type="button" onClick={() => { navigator.clipboard?.writeText(text).then(() => { setOk(true); setTimeout(() => setOk(false), 1500) }).catch(() => {}) }}
-      className="shrink-0 p-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700" title="Copy">
+      className="shrink-0 p-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700" title="نسخ">
       {ok ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4 text-zinc-300" />}
     </button>
   )
@@ -64,14 +71,14 @@ function SecretBox({ title, password, link, onClose }: { title: string; password
         <p className="font-semibold text-amber-200 flex items-center gap-2"><AlertTriangle className="w-4 h-4" />{title}</p>
         <button onClick={onClose} className="text-zinc-400 hover:text-zinc-200"><X className="w-4 h-4" /></button>
       </div>
-      <p className="text-xs text-amber-200/80">This temporary password is shown only once and cannot be retrieved later. Copy it now and send it to the agency securely.</p>
+      <p className="text-xs text-amber-200/80">تُعرض كلمة المرور المؤقتة هذه مرة واحدة فقط ولا يمكن استرجاعها لاحقاً. انسخها الآن وأرسلها إلى الوكالة بطريقة آمنة.</p>
       <div className="flex items-center gap-2 bg-zinc-950 rounded-lg px-3 py-2">
         <code className="flex-1 font-mono text-sm text-zinc-100 break-all">{password}</code>
         <CopyBtn text={password} />
       </div>
       {link && (
         <div>
-          <p className="text-xs text-zinc-400 mb-1">Referral signup link</p>
+          <p className="text-xs text-zinc-400 mb-1">رابط التسجيل بالإحالة</p>
           <div className="flex items-center gap-2 bg-zinc-950 rounded-lg px-3 py-2">
             <code className="flex-1 font-mono text-xs text-zinc-300 break-all">{link}</code>
             <CopyBtn text={link} />
@@ -123,18 +130,18 @@ export default function AgenciesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 p-4 sm:p-6 space-y-6">
+    <div dir="rtl" className="min-h-screen bg-zinc-950 text-zinc-100 p-4 sm:p-6 space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-3"><Handshake className="w-7 h-7 text-blue-400" />Agencies</h1>
-          <p className="text-zinc-400 text-sm mt-1">Partner program — Silver 25% · Gold 30% · Platinum 35% recurring commission</p>
+          <h1 className="text-2xl font-bold flex items-center gap-3"><Handshake className="w-7 h-7 text-blue-400" />الوكالات</h1>
+          <p className="text-zinc-400 text-sm mt-1">برنامج الشركاء — عمولة متكررة: فضي 25% · ذهبي 30% · بلاتيني 35%</p>
         </div>
         <div className="flex gap-2">
           <button onClick={load} className="px-3 py-2 text-sm bg-zinc-800 rounded-lg hover:bg-zinc-700 flex items-center gap-2">
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />Refresh
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />تحديث
           </button>
           <button onClick={() => setShowNew(v => !v)} className="px-3 py-2 text-sm bg-blue-600 rounded-lg hover:bg-blue-500 flex items-center gap-2">
-            <Plus className="w-4 h-4" />New agency
+            <Plus className="w-4 h-4" />وكالة جديدة
           </button>
         </div>
       </div>
@@ -142,19 +149,19 @@ export default function AgenciesPage() {
       {err && <div className="bg-red-500/10 border border-red-500/30 text-red-300 text-sm rounded-xl px-4 py-2">{err}</div>}
 
       {created && (
-        <SecretBox title={`Agency "${created.name}" created`} password={created.password} link={signupLink(created.code)} onClose={() => setCreated(null)} />
+        <SecretBox title={`تم إنشاء الوكالة "${created.name}"`} password={created.password} link={signupLink(created.code)} onClose={() => setCreated(null)} />
       )}
 
       {showNew && (
         <form onSubmit={create} className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 grid grid-cols-1 sm:grid-cols-4 gap-3">
-          <input required placeholder="Agency name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
+          <input required placeholder="اسم الوكالة" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
             className="bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-sm" />
-          <input required type="email" placeholder="Email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })}
+          <input required type="email" placeholder="البريد الإلكتروني" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })}
             className="bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-sm" />
-          <input placeholder="Phone (optional)" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })}
+          <input placeholder="الهاتف (اختياري)" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })}
             className="bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-sm" />
           <button disabled={creating} className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 rounded-lg px-3 py-2 text-sm font-semibold flex items-center justify-center gap-2">
-            {creating && <Loader2 className="w-4 h-4 animate-spin" />}Create
+            {creating && <Loader2 className="w-4 h-4 animate-spin" />}إنشاء
           </button>
         </form>
       )}
@@ -163,26 +170,26 @@ export default function AgenciesPage() {
         <table className="w-full text-sm min-w-[860px]">
           <thead className="text-zinc-400 text-xs uppercase">
             <tr className="border-b border-zinc-800">
-              <th className="text-left px-4 py-3">Agency</th><th className="text-left px-4 py-3">Tier</th>
-              <th className="text-right px-4 py-3">Active / Referred</th><th className="text-right px-4 py-3">Pending</th>
-              <th className="text-right px-4 py-3">Approved</th><th className="text-right px-4 py-3">Paid</th>
-              <th className="text-left px-4 py-3">Code</th><th className="text-left px-4 py-3">Status</th>
+              <th className="text-start px-4 py-3">الوكالة</th><th className="text-start px-4 py-3">المستوى</th>
+              <th className="text-end px-4 py-3">النشطة / المُحالة</th><th className="text-end px-4 py-3">قيد الانتظار</th>
+              <th className="text-end px-4 py-3">معتمد</th><th className="text-end px-4 py-3">مدفوع</th>
+              <th className="text-start px-4 py-3">الرمز</th><th className="text-start px-4 py-3">الحالة</th>
             </tr>
           </thead>
           <tbody>
             {rows.map(a => (
               <tr key={a.id} onClick={() => setSelId(a.id)} className={`border-b border-zinc-800/60 cursor-pointer hover:bg-zinc-800/50 ${selId === a.id ? 'bg-zinc-800/60' : ''}`}>
                 <td className="px-4 py-3"><div className="font-medium">{a.name}</div><div className="text-xs text-zinc-500">{a.email}</div></td>
-                <td className="px-4 py-3"><span className={`text-xs px-2 py-0.5 rounded-full ${TIER_BADGE[a.tier]}`}>{a.tier} · {a.ratePct}%</span></td>
-                <td className="px-4 py-3 text-right">{a.activeRestaurants} / {a.referred}</td>
-                <td className="px-4 py-3 text-right">{money(a.pending)}</td>
-                <td className="px-4 py-3 text-right">{money(a.approved)}</td>
-                <td className="px-4 py-3 text-right">{money(a.paid)}</td>
+                <td className="px-4 py-3"><span className={`text-xs px-2 py-0.5 rounded-full ${TIER_BADGE[a.tier]}`}>{TIER_LABEL[a.tier] ?? a.tier} · {a.ratePct}%</span></td>
+                <td className="px-4 py-3 text-end">{a.activeRestaurants} / {a.referred}</td>
+                <td className="px-4 py-3 text-end">{money(a.pending)}</td>
+                <td className="px-4 py-3 text-end">{money(a.approved)}</td>
+                <td className="px-4 py-3 text-end">{money(a.paid)}</td>
                 <td className="px-4 py-3 font-mono text-xs">{a.referralCode}</td>
-                <td className="px-4 py-3"><span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_BADGE[a.status] ?? 'bg-zinc-800'}`}>{a.status}</span></td>
+                <td className="px-4 py-3"><span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_BADGE[a.status] ?? 'bg-zinc-800'}`}>{statusLabel(a.status)}</span></td>
               </tr>
             ))}
-            {!loading && rows.length === 0 && <tr><td colSpan={8} className="px-4 py-8 text-center text-zinc-500">No agencies yet.</td></tr>}
+            {!loading && rows.length === 0 && <tr><td colSpan={8} className="px-4 py-8 text-center text-zinc-500">لا توجد وكالات بعد.</td></tr>}
           </tbody>
         </table>
       </div>
@@ -234,7 +241,7 @@ function AgencyDetail({ id, header, onClose, onChanged }: { id: string; header: 
     if (j) { load(); onChanged() }
   }
   async function reset() {
-    if (!confirm('Generate a new temporary password? The current one will stop working.')) return
+    if (!confirm('إنشاء كلمة مرور مؤقتة جديدة؟ ستتوقف كلمة المرور الحالية عن العمل.')) return
     const j = await call('reset', `/api/superadmin/agencies/${id}/reset-password`, 'POST')
     if (j) setResetPw(j.temporaryPassword)
   }
@@ -249,7 +256,7 @@ function AgencyDetail({ id, header, onClose, onChanged }: { id: string; header: 
     <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 sm:p-6 space-y-6">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h2 className="text-xl font-bold truncate">{d?.agency.name ?? 'Loading…'}</h2>
+          <h2 className="text-xl font-bold truncate">{d?.agency.name ?? 'جارٍ التحميل…'}</h2>
           {d && <p className="text-xs text-zinc-500 break-all">{d.agency.email}{d.agency.phone ? ` · ${d.agency.phone}` : ''}</p>}
         </div>
         <button onClick={onClose} className="p-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700"><X className="w-4 h-4" /></button>
@@ -259,24 +266,24 @@ function AgencyDetail({ id, header, onClose, onChanged }: { id: string; header: 
       {!d && !err && <Loader2 className="w-5 h-5 animate-spin text-zinc-500" />}
 
       {d && (<>
-        {resetPw && <SecretBox title="New temporary password" password={resetPw} onClose={() => setResetPw(null)} />}
+        {resetPw && <SecretBox title="كلمة مرور مؤقتة جديدة" password={resetPw} onClose={() => setResetPw(null)} />}
 
         {/* Tier progress + totals */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-4">
-            <span className={`text-xs px-2 py-0.5 rounded-full ${TIER_BADGE[d.tier.tier]}`}>{d.tier.tier} · {d.tier.ratePct}%</span>
-            <p className="text-sm mt-3">{active} active restaurants</p>
+            <span className={`text-xs px-2 py-0.5 rounded-full ${TIER_BADGE[d.tier.tier]}`}>{TIER_LABEL[d.tier.tier] ?? d.tier.tier} · {d.tier.ratePct}%</span>
+            <p className="text-sm mt-3">{active} مطعم نشط</p>
             <div className="h-2 bg-zinc-800 rounded-full mt-2 overflow-hidden"><div className="h-full bg-blue-500" style={{ width: `${pct}%` }} /></div>
-            <p className="text-xs text-zinc-400 mt-2">{next ? `${Math.max(0, next.min - active)} more to reach ${next.tier} (${next.rate}%)` : 'Top tier reached'}</p>
+            <p className="text-xs text-zinc-400 mt-2">{next ? `باقي ${Math.max(0, next.min - active)} للوصول إلى المستوى ${TIER_LABEL[next.tier]} (${next.rate}%)` : 'تم بلوغ أعلى مستوى'}</p>
           </div>
           <div className="lg:col-span-2 grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {([['This month', d.totals.thisMonth], ['Pending', d.totals.pending], ['Approved', d.totals.approved], ['Paid', d.totals.paid], ['Lifetime', d.totals.lifetime]] as [string, number][]).map(([l, v]) => (
+            {([['هذا الشهر', d.totals.thisMonth], ['قيد الانتظار', d.totals.pending], ['معتمد', d.totals.approved], ['مدفوع', d.totals.paid], ['الإجمالي', d.totals.lifetime]] as [string, number][]).map(([l, v]) => (
               <div key={l} className="bg-zinc-950 border border-zinc-800 rounded-xl p-3">
                 <p className="text-xs text-zinc-500">{l}</p><p className="font-semibold">{money(v, cur)}</p>
               </div>
             ))}
             <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-3">
-              <p className="text-xs text-zinc-500">Referral link</p>
+              <p className="text-xs text-zinc-500">رابط الإحالة</p>
               <div className="flex items-center gap-2"><code className="text-xs truncate flex-1">{d.agency.referralCode}</code><CopyBtn text={signupLink(d.agency.referralCode)} /></div>
             </div>
           </div>
@@ -284,48 +291,48 @@ function AgencyDetail({ id, header, onClose, onChanged }: { id: string; header: 
 
         {/* Edit */}
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
-          <label className="text-xs text-zinc-400 space-y-1">Status
+          <label className="text-xs text-zinc-400 space-y-1">الحالة
             <select value={edit.status} onChange={e => setEdit({ ...edit, status: e.target.value })} className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-100">
-              <option value="ACTIVE">ACTIVE</option><option value="SUSPENDED">SUSPENDED</option>
+              <option value="ACTIVE">نشط</option><option value="SUSPENDED">موقوف</option>
             </select>
           </label>
-          <label className="text-xs text-zinc-400 space-y-1">Account manager
-            <input value={edit.accountManager} onChange={e => setEdit({ ...edit, accountManager: e.target.value })} placeholder="Name / phone" className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-100" />
+          <label className="text-xs text-zinc-400 space-y-1">مدير الحساب
+            <input value={edit.accountManager} onChange={e => setEdit({ ...edit, accountManager: e.target.value })} placeholder="الاسم / الهاتف" className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-100" />
           </label>
-          <label className="text-xs text-zinc-400 space-y-1">Co-brand name
+          <label className="text-xs text-zinc-400 space-y-1">اسم العلامة المشتركة
             <input value={edit.coBrandName} onChange={e => setEdit({ ...edit, coBrandName: e.target.value })} className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-100" />
           </label>
           <div className="flex gap-2">
             <button onClick={save} disabled={busy === 'save'} className="flex-1 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 rounded-lg px-3 py-2 text-sm font-semibold flex items-center justify-center gap-1">
-              {busy === 'save' ? <Loader2 className="w-4 h-4 animate-spin" /> : saved ? <Check className="w-4 h-4" /> : null}Save
+              {busy === 'save' ? <Loader2 className="w-4 h-4 animate-spin" /> : saved ? <Check className="w-4 h-4" /> : null}حفظ
             </button>
-            <button onClick={reset} disabled={busy === 'reset'} title="Reset password" className="bg-zinc-800 hover:bg-zinc-700 rounded-lg px-3 py-2 text-sm flex items-center gap-1">
-              <KeyRound className="w-4 h-4" />Reset
+            <button onClick={reset} disabled={busy === 'reset'} title="إعادة تعيين كلمة المرور" className="bg-zinc-800 hover:bg-zinc-700 rounded-lg px-3 py-2 text-sm flex items-center gap-1">
+              <KeyRound className="w-4 h-4" />إعادة تعيين
             </button>
           </div>
         </div>
 
         {/* Restaurants */}
         <div>
-          <h3 className="font-semibold mb-2">Restaurants ({d.restaurants.length})</h3>
+          <h3 className="font-semibold mb-2">المطاعم ({d.restaurants.length})</h3>
           <div className="overflow-x-auto border border-zinc-800 rounded-xl">
             <table className="w-full text-sm min-w-[640px]">
               <thead className="text-xs text-zinc-400 uppercase"><tr className="border-b border-zinc-800">
-                <th className="text-left px-3 py-2">Name</th><th className="text-left px-3 py-2">Country</th><th className="text-left px-3 py-2">Status</th>
-                <th className="text-right px-3 py-2">Total paid</th><th className="text-right px-3 py-2">Commission</th><th className="text-left px-3 py-2">Joined</th>
+                <th className="text-start px-3 py-2">الاسم</th><th className="text-start px-3 py-2">الدولة</th><th className="text-start px-3 py-2">الحالة</th>
+                <th className="text-end px-3 py-2">إجمالي المدفوع</th><th className="text-end px-3 py-2">العمولة</th><th className="text-start px-3 py-2">تاريخ الانضمام</th>
               </tr></thead>
               <tbody>
                 {d.restaurants.map(r => (
                   <tr key={r.cafeId} className="border-b border-zinc-800/60">
-                    <td className="px-3 py-2">{r.name}{r.freeMenuSetup && <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300">free menu setup</span>}</td>
+                    <td className="px-3 py-2">{r.name}{r.freeMenuSetup && <span className="ms-2 text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300">إعداد قائمة مجاني</span>}</td>
                     <td className="px-3 py-2">{r.country ?? '—'}</td>
-                    <td className="px-3 py-2">{r.status === 'CONVERTED' ? 'Paying' : r.status === 'TRACKED' ? 'Signed up' : r.status}{!r.isActive && <span className="ml-1 text-xs text-red-400">(inactive)</span>}</td>
-                    <td className="px-3 py-2 text-right">{money(r.totalPaid, cur)}</td>
-                    <td className="px-3 py-2 text-right">{money(r.commission, cur)}</td>
-                    <td className="px-3 py-2 text-xs text-zinc-500">{new Date(r.joinedAt).toLocaleDateString()}</td>
+                    <td className="px-3 py-2">{statusLabel(r.status)}{!r.isActive && <span className="ms-1 text-xs text-red-400">(غير نشط)</span>}</td>
+                    <td className="px-3 py-2 text-end">{money(r.totalPaid, cur)}</td>
+                    <td className="px-3 py-2 text-end">{money(r.commission, cur)}</td>
+                    <td className="px-3 py-2 text-xs text-zinc-500">{new Date(r.joinedAt).toLocaleDateString('ar')}</td>
                   </tr>
                 ))}
-                {d.restaurants.length === 0 && <tr><td colSpan={6} className="px-3 py-6 text-center text-zinc-500">No referred restaurants yet.</td></tr>}
+                {d.restaurants.length === 0 && <tr><td colSpan={6} className="px-3 py-6 text-center text-zinc-500">لا توجد مطاعم مُحالة بعد.</td></tr>}
               </tbody>
             </table>
           </div>
@@ -333,33 +340,33 @@ function AgencyDetail({ id, header, onClose, onChanged }: { id: string; header: 
 
         {/* Commissions */}
         <div>
-          <h3 className="font-semibold mb-2">Commissions</h3>
+          <h3 className="font-semibold mb-2">العمولات</h3>
           <div className="overflow-x-auto border border-zinc-800 rounded-xl">
             <table className="w-full text-sm min-w-[720px]">
               <thead className="text-xs text-zinc-400 uppercase"><tr className="border-b border-zinc-800">
-                <th className="text-left px-3 py-2">Date</th><th className="text-left px-3 py-2">Restaurant</th><th className="text-right px-3 py-2">Paid</th>
-                <th className="text-left px-3 py-2">Tier</th><th className="text-right px-3 py-2">Commission</th><th className="text-left px-3 py-2">Status</th><th className="px-3 py-2" />
+                <th className="text-start px-3 py-2">التاريخ</th><th className="text-start px-3 py-2">المطعم</th><th className="text-end px-3 py-2">المدفوع</th>
+                <th className="text-start px-3 py-2">المستوى</th><th className="text-end px-3 py-2">العمولة</th><th className="text-start px-3 py-2">الحالة</th><th className="px-3 py-2" />
               </tr></thead>
               <tbody>
                 {d.commissions.map(c => (
                   <tr key={c.id} className="border-b border-zinc-800/60">
-                    <td className="px-3 py-2 text-xs text-zinc-500">{new Date(c.createdAt).toLocaleDateString()}</td>
+                    <td className="px-3 py-2 text-xs text-zinc-500">{new Date(c.createdAt).toLocaleDateString('ar')}</td>
                     <td className="px-3 py-2">{c.cafeName}</td>
-                    <td className="px-3 py-2 text-right">{money(c.paidAmount, c.currency)}</td>
-                    <td className="px-3 py-2 text-xs">{c.tier} · {c.ratePct}%</td>
-                    <td className="px-3 py-2 text-right font-semibold">{money(c.commissionAmount, c.currency)}</td>
-                    <td className="px-3 py-2"><span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_BADGE[c.status] ?? 'bg-zinc-800'}`}>{c.status}</span></td>
-                    <td className="px-3 py-2 text-right">
-                      {c.status === 'PENDING' && <button disabled={busy === c.id} onClick={() => commission(c.id, 'approve')} className="text-xs bg-blue-600 hover:bg-blue-500 disabled:opacity-50 rounded px-2 py-1">Approve</button>}
-                      {c.status === 'APPROVED' && <button disabled={busy === c.id} onClick={() => commission(c.id, 'pay')} className="text-xs bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 rounded px-2 py-1">Mark paid</button>}
+                    <td className="px-3 py-2 text-end">{money(c.paidAmount, c.currency)}</td>
+                    <td className="px-3 py-2 text-xs">{TIER_LABEL[c.tier as Tier] ?? c.tier} · {c.ratePct}%</td>
+                    <td className="px-3 py-2 text-end font-semibold">{money(c.commissionAmount, c.currency)}</td>
+                    <td className="px-3 py-2"><span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_BADGE[c.status] ?? 'bg-zinc-800'}`}>{statusLabel(c.status)}</span></td>
+                    <td className="px-3 py-2 text-end">
+                      {c.status === 'PENDING' && <button disabled={busy === c.id} onClick={() => commission(c.id, 'approve')} className="text-xs bg-blue-600 hover:bg-blue-500 disabled:opacity-50 rounded px-2 py-1">اعتماد</button>}
+                      {c.status === 'APPROVED' && <button disabled={busy === c.id} onClick={() => commission(c.id, 'pay')} className="text-xs bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 rounded px-2 py-1">تحديد كمدفوع</button>}
                     </td>
                   </tr>
                 ))}
-                {d.commissions.length === 0 && <tr><td colSpan={7} className="px-3 py-6 text-center text-zinc-500">No commissions yet.</td></tr>}
+                {d.commissions.length === 0 && <tr><td colSpan={7} className="px-3 py-6 text-center text-zinc-500">لا توجد عمولات بعد.</td></tr>}
               </tbody>
             </table>
           </div>
-          {d.commissions.length >= 100 && <p className="text-xs text-zinc-500 mt-1">Showing the latest 100 commissions.</p>}
+          {d.commissions.length >= 100 && <p className="text-xs text-zinc-500 mt-1">يتم عرض آخر 100 عمولة.</p>}
         </div>
       </>)}
     </div>

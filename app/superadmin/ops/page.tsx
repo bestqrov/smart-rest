@@ -16,7 +16,7 @@ const T = {
       { href: '/superadmin/ops/health',      icon: HeartPulse,  label: 'صحة النظام',           desc: 'حالة الوحدات في الوقت الفعلي' },
       { href: '/superadmin/ops/diagnostics', icon: ScanSearch,  label: 'التشخيص',              desc: 'فحص شامل لجميع المكونات' },
       { href: '/superadmin/ops/logs',        icon: ScrollText,  label: 'السجلات الموحدة',       desc: 'تصفية وتتبع أحداث المنصة' },
-      { href: '/superadmin/ops/backups',     icon: HardDrive,   label: 'مركز النسخ الاحتياطي', desc: 'نسخ يدوية وتاريخ الحفظ' },
+      { href: '/superadmin/ops/backups',     icon: HardDrive,   label: 'لقطات عدد السجلات', desc: 'ليست نسخة احتياطية — النسخ الحقيقي من MongoDB Atlas' },
       { href: '/superadmin/ops/runtime',     icon: Settings2,   label: 'الإعدادات الحية',       desc: 'تعديل الإعدادات دون إعادة تشغيل' },
       { href: '/superadmin/ops/security',    icon: ShieldAlert, label: 'الأمان',               desc: 'التنبيهات والجلسات والنشاط المشبوه' },
     ],

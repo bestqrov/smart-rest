@@ -15,7 +15,7 @@ interface DashboardStats {
   totalSuppliers: number; totalOrders: number; pendingOrders: number
   lowStock: number; inventoryValue: number
 }
-interface RecentOrder { id: string; orderNumber: string; module: string; status: string; total: number; createdAt: string }
+interface RecentOrder { id: string; orderNumber: string; module: string; status: string; total: number; currency?: string; createdAt: string }
 interface RecentProduct { id: string; sku: string; name: string; type: string; status: string }
 interface TopCategory { categoryId: string; categoryName: string; productCount: number }
 
@@ -30,12 +30,12 @@ interface DashboardData {
 
 const T = {
   ar: {
-    title: 'لوحة المتجر', subtitle: 'نظرة عامة على المارکت‌بليس',
+    title: 'لوحة المتجر', subtitle: 'نظرة عامة على سوق المنصة',
     refresh: 'تحديث', loading: 'جاري التحميل...',
     totalProducts: 'إجمالي المنتجات', activeProducts: 'المنتجات النشطة',
     categories: 'الفئات', suppliers: 'الموردون',
     totalOrders: 'الطلبات', pendingOrders: 'الطلبات المعلقة',
-    lowStock: 'نقص المخزون', inventoryValue: 'قيمة المخزون',
+    lowStock: 'نقص المخزون', inventoryValue: 'قيمة المخزون (بسعر الأساس، دون تحويل العملات)',
     recentOrders: 'أحدث الطلبات', recentProducts: 'أحدث المنتجات',
     topCategories: 'أكثر الفئات منتجات', viewAll: 'عرض الكل',
     noData: 'لا توجد بيانات',
@@ -99,7 +99,7 @@ function StatCard({ label, value, icon: Icon, accent, href }: {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function MarketplaceDashboard() {
-  const [lang, setLang] = useState<'ar' | 'en'>('ar')
+  const lang = 'ar' as 'ar' | 'en' // console is Arabic-only
   const { header } = useSAAuth()
   const [data, setData]       = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -118,11 +118,6 @@ export default function MarketplaceDashboard() {
   }, [header])
 
   useEffect(() => { load() }, [load])
-  useEffect(() => {
-    const l = localStorage.getItem('lang') as 'ar' | 'en' | null
-    if (l) setLang(l)
-  }, [])
-
   const s = data?.stats
 
   return (
@@ -137,8 +132,6 @@ export default function MarketplaceDashboard() {
           <p className="text-zinc-400 text-sm mt-1">{t.subtitle}</p>
         </div>
         <div className="flex items-center gap-3">
-          <button onClick={() => setLang(l => l === 'ar' ? 'en' : 'ar')}
-            className="px-3 py-1.5 text-sm bg-zinc-800 rounded-lg hover:bg-zinc-700">{lang === 'ar' ? 'EN' : 'ع'}</button>
           <button onClick={load} disabled={loading}
             className="flex items-center gap-2 px-4 py-2 bg-emerald-700 hover:bg-emerald-600 rounded-lg text-sm font-medium transition-colors disabled:opacity-50">
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -163,7 +156,7 @@ export default function MarketplaceDashboard() {
             <StatCard label={t.totalOrders}     value={s?.totalOrders ?? 0}     icon={ClipboardList} accent="sky" href="/superadmin/marketplace/orders" />
             <StatCard label={t.pendingOrders}   value={s?.pendingOrders ?? 0}   icon={Clock}      accent="yellow"  href="/superadmin/marketplace/orders" />
             <StatCard label={t.lowStock}        value={s?.lowStock ?? 0}        icon={AlertTriangle} accent="red" href="/superadmin/marketplace/inventory" />
-            <StatCard label={t.inventoryValue}  value={`${(s?.inventoryValue ?? 0).toLocaleString()} MAD`} icon={Warehouse} accent="violet" href="/superadmin/marketplace/inventory" />
+            <StatCard label={t.inventoryValue}  value={(s?.inventoryValue ?? 0).toLocaleString()} icon={Warehouse} accent="violet" href="/superadmin/marketplace/inventory" />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -182,11 +175,11 @@ export default function MarketplaceDashboard() {
                       className="flex items-center justify-between p-3 bg-zinc-800/50 rounded-lg hover:bg-zinc-800 transition-colors">
                       <div>
                         <div className="text-sm font-medium text-zinc-200">{o.orderNumber}</div>
-                        <div className="text-xs text-zinc-500">{o.module} · {new Date(o.createdAt).toLocaleDateString(isRTL ? 'ar' : 'en')}</div>
+                        <div className="text-xs text-zinc-500">{o.module} · {new Date(o.createdAt).toLocaleDateString('ar-u-nu-latn')}</div>
                       </div>
                       <div className="flex items-center gap-3">
                         <StatusBadge status={o.status} labels={t.STATUS} />
-                        <span className="text-sm font-medium text-zinc-300">{o.total.toLocaleString()} MAD</span>
+                        <span className="text-sm font-medium text-zinc-300">{o.total.toLocaleString()} {o.currency ?? ''}</span>
                       </div>
                     </Link>
                   ))}
@@ -233,7 +226,7 @@ export default function MarketplaceDashboard() {
                           <div className="text-sm text-zinc-300">{p.name}</div>
                           <div className="text-xs text-zinc-500">{p.sku}</div>
                         </div>
-                        <StatusBadge status={p.status} labels={{ ACTIVE: 'Active', DRAFT: 'Draft', ARCHIVED: 'Archived', OUT_OF_STOCK: 'Out of Stock' }} />
+                        <StatusBadge status={p.status} labels={{ ACTIVE: 'نشط', DRAFT: 'مسودة', ARCHIVED: 'مؤرشف', OUT_OF_STOCK: 'نفد المخزون' }} />
                       </Link>
                     ))}
                   </div>

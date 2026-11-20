@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import {
-  Tag, Plus, Edit2, Trash2, ChevronRight, ChevronDown,
+  Tag, Plus, Edit2, Trash2, ChevronLeft, ChevronDown,
   Check, X, Search, RefreshCw, Eye, EyeOff,
 } from 'lucide-react'
 import { useSAAuth } from '../../context'
@@ -96,7 +96,7 @@ function CategoryNode({
       >
         {/* Expand toggle */}
         <button onClick={() => setExpanded(e => !e)} className="w-5 h-5 flex items-center justify-center text-zinc-500">
-          {hasChildren ? (expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />) : <span className="w-4" />}
+          {hasChildren ? (expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />) : <span className="w-4" />}
         </button>
 
         {/* Icon */}
@@ -158,7 +158,7 @@ function CategoryNode({
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function CategoriesPage() {
-  const [lang, setLang]       = useState<'ar' | 'en'>('ar')
+  const lang = 'ar' as 'ar' | 'en' // console is Arabic-only
   const { header } = useSAAuth()
   const [tree, setTree]       = useState<Category[]>([])
   const [flat, setFlat]       = useState<Category[]>([])
@@ -185,11 +185,6 @@ export default function CategoriesPage() {
   }, [header])
 
   useEffect(() => { load() }, [load])
-  useEffect(() => {
-    const l = localStorage.getItem('lang') as 'ar' | 'en' | null
-    if (l) setLang(l)
-  }, [])
-
   async function create() {
     if (!newCat.name) return
     setSaving(true)
@@ -218,7 +213,6 @@ export default function CategoriesPage() {
           <p className="text-zinc-400 text-sm mt-1">{t.subtitle}</p>
         </div>
         <div className="flex items-center gap-3">
-          <button onClick={() => setLang(l => l === 'ar' ? 'en' : 'ar')} className="px-3 py-1.5 text-sm bg-zinc-800 rounded-lg">{lang === 'ar' ? 'EN' : 'ع'}</button>
           <button onClick={load} disabled={loading} className="p-2 bg-zinc-800 rounded-lg hover:bg-zinc-700">
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /></button>
           <button onClick={() => setShowForm(s => !s)}

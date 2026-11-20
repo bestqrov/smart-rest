@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Store, CreditCard,
   Brain, ShieldCheck, LogOut,
   ChevronDown, ChevronLeft, ChevronRight, Menu, X, KeyRound, HeartPulse,
-  ShoppingBag, Tag, Handshake, Package, Truck, ClipboardList, Warehouse, Contact,
+  ShoppingBag, Tag, Handshake, Package, Truck, ClipboardList, Warehouse, Contact, Globe,
 } from 'lucide-react'
 import { SAAuthProvider, useSAAuth } from './context'
 
@@ -15,52 +15,48 @@ import { SAAuthProvider, useSAAuth } from './context'
 
 const NAV = [
   {
+    section: 'نظرة عامة',
     items: [
-      { href: '/superadmin',             icon: LayoutDashboard, label: 'Dashboard' },
+      { href: '/superadmin',             icon: LayoutDashboard, label: 'لوحة التحكم' },
     ],
   },
   {
-    section: 'Business',
+    section: 'العملاء',
     items: [
-      { href: '/superadmin/restaurants', icon: Store,      label: 'Restaurants' },
-      { href: '/superadmin/billing',     icon: CreditCard, label: 'Billing' },
-      { href: '/superadmin/agencies',    icon: Handshake,  label: 'Agencies' },
+      { href: '/superadmin/restaurants', icon: Store,   label: 'المطاعم' },
+      { href: '/superadmin/client',      icon: Contact, label: 'حسابات الدخول' },
     ],
   },
   {
-    section: 'Artificial Intelligence',
+    section: 'المال',
     items: [
-      { href: '/superadmin/ai-center',   icon: Brain,      label: 'AI Center' },
+      { href: '/superadmin/billing',  icon: CreditCard, label: 'الفوترة' },
+      { href: '/superadmin/agencies', icon: Handshake,  label: 'الوكالات' },
     ],
   },
   {
-    section: 'Trust',
+    section: 'المنتج',
     items: [
-      { href: '/superadmin/certification', icon: ShieldCheck, label: 'Certification' },
+      { href: '/superadmin/ai-center',     icon: Brain,       label: 'مركز الذكاء الاصطناعي' },
+      { href: '/superadmin/certification', icon: ShieldCheck, label: 'الشهادات' },
     ],
   },
   {
-    section: 'Marketplace',
+    section: 'السوق',
     items: [
-      { href: '/superadmin/marketplace',            icon: ShoppingBag,   label: 'Dashboard' },
-      { href: '/superadmin/marketplace/categories', icon: Tag,           label: 'Categories' },
-      { href: '/superadmin/marketplace/products',   icon: Package,       label: 'Products' },
-      { href: '/superadmin/marketplace/suppliers',  icon: Truck,         label: 'Suppliers' },
-      { href: '/superadmin/marketplace/orders',     icon: ClipboardList, label: 'Orders' },
-      { href: '/superadmin/marketplace/inventory',  icon: Warehouse,     label: 'Inventory' },
+      { href: '/superadmin/marketplace',            icon: ShoppingBag,   label: 'لوحة السوق' },
+      { href: '/superadmin/marketplace/categories', icon: Tag,           label: 'الفئات' },
+      { href: '/superadmin/marketplace/products',   icon: Package,       label: 'المنتجات' },
+      { href: '/superadmin/marketplace/suppliers',  icon: Truck,         label: 'الموردون' },
+      { href: '/superadmin/marketplace/orders',     icon: ClipboardList, label: 'الطلبات' },
+      { href: '/superadmin/marketplace/inventory',  icon: Warehouse,     label: 'المخزون' },
     ],
   },
   {
-    section: 'Operations',
+    section: 'النظام',
     items: [
-      { href: '/superadmin/ops', icon: HeartPulse, label: 'Operations' },
-    ],
-  },
-  {
-    section: 'Administration',
-    items: [
-      { href: '/superadmin/client',      icon: Contact,     label: 'Clients' },
-      { href: '/superadmin/credentials', icon: KeyRound,   label: 'Credentials' },
+      { href: '/superadmin/ops',     icon: HeartPulse, label: 'العمليات' },
+      { href: '/superadmin/landing', icon: Globe,      label: 'صفحة الهبوط' },
     ],
   },
 ]
@@ -81,13 +77,13 @@ function LoginWall() {
         headers: { 'x-superadmin-secret': secret, 'x-superadmin-email': email },
       })
       if (res.ok) { login(email, secret) }
-      else setErr('Invalid credentials')
-    } catch { setErr('Network error') }
+      else setErr('بيانات الدخول غير صحيحة')
+    } catch { setErr('خطأ في الاتصال بالشبكة') }
     finally { setLoading(false) }
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4">
+    <div dir="rtl" className="min-h-screen bg-zinc-950 flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
         <div className="flex items-center gap-3 mb-8">
           <div className="w-10 h-10 rounded-xl bg-purple-600 flex items-center justify-center">
@@ -95,12 +91,12 @@ function LoginWall() {
           </div>
           <div>
             <p className="font-black text-white text-lg">SmartRestau</p>
-            <p className="text-xs text-zinc-500">SuperAdmin Platform</p>
+            <p className="text-xs text-zinc-500">منصة الإدارة العليا</p>
           </div>
         </div>
 
         <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 space-y-4">
-          <h1 className="font-bold text-white text-lg">Sign in</h1>
+          <h1 className="font-bold text-white text-lg">تسجيل الدخول</h1>
 
           <input
             type="email" placeholder="admin@smartrestau.com"
@@ -108,7 +104,7 @@ function LoginWall() {
             className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-purple-500"
           />
           <input
-            type="password" placeholder="Secret key"
+            type="password" placeholder="المفتاح السري"
             value={secret} onChange={e => setSecret(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleLogin()}
             className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-purple-500"
@@ -120,7 +116,7 @@ function LoginWall() {
             onClick={handleLogin} disabled={loading || !email || !secret}
             className="w-full bg-purple-600 hover:bg-purple-700 disabled:opacity-40 text-white font-semibold py-3 rounded-xl text-sm transition-all"
           >
-            {loading ? 'Signing in…' : 'Sign in'}
+            {loading ? 'جارٍ تسجيل الدخول…' : 'تسجيل الدخول'}
           </button>
         </div>
       </div>
@@ -162,9 +158,9 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
       )}
 
       <aside className={`
-        fixed top-0 left-0 z-50 h-full ${collapsed ? 'w-16' : 'w-60'} bg-zinc-900 border-r border-zinc-800
+        fixed top-0 start-0 z-50 h-full ${collapsed ? 'w-16' : 'w-60'} bg-zinc-900 border-e border-zinc-800
         flex flex-col transition-all duration-200
-        ${open ? 'translate-x-0' : '-translate-x-full'}
+        ${open ? 'translate-x-0' : 'translate-x-full'}
         lg:translate-x-0 lg:relative lg:z-auto
       `}>
         {/* Logo + collapse toggle */}
@@ -175,17 +171,17 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
           {!collapsed && (
             <div className="min-w-0">
               <p className="font-black text-white text-sm truncate">SmartRestau</p>
-              <p className="text-[10px] text-zinc-500">Enterprise OS</p>
+              <p className="text-[10px] text-zinc-500">لوحة إدارة المنصة</p>
             </div>
           )}
           <button
             onClick={() => setCollapsed(v => !v)}
-            title={collapsed ? 'Expand' : 'Collapse'}
-            className="ml-auto hidden lg:flex w-6 h-6 rounded-md text-zinc-600 hover:text-white hover:bg-zinc-800 items-center justify-center transition-colors shrink-0"
+            title={collapsed ? 'توسيع' : 'طي'}
+            className="ms-auto hidden lg:flex w-6 h-6 rounded-md text-zinc-600 hover:text-white hover:bg-zinc-800 items-center justify-center transition-colors shrink-0"
           >
-            {collapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
+            {collapsed ? <ChevronLeft className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
           </button>
-          <button onClick={onClose} className={`text-zinc-600 hover:text-white lg:hidden ${collapsed ? 'ml-auto' : ''}`}>
+          <button onClick={onClose} className={`text-zinc-600 hover:text-white lg:hidden ${collapsed ? 'ms-auto' : ''}`}>
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -195,7 +191,7 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
           {NAV.map((group, gi) => (
             <div key={gi}>
               {group.section && !collapsed && (
-                <p className="px-3 pt-4 pb-1 text-[10px] font-bold text-zinc-600 uppercase tracking-widest">
+                <p className="px-3 pt-4 pb-1 text-[10px] font-bold text-zinc-600 tracking-wide">
                   {group.section}
                 </p>
               )}
@@ -226,7 +222,7 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
           </div>
           {!collapsed && <p className="text-xs text-zinc-400 truncate flex-1">{email}</p>}
           {!collapsed && (
-            <button onClick={logout} className="text-zinc-600 hover:text-red-400 transition-colors">
+            <button onClick={logout} title="تسجيل الخروج" className="text-zinc-600 hover:text-red-400 transition-colors">
               <LogOut className="w-3.5 h-3.5" />
             </button>
           )}
@@ -245,7 +241,7 @@ function Shell({ children }: { children: ReactNode }) {
   if (!authed) return <LoginWall />
 
   return (
-    <div className="min-h-screen bg-zinc-950 flex">
+    <div dir="rtl" className="min-h-screen bg-zinc-950 flex">
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className="flex-1 flex flex-col min-w-0">
@@ -254,7 +250,7 @@ function Shell({ children }: { children: ReactNode }) {
           <button onClick={() => setSidebarOpen(true)} className="text-zinc-400">
             <Menu className="w-5 h-5" />
           </button>
-          <p className="font-bold text-white text-sm">SmartRestau OS</p>
+          <p className="font-bold text-white text-sm">SmartRestau</p>
         </div>
 
         <main className="flex-1 overflow-auto">

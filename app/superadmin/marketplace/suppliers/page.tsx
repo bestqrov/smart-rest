@@ -56,7 +56,7 @@ function StarRating({ value }: { value: number }) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function SuppliersPage() {
-  const [lang, setLang]           = useState<'ar' | 'en'>('ar')
+  const lang = 'ar' as 'ar' | 'en' // console is Arabic-only
   const { header } = useSAAuth()
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [loading, setLoading]     = useState(true)
@@ -79,11 +79,6 @@ export default function SuppliersPage() {
   }, [header, statusFilter])
 
   useEffect(() => { load() }, [load])
-  useEffect(() => {
-    const l = localStorage.getItem('lang') as 'ar' | 'en' | null
-    if (l) setLang(l)
-  }, [])
-
   function startEdit(s: Supplier) {
     setEditId(s.id)
     setForm({ company: s.company, contact: s.contact, email: s.email, phone: s.phone ?? '', country: s.country, rating: s.rating, notes: s.notes ?? '' })
@@ -161,7 +156,6 @@ export default function SuppliersPage() {
           <p className="text-zinc-400 text-sm mt-1">{t.subtitle}</p>
         </div>
         <div className="flex items-center gap-3">
-          <button onClick={() => setLang(l => l === 'ar' ? 'en' : 'ar')} className="px-3 py-1.5 text-sm bg-zinc-800 rounded-lg">{lang === 'ar' ? 'EN' : 'ع'}</button>
           <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
             className="bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-sm text-zinc-100">
             <option value="">{t.allStatus}</option>
