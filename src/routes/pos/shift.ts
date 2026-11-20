@@ -11,6 +11,7 @@
 import express, { Request, Response } from 'express'
 import jwt from 'jsonwebtoken'
 import prisma from '../../prisma'
+import { drawerOrdersWhere } from '../../pos/drawer'
 import logger from '../../logger'
 import { JWT_SECRET } from '../../config'
 import authorizePOS from '../../middleware/authorizePOS'
@@ -100,13 +101,7 @@ async function closeShiftFor(staffId: string, cafeId: string, countedCash?: numb
   }
 
   const cashOrders = await prisma.order.aggregate({
-    where: {
-      cafeId,
-      createdById:   staffId,
-      paymentMethod: 'CASH',
-      isPaid:        true,
-      createdAt:     { gte: shift.startTime }
-    },
+    where: drawerOrdersWhere(cafeId, staffId, shift.startTime, true),
     _sum: { totalPrice: true }
   })
   const totalCollectedCash = cashOrders._sum.totalPrice ?? 0
@@ -229,6 +224,36 @@ router.post('/api/pos/shift', async (req: Request, res: Response) => {
       })
     }
 
+    // ── "open" with an existing staff token (no PIN re-entry) ─────────────────
+    // Staff who signed in through /staff already proved their PIN and hold a
+    // staff JWT, but the POS page never saw the PIN — so opening the register
+    // used to fail with "pinCode is required". Accept that token instead.
+    if (action === 'open' && !pinCode) {
+      const auth = req.header('authorization')
+      let tokenStaffId: string | null = null
+      if (auth?.startsWith('Bearer ')) {
+        try {
+          const p = jwt.verify(auth.split(' ')[1], JWT_SECRET) as { staffId?: string; cafeId?: string }
+          if (p.staffId && p.cafeId === cafeId) tokenStaffId = p.staffId
+        } catch { /* fall through to the PIN requirement */ }
+      }
+      if (tokenStaffId) {
+        const staff = await prisma.staff.findFirst({
+          where:  { id: tokenStaffId, cafeId, isActive: true },
+          select: { id: true, name: true, role: true },
+        })
+        if (!staff) return res.status(401).json({ error: 'Staff not found or inactive' })
+        try {
+          const shift = await openShiftFor(staff.id, cafeId, initialCash ?? 0, plannedEndTime, notes)
+          const token = issueStaffToken(staff.id, cafeId, staff.role as StaffRole, shift.id)
+          logger.info({ msg: 'POS shift opened (staff token)', shiftId: shift.id, staffId: staff.id })
+          return res.status(201).json({ token, shift })
+        } catch (err: any) {
+          return res.status(err.status ?? 500).json({ error: err.message, shiftId: err.shiftId })
+        }
+      }
+    }
+
     // ── PIN is required for login / open / close ──────────────────────────────
     if (!pinCode) return res.status(400).json({ error: 'pinCode is required' })
 
@@ -306,17 +331,11 @@ router.get('/api/pos/shift/live-summary', authorizePOS, async (req: Request, res
 
     const [cashOrders, todayOrders] = await Promise.all([
       prisma.order.aggregate({
-        where: {
-          cafeId,
-          createdById:   staffId,
-          paymentMethod: 'CASH',
-          isPaid:        true,
-          createdAt:     { gte: shift.startTime }
-        },
+        where: drawerOrdersWhere(cafeId, staffId, shift.startTime, true),
         _sum: { totalPrice: true }
       }),
       prisma.order.findMany({
-        where:   { cafeId, createdById: staffId, isPaid: true, createdAt: { gte: shift.startTime } },
+        where:   drawerOrdersWhere(cafeId, staffId, shift.startTime, false),
         orderBy: { createdAt: 'desc' },
         select: {
           id: true, status: true, totalPrice: true, paymentMethod: true, createdAt: true,

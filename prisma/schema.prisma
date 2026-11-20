@@ -556,6 +556,11 @@ model Order {
   notes            String?
   heldAt           DateTime?
   // staff member who entered the order manually (null for QR orders)
+  // Who collected the payment and when — drives the cashier drawer count.
+  // (createdById is who RANG the order; for QR orders it's null, so counting
+  // the drawer by createdById silently dropped every QR order paid in cash.)
+  paidById         String?     @db.ObjectId
+  paidAt           DateTime?
   createdById      String?     @db.ObjectId
   createdBy        Staff?      @relation("OrderCreatedBy", fields: [createdById], references: [id])
 

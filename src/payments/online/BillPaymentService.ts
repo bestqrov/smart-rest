@@ -123,7 +123,7 @@ export async function verifyBillPayment(payId: string, io: SocketIOServer | null
 
   const settled = await prisma.order.updateMany({
     where: { id: { in: pay.orderIds }, cafeId: pay.cafeId, isPaid: false },
-    data:  { isPaid: true, paymentMethod: 'ONLINE', billStatus: 'CLOSED_VIRTUAL' },
+    data:  { isPaid: true, paymentMethod: 'ONLINE', billStatus: 'CLOSED_VIRTUAL', paidAt: new Date() },
   })
   logger.info({ msg: 'Bill paid online', payId, cafeId: pay.cafeId, provider, amount: pay.amount, orders: settled.count })
 
