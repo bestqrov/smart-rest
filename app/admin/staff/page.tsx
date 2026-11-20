@@ -7,6 +7,7 @@ import {
   Edit2, Check, X, ChevronDown, ChevronUp, Search,
 } from 'lucide-react'
 import { useLang } from '../lang-context'
+import StaffLinkCard from './StaffLinkCard'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -286,6 +287,8 @@ export default function AdminStaffPage() {
           </button>
         </div>
       </div>
+
+      <StaffLinkCard lang={lang} />
 
       {/* ── Add form ── */}
       {showForm && (

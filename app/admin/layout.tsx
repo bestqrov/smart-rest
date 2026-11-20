@@ -546,7 +546,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
             )}
             <div className="flex-1 min-w-0">
               <div className="text-white font-bold text-sm">SmartMenu</div>
-              {cafe && <div className="text-gray-400 text-xs truncate">{cafe.subdomain}.smartmenu.ma</div>}
+              {cafe && <div className="text-gray-400 text-xs truncate">{cafe.subdomain}</div>}
             </div>
           </Link>
           {/* Cafe name under the logo row */}
@@ -628,7 +628,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
             </div>
             {cafe && (
               <div className="px-4 py-3 border-b border-[#243460]">
-                <p className="text-gray-400 text-xs truncate">{cafe.subdomain}.smartmenu.ma</p>
+                <p className="text-gray-400 text-xs truncate">{cafe.subdomain}</p>
                 <span className={`mt-1 inline-block text-xs font-semibold px-2 py-0.5 rounded-full ${billingBadge[cafe.billingStatus] || ''}`}>
                   {billingLabel[cafe.billingStatus] || cafe.billingStatus}
                 </span>
@@ -723,10 +723,10 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
 function LangSwitcherSidebar() {
   const { lang, setLang } = useLang()
   const LANGS: { code: AdminLang; flag: string }[] = [
-    { code: 'ar', flag: '🇲🇦' },
-    { code: 'en', flag: '🇬🇧' },
-    { code: 'fr', flag: '🇫🇷' },
-    { code: 'es', flag: '🇪🇸' },
+    { code: 'ar', flag: 'ع' },
+    { code: 'en', flag: 'EN' },
+    { code: 'fr', flag: 'FR' },
+    { code: 'es', flag: 'ES' },
   ]
   return (
     <div className="flex items-center gap-1 px-3 py-2">
@@ -755,10 +755,10 @@ function LangSwitcherSidebar() {
 function TopbarLangSwitcher() {
   const { lang, setLang } = useLang()
   const LANGS: { code: AdminLang; flag: string }[] = [
-    { code: 'ar', flag: '🇲🇦' },
-    { code: 'en', flag: '🇬🇧' },
-    { code: 'fr', flag: '🇫🇷' },
-    { code: 'es', flag: '🇪🇸' },
+    { code: 'ar', flag: 'ع' },
+    { code: 'en', flag: 'EN' },
+    { code: 'fr', flag: 'FR' },
+    { code: 'es', flag: 'ES' },
   ]
   return (
     <div className="flex items-center gap-1">
