@@ -1,6 +1,7 @@
 "use client"
 
 import Link from 'next/link'
+import GulfPricing from './GulfPricing'
 import Image from 'next/image'
 import { useState, useEffect, type ElementType } from 'react'
 import { useRouter } from 'next/navigation'
@@ -56,7 +57,7 @@ const T: Record<Lang, Record<string, string | string[]>> = {
     featLabel: 'Modules', featTitle: 'Everything You Need to Run the Day',
     featSub: 'Ordering, kitchen, staff, invoices and marketing — working together so nothing gets lost',
     pricingLabel: 'Pricing', pricingTitle: 'Pricing in Your Local Currency',
-    pricingSub: 'Plans for Saudi Arabia, the UAE and Oman · Talk to us for a quote · Custom pricing for chains',
+    pricingSub: 'Clear monthly plans in your currency · Pay yearly and get 2 months free',
     trialBig: '7-Day Free Trial', trialSub: 'See the difference in your own restaurant — no credit card, no commitment',
     trialBadges: ['✓ All modules included', '✓ Unlimited orders', '✓ Live support', '✓ Reports from day 1'],
     testimonialLabel: 'Success Stories', testimonialTitle: 'Restaurants Growing With SmartRestau',
@@ -124,7 +125,7 @@ const T: Record<Lang, Record<string, string | string[]>> = {
     featLabel: 'Modules', featTitle: "Tout ce qu'il Faut pour Gérer la Journée",
     featSub: 'Commandes, cuisine, personnel, factures et marketing — connectés pour que rien ne se perde',
     pricingLabel: 'Tarifs', pricingTitle: 'Des Tarifs dans Votre Devise Locale',
-    pricingSub: "Offres pour l'Arabie Saoudite, les Émirats et Oman · Contactez-nous pour un devis · Tarifs sur mesure pour les chaînes",
+    pricingSub: "Des offres mensuelles claires dans votre devise · 2 mois offerts en annuel",
     trialBig: '7 Jours Gratuits', trialSub: 'Constatez la différence dans votre propre restaurant — sans carte bancaire, sans engagement',
     trialBadges: ['✓ Tous les modules inclus', '✓ Commandes illimitées', '✓ Support en direct', '✓ Rapports dès le 1er jour'],
     testimonialLabel: 'Success Stories', testimonialTitle: 'Des Restaurants qui Grandissent avec SmartRestau',
@@ -192,7 +193,7 @@ const T: Record<Lang, Record<string, string | string[]>> = {
     featLabel: 'الوحدات', featTitle: 'كل ما تحتاجه لإدارة يومك',
     featSub: 'الطلبات والمطبخ والموظفون والفواتير والتسويق — مترابطة حتى لا يضيع شيء',
     pricingLabel: 'الأسعار', pricingTitle: 'أسعار بعملتك المحلية',
-    pricingSub: 'باقات للسعودية والإمارات وعُمان · تواصل معنا للحصول على عرض سعر · تسعير خاص للسلاسل',
+    pricingSub: 'باقات شهرية واضحة بعملتك · ادفع سنوياً واحصل على شهرين مجاناً',
     trialBig: '7 أيام مجاناً', trialSub: 'لاحظ الفرق في مطعمك بنفسك — بدون بطاقة ائتمان وبدون التزام',
     trialBadges: ['✓ جميع الوحدات مفعّلة', '✓ طلبات غير محدودة', '✓ دعم مباشر', '✓ تقارير من اليوم الأول'],
     testimonialLabel: 'قصص نجاح', testimonialTitle: 'مطاعم تنمو مع SmartRestau',
@@ -652,43 +653,7 @@ const OUTPUT_FORMATS = [
   { label: 'Story Content',   ratio: '9:16', color: 'from-amber-900/60 to-orange-900/30', border: 'border-amber-700/40',   icon: Globe2,       iconColor: 'text-amber-400'   },
 ] as const
 
-const PLAN_NAMES = [
-  { en: 'Starter',  fr: 'Starter',  ar: 'أساسي'   },
-  { en: 'Pro',      fr: 'Pro',      ar: 'احترافي' },
-  { en: 'Business', fr: 'Business', ar: 'أعمال'   },
-] as const
-
-function buildPlans(prices: [string, string, string], currency: string) {
-  return PLAN_NAMES.map((name, i) => ({ name, price: prices[i], currency }))
-}
-
-// TODO(pricing): Gulf prices pending owner decision — plans show "contact us" until then.
-const MARKETS = [
-  {
-    flag: '🇸🇦', currency: 'SAR',
-    en: { country: 'Saudi Arabia', cities: 'Riyadh · Jeddah · Dammam · Mecca · Medina' },
-    fr: { country: 'Arabie Saoudite', cities: 'Riyad · Djeddah · Dammam · La Mecque · Médine' },
-    ar: { country: 'السعودية',        cities: 'الرياض · جدة · الدمام · مكة · المدينة' },
-    color: 'from-green-700 to-green-900',
-    plans: buildPlans(['', '', ''], 'SAR'),
-  },
-  {
-    flag: '🇦🇪', currency: 'AED',
-    en: { country: 'UAE',       cities: 'Dubai · Abu Dhabi · Sharjah · Ajman' },
-    fr: { country: 'Émirats',   cities: 'Dubaï · Abu Dhabi · Sharjah · Ajman' },
-    ar: { country: 'الإمارات',  cities: 'دبي · أبوظبي · الشارقة · عجمان' },
-    color: 'from-red-700 to-red-900',
-    plans: buildPlans(['', '', ''], 'AED'),
-  },
-  {
-    flag: '🇴🇲', currency: 'OMR',
-    en: { country: 'Oman', cities: 'Muscat · Salalah · Sohar · Nizwa' },
-    fr: { country: 'Oman', cities: 'Mascate · Salalah · Sohar · Nizwa' },
-    ar: { country: 'عُمان', cities: 'مسقط · صلالة · صحار · نزوى' },
-    color: 'from-rose-700 to-rose-900',
-    plans: buildPlans(['', '', ''], 'OMR'),
-  },
-]
+// Pricing lives in ./GulfPricing.tsx (plans: lib/gulfPlans.ts).
 
 // Fabricated testimonials removed (Gulf relaunch). Real ones can still be supplied via cfg.testimonials.
 const TESTIMONIALS: LandingConfig['testimonials'] = []
@@ -700,9 +665,9 @@ const FAQS = [
     ar: { q: 'هل يحتاج الزبون لتحميل تطبيق؟', a: 'لا، قائمة الطعام يفتح مباشرة في متصفح الهاتف عند مسح QR — بدون أي تحميل أو تسجيل.' },
   },
   {
-    en: { q: 'How does billing work?', a: 'Start with a 7-day free trial. After that, plans are billed in your local currency (SAR, AED or OMR) — contact us for current pricing.' },
-    fr: { q: 'Comment fonctionne la facturation ?', a: "Essai gratuit de 7 jours. Ensuite, les offres sont facturées dans votre devise locale (SAR, AED ou OMR) — contactez-nous pour les tarifs actuels." },
-    ar: { q: 'كيف يعمل نظام الفوترة؟', a: 'ابدأ بتجربة مجانية لمدة 7 أيام. بعدها تُحتسب الباقات بعملتك المحلية (ريال سعودي أو درهم إماراتي أو ريال عُماني) — تواصل معنا لمعرفة الأسعار الحالية.' },
+    en: { q: 'How does billing work?', a: 'Start with a 7-day free trial, then a monthly or yearly subscription (2 months free): Starter $49, Pro $99, Enterprise $199 per month — or the equivalent in SAR, AED or OMR. No setup fee, no lock-in contract.' },
+    fr: { q: 'Comment fonctionne la facturation ?', a: "Essai gratuit de 7 jours, puis un abonnement mensuel ou annuel (2 mois offerts) : Essentiel 49 $, Pro 99 $, Entreprise 199 $ par mois, ou l'équivalent en SAR, AED ou OMR. Sans frais d'installation ni engagement." },
+    ar: { q: 'كيف يعمل نظام الفوترة؟', a: 'تجربة مجانية لمدة 7 أيام، ثم اشتراك شهري أو سنوي (شهران مجاناً): الأساسية 185 ر.س، الاحترافية 375 ر.س، الأعمال 750 ر.س شهرياً، أو ما يعادلها بالدرهم أو الريال العُماني أو الدولار. بدون رسوم تأسيس وبدون عقد ملزم.' },
   },
   {
     en: { q: 'Can I update the menu anytime?', a: 'Yes, from your phone or computer you can add/remove/edit items instantly from anywhere.' },
@@ -1732,47 +1697,7 @@ export default function LandingPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
-            {MARKETS.map((m, idx) => {
-              const d = tl(m, lang)
-              return (
-                <div key={idx} className="border border-gray-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow bg-white">
-                  <div className={`bg-gradient-to-br ${m.color} px-6 py-5`}>
-                    <div className="text-3xl mb-2">{m.flag}</div>
-                    <h3 className="text-white font-extrabold text-lg">{d.country}</h3>
-                    <p className="text-white/60 text-xs mt-1">{d.cities}</p>
-                  </div>
-                  <div className="px-5 py-4">
-                    <div className="space-y-2 mb-3">
-                      {m.plans.map((p, pi) => (
-                        <div key={pi} className="flex items-center justify-between text-sm">
-                          <span className="text-gray-500">{tl(p.name, lang)}</span>
-                          <span className="font-bold text-xs" style={{ color: 'var(--cp)' }}>
-                            {p.price
-                              ? `${p.price} ${p.currency} ${lang === 'ar' ? '/ شهرياً' : lang === 'fr' ? '/ mois' : '/ month'}`
-                              : (lang === 'ar' ? `بالـ ${p.currency} · تواصل معنا` : lang === 'fr' ? `En ${p.currency} · Nous contacter` : `In ${p.currency} · Contact us`)}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                    <Link href="/signup" className="block text-center bg-gray-900 hover:bg-gray-800 text-white py-2.5 rounded-xl font-bold text-xs transition-colors">
-                      {lang === 'ar' ? `ابدأ في ${d.country}` : lang === 'fr' ? `Démarrer en ${d.country}` : `Start in ${d.country}`}
-                    </Link>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-
-          {/* Enterprise */}
-          <div className="mt-6 border-2 border-dashed border-gray-200 rounded-2xl p-8 text-center bg-white">
-            <Building2 className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-            <h3 className="font-bold text-xl text-gray-900 mb-2">{t('enterpriseTitle')}</h3>
-            <p className="text-gray-500 max-w-xl mx-auto mb-5 text-sm">{t('enterpriseDesc')}</p>
-            <a href="#contact" className="inline-flex items-center gap-2 border-2 border-gray-900 text-gray-900 font-bold px-6 py-3 rounded-xl hover:bg-gray-900 hover:text-white transition-all text-sm">
-              {t('enterpriseCta')} <ArrowRight className="w-4 h-4" />
-            </a>
-          </div>
+          <GulfPricing lang={lang} contactHref="#contact" />
         </div>
       </section>
 

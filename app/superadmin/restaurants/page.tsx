@@ -5,6 +5,8 @@ import { Loader2, Trash2, X, BarChart3, CalendarPlus, Zap, Coffee } from 'lucide
 import type { Overview, Tenant, MrrData, ModalState } from '../components/types'
 import RestaurantsConsole from '../components/RestaurantsConsole'
 import { useSAAuth } from '../context'
+import { GULF_PLANS, PLAN_CURRENCIES, planCurrencyFor, type PlanId } from '@/lib/gulfPlans'
+const PLAN_LABEL_AR: Record<PlanId, string> = { STARTER: 'الأساسية', PRO: 'الاحترافية', ENTERPRISE: 'الأعمال' }
 
 const MAINTENANCE_COUNTRIES = ['SA','AE','KW','QA','BH','OM','FR','ES','BE','DE','IT','NL','PT','GB','US']
 
@@ -648,6 +650,27 @@ function TenantModalInline({ modal, setModal, setMF, saveBillingConfig, extendTr
             <p className="text-gray-400 text-xs leading-relaxed">
               تفعيل يدوي يتجاوز التحليل التلقائي ويُحوّل المطعم مباشرة إلى حالة "نشط".
             </p>
+            {/* Plan picker — fills the monthly fee from lib/gulfPlans.ts in the
+                venue's currency, so MRR is the real subscription price. */}
+            {(PLAN_CURRENCIES as string[]).includes(String(modal.tenant.currency).toUpperCase()) ? (
+              <div className="grid grid-cols-3 gap-2">
+                {GULF_PLANS.map(p => {
+                  const cur = planCurrencyFor(modal.tenant.currency)
+                  const price = p.monthly[cur]
+                  const active = Number(modal.fee) === price
+                  return (
+                    <button key={p.id} type="button"
+                      onClick={() => { setMF('fee', String(price)); setMF('tier', p.id === 'STARTER' ? 'ECONOMY' : 'ADVANCED') }}
+                      className={`rounded-xl border px-2 py-2 text-center transition-colors ${active ? 'border-violet-500 bg-violet-500/15' : 'border-gray-700 bg-gray-800 hover:border-gray-500'}`}>
+                      <p className="text-xs text-gray-400">{PLAN_LABEL_AR[p.id]}</p>
+                      <p className="text-sm font-bold text-white" dir="ltr">{price} {cur}</p>
+                    </button>
+                  )
+                })}
+              </div>
+            ) : (
+              <p className="text-xs text-amber-300/80">باقات الخليج مسعّرة بـ SAR / AED / OMR / USD — عملة هذا المطعم ({modal.tenant.currency}) تتطلب إدخال المبلغ يدوياً.</p>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <p className="text-xs text-gray-500 mb-1">الشريحة</p>

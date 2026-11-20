@@ -427,6 +427,19 @@ router.get('/api/superadmin/billing/overview', requireSuperAdmin, async (_req: R
     // Real platform revenue = invoices restaurants actually PAID us, per
     // currency (MAD and SAR must never be summed together or shown as "$").
     const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0)
+    // Subscription MRR (owner decision 2026-11-20: monthly plans, lib/gulfPlans.ts):
+    // sum of monthlyFee of active, paying (not in trial) venues, per currency.
+    const subscribed = await prisma.cafe.findMany({
+      where:  { isActive: true, billingStatus: { not: 'GRACE_PERIOD' }, monthlyFee: { gt: 0 } },
+      select: { monthlyFee: true, currency: true },
+    })
+    const mrrMap: Record<string, { amount: number; venues: number }> = {}
+    for (const c of subscribed) {
+      const cur = c.currency || 'USD'
+      mrrMap[cur] ??= { amount: 0, venues: 0 }
+      mrrMap[cur].amount += c.monthlyFee ?? 0
+      mrrMap[cur].venues += 1
+    }
     const [paidAll, paidMonth, salesByCafe] = await Promise.all([
       prisma.billingInvoice.groupBy({ by: ['currency'], where: { status: 'PAID' }, _sum: { amount: true }, _count: true }),
       prisma.billingInvoice.groupBy({ by: ['currency'], where: { status: 'PAID', paidAt: { gte: monthStart } }, _sum: { amount: true } }),
@@ -458,6 +471,7 @@ router.get('/api/superadmin/billing/overview', requireSuperAdmin, async (_req: R
         thisMonth: paidMonth.map(r => ({ currency: r.currency, amount: r._sum.amount ?? 0 })),
       },
       restaurantSales: Object.entries(restaurantSales).map(([currency, amount]) => ({ currency, amount })),
+      subscriptionMrr: Object.entries(mrrMap).map(([currency, v]) => ({ currency, amount: Math.round(v.amount * 100) / 100, venues: v.venues })),
     })
   } catch (err) {
     logger.error({ msg: 'billing overview error', err })

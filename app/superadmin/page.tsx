@@ -24,6 +24,7 @@ interface DashData {
     totalCafes: number; activeCafes: number; suspendedCafes: number; trialCafes: number
     platformRevenue?: { allTime: CurAmount[]; thisMonth: CurAmount[] }
     restaurantSales?: CurAmount[]
+    subscriptionMrr?: (CurAmount & { venues?: number })[]
   } | null
   mrr:       { totalMRR_USD: number; computedAt: string } | null
   aiStats:   { running: number; queued: number; completedToday: number; failedToday: number; avgCost: number; avgTokens: number } | null
@@ -163,9 +164,9 @@ export default function SuperAdminDashboard() {
               sub={ov ? `${ov.activeCafes} نشط · ${ov.trialCafes} في فترة تجريبية` : undefined}
             />
             <KpiCard
-              label="الإيراد الشهري المتكرر (تقديري)" icon={TrendingUp} color="emerald" href="/superadmin/restaurants"
-              value={mrr ? `${Math.round(mrr.totalMRR_USD).toLocaleString('en-US')} USD` : '—'}
-              sub="USD تقديري — حسب حجم الطلبات والعمولات"
+              label="الإيراد الشهري المتكرر (الاشتراكات)" icon={TrendingUp} color="emerald" href="/superadmin/restaurants"
+              value={ov ? fmtByCurrency(ov.subscriptionMrr) : '—'}
+              sub={ov ? `${(ov.subscriptionMrr ?? []).reduce((n, r) => n + (r.venues ?? 0), 0)} مطعم مشترك (خارج الفترة التجريبية)` : undefined}
             />
             <KpiCard
               label="مطاعم موقوفة" icon={AlertTriangle} color="red" href="/superadmin/restaurants"

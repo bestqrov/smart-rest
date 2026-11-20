@@ -42,8 +42,11 @@ const CARDS = (o: Overview, mrr: MrrData | null) => [
   },
   {
     label:  'الإيراد الشهري المتكرر',
-    value:  mrr ? `$${mrr.totalMRR_USD.toFixed(0)}` : '…',
-    sub:    'تقديري بالدولار الأمريكي',
+    // Same figure as the dashboard: real subscription MRR per currency.
+    value:  (o.subscriptionMrr ?? []).length
+      ? (o.subscriptionMrr ?? []).map(r => `${Math.round(r.amount).toLocaleString('en-US')} ${r.currency}`).join(' · ')
+      : '0',
+    sub:    `${(o.subscriptionMrr ?? []).reduce((n, r) => n + (r.venues ?? 0), 0)} مطعم مشترك`,
     bg:     'bg-violet-500',
     shadow: 'shadow-violet-600/30',
     icon:   '💎',

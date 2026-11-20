@@ -10,6 +10,7 @@ export interface Overview {
   totalAccruedDebt: number
   totalRevenue:     number
   mrr:              number
+  subscriptionMrr?: { currency: string; amount: number; venues?: number }[]
 }
 
 export interface Tenant {
