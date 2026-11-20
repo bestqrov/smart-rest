@@ -263,17 +263,14 @@ export default function WaiterPage() {
     setStaffName(localStorage.getItem('staffName') ?? '')
     setStaffRole(p.staffRole ?? 'WAITER')
 
-    // Fetch cafe name + logo via public menu API
+    // Fetch cafe name + logo (the public menu API needs a table token, not a subdomain)
     const subdomain = localStorage.getItem('subdomain') || localStorage.getItem('posLastSubdomain')
     if (subdomain) {
-      fetch(`/api/menu/public?sub=${subdomain}`)
+      fetch(`/api/public/cafe/${encodeURIComponent(subdomain)}`)
         .then(r => r.ok ? r.json() : null)
         .then(d => {
           if (!d) return
-          setCafeInfo({
-            name:    d.cafeName || d.name || '',
-            logoUrl: d.logoSquareUrl || d.logoUrl || null,
-          })
+          setCafeInfo({ name: d.name || '', logoUrl: d.logoUrl || null })
         })
         .catch(() => {})
     }
