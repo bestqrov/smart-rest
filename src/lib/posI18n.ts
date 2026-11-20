@@ -4,23 +4,30 @@
  */
 
 export type Lang = 'ar' | 'fr' | 'en' | 'es'
+// `flag` is a short text badge, not a country flag: Arabic is spoken across
+// many markets (Gulf, Maghreb…), so a single country's flag is wrong for it.
 export const POS_LANGS: { code: Lang; label: string; flag: string }[] = [
-  { code: 'ar', label: 'العربية', flag: '🇲🇦' },
-  { code: 'fr', label: 'Français', flag: '🇫🇷' },
-  { code: 'en', label: 'English',  flag: '🇬🇧' },
-  { code: 'es', label: 'Español',  flag: '🇪🇸' },
+  { code: 'ar', label: 'العربية', flag: 'ع' },
+  { code: 'fr', label: 'Français', flag: 'FR' },
+  { code: 'en', label: 'English',  flag: 'EN' },
+  { code: 'es', label: 'Español',  flag: 'ES' },
 ]
 
 export function isRTL(lang: Lang) { return lang === 'ar' }
 
 export function getLang(): Lang {
   if (typeof window === 'undefined') return 'ar'
-  const stored = localStorage.getItem('posLang') as Lang | null
-  if (stored && ['ar','fr','en','es'].includes(stored)) return stored
+  // One language for every staff screen (POS, waiter, kitchen, staff login).
+  // 'sm_lang' is the legacy key kitchen/staff used before they were unified.
+  try {
+    const stored = (localStorage.getItem('posLang') ?? localStorage.getItem('sm_lang')) as Lang | null
+    if (stored && ['ar','fr','en','es'].includes(stored)) return stored
+  } catch {}
   return 'ar'
 }
 export function setLang(lang: Lang) {
-  if (typeof window !== 'undefined') localStorage.setItem('posLang', lang)
+  if (typeof window === 'undefined') return
+  try { localStorage.setItem('posLang', lang); localStorage.setItem('sm_lang', lang) } catch {}
 }
 
 // ─── Translations ─────────────────────────────────────────────────────────────

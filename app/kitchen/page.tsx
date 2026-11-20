@@ -1,4 +1,5 @@
 'use client'
+import { getLang as getStaffLang, setLang as setStaffLang } from '../../src/lib/posI18n'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { io as socketIO, Socket } from 'socket.io-client'
@@ -230,7 +231,7 @@ export default function KitchenPage() {
   const [cafeId, setCafeId]             = useState('')
   const [authed, setAuthed]             = useState(false)
   const [muted, setMuted]               = useState(false)
-  const [lang, setLang]                 = useState<Lang>('en')
+  const [lang, setLang]                 = useState<Lang>('ar')
   const [selectedId, setSelectedId]     = useState<string | null>(null)
   const [, setTick]                     = useState(0)
   const [completedToday, setCompletedToday] = useState(0)
@@ -287,8 +288,7 @@ export default function KitchenPage() {
     localStorage.setItem('kitchenToken', activeToken)
     setCafeId(cafeIdFromToken); setAuthed(true)
 
-    const saved = localStorage.getItem('sm_lang')
-    if (saved === 'ar' || saved === 'en' || saved === 'fr' || saved === 'es') setLang(saved as Lang)
+    setLang(getStaffLang() as Lang)
 
     ;(async () => {
       try {
@@ -538,7 +538,7 @@ export default function KitchenPage() {
           {/* Lang */}
           <div className="flex items-center gap-0.5 bg-slate-100 border border-slate-200 rounded-lg px-1.5 py-1">
             {(['ar','en','fr','es'] as Lang[]).map(l => (
-              <button key={l} onClick={() => { setLang(l); localStorage.setItem('sm_lang', l) }}
+              <button key={l} onClick={() => { setLang(l); setStaffLang(l) }}
                 className={`text-xs font-bold px-1.5 py-0.5 rounded-md transition-all ${lang === l ? 'bg-amber-500 text-white' : 'text-slate-400 hover:text-slate-700'}`}>
                 {l.toUpperCase()}
               </button>

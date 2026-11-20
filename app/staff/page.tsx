@@ -1,4 +1,5 @@
 'use client'
+import { getLang as getStaffLang, setLang as setStaffLang } from '../../src/lib/posI18n'
 
 import { useEffect, useState } from 'react'
 import { ChefHat, Monitor, Bell, Crown, ArrowLeft, Loader2, AlertCircle, Eye, EyeOff } from 'lucide-react'
@@ -89,7 +90,7 @@ const ROLES: { role: Role; icon: React.ElementType; color: string; gradient: str
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function StaffPortal() {
-  const [lang,      setLang]      = useState<Lang>('fr')
+  const [lang,      setLang]      = useState<Lang>('ar')
   const [step,      setStep]      = useState<Step>('role')
   const [role,      setRole]      = useState<Role | null>(null)
   const [pin,       setPin]       = useState('')
@@ -106,7 +107,7 @@ export default function StaffPortal() {
   useEffect(() => {
     const saved = localStorage.getItem('posLastSubdomain') ?? ''
     if (saved) { setSubdomain(saved); fetchCafe(saved) }
-    const l = localStorage.getItem('sm_lang')
+    const l = getStaffLang()
     if (l === 'ar' || l === 'fr' || l === 'en') setLang(l as Lang)
   }, [])
 
@@ -185,7 +186,7 @@ export default function StaffPortal() {
       {/* Lang switcher */}
       <div className={`absolute top-5 ${isRTL ? 'left-5' : 'right-5'} flex gap-0.5 bg-white/5 rounded-lg p-0.5`}>
         {(['fr','ar','en'] as Lang[]).map(l => (
-          <button key={l} onClick={() => { setLang(l); localStorage.setItem('sm_lang', l) }}
+          <button key={l} onClick={() => { setLang(l); setStaffLang(l) }}
             className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all ${lang === l ? 'bg-white/20 text-white' : 'text-white/30 hover:text-white/60'}`}>
             {l.toUpperCase()}
           </button>
