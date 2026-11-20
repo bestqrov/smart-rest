@@ -8,6 +8,7 @@ import {
   CheckCircle2, AlertCircle,
 } from 'lucide-react'
 import { useLang } from '../lang-context'
+import PlanGate from '../PlanGate'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -331,7 +332,7 @@ function fmtDateTime(iso: string, lang: string) {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export default function LoyaltyPage() {
+function LoyaltyPageInner() {
   const { lang } = useLang() as { lang: Lang }
   const t   = T[lang] ?? T.fr
   const isRTL = lang === 'ar'
@@ -889,4 +890,9 @@ export default function LoyaltyPage() {
       )}
     </div>
   )
+}
+
+
+export default function LoyaltyPage() {
+  return <PlanGate feature="loyalty"><LoyaltyPageInner /></PlanGate>
 }

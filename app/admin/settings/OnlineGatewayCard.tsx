@@ -34,6 +34,7 @@ const T = {
     secure: 'يُحفظ المفتاح مشفّراً ولا يُعرض مرة أخرى.',
     noEnc: 'تشفير المفاتيح غير مُفعّل على الخادم. تواصل مع الدعم.',
     errors: {
+      PLAN_REQUIRED:  'الدفع الإلكتروني متاح في الباقة الاحترافية، أو كإضافة (19$ شهرياً) للباقة الأساسية.',
       BAD_KEY_FORMAT: 'هذا ليس مفتاحاً سرياً. استعمل المفتاح الذي يبدأ بـ sk_.',
       KEY_REJECTED:   'رفضت البوابة هذا المفتاح. تأكد منه وحاول مجدداً.',
       NO_ENCRYPTION:  'تشفير المفاتيح غير مُفعّل على الخادم.',
@@ -58,6 +59,7 @@ const T = {
     secure: 'La clé est stockée chiffrée et n’est plus jamais affichée.',
     noEnc: 'Le chiffrement des clés n’est pas activé sur le serveur. Contactez le support.',
     errors: {
+      PLAN_REQUIRED:  'Le paiement en ligne est inclus dans l’offre Pro, ou en option (19 $/mois) avec l’offre Essentiel.',
       BAD_KEY_FORMAT: 'Ce n’est pas une clé secrète. Utilisez la clé qui commence par sk_.',
       KEY_REJECTED:   'La passerelle a refusé cette clé. Vérifiez-la et réessayez.',
       NO_ENCRYPTION:  'Le chiffrement des clés n’est pas activé sur le serveur.',
@@ -82,6 +84,7 @@ const T = {
     secure: 'The key is stored encrypted and never shown again.',
     noEnc: 'Key encryption is not configured on the server. Contact support.',
     errors: {
+      PLAN_REQUIRED:  'Online payment is included in Pro, or as a $19/month add-on on Starter.',
       BAD_KEY_FORMAT: 'That is not a secret key. Use the one starting with sk_.',
       KEY_REJECTED:   'The gateway rejected this key. Check it and try again.',
       NO_ENCRYPTION:  'Key encryption is not configured on the server.',

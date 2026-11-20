@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Ticket, Plus, Loader2, Trash2, Copy, Check } from 'lucide-react'
 import { useLang } from '../lang-context'
+import PlanGate from '../PlanGate'
 
 interface Coupon {
   id: string; code: string; type: 'PERCENT' | 'FIXED'; value: number
@@ -56,7 +57,7 @@ const T = {
 
 const EMPTY = { code: '', type: 'PERCENT' as 'PERCENT' | 'FIXED', value: '', minOrder: '', maxDiscount: '', maxUses: '', startsAt: '', endsAt: '', note: '' }
 
-export default function CouponsPage() {
+function CouponsPageInner() {
   const { lang, isRTL } = useLang()
   const t = T[(lang in T ? lang : 'en') as keyof typeof T]
 
@@ -238,4 +239,9 @@ export default function CouponsPage() {
       )}
     </div>
   )
+}
+
+
+export default function CouponsPage() {
+  return <PlanGate feature="coupons"><CouponsPageInner /></PlanGate>
 }

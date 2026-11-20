@@ -9,6 +9,7 @@ import express, { Request, Response } from 'express'
 import prisma from '../prisma'
 import logger from '../logger'
 import { authorizeAdmin } from '../middleware/authorizeAdmin'
+import { requirePlanFeature } from '../billing/planAccess'
 import { CouponError, normalizeCode, previewCoupon } from '../coupons/CouponService'
 
 const router = express.Router()
@@ -54,7 +55,7 @@ function isDup(err: unknown) {
   return (err as { code?: string })?.code === 'P2002'
 }
 
-router.get('/api/admin/coupons', authorizeAdmin, async (req: Request, res: Response) => {
+router.get('/api/admin/coupons', authorizeAdmin, requirePlanFeature('coupons'), async (req: Request, res: Response) => {
   try {
     const cafeId  = req.admin!.cafeId
     const coupons = await prisma.coupon.findMany({ where: { cafeId }, orderBy: { createdAt: 'desc' } })
@@ -74,7 +75,7 @@ router.get('/api/admin/coupons', authorizeAdmin, async (req: Request, res: Respo
   }
 })
 
-router.post('/api/admin/coupons', authorizeAdmin, async (req: Request, res: Response) => {
+router.post('/api/admin/coupons', authorizeAdmin, requirePlanFeature('coupons'), async (req: Request, res: Response) => {
   try {
     const data = parseBody(req.body ?? {}, false)
     // App-level check too: the @@unique index only exists after `prisma db push`.
@@ -90,7 +91,7 @@ router.post('/api/admin/coupons', authorizeAdmin, async (req: Request, res: Resp
   }
 })
 
-router.patch('/api/admin/coupons/:id', authorizeAdmin, async (req: Request, res: Response) => {
+router.patch('/api/admin/coupons/:id', authorizeAdmin, requirePlanFeature('coupons'), async (req: Request, res: Response) => {
   try {
     const id = String(req.params.id)
     if (!OBJECT_ID.test(id)) return res.status(400).json({ error: 'Invalid id' })
@@ -111,7 +112,7 @@ router.patch('/api/admin/coupons/:id', authorizeAdmin, async (req: Request, res:
   }
 })
 
-router.delete('/api/admin/coupons/:id', authorizeAdmin, async (req: Request, res: Response) => {
+router.delete('/api/admin/coupons/:id', authorizeAdmin, requirePlanFeature('coupons'), async (req: Request, res: Response) => {
   try {
     const id = String(req.params.id)
     if (!OBJECT_ID.test(id)) return res.status(400).json({ error: 'Invalid id' })

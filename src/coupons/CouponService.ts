@@ -5,6 +5,7 @@
 
 import { Prisma } from '@prisma/client'
 import prisma from '../prisma'
+import { getPlanAccess } from '../billing/planAccess'
 
 export type CouponType = 'PERCENT' | 'FIXED'
 
@@ -41,6 +42,7 @@ export function evaluateCoupon(c: CouponRow, subtotal: number, now = new Date())
 }
 
 export async function previewCoupon(cafeId: string, rawCode: string, subtotal: number) {
+  if (!(await getPlanAccess(cafeId)).features.coupons) throw new CouponError('INACTIVE')
   const code   = normalizeCode(rawCode)
   const coupon = code ? await prisma.coupon.findUnique({ where: { cafeId_code: { cafeId, code } } }) : null
   if (!coupon) throw new CouponError('NOT_FOUND')
@@ -55,6 +57,7 @@ export async function previewCoupon(cafeId: string, rawCode: string, subtotal: n
 export async function redeemCoupon(
   tx: Prisma.TransactionClient, cafeId: string, rawCode: string, subtotal: number,
 ): Promise<{ code: string; discount: number }> {
+  if (!(await getPlanAccess(cafeId)).features.coupons) throw new CouponError('INACTIVE')
   const code = normalizeCode(rawCode)
   for (let attempt = 0; attempt < 3; attempt++) {
     const coupon = await tx.coupon.findUnique({ where: { cafeId_code: { cafeId, code } } })

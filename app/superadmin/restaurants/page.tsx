@@ -7,6 +7,11 @@ import RestaurantsConsole from '../components/RestaurantsConsole'
 import { useSAAuth } from '../context'
 import { GULF_PLANS, PLAN_CURRENCIES, planCurrencyFor, type PlanId } from '@/lib/gulfPlans'
 const PLAN_LABEL_AR: Record<PlanId, string> = { STARTER: 'الأساسية', PRO: 'الاحترافية', ENTERPRISE: 'الأعمال' }
+/** Add-on priced in USD -> venue currency, using the Pro plan's local/USD ratio. */
+function addonLocal(usd: number, cur: ReturnType<typeof planCurrencyFor>): number {
+  const pro = GULF_PLANS.find(p => p.id === 'PRO')!
+  return Math.round(usd * pro.monthly[cur] / pro.monthly.USD)
+}
 
 const MAINTENANCE_COUNTRIES = ['SA','AE','KW','QA','BH','OM','FR','ES','BE','DE','IT','NL','PT','GB','US']
 
@@ -203,6 +208,9 @@ export default function RestaurantsPage() {
       sandwich:       String(tenant.sandwichRefPrice ?? ''),
       days:           '7',
       fee:            String(tenant.monthlyFee ?? ''),
+      planId:         (tenant as { planId?: string | null }).planId ?? null,
+      onlineAddon:    !!(tenant as { onlinePaymentAddon?: boolean }).onlinePaymentAddon,
+      videoAddon:     !!(tenant as { aiVideoAddon?: boolean }).aiVideoAddon,
       tier:           tenant.subscriptionTier ?? 'ECONOMY',
       billingCycle:   tenant.billingCycle ?? 15,
       maintenance:    tenant.maintenancePack ?? defaultMaintenance(tenant.country),
@@ -256,7 +264,7 @@ export default function RestaurantsPage() {
     try {
       const res = await fetch(`/api/superadmin/tenants/${modal.tenant.id}/activate`, {
         method: 'POST', headers: superHeader(),
-        body: JSON.stringify({ monthlyFee: fee, tier: modal.tier })
+        body: JSON.stringify({ monthlyFee: fee, tier: modal.tier, planId: modal.planId ?? null, onlinePaymentAddon: modal.planId === 'STARTER' && !!modal.onlineAddon, aiVideoAddon: !!modal.videoAddon })
       })
       if (!res.ok) { setMF('error', 'فشل التفعيل'); return }
       setModal(null); loadAll(1)
@@ -657,10 +665,10 @@ function TenantModalInline({ modal, setModal, setMF, saveBillingConfig, extendTr
                 {GULF_PLANS.map(p => {
                   const cur = planCurrencyFor(modal.tenant.currency)
                   const price = p.monthly[cur]
-                  const active = Number(modal.fee) === price
+                  const active = modal.planId === p.id
                   return (
                     <button key={p.id} type="button"
-                      onClick={() => { setMF('fee', String(price)); setMF('tier', p.id === 'STARTER' ? 'ECONOMY' : 'ADVANCED') }}
+                      onClick={() => { setMF('fee', String(price + (p.id === 'STARTER' && modal.onlineAddon ? addonLocal(19, cur) : 0) + (modal.videoAddon ? addonLocal(29, cur) : 0))); setMF('tier', p.id === 'STARTER' ? 'ECONOMY' : 'ADVANCED'); setMF('planId', p.id) }}
                       className={`rounded-xl border px-2 py-2 text-center transition-colors ${active ? 'border-violet-500 bg-violet-500/15' : 'border-gray-700 bg-gray-800 hover:border-gray-500'}`}>
                       <p className="text-xs text-gray-400">{PLAN_LABEL_AR[p.id]}</p>
                       <p className="text-sm font-bold text-white" dir="ltr">{price} {cur}</p>
@@ -668,7 +676,22 @@ function TenantModalInline({ modal, setModal, setMF, saveBillingConfig, extendTr
                   )
                 })}
               </div>
-            ) : (
+            ) : null}
+            {(PLAN_CURRENCIES as string[]).includes(String(modal.tenant.currency).toUpperCase()) && (
+              <div className="space-y-1.5 text-xs text-gray-300">
+                <label className={`flex items-center gap-2 ${modal.planId === 'STARTER' ? '' : 'opacity-40'}`}>
+                  <input type="checkbox" disabled={modal.planId !== 'STARTER'} checked={!!modal.onlineAddon}
+                    onChange={e => setMF('onlineAddon', e.target.checked)} />
+                  إضافة الدفع الإلكتروني (19$ شهرياً — للباقة الأساسية فقط)
+                </label>
+                <label className="flex items-center gap-2">
+                  <input type="checkbox" checked={!!modal.videoAddon} onChange={e => setMF('videoAddon', e.target.checked)} />
+                  إضافة فيديوهات الذكاء الاصطناعي (29$ شهرياً — 5 فيديوهات)
+                </label>
+                <p className="text-gray-500">بعد تغيير الإضافات أعد اختيار الباقة لتحديث المبلغ.</p>
+              </div>
+            )}
+            {(PLAN_CURRENCIES as string[]).includes(String(modal.tenant.currency).toUpperCase()) ? null : (
               <p className="text-xs text-amber-300/80">باقات الخليج مسعّرة بـ SAR / AED / OMR / USD — عملة هذا المطعم ({modal.tenant.currency}) تتطلب إدخال المبلغ يدوياً.</p>
             )}
             <div className="grid grid-cols-2 gap-3">

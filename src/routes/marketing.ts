@@ -1,6 +1,7 @@
 import express, { Request, Response } from 'express'
 import prisma from '../prisma'
 import { authorizeAdmin } from '../middleware/authorizeAdmin'
+import { requirePlanFeature, getPlanAccess } from '../billing/planAccess'
 import logger from '../logger'
 import {
   queuePost, listPosts, retryPost, recordPublishResult, getConnectedPlatforms,
@@ -28,7 +29,7 @@ function isOnTrial(trialEndsAt: Date | null): boolean {
 // and fires the n8n webhook asynchronously. Returns immediately with the
 // campaign ID so the frontend can poll /api/marketing/campaigns.
 
-router.post('/generate-video', authorizeAdmin, async (req: Request, res: Response) => {
+router.post('/generate-video', authorizeAdmin, requirePlanFeature('aiVideo'), async (req: Request, res: Response) => {
   const { cafeId } = req.admin!
 
   try {
@@ -47,6 +48,15 @@ router.post('/generate-video', authorizeAdmin, async (req: Request, res: Respons
     })
 
     if (!cafe) return res.status(404).json({ error: 'Cafe not found' })
+
+    const access = await getPlanAccess(cafeId)
+    if (access.aiVideosPerMonth != null) {
+      const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0)
+      const used = await prisma.marketingCampaign.count({ where: { cafeId, createdAt: { gte: monthStart } } })
+      if (used >= access.aiVideosPerMonth) {
+        return res.status(403).json({ error: `Monthly video quota reached (${access.aiVideosPerMonth})`, code: 'PLAN_QUOTA', quota: access.aiVideosPerMonth, used })
+      }
+    }
 
     if (cafe.tables.length === 0) {
       return res.status(400).json({
@@ -309,7 +319,7 @@ router.patch('/campaigns/:id/status', async (req: Request, res: Response) => {
 // ─── K27 — Social Media Automation Engine ────────────────────────────────────
 
 // POST /api/marketing/social-posts — queue a post (immediate or scheduled)
-router.post('/social-posts', authorizeAdmin, async (req: Request, res: Response) => {
+router.post('/social-posts', authorizeAdmin, requirePlanFeature('aiMarketing'), async (req: Request, res: Response) => {
   try {
     const { cafeId } = req.admin!
     const { platform, contentType, caption, mediaUrl, sourceCampaignId, scheduledFor } = req.body as {

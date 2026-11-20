@@ -246,6 +246,10 @@ model Cafe {
   // Agency partner program — set at signup via ?ref=CODE
   referredByAffiliateId String?        @db.ObjectId
   partnerDiscountPct    Float          @default(0) // % off per-order platform fees (agency clients: 15)
+  // Gulf subscription plan (lib/gulfPlans.ts). null = legacy per-order commission billing.
+  planId                String? // STARTER | PRO | ENTERPRISE
+  onlinePaymentAddon    Boolean        @default(false) // Starter add-on: online bill payment (+$19/mo)
+  aiVideoAddon          Boolean        @default(false) // add-on: AI marketing videos, 5/month (+$29/mo)
 
   // ── Per-restaurant feature flags (toggled by superadmin or admin) ──────────
   smartWifiEnabled               Boolean   @default(false)

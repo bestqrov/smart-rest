@@ -14,6 +14,7 @@ import type { Server as SocketIOServer } from 'socket.io'
 import prisma from '../../prisma'
 import logger from '../../logger'
 import { decryptSecret } from './secretBox'
+import { getPlanAccess } from '../../billing/planAccess'
 import { createCheckout, fetchStatus, minorFactor, type OnlineProvider, ONLINE_PROVIDERS } from './gateways'
 
 export class BillPaymentError extends Error {
@@ -45,6 +46,9 @@ export async function startBillPayment(sessionId: string, origin: string) {
     throw new BillPaymentError('SESSION_EXPIRED', 'Session expired', 401)
   }
 
+  if (!(await getPlanAccess(session.cafeId)).features.onlinePayment) {
+    throw new BillPaymentError('NOT_CONFIGURED', 'Online payment is not enabled for this venue')
+  }
   const { cafe, provider, secretKey } = await loadGateway(session.cafeId)
 
   const orders = await prisma.order.findMany({

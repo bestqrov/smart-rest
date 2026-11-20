@@ -20,6 +20,7 @@ import type { Server as SocketIOServer } from 'socket.io'
 import prisma from '../prisma'
 import logger from '../logger'
 import { authorizeAdmin } from '../middleware/authorizeAdmin'
+import { requirePlanFeature } from '../billing/planAccess'
 import { startBillPayment, verifyBillPayment, BillPaymentError } from '../payments/online/BillPaymentService'
 import { sendBillReceipt } from '../payments/online/receipt'
 import { encryptSecret, isEncryptionConfigured } from '../payments/online/secretBox'
@@ -102,7 +103,7 @@ router.get('/api/admin/cafe/online-gateway', authorizeAdmin, async (req: Request
   }
 })
 
-router.put('/api/admin/cafe/online-gateway', authorizeAdmin, async (req: Request, res: Response) => {
+router.put('/api/admin/cafe/online-gateway', authorizeAdmin, requirePlanFeature('onlinePayment'), async (req: Request, res: Response) => {
   try {
     const cafeId    = req.admin!.cafeId
     const provider  = String(req.body?.provider ?? '') as OnlineProvider | ''

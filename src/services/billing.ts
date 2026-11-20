@@ -288,10 +288,14 @@ export async function applyOrderFee(
 ): Promise<void> {
   const cafe = await tx.cafe.findUnique({
     where:  { id: cafeId },
-    select: { trialEndsAt: true, walletBalance: true, hasSocialShareAddon: true, isPremium: true, country: true, partnerDiscountPct: true }
+    select: { trialEndsAt: true, walletBalance: true, hasSocialShareAddon: true, isPremium: true, country: true, partnerDiscountPct: true, planId: true }
   })
 
   if (!cafe) throw new Error(`Cafe ${cafeId} not found`)
+
+  // Gulf subscription plans replace per-order commission (owner decision
+  // 2026-11-20) — a subscribed venue must never be charged twice.
+  if (cafe.planId) return
 
   if (cafe.trialEndsAt && new Date() < cafe.trialEndsAt) return
   if (cafe.isPremium) {

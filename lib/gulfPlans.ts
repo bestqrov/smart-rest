@@ -4,8 +4,8 @@
 // Yearly = 10 × monthly ("2 months free").
 //
 // Only list features that exist in the product today. Not built yet (do NOT
-// advertise until they are): AI marketing videos, GPS table verification,
-// per-station kitchen routing (kitchen/bar/desserts), plan limit enforcement.
+// advertise until they are): GPS table verification, per-station kitchen
+// routing (kitchen/bar/desserts), KDS screen-count limits.
 
 export type PlanId = 'STARTER' | 'PRO' | 'ENTERPRISE'
 export type PlanCurrency = 'USD' | 'SAR' | 'AED' | 'OMR'
@@ -35,3 +35,20 @@ export function planPrice(id: PlanId, currency: PlanCurrency, cycle: 'monthly' |
   if (!p) throw new Error(`Unknown plan ${id}`)
   return p[cycle][currency]
 }
+
+// ─── What each plan unlocks (enforced server-side: src/billing/planAccess.ts) ─
+export type PlanFeature = 'loyalty' | 'coupons' | 'whatsappMarketing' | 'aiMarketing' | 'multiBranch' | 'onlinePayment'
+
+export const PLAN_FEATURES: Record<PlanId, { maxTables: number | null; features: PlanFeature[]; addons: PlanFeature[] }> = {
+  STARTER:    { maxTables: 15,   features: [],                                                                                 addons: ['onlinePayment'] },
+  PRO:        { maxTables: null, features: ['loyalty', 'coupons', 'whatsappMarketing', 'aiMarketing', 'onlinePayment'],                 addons: [] },
+  ENTERPRISE: { maxTables: null, features: ['loyalty', 'coupons', 'whatsappMarketing', 'aiMarketing', 'onlinePayment', 'multiBranch'], addons: [] },
+}
+
+/** Lowest plan that includes a feature — for "available on Pro" messages. */
+export function requiredPlanFor(f: PlanFeature): PlanId {
+  return (['STARTER', 'PRO', 'ENTERPRISE'] as PlanId[]).find(p => PLAN_FEATURES[p].features.includes(f)) ?? 'ENTERPRISE'
+}
+
+export const ADDON_PRICES_USD = { onlinePayment: 19, aiVideo: 29 } as const
+export const AI_VIDEOS_PER_MONTH = 5

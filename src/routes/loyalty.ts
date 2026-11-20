@@ -9,6 +9,7 @@
 
 import express, { Request, Response } from 'express'
 import { authorizeAdmin } from '../middleware/authorizeAdmin'
+import { requirePlanFeature } from '../billing/planAccess'
 import prisma from '../prisma'
 import logger from '../logger'
 import {
@@ -19,7 +20,7 @@ const router = express.Router()
 
 // ─── GET /api/loyalty/customers — paginated list of all loyalty accounts ──────
 
-router.get('/api/loyalty/customers', authorizeAdmin, async (req: Request, res: Response) => {
+router.get('/api/loyalty/customers', authorizeAdmin, requirePlanFeature('loyalty'), async (req: Request, res: Response) => {
   try {
     const cafeId = req.admin!.cafeId
     const search = ((req.query.search as string) ?? '').trim()
@@ -54,7 +55,7 @@ router.get('/api/loyalty/customers', authorizeAdmin, async (req: Request, res: R
 // Registered before /:phone so the literal "settings" segment isn't swallowed
 // by the dynamic phone-number route below.
 
-router.get('/api/loyalty/settings', authorizeAdmin, async (req: Request, res: Response) => {
+router.get('/api/loyalty/settings', authorizeAdmin, requirePlanFeature('loyalty'), async (req: Request, res: Response) => {
   try {
     const cafeId = req.admin!.cafeId
     const cafe = await prisma.cafe.findUnique({
@@ -72,7 +73,7 @@ router.get('/api/loyalty/settings', authorizeAdmin, async (req: Request, res: Re
   }
 })
 
-router.patch('/api/loyalty/settings', authorizeAdmin, async (req: Request, res: Response) => {
+router.patch('/api/loyalty/settings', authorizeAdmin, requirePlanFeature('loyalty'), async (req: Request, res: Response) => {
   try {
     const cafeId = req.admin!.cafeId
     const { pointsPerCurrency, silverThreshold, goldThreshold } = req.body as Record<string, any>
@@ -113,7 +114,7 @@ router.patch('/api/loyalty/settings', authorizeAdmin, async (req: Request, res: 
 // Registered before /:phone so the literal "rewards" segment isn't swallowed
 // by the dynamic phone-number route below (same reasoning as the /settings fix).
 
-router.get('/api/loyalty/rewards', authorizeAdmin, async (req: Request, res: Response) => {
+router.get('/api/loyalty/rewards', authorizeAdmin, requirePlanFeature('loyalty'), async (req: Request, res: Response) => {
   try {
     const cafeId = req.admin!.cafeId
     const rewards = await listRewards(cafeId, req.query.all !== 'true')
@@ -124,7 +125,7 @@ router.get('/api/loyalty/rewards', authorizeAdmin, async (req: Request, res: Res
   }
 })
 
-router.post('/api/loyalty/rewards', authorizeAdmin, async (req: Request, res: Response) => {
+router.post('/api/loyalty/rewards', authorizeAdmin, requirePlanFeature('loyalty'), async (req: Request, res: Response) => {
   try {
     const cafeId = req.admin!.cafeId
     const { name, description, pointsCost } = req.body as { name?: string; description?: string; pointsCost?: number }
@@ -139,7 +140,7 @@ router.post('/api/loyalty/rewards', authorizeAdmin, async (req: Request, res: Re
   }
 })
 
-router.patch('/api/loyalty/rewards/:id/deactivate', authorizeAdmin, async (req: Request, res: Response) => {
+router.patch('/api/loyalty/rewards/:id/deactivate', authorizeAdmin, requirePlanFeature('loyalty'), async (req: Request, res: Response) => {
   try {
     const cafeId = req.admin!.cafeId
     const reward = await deactivateReward(cafeId, req.params.id as string)
@@ -150,7 +151,7 @@ router.patch('/api/loyalty/rewards/:id/deactivate', authorizeAdmin, async (req: 
   }
 })
 
-router.post('/api/loyalty/rewards/:id/redeem', authorizeAdmin, async (req: Request, res: Response) => {
+router.post('/api/loyalty/rewards/:id/redeem', authorizeAdmin, requirePlanFeature('loyalty'), async (req: Request, res: Response) => {
   try {
     const cafeId = req.admin!.cafeId
     const { phone } = req.body as { phone?: string }
@@ -166,7 +167,7 @@ router.post('/api/loyalty/rewards/:id/redeem', authorizeAdmin, async (req: Reque
 
 // ─── GET /api/loyalty/:phone ──────────────────────────────────────────────────
 
-router.get('/api/loyalty/:phone', authorizeAdmin, async (req: Request, res: Response) => {
+router.get('/api/loyalty/:phone', authorizeAdmin, requirePlanFeature('loyalty'), async (req: Request, res: Response) => {
   try {
     const phone  = req.params.phone as string
     const cafeId = req.admin!.cafeId
@@ -193,7 +194,7 @@ router.get('/api/loyalty/:phone', authorizeAdmin, async (req: Request, res: Resp
 // Admin redeems points for a customer at checkout.
 // Body: { phone, points }  (points must be > 0 and <= current balance)
 
-router.post('/api/loyalty/redeem', authorizeAdmin, async (req: Request, res: Response) => {
+router.post('/api/loyalty/redeem', authorizeAdmin, requirePlanFeature('loyalty'), async (req: Request, res: Response) => {
   try {
     const { phone, points: rawPoints } = req.body as { phone: string; points: number }
     const cafeId = req.admin!.cafeId
@@ -213,7 +214,7 @@ router.post('/api/loyalty/redeem', authorizeAdmin, async (req: Request, res: Res
 
 // ─── K20 — Membership tier ────────────────────────────────────────────────────
 
-router.get('/api/loyalty/:phone/tier', authorizeAdmin, async (req: Request, res: Response) => {
+router.get('/api/loyalty/:phone/tier', authorizeAdmin, requirePlanFeature('loyalty'), async (req: Request, res: Response) => {
   try {
     const cafeId = req.admin!.cafeId
     const info = await getTierInfo(cafeId, req.params.phone as string)

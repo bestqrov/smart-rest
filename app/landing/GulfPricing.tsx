@@ -25,6 +25,7 @@ const T = {
     perMonth: '/ شهرياً', perYear: '/ سنوياً', popular: 'الأكثر طلباً',
     cta: 'ابدأ تجربتك المجانية', ctaEnt: 'تحدّث معنا',
     noSetup: 'بدون رسوم تأسيس · بدون عقد ملزم · ألغِ متى شئت',
+    addon: 'إضافة اختيارية لكل الباقات: فيديوهات تسويقية لأطباقك بالذكاء الاصطناعي — 29$ شهرياً (5 فيديوهات)',
     names: { STARTER: 'الأساسية', PRO: 'الاحترافية', ENTERPRISE: 'الأعمال' } as Record<PlanId, string>,
     for: {
       STARTER: 'عربات الطعام والكافيهات الصغيرة والمطاعم الناشئة',
@@ -37,6 +38,7 @@ const T = {
     perMonth: '/ month', perYear: '/ year', popular: 'Most popular',
     cta: 'Start free trial', ctaEnt: 'Talk to us',
     noSetup: 'No setup fee · No lock-in contract · Cancel anytime',
+    addon: 'Optional add-on for every plan: AI promo videos of your dishes — $29/month (5 videos)',
     names: { STARTER: 'Starter', PRO: 'Pro', ENTERPRISE: 'Enterprise' } as Record<PlanId, string>,
     for: {
       STARTER: 'Food trucks, small cafés and new restaurants',
@@ -49,6 +51,7 @@ const T = {
     perMonth: '/ mois', perYear: '/ an', popular: 'Le plus choisi',
     cta: 'Essai gratuit', ctaEnt: 'Nous contacter',
     noSetup: 'Sans frais d’installation · Sans engagement · Résiliable à tout moment',
+    addon: 'Option pour toutes les offres : vidéos promo IA de vos plats — 29 $/mois (5 vidéos)',
     names: { STARTER: 'Essentiel', PRO: 'Pro', ENTERPRISE: 'Entreprise' } as Record<PlanId, string>,
     for: {
       STARTER: 'Food trucks, petits cafés et restaurants qui démarrent',
@@ -159,6 +162,7 @@ export default function GulfPricing({ lang, contactHref }: { lang: string; conta
         ))}
       </div>
       <p className="text-center text-sm text-gray-500 mt-6">{t.noSetup}</p>
+      <p className="text-center text-sm text-gray-600 mt-2">🎬 {t.addon}</p>
     </div>
   )
 }

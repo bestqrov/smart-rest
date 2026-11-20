@@ -73,6 +73,9 @@ export interface ModalState {
   maintenance:     boolean
   maintenanceFee:  string
   preview:  { tier: string; monthlyFee: number; weeklyOrderCount: number } | null
+  planId?:      string | null   // STARTER | PRO | ENTERPRISE (lib/gulfPlans.ts)
+  onlineAddon?: boolean         // Starter: online payment add-on
+  videoAddon?:  boolean         // AI video add-on (5/month)
 }
 
 export interface PremiumPlan {

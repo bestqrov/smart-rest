@@ -387,7 +387,12 @@ router.patch('/api/superadmin/tenants/:id/extend-trial', requireSuperAdmin, asyn
 router.post('/api/superadmin/tenants/:id/activate', requireSuperAdmin, async (req: Request, res: Response) => {
   try {
     const id = req.params['id'] as string
-    const { monthlyFee, tier } = req.body as { monthlyFee?: number; tier?: string }
+    const { monthlyFee, tier, planId, onlinePaymentAddon, aiVideoAddon } = req.body as {
+      monthlyFee?: number; tier?: string; planId?: string | null; onlinePaymentAddon?: boolean; aiVideoAddon?: boolean
+    }
+    if (planId != null && !['STARTER', 'PRO', 'ENTERPRISE'].includes(planId)) {
+      return res.status(400).json({ error: 'Invalid planId' })
+    }
 
     await prisma.cafe.update({
       where: { id },
@@ -395,11 +400,15 @@ router.post('/api/superadmin/tenants/:id/activate', requireSuperAdmin, async (re
         isActive:         true,
         billingStatus:    'COLLECTING_DEBT',
         ...(monthlyFee != null ? { monthlyFee: Number(monthlyFee) } : {}),
-        ...(tier        != null ? { subscriptionTier: tier }        : {})
+        ...(tier        != null ? { subscriptionTier: tier }        : {}),
+        // A plan switches the venue to subscription billing (no per-order fee).
+        ...(planId !== undefined ? { planId: planId || null } : {}),
+        ...(onlinePaymentAddon != null ? { onlinePaymentAddon: !!onlinePaymentAddon } : {}),
+        ...(aiVideoAddon       != null ? { aiVideoAddon: !!aiVideoAddon }             : {}),
       }
     })
 
-    logger.info({ msg: 'Cafe manually activated', cafeId: id, monthlyFee, tier })
+    logger.info({ msg: 'Cafe manually activated', cafeId: id, monthlyFee, tier, planId, onlinePaymentAddon, aiVideoAddon })
     return res.json({ ok: true })
   } catch (err) {
     return res.status(500).json({ error: 'Failed' })
@@ -594,7 +603,7 @@ router.get('/api/superadmin/tenants/rich', requireSuperAdmin, async (req: Reques
           country: true, currency: true, isActive: true,
           walletBalance: true, billingStatus: true,
           trialEndsAt: true, hasExtendedTrial: true,
-          subscriptionTier: true, monthlyFee: true,
+          subscriptionTier: true, monthlyFee: true, planId: true, onlinePaymentAddon: true, aiVideoAddon: true,
           coffeeRefPrice: true, sandwichRefPrice: true,
           weeklyOrderCount: true,
           billingCycle: true, maintenancePack: true,

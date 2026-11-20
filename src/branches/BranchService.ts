@@ -7,6 +7,7 @@
 // already used for Table.mergedIntoTableId/mergedTables (routes/tables.ts).
 
 import prisma from '../prisma'
+import { getPlanAccess } from '../billing/planAccess'
 import { publishStandardEvent } from '../core'
 import { isFeatureAvailable } from '../tenant/services/FeatureResolutionService'
 
@@ -20,6 +21,9 @@ async function getCafeOrThrow(cafeId: string) {
 export async function addBranch(parentCafeId: string, branchCafeId: string, performedBy = 'system') {
   if (parentCafeId === branchCafeId) throw new Error('A cafe cannot be its own branch')
 
+  if (!(await getPlanAccess(parentCafeId)).features.multiBranch) {
+    throw new Error('Multi-branch requires the Enterprise plan')
+  }
   const allowed = await isFeatureAvailable(parentCafeId, 'multiLocation')
   if (!allowed) throw new Error('Multi-location is not enabled on the parent cafe\'s plan')
 

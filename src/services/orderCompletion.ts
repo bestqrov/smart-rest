@@ -11,6 +11,7 @@ import logger from '../logger'
 import { applyOrderFee } from './billing'
 import { deductInventoryForOrder } from './inventoryDeduction'
 import { earnPoints } from '../loyalty/LoyaltyService'
+import { getPlanAccess } from '../billing/planAccess'
 
 // ─── completeOrderFinancials — call inside the same $transaction that sets
 // order.status = 'COMPLETED' ─────────────────────────────────────────────────
@@ -40,6 +41,7 @@ export async function awardLoyaltyBestEffort(
 ): Promise<void> {
   if (!customerPhone) return
   try {
+    if (!(await getPlanAccess(cafeId)).features.loyalty) return
     await earnPoints(cafeId, customerPhone, orderTotal, orderId)
   } catch (err) {
     logger.error({ msg: 'Order completion: loyalty earn failed', orderId, cafeId, err })

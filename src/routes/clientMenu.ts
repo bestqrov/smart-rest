@@ -1,5 +1,6 @@
 import express, { Request, Response } from 'express'
 import prisma from '../prisma'
+import { getPlanAccess } from '../billing/planAccess'
 
 const router = express.Router()
 
@@ -59,6 +60,7 @@ router.get('/api/menu/public', async (req: Request, res: Response) => {
 
     // Expose only the public-facing payment config (no secrets)
     const pc = cafe.paymentConfig
+    const planAllowsOnline = (await getPlanAccess(table.cafeId)).features.onlinePayment
     const paymentGateway = pc ? {
       hasOrangeMoney:       !!pc.orangeMoneyNumber,
       hasMtnMomo:           !!pc.mtnMoMoNumber,
@@ -66,7 +68,7 @@ router.get('/api/menu/public', async (req: Request, res: Response) => {
       moyasarPublishableKey: pc.moyasarPublishableKey || null,
       hasStripe:            false,
       // Restaurant connected its own Tap / Moyasar / Stripe account
-      onlinePayment:        !!(pc.onlineProvider && pc.onlineSecretEnc),
+      onlinePayment:        !!(pc.onlineProvider && pc.onlineSecretEnc) && planAllowsOnline,
       onlineProvider:       pc.onlineSecretEnc ? (pc.onlineProvider || null) : null,
       whatsappNumber:       pc.whatsappNumber || null,
     } : null

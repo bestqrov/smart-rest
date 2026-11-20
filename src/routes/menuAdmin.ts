@@ -2,6 +2,7 @@ import express, { Request, Response } from 'express'
 import { authorizeAdmin } from '../middleware/authorizeAdmin'
 import logger from '../logger'
 import prisma from '../prisma'
+import { getPlanAccess } from '../billing/planAccess'
 import { getProductCatalog, resolveSelectedProducts } from '../onboarding/ProductCatalog'
 import { hashPassword } from '../auth/hash'
 
@@ -230,6 +231,16 @@ router.get('/api/admin/cafe/profile', authorizeAdmin, async (req: Request, res: 
     })
     return res.json(cafe)
   } catch (err) {
+    return res.status(500).json({ error: 'Failed' })
+  }
+})
+
+// ─── GET /api/admin/plan-access — what this venue's plan unlocks ─────────────
+router.get('/api/admin/plan-access', authorizeAdmin, async (req: Request, res: Response) => {
+  try {
+    return res.json(await getPlanAccess(req.admin!.cafeId))
+  } catch (err) {
+    logger.error({ msg: 'GET plan-access error', err })
     return res.status(500).json({ error: 'Failed' })
   }
 })
