@@ -879,10 +879,16 @@ export default function POSPage() {
                         <input type="number" value={cashInput} onChange={e => setCashInput(e.target.value)}
                           placeholder={`${L('cash_given')} (${currency})`}
                           className="flex-1 px-4 py-2.5 bg-gray-900 border border-gray-700 text-white rounded-xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500" />
-                        {[1, 5, 10].map(add => (
-                          <button key={add} onClick={() => setCashInput(v => String((parseFloat(v)||0) + add))}
+                        {/* Quick tender: exact amount + the next two banknotes above the total
+                            (what guests actually hand over), instead of +1/+5/+10 increments. */}
+                        {[
+                          { key: 'exact', label: L('cash_exact'), value: orderTotal },
+                          ...[10, 20, 50, 100, 200, 500, 1000].filter(n => n > orderTotal).slice(0, 2)
+                            .map(n => ({ key: String(n), label: String(n), value: n })),
+                        ].map(b => (
+                          <button key={b.key} onClick={() => setCashInput(String(Number(b.value.toFixed(2))))}
                             className="min-w-[44px] px-3 py-3 bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white rounded-xl text-xs font-bold transition-all active:scale-90">
-                            +{add}
+                            {b.label}
                           </button>
                         ))}
                       </div>

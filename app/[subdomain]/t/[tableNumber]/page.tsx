@@ -1345,24 +1345,24 @@ function TablePageInner() {
         </div>
       </header>
 
-      {/* ── Cafe hero — logo + name + branding (non-sticky, scrolls away) ── */}
-      <div className="flex flex-col items-center gap-3 py-6 px-4 border-b border-gray-800/60">
+      {/* ── Cafe hero — compact single row so the menu starts above the fold.
+            (Branding stays in the bottom bar; it was shown twice.) ── */}
+      <div className="flex items-center gap-3 py-3 px-4 border-b border-gray-800/60">
         {scan.cafeLogoUrl ? (
           <img
             src={scan.cafeLogoUrl}
             alt={scan.cafeName ?? ''}
-            className="w-20 h-20 rounded-2xl object-contain bg-white/5 border border-white/10 shadow-2xl"
+            className="w-12 h-12 rounded-xl object-contain bg-white/5 border border-white/10 shrink-0"
           />
         ) : (
-          <div className="w-20 h-20 rounded-2xl bg-gray-800 flex items-center justify-center text-4xl shadow-2xl">🍽️</div>
+          <div className="w-12 h-12 rounded-xl bg-gray-800 flex items-center justify-center text-2xl shrink-0">🍽️</div>
         )}
-        {scan.cafeName && (
-          <h1 className="text-xl font-black text-white tracking-tight">{scan.cafeName}</h1>
-        )}
-        <CertifiedBadge certified={certified} lang={lang} />
-        <p className="text-[10px] text-gray-600 font-medium tracking-widest uppercase">
-          Powered by <span className="text-gray-500 font-bold">Smart</span><span className="text-orange-500/80 font-bold">Restau</span> © 2025
-        </p>
+        <div className="min-w-0 flex-1">
+          {scan.cafeName && (
+            <h1 className="text-lg font-black text-white tracking-tight truncate">{scan.cafeName}</h1>
+          )}
+          <CertifiedBadge certified={certified} lang={lang} />
+        </div>
       </div>
 
       {/* ── Smart WiFi — appears once there's a verified active order ── */}
@@ -1553,15 +1553,17 @@ function TablePageInner() {
         </div>
         <div className="p-3 flex gap-2">
         {/* Waiter button */}
-        <button onClick={() => setWaiterOpen(true)}
-          className="flex-shrink-0 w-12 h-12 rounded-xl bg-gray-800/80 border border-gray-700/50 flex items-center justify-center text-xl active:scale-90 transition-transform">
-          🔔
+        <button onClick={() => setWaiterOpen(true)} aria-label={tr.callWaiter}
+          className="flex-shrink-0 w-14 h-12 rounded-xl bg-gray-800/80 border border-gray-700/50 flex flex-col items-center justify-center active:scale-90 transition-transform">
+          <span className="text-lg leading-none">🔔</span>
+          <span className="text-[9px] text-gray-400 mt-0.5 leading-none">{isRTL ? 'النادل' : lang === 'fr' ? 'Serveur' : lang === 'es' ? 'Mesero' : 'Waiter'}</span>
         </button>
 
         {/* Bill button */}
-        <button onClick={openBillModal}
-          className="flex-shrink-0 w-12 h-12 rounded-xl bg-blue-600/15 border border-blue-500/30 flex items-center justify-center text-xl active:scale-90 transition-transform">
-          🧾
+        <button onClick={openBillModal} aria-label={tr.requestBill}
+          className="flex-shrink-0 w-14 h-12 rounded-xl bg-blue-600/15 border border-blue-500/30 flex flex-col items-center justify-center active:scale-90 transition-transform">
+          <span className="text-lg leading-none">🧾</span>
+          <span className="text-[9px] text-blue-300/80 mt-0.5 leading-none">{isRTL ? 'الحساب' : lang === 'fr' ? 'Addition' : lang === 'es' ? 'Cuenta' : 'Bill'}</span>
         </button>
 
         {/* Cart button */}

@@ -167,6 +167,7 @@ const T = {
   invalid_amount:  { ar: 'مبلغ غير صالح', fr: 'Montant invalide', en: 'Invalid amount', es: 'Monto no válido' },
   cl_title:        { ar: 'إغلاق الصندوق', fr: 'Clôture de caisse', en: 'Close the drawer', es: 'Cierre de caja' },
   cl_discrepancy:  { ar: 'الفرق', fr: 'Écart', en: 'Discrepancy', es: 'Diferencia' },
+  cash_exact:      { ar: 'بالضبط', fr: 'Exact', en: 'Exact', es: 'Exacto' },
   cl_exact:        { ar: 'الصندوق مطابق', fr: 'Caisse exacte', en: 'Drawer balanced', es: 'Caja cuadrada' },
   cl_over:         { ar: 'فائض', fr: 'Excédent', en: 'Over', es: 'Sobrante' },
   cl_short:        { ar: 'عجز', fr: 'Manque', en: 'Short', es: 'Faltante' },
