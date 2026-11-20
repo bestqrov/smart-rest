@@ -1,8 +1,9 @@
 import { Router } from 'express'
 import {
   createAffiliate, listAffiliates, getAffiliateByCode, trackReferral,
-  approveCommission, markCommissionPaid, getCommissionHistory, getAffiliateSummary,
+  getCommissionHistory, getAffiliateSummary,
 } from '../affiliate/AffiliateService'
+import { setCommissionStatus } from '../affiliate/AgencyService'
 import { requireSuperAdmin } from './_billingAuthGuard'
 import { sendServerError } from '../middleware/errorHandler'
 
@@ -69,21 +70,21 @@ router.get('/api/superadmin/referrals/code/:code', async (req, res) => {
   } catch (err: any) { sendServerError(res, err) }
 })
 
-// PATCH /api/superadmin/commissions/:id/approve
+// PATCH /api/superadmin/commissions/:id/approve — AffiliateCommission ledger row PENDING → APPROVED
 router.patch('/api/superadmin/commissions/:id/approve', async (req, res) => {
   if (!requireSuperAdmin(req, res)) return
   try {
-    const commission = await approveCommission(req.params.id)
-    res.json({ commission })
+    await setCommissionStatus(req.params.id, 'APPROVED')
+    res.json({ ok: true })
   } catch (err: any) { res.status(400).json({ error: err.message }) }
 })
 
-// PATCH /api/superadmin/commissions/:id/pay
+// PATCH /api/superadmin/commissions/:id/pay — APPROVED → PAID (transfer itself is done manually)
 router.patch('/api/superadmin/commissions/:id/pay', async (req, res) => {
   if (!requireSuperAdmin(req, res)) return
   try {
-    const commission = await markCommissionPaid(req.params.id)
-    res.json({ commission })
+    await setCommissionStatus(req.params.id, 'PAID')
+    res.json({ ok: true })
   } catch (err: any) { res.status(400).json({ error: err.message }) }
 })
 

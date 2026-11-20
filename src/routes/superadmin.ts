@@ -5,6 +5,7 @@ import bcrypt from 'bcrypt'
 
 import logger from '../logger'
 import prisma from '../prisma'
+import { recordInvoiceCommission } from '../affiliate/AgencyService'
 import { JWT_SECRET } from '../config'
 import { sendEmail } from '../services/email'
 import {
@@ -617,7 +618,7 @@ router.patch('/api/superadmin/payment-requests/:id/confirm', requireSuperAdmin, 
     })
     if (!payReq) return res.status(404).json({ error: 'Not found' })
 
-    await prisma.$transaction(async (tx) => {
+    const invoice = await prisma.$transaction(async (tx) => {
       await tx.paymentRequest.update({
         where: { id },
         data:  { status: 'CONFIRMED', reviewedAt: new Date(), reviewNote: reviewNote?.trim() || null }
@@ -646,7 +647,7 @@ router.patch('/api/superadmin/payment-requests/:id/confirm', requireSuperAdmin, 
       const year     = new Date().getFullYear()
       const yearCount = await tx.billingInvoice.count({ where: { issuedAt: { gte: new Date(`${year}-01-01`) } } })
       const invoiceNumber = `INV-${year}-${String(yearCount + 1).padStart(5, '0')}`
-      await tx.billingInvoice.create({
+      return tx.billingInvoice.create({
         data: {
           cafeId:          payReq.cafeId,
           invoiceNumber,
@@ -658,6 +659,15 @@ router.patch('/api/superadmin/payment-requests/:id/confirm', requireSuperAdmin, 
           paidAt:          new Date(),
         }
       })
+    })
+
+    // Agency partner program — recurring commission on what the restaurant
+    // actually paid. Best-effort and idempotent per invoice; never fails this request.
+    await recordInvoiceCommission({
+      cafeId:     payReq.cafeId,
+      sourceKey:  `billingInvoice:${invoice.id}`,
+      paidAmount: payReq.amount,
+      currency:   payReq.currency,
     })
 
     logger.info({ msg: 'Payment confirmed — cafe reactivated', id, cafeId: payReq.cafeId })

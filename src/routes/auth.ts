@@ -4,6 +4,7 @@ import crypto from 'crypto'
 import { hashPassword, verifyPassword } from '../auth/hash'
 import logger from '../logger'
 import { JWT_SECRET } from '../config'
+import { attachReferralAtSignup } from '../affiliate/AgencyService'
 import prisma from '../prisma'
 import { sendMagicLink, sendEmail } from '../services/email'
 import { t, resolveLang, type Lang } from '../lib/i18n'
@@ -244,6 +245,8 @@ router.post('/api/auth/register', async (req: Request, res: Response) => {
 
     const { accessToken, refreshToken } = await issueTokenPair(user.id, cafe.id, {}, req)
 
+    await attachReferralAtSignup((req.body as { ref?: string }).ref, cafe.id)
+
     // Seed demo menu in background — gives new accounts a working menu on first QR scan
     seedDemoMenu(cafe.id).catch((e) => logger.warn({ msg: 'Demo menu seed failed', cafeId: cafe.id, err: e.message }))
 
@@ -316,6 +319,8 @@ router.post('/api/auth/quick-register', async (req: Request, res: Response) => {
       })
       return { user, cafe }
     })
+
+    await attachReferralAtSignup((req.body as { ref?: string }).ref, cafe.id)
 
     // Issue a short-lived magic link token (15 min)
     const magicToken = jwt.sign({ userId: user.id, cafeId: cafe.id, magic: true }, JWT_SECRET, { expiresIn: '15m' })
@@ -489,7 +494,8 @@ router.post('/api/auth/magic-send', async (req: Request, res: Response) => {
           country:      country.toUpperCase(),
           currency:     currencyFor(country),
           businessType: cleanBusinessType,
-          lang
+          lang,
+          ref:          typeof (req.body as { ref?: unknown }).ref === 'string' ? String((req.body as { ref: string }).ref).slice(0, 16) : undefined,
         }
       }
     })
@@ -577,6 +583,7 @@ router.get('/api/auth/magic-verify', async (req: Request, res: Response) => {
       currency:     string
       businessType: string
       lang:         Lang
+      ref?:         string
     }
 
     // ── Final uniqueness guard (race condition protection) ─────────────────────
@@ -620,6 +627,8 @@ router.get('/api/auth/magic-verify', async (req: Request, res: Response) => {
 
       return { user, cafe }
     })
+
+    await attachReferralAtSignup(cafeData.ref, cafe.id)
 
     // ── Mark token as used (single-use guarantee) ──────────────────────────────
     await prisma.verificationToken.update({

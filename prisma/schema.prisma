@@ -242,7 +242,10 @@ model Cafe {
   localIp         String? // LAN IP for offline fallback (set in Settings → e.g. 192.168.1.100)
 
   // ── Payment gateway configuration (set in Settings → Payments) ────────────
-  paymentConfig PaymentConfig?
+  paymentConfig         PaymentConfig?
+  // Agency partner program — set at signup via ?ref=CODE
+  referredByAffiliateId String?        @db.ObjectId
+  partnerDiscountPct    Float          @default(0) // % off per-order platform fees (agency clients: 15)
 
   // ── Per-restaurant feature flags (toggled by superadmin or admin) ──────────
   smartWifiEnabled               Boolean   @default(false)
@@ -2638,16 +2641,23 @@ model BillingPlatformInvoice {
 // a plain denormalized id (same convention as PaymentTransaction.tenantId
 // and other K18+ models), no formal relation.
 model AffiliateAccount {
-  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  id              String    @id @default(auto()) @map("_id") @db.ObjectId
   name            String
-  email           String   @unique
+  email           String    @unique
   phone           String?
-  referralCode    String   @unique
-  status          String   @default("ACTIVE") // ACTIVE | SUSPENDED
-  commissionType  String   @default("PERCENT") // PERCENT | FIXED
-  commissionValue Float    @default(10) // 10 = 10% if PERCENT, or a flat amount if FIXED
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  referralCode    String    @unique
+  status          String    @default("ACTIVE") // ACTIVE | SUSPENDED
+  commissionType  String    @default("PERCENT") // PERCENT | FIXED
+  commissionValue Float     @default(10) // 10 = 10% if PERCENT, or a flat amount if FIXED
+  // Agency partner program — tiered recurring commission (see src/affiliate/AgencyTiers.ts).
+  // AGENCY ignores commissionType/commissionValue; the rate comes from the live tier.
+  type            String    @default("AFFILIATE") // AFFILIATE | AGENCY
+  passwordHash    String? // partner portal login (/partners)
+  lastLoginAt     DateTime?
+  accountManager  String    @default("") // Platinum perk — shown in the portal
+  coBrandName     String    @default("") // Platinum perk — co-branding label
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   @@index([status])
 }
@@ -2665,6 +2675,7 @@ model ReferralConversion {
   commissionStatus String    @default("PENDING") // PENDING | APPROVED | PAID
   convertedAt      DateTime?
   paidAt           DateTime?
+  freeMenuSetup    Boolean   @default(false) // Gold perk — free menu setup for the agency's first 3 restaurants at Gold+
   createdAt        DateTime  @default(now())
 
   @@unique([referredCafeId])
@@ -2976,4 +2987,27 @@ model Coupon {
 
   @@unique([cafeId, code])
   @@index([cafeId, isActive])
+}
+
+// ─── Agency commission ledger — one row per PAID restaurant invoice ──────────
+// Recurring for as long as the referred restaurant keeps paying. Rate is the
+// agency's tier at the moment of payment; base is what the restaurant actually
+// paid (after its partner discount). sourceKey makes recording idempotent.
+model AffiliateCommission {
+  id               String    @id @default(auto()) @map("_id") @db.ObjectId
+  affiliateId      String    @db.ObjectId
+  referredCafeId   String    @db.ObjectId
+  sourceKey        String    @unique // "billingInvoice:<id>"
+  paidAmount       Float
+  currency         String
+  tier             String // SILVER | GOLD | PLATINUM
+  ratePct          Float
+  commissionAmount Float
+  status           String    @default("PENDING") // PENDING | APPROVED | PAID
+  approvedAt       DateTime?
+  paidAt           DateTime?
+  createdAt        DateTime  @default(now())
+
+  @@index([affiliateId, status])
+  @@index([affiliateId, createdAt])
 }

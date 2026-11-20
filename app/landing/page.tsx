@@ -21,6 +21,20 @@ type Lang = 'en' | 'fr' | 'ar'
 
 const T: Record<Lang, Record<string, string | string[]>> = {
   en: {
+    partnerLabel: 'Partner program for agencies',
+    partnerTitle: 'Earn recurring commission on every restaurant you bring',
+    partnerSub: 'For marketing agencies, consultants and POS resellers. You earn a monthly commission on what each referred restaurant actually pays — for as long as it keeps paying.',
+    partnerActive: 'active restaurants',
+    partnerCommission: 'recurring commission',
+    partnerPerkDiscount: '15% off platform fees for your clients',
+    partnerPerkMenu: 'Free menu setup for 3 restaurants',
+    partnerPerkManager: 'Dedicated account manager',
+    partnerPerkCobrand: 'Co-branding',
+    partnerUpTo: 'Up to ${n}/month',
+    partnerFrom: 'From ${n}+/month',
+    partnerExampleNote: 'Example based on a restaurant paying 100 USD/month.',
+    partnerCta: 'Become a partner',
+    partnerLogin: 'Partner login',
     tagline: 'Built for restaurants & cafés in Saudi Arabia, the UAE and Oman',
     h1a: 'Lower Costs. More Sales.', h1b: 'Fewer Order Mistakes.',
     h1c: '',
@@ -75,6 +89,20 @@ const T: Record<Lang, Record<string, string | string[]>> = {
     statsLabel: 'Built for the Gulf',
   },
   fr: {
+    partnerLabel: 'Programme partenaires pour agences',
+    partnerTitle: 'Une commission récurrente sur chaque restaurant apporté',
+    partnerSub: "Pour les agences marketing, consultants et revendeurs de caisses. Vous touchez chaque mois une commission sur ce que chaque restaurant parrainé paie réellement — tant qu'il continue de payer.",
+    partnerActive: 'restaurants actifs',
+    partnerCommission: 'de commission récurrente',
+    partnerPerkDiscount: '15 % de remise sur les frais de la plateforme pour vos clients',
+    partnerPerkMenu: 'Mise en place du menu offerte pour 3 restaurants',
+    partnerPerkManager: 'Account manager dédié',
+    partnerPerkCobrand: 'Co-branding',
+    partnerUpTo: "Jusqu'à ${n}/mois",
+    partnerFrom: 'À partir de ${n}+/mois',
+    partnerExampleNote: 'Exemple basé sur un restaurant payant 100 USD/mois.',
+    partnerCta: 'Devenir partenaire',
+    partnerLogin: 'Espace partenaire',
     tagline: "Conçu pour les restaurants et cafés en Arabie Saoudite, aux Émirats et à Oman",
     h1a: 'Moins de Coûts. Plus de Ventes.', h1b: "Moins d'Erreurs de Commande.",
     h1c: '',
@@ -129,6 +157,20 @@ const T: Record<Lang, Record<string, string | string[]>> = {
     statsLabel: 'Conçu pour le Golfe',
   },
   ar: {
+    partnerLabel: 'برنامج الشركاء للوكالات',
+    partnerTitle: 'عمولة شهرية متكررة عن كل مطعم تُحضره',
+    partnerSub: 'لوكالات التسويق والمستشارين وموزّعي أنظمة نقاط البيع. تحصل كل شهر على عمولة من المبلغ الذي يدفعه فعلياً كل مطعم أحلته إلينا — طوال مدة استمراره في الدفع.',
+    partnerActive: 'مطاعم نشطة',
+    partnerCommission: 'عمولة متكررة',
+    partnerPerkDiscount: 'خصم 15٪ على رسوم المنصة لعملائك',
+    partnerPerkMenu: 'إعداد المنيو مجاناً لـ 3 مطاعم',
+    partnerPerkManager: 'مدير حساب مخصّص',
+    partnerPerkCobrand: 'علامة تجارية مشتركة',
+    partnerUpTo: 'حتى {n}$ شهرياً',
+    partnerFrom: 'ابتداءً من {n}$+ شهرياً',
+    partnerExampleNote: 'مثال مبني على مطعم يدفع 100 دولار شهرياً.',
+    partnerCta: 'انضم كشريك',
+    partnerLogin: 'دخول الشركاء',
     tagline: 'مصمَّم للمطاعم والمقاهي في السعودية والإمارات وعُمان',
     h1a: 'تكاليف أقل. مبيعات أكثر.', h1b: 'وأخطاء أقل في الطلبات.',
     h1c: '',
@@ -1730,6 +1772,53 @@ export default function LandingPage() {
             <a href="#contact" className="inline-flex items-center gap-2 border-2 border-gray-900 text-gray-900 font-bold px-6 py-3 rounded-xl hover:bg-gray-900 hover:text-white transition-all text-sm">
               {t('enterpriseCta')} <ArrowRight className="w-4 h-4" />
             </a>
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      {/* PARTNER PROGRAM (agencies) */}
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      <section id="partners" className="py-24" style={{ background: 'var(--cb)' }}>
+        <div className="max-w-6xl mx-auto px-4">
+          <div className="text-center mb-14">
+            <span className="inline-block bg-blue-100 text-blue-700 px-4 py-1 rounded-full text-sm font-semibold mb-4">{t('partnerLabel')}</span>
+            <h2 className="text-3xl sm:text-4xl font-extrabold" style={{ color: 'var(--ct)' }}>{t('partnerTitle')}</h2>
+            <p className="mt-3 text-lg max-w-2xl mx-auto" style={{ color: 'var(--ctm)' }}>{t('partnerSub')}</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            {[
+              { name: 'Silver',   range: '1–5',  rate: 25, perks: ['partnerPerkDiscount'], ex: t('partnerUpTo').replace('{n}', '125'), cls: 'from-slate-400 to-slate-600' },
+              { name: 'Gold',     range: '6–15', rate: 30, perks: ['partnerPerkDiscount', 'partnerPerkMenu'], ex: t('partnerUpTo').replace('{n}', '450'), cls: 'from-amber-400 to-amber-600' },
+              { name: 'Platinum', range: '16+',  rate: 35, perks: ['partnerPerkDiscount', 'partnerPerkMenu', 'partnerPerkManager', 'partnerPerkCobrand'], ex: t('partnerFrom').replace('{n}', '525'), cls: 'from-indigo-500 to-violet-700' },
+            ].map(tier => (
+              <div key={tier.name} className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm flex flex-col">
+                <div className={`bg-gradient-to-br ${tier.cls} px-6 py-5 text-white`}>
+                  <h3 className="font-extrabold text-lg">{tier.name}</h3>
+                  <p className="text-white/80 text-sm mt-1"><span dir="ltr">{tier.range}</span> {t('partnerActive')}</p>
+                  <div className="text-4xl font-extrabold mt-3">{tier.rate}%</div>
+                  <p className="text-white/80 text-xs">{t('partnerCommission')}</p>
+                </div>
+                <div className="px-6 py-5 flex-1 flex flex-col">
+                  <ul className="space-y-2 mb-4 flex-1">
+                    {tier.perks.map(k => (
+                      <li key={k} className="flex items-start gap-2 text-sm text-gray-700">
+                        <CheckCircle className="w-4 h-4 text-green-600 shrink-0 mt-0.5" /> {t(k)}
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="font-bold text-sm" style={{ color: 'var(--cp)' }}>{tier.ex}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="text-center text-xs mt-4" style={{ color: 'var(--ctm)' }}>{t('partnerExampleNote')}</p>
+          <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
+            <a href={`https://wa.me/${contactPhone.replace(/\D/g, '')}?text=${encodeURIComponent(t('partnerCta') + ' — SmartRestau')}`} target="_blank" rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 bg-gray-900 hover:bg-gray-800 text-white font-bold px-6 py-3 rounded-xl transition-colors text-sm">
+              <MessageCircle className="w-4 h-4" /> {t('partnerCta')}
+            </a>
+            <Link href="/partners" className="text-sm font-semibold underline" style={{ color: 'var(--ctm)' }}>{t('partnerLogin')}</Link>
           </div>
         </div>
       </section>

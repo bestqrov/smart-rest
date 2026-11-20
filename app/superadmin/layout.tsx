@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Store, CreditCard,
   Brain, ShieldCheck, LogOut,
   ChevronDown, ChevronLeft, ChevronRight, Menu, X, KeyRound, HeartPulse,
-  ShoppingBag, Tag, Package, Truck, ClipboardList, Warehouse, Contact,
+  ShoppingBag, Tag, Handshake, Package, Truck, ClipboardList, Warehouse, Contact,
 } from 'lucide-react'
 import { SAAuthProvider, useSAAuth } from './context'
 
@@ -24,6 +24,7 @@ const NAV = [
     items: [
       { href: '/superadmin/restaurants', icon: Store,      label: 'Restaurants' },
       { href: '/superadmin/billing',     icon: CreditCard, label: 'Billing' },
+      { href: '/superadmin/agencies',    icon: Handshake,  label: 'Agencies' },
     ],
   },
   {
