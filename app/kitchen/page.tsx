@@ -428,7 +428,9 @@ export default function KitchenPage() {
     socket.on('reconnect', () => socket.emit('join', `kds_room_${cafeId}`))
     socket.on('kds_new_order', (ticket: KdsTicket) => {
       if (deliveredIds.current.has(ticket.orderId)) return
-      alertOrderIds.current.add(ticket.orderId); startBeepLoop()
+      // Auto-accept (owner decision 2026-11-20): one chime on arrival instead of
+      // the repeating alarm; the effect below moves the ticket to PREPARING.
+      if (!mutedRef.current) playKitchenAlert()
       setTickets(prev => {
         if (prev.find(t => t.orderId === ticket.orderId)) return prev
         return [...prev, { ...ticket, status: 'PENDING' as const }]
@@ -459,6 +461,20 @@ export default function KitchenPage() {
     })
     return () => { socket.disconnect(); if (beepTimerRef.current) { clearInterval(beepTimerRef.current); beepTimerRef.current = null } }
   }, [authed, cafeId])
+
+  // Auto-accept: every PENDING ticket that reaches this screen (live or on
+  // load) is moved to PREPARING once. If that fails, accept() reverts it to
+  // PENDING with the alarm, and the manual Start button remains as fallback.
+  const autoAccepted = useRef<Set<string>>(new Set())
+  useEffect(() => {
+    for (const t of tickets) {
+      if (t.status === 'PENDING' && !autoAccepted.current.has(t.orderId)) {
+        autoAccepted.current.add(t.orderId)
+        accept(t.orderId)
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tickets])
 
   // actions
   async function accept(orderId: string) {
