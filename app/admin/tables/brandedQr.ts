@@ -4,11 +4,12 @@
 //   • quiet zone of 4 modules (QR spec) — cameras need it to find the code
 //   • rounded-square modules at 90% of a cell (circles lose too much ink)
 //   • brand colour darkened until it has ≥ 4.5:1 contrast on white
-// Then every image is decoded by the browser's own QR reader (BarcodeDetector,
-// Chrome/Edge/Android) at full size and at a small print size; if it doesn't
-// read back the exact URL we fall back to a simpler variant.
+// Then every image is decoded (BarcodeDetector in Chrome/Edge/Android, jsQR in
+// other browsers) at full size and at a small print size; if it doesn't read
+// back the exact URL we fall back to a simpler variant.
 
 import QRCode from 'qrcode'
+import jsQR from 'jsqr'
 
 export type QrVariant = 'branded' | 'simple' | 'plain'
 export interface QrResult { dataUrl: string; variant: QrVariant; verified: boolean | null }
@@ -122,17 +123,24 @@ async function getDetector(): Promise<any | null> {
 }
 
 async function verify(canvas: HTMLCanvasElement, url: string): Promise<boolean | null> {
+  // Native reader where available (Chrome/Edge/Android), jsQR everywhere else
+  // (Safari, Firefox) — so every browser gets a real decode check.
   const d = await getDetector()
-  if (!d) return null
   try {
     for (const px of [SIZE, 160]) {           // on-screen size and a small table-tent print
       const c = document.createElement('canvas'); c.width = px; c.height = px
       const ctx = c.getContext('2d')!
       ctx.imageSmoothingEnabled = true
       ctx.drawImage(canvas, 0, 0, px, px)
-      const codes = await d.detect(c)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      if (!codes.some((x: any) => x.rawValue === url)) return false
+      if (d) {
+        const codes = await d.detect(c)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        if (!codes.some((x: any) => x.rawValue === url)) return false
+      } else {
+        const img = ctx.getImageData(0, 0, px, px)
+        const res = jsQR(img.data, px, px, { inversionAttempts: 'dontInvert' })
+        if (res?.data !== url) return false
+      }
     }
     return true
   } catch { return null }
