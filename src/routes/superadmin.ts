@@ -6,6 +6,7 @@ import bcrypt from 'bcrypt'
 import logger from '../logger'
 import prisma from '../prisma'
 import { recordInvoiceCommission } from '../affiliate/AgencyService'
+import { issueDueInvoiceFor } from '../billing/subscriptionBilling'
 import { JWT_SECRET } from '../config'
 import { sendEmail } from '../services/email'
 import {
@@ -409,6 +410,11 @@ router.post('/api/superadmin/tenants/:id/activate', requireSuperAdmin, async (re
     })
 
     logger.info({ msg: 'Cafe manually activated', cafeId: id, monthlyFee, tier, planId, onlinePaymentAddon, aiVideoAddon })
+
+    // Subscription venues: bill the first month now (period anchored on today).
+    if (planId) {
+      try { await issueDueInvoiceFor(id) } catch (err) { logger.error({ msg: 'First invoice failed', cafeId: id, err }) }
+    }
     return res.json({ ok: true })
   } catch (err) {
     return res.status(500).json({ error: 'Failed' })

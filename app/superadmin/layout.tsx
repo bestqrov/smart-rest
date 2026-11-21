@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Store, CreditCard,
   Brain, ShieldCheck, LogOut,
   ChevronDown, ChevronLeft, ChevronRight, Menu, X, KeyRound, HeartPulse,
-  ShoppingBag, Tag, Handshake, Package, Truck, ClipboardList, Warehouse, Contact, Globe,
+  ShoppingBag, Tag, Handshake, Package, Truck, ClipboardList, Warehouse, Contact, Globe, FileText, Landmark,
 } from 'lucide-react'
 import { SAAuthProvider, useSAAuth } from './context'
 
@@ -31,6 +31,8 @@ const NAV = [
     section: 'المال',
     items: [
       { href: '/superadmin/billing',  icon: CreditCard, label: 'الفوترة' },
+      { href: '/superadmin/billing/invoices',         icon: FileText, label: 'فواتير الاشتراكات' },
+      { href: '/superadmin/billing/payment-settings', icon: Landmark, label: 'إعدادات الدفع' },
       { href: '/superadmin/agencies', icon: Handshake,  label: 'الوكالات' },
     ],
   },

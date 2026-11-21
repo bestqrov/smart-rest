@@ -12,6 +12,7 @@ import {
   Cloud, CloudRain, CloudSnow, CloudLightning, CloudFog, Sun,
 } from 'lucide-react'
 import { AdminLangProvider, useLang, type AdminLang } from './lang-context'
+import SubscriptionLock from './subscription-lock'
 import { A, type AdminT } from '@/lib/adminI18n'
 import AdminSidebarNav from './AdminSidebarNav'
 
@@ -276,6 +277,8 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
   const [isDemo, setIsDemo] = useState(false)
   const [showDemoExit, setShowDemoExit] = useState(false)
   const [marketplaceEnabled, setMarketplaceEnabled] = useState(false)
+  const [subLock, setSubLock] = useState<{ payToken: string | null } | null>(null)
+  const [subChecked, setSubChecked] = useState(false)
 
   function authHeader() { return { Authorization: `Bearer ${localStorage.getItem('token')}` } }
 
@@ -468,6 +471,21 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
     COLLECTING_DEBT: t.statusActive,
     SUSPENDED:       t.statusSuspend,
   }
+
+  // Subscription suspension: checked once after the venue profile has loaded.
+  useEffect(() => {
+    if (!cafe || subChecked) return
+    setSubChecked(true)
+    fetch('/api/admin/subscription-invoices', { headers: authHeader() })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (!d?.suspended) return
+        const unpaid = (d.invoices ?? []).filter((i: { status: string }) => i.status === 'ISSUED' || i.status === 'PENDING_CONFIRMATION')
+        const oldest = unpaid[unpaid.length - 1] // list is newest first
+        setSubLock({ payToken: oldest?.payToken ?? null })
+      })
+      .catch(() => {})
+  }, [cafe, subChecked])
 
   const showPaymentGate = cafe
     && pathname !== '/admin/billing'
@@ -697,7 +715,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
             />
           )}
           <div className="relative z-10 h-full">
-            {children}
+            {subLock ? <SubscriptionLock lang={lang} payToken={subLock.payToken} /> : children}
           </div>
         </main>
       </div>

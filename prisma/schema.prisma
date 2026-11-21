@@ -250,6 +250,9 @@ model Cafe {
   planId                String? // STARTER | PRO | ENTERPRISE
   onlinePaymentAddon    Boolean        @default(false) // Starter add-on: online bill payment (+$19/mo)
   aiVideoAddon          Boolean        @default(false) // add-on: AI marketing videos, 5/month (+$29/mo)
+  // Subscription billing (src/billing/subscriptionBilling.ts)
+  currentPeriodEnd      DateTime? // next invoice is issued when this passes
+  subscriptionSuspended Boolean        @default(false) // 14 days overdue -> admin dashboard locked (guest menu + staff keep working)
 
   // ── Per-restaurant feature flags (toggled by superadmin or admin) ──────────
   smartWifiEnabled               Boolean   @default(false)
@@ -1390,14 +1393,26 @@ model BillingInvoice {
 
   paymentRequestId String? @db.ObjectId // linked PaymentRequest
 
-  status String @default("ISSUED") // ISSUED | PAID | VOID
+  status String @default("ISSUED") // ISSUED | PENDING_CONFIRMATION | PAID | VOID
 
   issuedAt DateTime  @default(now())
   paidAt   DateTime?
 
+  // Subscription invoices (planId set). Public pay page: /billing/pay/<payToken>
+  planId             String?
+  dueAt              DateTime?
+  payToken           String? // random, unguessable — not @unique (Mongo would collide on nulls)
+  reminder1At        DateTime?
+  reminder2At        DateTime?
+  suspendedAt        DateTime?
+  transferRef        String? // reference the restaurant gave for a bank transfer
+  transferReportedAt DateTime?
+  tapChargeId        String?
+
   @@index([cafeId])
   @@index([status])
   @@index([issuedAt])
+  @@index([payToken])
 }
 
 // ─── Dynamic QR — Client Sessions (one QR per table, seats assigned at scan) ──

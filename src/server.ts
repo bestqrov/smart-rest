@@ -14,6 +14,8 @@ import { initEmailEngine }          from './email/EmailEngine'
 import { initAffiliateEngine }      from './affiliate/AffiliateService'
 import { initIntelligenceCore }     from './intelligence'
 import { startEmailSchedulerCron }  from './cron/emailScheduler'
+import { startSubscriptionBillingCron } from './cron/subscriptionBilling'
+import subscriptionBillingRouter from './routes/subscriptionBilling'
 import { startSocialSchedulerCron } from './cron/socialScheduler'
 
 import express from 'express'
@@ -387,6 +389,7 @@ async function main() {
   app.use(branchesSARouter)
   app.use(affiliateAdminRouter)
   app.use(agencyPartnersRouter)
+  app.use(subscriptionBillingRouter)
   app.use(seoAdminRouter)
   app.use(inventoryAdminRouter)
   app.use(reviewGalleryRouter)
@@ -464,6 +467,7 @@ async function main() {
     startSubscriptionLifecycleCron(),
     startWhatsAppSchedulerCron(),
     startEmailSchedulerCron(),
+    startSubscriptionBillingCron(),
     startSocialSchedulerCron(),
     startShiftOvertimeLockCron(),
   ]

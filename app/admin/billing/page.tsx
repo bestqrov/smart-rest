@@ -6,6 +6,7 @@ import {
   Clock, ArrowUpRight, ArrowDownRight, Loader2,
   ChevronDown, RefreshCw, Gift, Zap
 } from 'lucide-react'
+import SubscriptionInvoices from './subscription-invoices'
 
 type BillingStatus = 'GRACE_PERIOD' | 'COLLECTING_DEBT' | 'SUSPENDED' | string
 type WalletLog = { id: number; type: string; amount: string; description: string; createdAt: string }
@@ -86,6 +87,7 @@ export default function BillingPage() {
 
   return (
     <div className="p-4 sm:p-6 max-w-3xl mx-auto space-y-6" dir="rtl">
+      <SubscriptionInvoices />
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-extrabold text-gray-900 flex items-center gap-2">
           <CreditCard className="w-6 h-6 text-emerald-600" /> الفواتير والرصيد
