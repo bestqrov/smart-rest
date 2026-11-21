@@ -1,12 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import QRCode from 'qrcode'
+import { useEffect, useRef, useState } from 'react'
 import {
   QrCode, Download, Printer, Loader2, Plus, Minus,
   RefreshCw, CheckCircle, Layers, Unlink, PowerOff, Power, Pencil, X
 } from 'lucide-react'
 import { useLang } from '../lang-context'
+import { makeBrandedQr, makeTableCard, type QrResult } from './brandedQr'
 
 type Seat = { id: string; seatNumber: number; qrToken: string }
 type TableRow = {
@@ -49,6 +49,7 @@ const T = {
     disableHint: 'تعطيل الطاولة (تصبح غير متاحة للطلب)', disable: 'تعطيل',
     enableHint: 'تفعيل الطاولة — تصبح متاحة للطلب ميدانياً', enable: 'تفعيل الطاولة',
     downloadQr: 'تحميل QR', chairs: 'عدد الكراسي:',
+    scanToOrder: 'امسح الرمز للطلب', qrVerified: 'تم التحقق من قراءته', qrNoReader: 'صُمّم وفق قواعد القراءة (افتح الصفحة في Chrome للتحقق)', qrFallback: 'استُعمل تصميم أبسط لضمان القراءة',
     occupancy: (a: number, v: number | undefined) => `(${a} مشغول · ${v ?? 0} شاغر)`,
   },
   fr: {
@@ -74,6 +75,7 @@ const T = {
     disableHint: 'Désactiver la table (plus disponible pour commander)', disable: 'Désactiver',
     enableHint: 'Activer la table — disponible pour commander sur place', enable: 'Activer la table',
     downloadQr: 'Télécharger le QR', chairs: 'Nombre de chaises :',
+    scanToOrder: 'Scannez pour commander', qrVerified: 'Lecture vérifiée', qrNoReader: 'Conçu selon les règles de lisibilité (ouvrez dans Chrome pour vérifier)', qrFallback: 'Design simplifié utilisé pour garantir la lecture',
     occupancy: (a: number, v: number | undefined) => `(${a} occupée(s) · ${v ?? 0} libre(s))`,
   },
   en: {
@@ -99,6 +101,7 @@ const T = {
     disableHint: 'Disable table (no longer available for ordering)', disable: 'Disable',
     enableHint: 'Enable table — becomes available for on-site ordering', enable: 'Enable table',
     downloadQr: 'Download QR', chairs: 'Chairs:',
+    scanToOrder: 'Scan to order', qrVerified: 'Scan verified', qrNoReader: 'Built to scannability rules (open in Chrome to verify)', qrFallback: 'Simpler design used to guarantee scanning',
     occupancy: (a: number, v: number | undefined) => `(${a} occupied · ${v ?? 0} free)`,
   },
   es: {
@@ -124,113 +127,17 @@ const T = {
     disableHint: 'Desactivar mesa (deja de estar disponible para pedidos)', disable: 'Desactivar',
     enableHint: 'Activar mesa — disponible para pedidos en el local', enable: 'Activar mesa',
     downloadQr: 'Descargar QR', chairs: 'Número de sillas:',
+    scanToOrder: 'Escanea para pedir', qrVerified: 'Lectura verificada', qrNoReader: 'Diseñado con reglas de legibilidad (abre en Chrome para verificar)', qrFallback: 'Se usó un diseño más simple para garantizar la lectura',
     occupancy: (a: number, v: number | undefined) => `(${a} ocupados · ${v ?? 0} libres)`,
   },
 }
 
-function loadImage(src: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const img = new Image()
-    img.crossOrigin = 'anonymous'
-    img.onload = () => resolve(img)
-    img.onerror = reject
-    img.src = src
-  })
-}
 
 /**
  * Artistic "stealth" QR — data modules as orange circles, finder patterns as
  * navy rounded squares, large centre logo. Looks like a branded logo element
  * but scans fine (errorCorrectionLevel H tolerates 30% occlusion).
  */
-async function makeStealthQr(url: string, logoUrl: string | null): Promise<string> {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const qrData: any = (QRCode as any).create(url, { errorCorrectionLevel: 'H' })
-    const modules = qrData.modules
-    const n: number = modules.size
-
-    const SIZE   = 480
-    const MARGIN = Math.round(SIZE * 0.04)
-    const cell   = (SIZE - 2 * MARGIN) / n
-
-    const canvas = document.createElement('canvas')
-    canvas.width = SIZE; canvas.height = SIZE
-    const ctx = canvas.getContext('2d')
-    if (!ctx) throw new Error('no ctx')
-
-    // White background
-    ctx.fillStyle = '#ffffff'
-    ctx.fillRect(0, 0, SIZE, SIZE)
-
-    const ORANGE = '#FF4B1F'
-    const NAVY   = '#1a2744'
-
-    // Top-left, top-right, bottom-left finder pattern zones (7×7 modules)
-    function isFinder(r: number, c: number) {
-      return (r < 7 && c < 7) || (r < 7 && c >= n - 7) || (r >= n - 7 && c < 7)
-    }
-
-    for (let r = 0; r < n; r++) {
-      for (let c = 0; c < n; c++) {
-        if (!modules.get(r, c)) continue
-        const cx = MARGIN + c * cell + cell / 2
-        const cy = MARGIN + r * cell + cell / 2
-        const sz = cell * 0.82
-
-        ctx.fillStyle = isFinder(r, c) ? NAVY : ORANGE
-
-        if (isFinder(r, c)) {
-          // Rounded squares for finder (navigation) modules
-          ctx.beginPath()
-          ctx.roundRect(cx - sz / 2, cy - sz / 2, sz, sz, sz * 0.28)
-          ctx.fill()
-        } else {
-          // Circles for data modules
-          ctx.beginPath()
-          ctx.arc(cx, cy, sz / 2, 0, Math.PI * 2)
-          ctx.fill()
-        }
-      }
-    }
-
-    // Centre logo — white circle bg + logo
-    if (logoUrl) {
-      const logoImg = await loadImage(logoUrl)
-      const logoSize = SIZE * 0.28
-      const lx = (SIZE - logoSize) / 2
-      const ly = (SIZE - logoSize) / 2
-      const pad = logoSize * 0.16
-
-      // Soft white circle behind logo
-      ctx.fillStyle = '#ffffff'
-      ctx.beginPath()
-      ctx.arc(SIZE / 2, SIZE / 2, logoSize / 2 + pad, 0, Math.PI * 2)
-      ctx.fill()
-
-      ctx.drawImage(logoImg, lx, ly, logoSize, logoSize)
-    }
-
-    return canvas.toDataURL('image/png')
-  } catch {
-    // Fallback: plain QR with logo
-    const plain = await QRCode.toDataURL(url, { width: 320, margin: 2, errorCorrectionLevel: 'H' })
-    if (!logoUrl) return plain
-    try {
-      const [qrImg, logoImg] = await Promise.all([loadImage(plain), loadImage(logoUrl)])
-      const canvas = document.createElement('canvas')
-      canvas.width = qrImg.width; canvas.height = qrImg.height
-      const ctx = canvas.getContext('2d')!
-      ctx.drawImage(qrImg, 0, 0)
-      const ls = qrImg.width * 0.25
-      const px = (qrImg.width - ls) / 2
-      ctx.fillStyle = '#fff'; ctx.fillRect(px - ls * 0.12, px - ls * 0.12, ls + ls * 0.24, ls + ls * 0.24)
-      ctx.drawImage(logoImg, px, px, ls, ls)
-      return canvas.toDataURL('image/png')
-    } catch { return plain }
-  }
-}
-
 export default function TablesPage() {
   const { lang, isRTL } = useLang()
   const t = T[lang]
@@ -242,6 +149,10 @@ export default function TablesPage() {
   // Off by default: re-syncing the table count must not overwrite seats set per table.
   const [applyCapacityToAll, setApplyCapacityToAll] = useState(false)
   const [qrImages, setQrImages]   = useState<Record<string, string>>({})
+  const [qrMeta, setQrMeta]       = useState<Record<string, Pick<QrResult, 'variant' | 'verified'>>>({})
+  const [qrCards, setQrCards]     = useState<Record<string, string>>({})   // print/download card per table
+  const [brand, setBrand]         = useState<{ color: string | null; name: string }>({ color: null, name: '' })
+  const brandRef = useRef<{ color: string | null; name: string }>({ color: null, name: '' })
   const [subdomain, setSubdomain] = useState('')
   const [cafeLogoUrl, setCafeLogoUrl] = useState<string | null>(null)
   const [mergeSource, setMergeSource] = useState<string[]>([])
@@ -282,15 +193,24 @@ export default function TablesPage() {
 
   async function renderQrCodes(data: TableRow[], sub = subdomain, logo = cafeLogoUrl) {
     const origin = typeof window !== 'undefined' ? window.location.origin : ''
+    const b = brandRef.current
     const imgs: Record<string, string> = {}
-    for (const t of data) {
+    const meta: Record<string, Pick<QrResult, 'variant' | 'verified'>> = {}
+    const cards: Record<string, string> = {}
+    for (const row of data) {
       // Single QR per table — uses Table.qrToken (not per-seat)
-      const url = `${origin}/${sub}/t/${t.tableNumber}?token=${t.qrToken}`
+      const url = `${origin}/${sub}/t/${row.tableNumber}?token=${row.qrToken}`
       try {
-        imgs[t.qrToken] = await makeStealthQr(url, logo)
+        const qr = await makeBrandedQr(url, { logoUrl: logo, color: b.color })
+        imgs[row.qrToken] = qr.dataUrl
+        meta[row.qrToken] = { variant: qr.variant, verified: qr.verified }
+        cards[row.qrToken] = await makeTableCard(qr.dataUrl, {
+          cafeName: b.name, tableLabel: t.table(row.tableNumber), cta: t.scanToOrder,
+          color: b.color, logoUrl: logo, rtl: isRTL,
+        })
       } catch {}
     }
-    setQrImages(imgs)
+    setQrImages(imgs); setQrMeta(meta); setQrCards(cards)
   }
 
   async function loadSessions(data: TableRow[]) {
@@ -315,8 +235,12 @@ export default function TablesPage() {
       setLoading(true)
 
       const profileRes = await fetch('/api/admin/cafe/profile', { headers: { Authorization: `Bearer ${token}` } })
-      const logo = profileRes.ok ? (await profileRes.json())?.logoUrl ?? null : null
+      const profile = profileRes.ok ? await profileRes.json() : null
+      const logo = profile?.logoUrl ?? null
       setCafeLogoUrl(logo)
+      const b = { color: profile?.accentColor ?? null, name: profile?.businessName || profile?.name || '' }
+      setBrand(b)
+      brandRef.current = b
 
       const r = await fetch('/api/tables', { headers: { Authorization: `Bearer ${token}` } })
       if (r.ok) {
@@ -427,16 +351,16 @@ export default function TablesPage() {
     <style>
       body { margin: 0; font-family: sans-serif; background: #fff; }
       .grid { display: flex; flex-wrap: wrap; gap: 16px; padding: 20px; }
-      .card { border: 2px solid #064e3b; border-radius: 16px; padding: 16px; text-align: center; width: 180px; break-inside: avoid; }
-      .card img { width: 148px; height: 148px; }
+      .card { border: 1px solid #e5e7eb; border-radius: 16px; overflow: hidden; text-align: center; width: 230px; break-inside: avoid; }
+      .card img { width: 230px; height: auto; display: block; }
       .table { font-weight: 900; font-size: 18px; color: #064e3b; margin-top: 8px; }
       .cap { font-size: 11px; color: #6b7280; margin-top: 4px; }
       @media print { @page { margin: 8mm; } }
     </style></head><body><div class="grid">`)
     // ONE QR per table (dynamic seat assignment on scan)
     tables.forEach(row => {
-      const img = qrImages[row.qrToken] || ''
-      w.document.write(`<div class="card"><img src="${img}" /><div class="table">${t.table(row.tableNumber)}</div><div class="cap">${t.seats(row.capacity)}</div></div>`)
+      const img = qrCards[row.qrToken] || qrImages[row.qrToken] || ''
+      w.document.write(`<div class="card"><img src="${img}" /></div>`)
     })
     w.document.write('</div></body></html>')
     w.document.close()
@@ -749,10 +673,17 @@ export default function TablesPage() {
                     </div>
                   )}
                   {table.isActive && qrImages[table.qrToken] && (
-                    <a href={qrImages[table.qrToken]} download={`Table-${table.tableNumber}.png`}
+                    <a href={qrCards[table.qrToken] || qrImages[table.qrToken]} download={`Table-${table.tableNumber}.png`}
                       className="text-xs text-emerald-600 hover:text-emerald-800 flex items-center gap-0.5">
                       <Download className="w-3 h-3" /> {t.downloadQr}
                     </a>
+                  )}
+                  {qrMeta[table.qrToken] && (
+                    <p className={`text-[10px] text-center max-w-[9rem] leading-tight ${qrMeta[table.qrToken].verified === true && qrMeta[table.qrToken].variant === 'branded' ? 'text-emerald-600' : 'text-amber-600'}`}>
+                      {qrMeta[table.qrToken].verified === null ? t.qrNoReader
+                        : qrMeta[table.qrToken].variant !== 'branded' ? t.qrFallback
+                        : '✓ ' + t.qrVerified}
+                    </p>
                   )}
                 </div>
 
