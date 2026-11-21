@@ -66,7 +66,7 @@ type Cell = boolean | Record<Lang, string>
 type Row = { ar: string; en: string; fr: string; inc: [Cell, Cell, Cell] }
 const ROWS: Row[] = [
   { ar: 'منيو QR والطلب من الطاولة', en: 'QR menu & table ordering', fr: 'Menu QR et commande à table',
-    inc: [{ ar: 'حتى 15 طاولة', en: 'Up to 15 tables', fr: 'Jusqu’à 15 tables' }, true, true] },
+    inc: [{ ar: 'حتى 25 طاولة', en: 'Up to 25 tables', fr: 'Jusqu’à 25 tables' }, true, true] },
   { ar: 'نقطة البيع (الكاشير) وشاشة المطبخ', en: 'POS (cashier) & kitchen display', fr: 'Caisse et écran cuisine', inc: [true, true, true] },
   { ar: 'الدفع الإلكتروني (مدى، Apple Pay، البطاقات) عبر حسابك', en: 'Online payment (mada, Apple Pay, cards) to your own account', fr: 'Paiement en ligne (mada, Apple Pay, cartes) sur votre compte',
     inc: [{ ar: 'إضافة 19$ / شهر', en: '+$19 / month add-on', fr: 'Option 19 $ / mois' }, true, true] },

@@ -40,7 +40,7 @@ export function planPrice(id: PlanId, currency: PlanCurrency, cycle: 'monthly' |
 export type PlanFeature = 'loyalty' | 'coupons' | 'whatsappMarketing' | 'aiMarketing' | 'multiBranch' | 'onlinePayment'
 
 export const PLAN_FEATURES: Record<PlanId, { maxTables: number | null; features: PlanFeature[]; addons: PlanFeature[] }> = {
-  STARTER:    { maxTables: 15,   features: [],                                                                                 addons: ['onlinePayment'] },
+  STARTER:    { maxTables: 25,   features: [],                                                                                 addons: ['onlinePayment'] },
   PRO:        { maxTables: null, features: ['loyalty', 'coupons', 'whatsappMarketing', 'aiMarketing', 'onlinePayment'],                 addons: [] },
   ENTERPRISE: { maxTables: null, features: ['loyalty', 'coupons', 'whatsappMarketing', 'aiMarketing', 'onlinePayment', 'multiBranch'], addons: [] },
 }
