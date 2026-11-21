@@ -12,6 +12,7 @@
 import express, { Request, Response } from 'express'
 import { Server as SocketIOServer } from 'socket.io'
 import prisma from '../../prisma'
+import { releaseSettledSessions } from '../../tables/sessionRelease'
 import logger from '../../logger'
 import authorizePOS from '../../middleware/authorizePOS'
 import requireActiveBilling from '../../middleware/requireActiveBilling'
@@ -152,6 +153,7 @@ router.post('/api/pos/checkout/by-seats', authorizePOS, requireActiveBilling, as
       billStatus,
     })
 
+    await releaseSettledSessions(cafeId, tableId)
     return res.json({
       closed:      closedOrders.length,
       scope,

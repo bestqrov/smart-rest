@@ -14,6 +14,7 @@ import requireUnlockedShift from '../../middleware/requireUnlockedShift'
 import requireActiveBilling from '../../middleware/requireActiveBilling'
 import { completeOrderFinancials, awardLoyaltyBestEffort } from '../../services/orderCompletion'
 import { emitOrderStatusUpdate } from '../../services/kds'
+import { releaseSettledSessions } from '../../tables/sessionRelease'
 
 const router = express.Router()
 
@@ -84,6 +85,7 @@ router.patch('/api/pos/orders/:orderId/checkout', authorizePOS, requireUnlockedS
     }
 
     logger.info({ msg: 'POS checkout', orderId, staffId, totalCommission, method, billStatus })
+    await releaseSettledSessions(cafeId, order.tableId)
     return res.json({ order: updated })
   } catch (err) {
     logger.error({ msg: 'PATCH /api/pos/orders/:orderId/checkout error', err })
@@ -164,6 +166,7 @@ router.patch('/api/pos/tables/:tableId/checkout', authorizePOS, requireUnlockedS
     const ordersOut = updated.map(({ result }) => result)
 
     logger.info({ msg: 'POS table checkout', tableId, staffId, orderCount: ordersOut.length, totalPrice })
+    await releaseSettledSessions(cafeId, tableId)
     return res.json({ orders: ordersOut, totalPrice, items })
   } catch (err) {
     logger.error({ msg: 'PATCH /api/pos/tables/:tableId/checkout error', err })

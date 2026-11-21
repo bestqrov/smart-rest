@@ -133,6 +133,8 @@ export default function TablesPage() {
   const [generating, setGenerating] = useState(false)
   const [tableCount, setTableCount] = useState(5)
   const [defaultCapacity, setDefaultCapacity] = useState(4)
+  // Off by default: re-syncing the table count must not overwrite seats set per table.
+  const [applyCapacityToAll, setApplyCapacityToAll] = useState(false)
   const [qrImages, setQrImages]   = useState<Record<string, string>>({})
   const [subdomain, setSubdomain] = useState('')
   const [cafeLogoUrl, setCafeLogoUrl] = useState<string | null>(null)
@@ -235,7 +237,7 @@ export default function TablesPage() {
     const r = await fetch('/api/tables/sync', {
       method: 'POST',
       headers: { ...authHeader(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tableCount, capacity: defaultCapacity })
+      body: JSON.stringify({ tableCount, capacity: defaultCapacity, applyCapacityToAll })
     })
     if (r.ok) {
       const data = await r.json()
@@ -378,12 +380,16 @@ export default function TablesPage() {
             </div>
           </div>
           <div>
-            <label className="text-xs text-gray-500 mb-1 block">طاقة كل طاولة (مقاعد)</label>
+            <label className="text-xs text-gray-500 mb-1 block">مقاعد الطاولات الجديدة</label>
             <div className="flex items-center gap-2 border border-gray-200 rounded-xl overflow-hidden">
               <button onClick={() => setDefaultCapacity(c => Math.max(1, c - 1))} className="px-3 py-2 bg-gray-50 hover:bg-gray-100 text-gray-600"><Minus className="w-4 h-4" /></button>
               <span className="w-8 text-center font-bold text-gray-800">{defaultCapacity}</span>
               <button onClick={() => setDefaultCapacity(c => Math.min(20, c + 1))} className="px-3 py-2 bg-gray-50 hover:bg-gray-100 text-gray-600"><Plus className="w-4 h-4" /></button>
             </div>
+            <label className="mt-1.5 flex items-center gap-1.5 text-[11px] text-gray-500 cursor-pointer">
+              <input type="checkbox" checked={applyCapacityToAll} onChange={e => setApplyCapacityToAll(e.target.checked)} />
+              تطبيق هذا العدد على كل الطاولات الحالية أيضاً
+            </label>
           </div>
           <button
             onClick={generate}

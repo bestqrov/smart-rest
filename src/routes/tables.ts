@@ -354,7 +354,10 @@ router.post('/api/tables/sync', authorizeAdmin, async (req: Request, res: Respon
   try {
     const cafeId = req.admin!.cafeId
     // Accept 'capacity' (new) or 'seatsPerTable' (legacy alias) — both set Table.capacity
-    const body = req.body as { tableCount: number; capacity?: number; seatsPerTable?: number }
+    const body = req.body as { tableCount: number; capacity?: number; seatsPerTable?: number; applyCapacityToAll?: boolean }
+    // Existing tables keep their own capacity (set per table in the editor)
+    // unless the owner explicitly asks to apply one value to every table.
+    const applyToAll = body.applyCapacityToAll === true
     const { tableCount } = body
     const capacity = body.capacity ?? body.seatsPerTable ?? 4
 
@@ -433,10 +436,12 @@ router.post('/api/tables/sync', authorizeAdmin, async (req: Request, res: Respon
           select: { id: true }
         })
         if (existing) {
-          await tx.table.update({
-            where: { id: existing.id },
-            data:  { capacity }
-          })
+          if (applyToAll) {
+            await tx.table.update({
+              where: { id: existing.id },
+              data:  { capacity }
+            })
+          }
         } else {
           await tx.table.create({
             data: { cafeId, tableNumber: tNum, qrToken: randomUUID(), capacity }
