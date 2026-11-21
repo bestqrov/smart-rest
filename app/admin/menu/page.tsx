@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import {
   Plus, Pencil, Trash2, ChevronDown, ChevronUp,
-  ImageIcon, Save, X, Loader2, Tag, DollarSign
+  ImageIcon, Save, X, Loader2, Tag
 } from 'lucide-react'
 import { useLang } from '../lang-context'
 import { A } from '../../../lib/adminI18n'
@@ -48,6 +48,12 @@ export default function MenuPage() {
   const [catModal, setCatModal] = useState<{ open: boolean; data: typeof EMPTY_CAT; id?: string }>({ open: false, data: { ...EMPTY_CAT } })
   const [prdModal, setPrdModal] = useState<{ open: boolean; data: typeof EMPTY_PRD; id?: string }>({ open: false, data: { ...EMPTY_PRD } })
   const [saving, setSaving] = useState(false)
+  // Venue currency for price fields (was a hardcoded $ icon even for MAD/SAR venues)
+  const [currency, setCurrency] = useState('')
+  useEffect(() => {
+    fetch('/api/admin/cafe/profile', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } })
+      .then(r => r.ok ? r.json() : null).then(d => { if (d?.currency) setCurrency(d.currency) }).catch(() => {})
+  }, [])
   const [seeding, setSeeding] = useState(false)
   const [imgPreview, setImgPreview] = useState<string>('')
 
@@ -387,25 +393,25 @@ export default function MenuPage() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1">
-                  {t.price} * <span className="text-gray-400">({(prdModal.data as any).unitType === 'WEIGHT' ? (lang === 'fr' ? 'par kg' : lang === 'ar' ? 'للكيلو' : 'per kg') : (lang === 'fr' ? 'vente' : lang === 'ar' ? 'بيع' : 'sale')})</span>
+                  {t.price} * <span className="text-gray-400">({(prdModal.data as any).unitType === 'WEIGHT' ? (lang === 'fr' ? 'par kg' : lang === 'ar' ? 'للكيلو' : lang === 'es' ? 'por kg' : 'per kg') : (lang === 'fr' ? 'vente' : lang === 'ar' ? 'بيع' : lang === 'es' ? 'venta' : 'sale')})</span>
                 </label>
                 <div className="relative">
-                  <DollarSign className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-gray-400">{currency}</span>
                   <input type="number" step="0.01" min="0" value={prdModal.data.price}
                     onChange={e => setPrdModal(m => ({ ...m, data: { ...m.data, price: e.target.value } }))}
-                    className="w-full pr-9 pl-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400" dir="ltr" />
+                    className="w-full pr-12 pl-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400" dir="ltr" />
                 </div>
               </div>
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1">
-                  {lang === 'fr' ? 'Coût de revient' : lang === 'ar' ? 'سعر التكلفة' : 'Cost Price'} <span className="text-gray-400">(تكلفة)</span>
+                  {lang === 'fr' ? 'Coût de revient' : lang === 'ar' ? 'سعر التكلفة' : lang === 'es' ? 'Precio de coste' : 'Cost Price'}
                 </label>
                 <div className="relative">
-                  <DollarSign className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-amber-400" />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-amber-500">{currency}</span>
                   <input type="number" step="0.01" min="0" value={(prdModal.data as any).costPrice ?? ''}
                     placeholder="0.00"
                     onChange={e => setPrdModal(m => ({ ...m, data: { ...m.data, costPrice: e.target.value } }))}
-                    className="w-full pr-9 pl-3 py-2.5 border border-amber-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 bg-amber-50" dir="ltr" />
+                    className="w-full pr-12 pl-3 py-2.5 border border-amber-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 bg-amber-50" dir="ltr" />
                 </div>
               </div>
             </div>
