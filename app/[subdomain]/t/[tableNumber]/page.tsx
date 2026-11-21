@@ -445,6 +445,7 @@ type ActiveOrder = { orderId: string; items: OrderItem[]; status: string; totalP
 type Product = {
   id: string; nameAr: string; nameEn: string; nameFr: string; nameEs: string
   description: string | null; price: number; imageUrl: string | null
+  descriptionAr?: string; descriptionEn?: string; descriptionFr?: string; descriptionEs?: string
   isAvailable: boolean; calories: number | null; likesCount: number
 }
 type Category = { id: string; nameAr: string; nameEn: string; nameFr: string; nameEs: string; products: Product[] }
@@ -1325,8 +1326,11 @@ function TablePageInner() {
 
   const brandStyle = brandVars(accentColor)
   const dir: 'rtl' | 'ltr' = isRTL ? 'rtl' : 'ltr'
-  const pName = (p: { nameAr: string; nameEn: string; nameFr: string }) =>
-    lang === 'ar' ? p.nameAr : lang === 'fr' ? p.nameFr : p.nameEn
+  // Description in the guest's language; falls back to the main description.
+  const pDesc = (p: { description: string | null; descriptionAr?: string; descriptionEn?: string; descriptionFr?: string; descriptionEs?: string }) =>
+    (lang === 'ar' ? p.descriptionAr : lang === 'fr' ? p.descriptionFr : lang === 'es' ? p.descriptionEs : p.descriptionEn) || p.description || null
+  const pName = (p: { nameAr: string; nameEn: string; nameFr: string; nameEs?: string }) =>
+    (lang === 'ar' ? p.nameAr : lang === 'fr' ? p.nameFr : lang === 'es' ? p.nameEs : p.nameEn) || p.nameEn || p.nameAr
 
   // Scanning / loading — skeleton of the menu instead of a blank spinner
   if (phase === 'scanning') {
@@ -1649,7 +1653,7 @@ function TablePageInner() {
                   <ProductRow
                     key={product.id}
                     name={pName(product)}
-                    description={product.description}
+                    description={pDesc(product)}
                     price={money(product.price)}
                     imageUrl={product.imageUrl}
                     qty={inCart?.quantity ?? 0}
@@ -1722,7 +1726,7 @@ function TablePageInner() {
 
       {/* ── Product detail sheet ── */}
       <ProductSheet
-        product={detail ? { id: detail.id, name: pName(detail), description: detail.description, imageUrl: detail.imageUrl, price: detail.price } : null}
+        product={detail ? { id: detail.id, name: pName(detail), description: pDesc(detail), imageUrl: detail.imageUrl, price: detail.price } : null}
         onClose={() => setDetail(null)}
         onConfirm={(qty, note) => {
           if (detail) { haptic(); addToCartQty(detail, qty, note); setCartBump(b => b + 1) }

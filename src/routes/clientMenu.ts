@@ -40,7 +40,7 @@ router.get('/api/menu/public', async (req: Request, res: Response) => {
             // fields (status/tags) that no customer-facing page reads.
             select: {
               id: true, nameAr: true, nameEn: true, nameFr: true, nameEs: true,
-              description: true, price: true, unitType: true, imageUrl: true,
+              description: true, descriptionAr: true, descriptionEn: true, descriptionFr: true, descriptionEs: true, price: true, unitType: true, imageUrl: true,
               isAvailable: true, calories: true, likesCount: true,
             },
           }
@@ -165,7 +165,7 @@ router.get('/api/client/menu', async (req: Request, res: Response) => {
           // fields (status/tags) that no customer-facing page reads.
           select: {
             id: true, nameAr: true, nameEn: true, nameFr: true, nameEs: true,
-            description: true, price: true, unitType: true, imageUrl: true,
+            description: true, descriptionAr: true, descriptionEn: true, descriptionFr: true, descriptionEs: true, price: true, unitType: true, imageUrl: true,
             isAvailable: true, calories: true, likesCount: true,
           },
         }
