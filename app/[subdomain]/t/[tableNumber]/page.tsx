@@ -652,7 +652,9 @@ function TablePageInner() {
         totalPrice: o.totalPrice,
         items: o.items.map((i: any) => ({
           productId: i.productId,
-          name: currentLang === 'ar' ? i.nameAr : currentLang === 'fr' ? i.nameFr : i.nameEn,
+          // API sends the English name as `name` (+ nameAr/nameFr/nameEs); there is no nameEn,
+          // which made the tracker read "2× undefined" in English and Spanish.
+          name: (currentLang === 'ar' ? i.nameAr : currentLang === 'fr' ? i.nameFr : currentLang === 'es' ? i.nameEs : i.name) || i.name || i.nameAr || '',
           quantity:  i.quantity,
           status:    i.status,
         }))
