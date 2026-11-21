@@ -1376,7 +1376,7 @@ function TablePageInner() {
 
         {/* Seat occupancy visual */}
         <div className="flex flex-wrap justify-center gap-2 max-w-xs">
-          {Array.from({ length: scan.capacity }, (_, i) => (
+          {Array.from({ length: Math.max(scan.capacity, scan.seatNumber, scan.occupiedCount) }, (_, i) => (
             <div
               key={i}
               className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold
@@ -1856,7 +1856,7 @@ function TablePageInner() {
                 <h3 className="font-extrabold text-lg text-white">{tr.billSeatPicker}</h3>
               </div>
               <div className="grid grid-cols-4 gap-2.5 mb-6">
-                {Array.from({ length: scan!.capacity }, (_, i) => i + 1).map(seat => (
+                {Array.from({ length: Math.max(scan!.capacity, scan!.seatNumber, scan!.occupiedCount) }, (_, i) => i + 1).map(seat => (
                   <button
                     key={seat}
                     onClick={() => toggleBillSeat(seat)}

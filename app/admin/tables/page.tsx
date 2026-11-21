@@ -6,6 +6,7 @@ import {
   QrCode, Download, Printer, Loader2, Plus, Minus,
   RefreshCw, CheckCircle, Layers, Unlink, PowerOff, Power, Pencil, X
 } from 'lucide-react'
+import { useLang } from '../lang-context'
 
 type Seat = { id: string; seatNumber: number; qrToken: string }
 type TableRow = {
@@ -22,6 +23,109 @@ type ZoneOption = { id: string; name: string }
 
 const DISPLAY_TYPE_LABELS: Record<number, string> = {
   1: '🃏 Carte', 2: '⛺ Tente', 3: '🎋 Support', 4: '🔮 Acrylique',
+}
+
+const T = {
+  ar: {
+    title: 'الطاولات والـ QR', refresh: 'تحديث',
+    syncTitle: 'مزامنة الطاولات + QR',
+    syncHint: 'يضيف الطاولات/المقاعد الناقصة ويحذف الزائدة (مع الحفاظ على الـ QR الحالية)',
+    tableCount: 'عدد الطاولات', newSeats: 'مقاعد الطاولات الجديدة',
+    applyAll: 'تطبيق هذا العدد على كل الطاولات الحالية أيضاً',
+    sync: 'مزامنة', printQr: 'طباعة الـ QR',
+    planLimit: (n: number) => `باقتك الحالية تسمح بـ ${n} طاولة كحد أقصى — رقِّ إلى الباقة الاحترافية لطاولات غير محدودة.`,
+    syncFailed: 'فشل المزامنة', toggleFailed: 'فشل تغيير حالة الطاولة',
+    summary: (n: number) => `${n} طاولة · QR واحد لكل طاولة (مقاعد ديناميكية) ·`,
+    mergeTitle: 'دمج الطاولات (لمجموعات كبيرة)', mergeInto: 'دمج في:',
+    pickMain: 'اختر الطاولة الرئيسية', merge: 'دمج', mergedNow: 'الطاولات المدمجة حالياً:', unmerge: 'فك الدمج',
+    empty: 'لا توجد طاولات بعد. ابدأ بتوليد طاولاتك.',
+    noZone: 'بدون منطقة', zoneCount: (n: number) => `(${n} طاولات)`,
+    table: (n: number) => `طاولة ${n}`, active: 'نشطة', inactive: 'خاملة',
+    mergedWith: (n: number | undefined) => `مدمجة مع T${n ?? ''}`,
+    dCard: 'كارت', dTent: 'تنت', dStand: 'ستاند', dAcrylic: 'أكريليك',
+    pickupHint: 'نقطة استلام (فود تراك) — رقم طلب بدل رقم طاولة',
+    zone: 'المنطقة', save: 'حفظ', cancel: 'إلغاء', editHint: 'تعديل الطاقة ونوع الحامل',
+    pickup: 'نقطة استلام', seats: (n: number) => `${n} مقاعد`,
+    disableHint: 'تعطيل الطاولة (تصبح غير متاحة للطلب)', disable: 'تعطيل',
+    enableHint: 'تفعيل الطاولة — تصبح متاحة للطلب ميدانياً', enable: 'تفعيل الطاولة',
+    downloadQr: 'تحميل QR', chairs: 'عدد الكراسي:',
+    occupancy: (a: number, v: number | undefined) => `(${a} مشغول · ${v ?? 0} شاغر)`,
+  },
+  fr: {
+    title: 'Tables & QR', refresh: 'Actualiser',
+    syncTitle: 'Synchroniser tables + QR',
+    syncHint: 'Ajoute les tables/places manquantes et supprime celles en trop (les QR existants sont conservés)',
+    tableCount: 'Nombre de tables', newSeats: 'Places des nouvelles tables',
+    applyAll: 'Appliquer aussi ce nombre à toutes les tables existantes',
+    sync: 'Synchroniser', printQr: 'Imprimer les QR',
+    planLimit: (n: number) => `Votre forfait actuel autorise ${n} tables maximum — passez au forfait Pro pour des tables illimitées.`,
+    syncFailed: 'Échec de la synchronisation', toggleFailed: 'Impossible de changer le statut de la table',
+    summary: (n: number) => `${n} tables · un QR par table (places dynamiques) ·`,
+    mergeTitle: 'Fusionner des tables (grands groupes)', mergeInto: 'Fusionner dans :',
+    pickMain: 'Choisir la table principale', merge: 'Fusionner', mergedNow: 'Tables actuellement fusionnées :', unmerge: 'Défusionner',
+    empty: 'Aucune table pour le moment. Commencez par générer vos tables.',
+    noZone: 'Sans zone', zoneCount: (n: number) => `(${n} tables)`,
+    table: (n: number) => `Table ${n}`, active: 'Active', inactive: 'Inactive',
+    mergedWith: (n: number | undefined) => `Fusionnée avec T${n ?? ''}`,
+    dCard: 'Carte', dTent: 'Tente', dStand: 'Support', dAcrylic: 'Acrylique',
+    pickupHint: 'Point de retrait (food truck) — numéro de commande au lieu du numéro de table',
+    zone: 'Zone', save: 'Enregistrer', cancel: 'Annuler', editHint: 'Modifier la capacité et le type de support',
+    pickup: 'Point de retrait', seats: (n: number) => `${n} places`,
+    disableHint: 'Désactiver la table (plus disponible pour commander)', disable: 'Désactiver',
+    enableHint: 'Activer la table — disponible pour commander sur place', enable: 'Activer la table',
+    downloadQr: 'Télécharger le QR', chairs: 'Nombre de chaises :',
+    occupancy: (a: number, v: number | undefined) => `(${a} occupée(s) · ${v ?? 0} libre(s))`,
+  },
+  en: {
+    title: 'Tables & QR', refresh: 'Refresh',
+    syncTitle: 'Sync tables + QR',
+    syncHint: 'Adds missing tables/seats and removes extra ones (existing QR codes are kept)',
+    tableCount: 'Number of tables', newSeats: 'Seats for new tables',
+    applyAll: 'Also apply this number to all existing tables',
+    sync: 'Sync', printQr: 'Print QR codes',
+    planLimit: (n: number) => `Your current plan allows up to ${n} tables — upgrade to the Pro plan for unlimited tables.`,
+    syncFailed: 'Sync failed', toggleFailed: 'Could not change the table status',
+    summary: (n: number) => `${n} tables · one QR per table (dynamic seats) ·`,
+    mergeTitle: 'Merge tables (for large groups)', mergeInto: 'Merge into:',
+    pickMain: 'Choose the main table', merge: 'Merge', mergedNow: 'Currently merged tables:', unmerge: 'Unmerge',
+    empty: 'No tables yet. Start by generating your tables.',
+    noZone: 'No zone', zoneCount: (n: number) => `(${n} tables)`,
+    table: (n: number) => `Table ${n}`, active: 'Active', inactive: 'Inactive',
+    mergedWith: (n: number | undefined) => `Merged with T${n ?? ''}`,
+    dCard: 'Card', dTent: 'Tent', dStand: 'Stand', dAcrylic: 'Acrylic',
+    pickupHint: 'Pickup counter (food truck) — order number instead of table number',
+    zone: 'Zone', save: 'Save', cancel: 'Cancel', editHint: 'Edit capacity and holder type',
+    pickup: 'Pickup counter', seats: (n: number) => `${n} seats`,
+    disableHint: 'Disable table (no longer available for ordering)', disable: 'Disable',
+    enableHint: 'Enable table — becomes available for on-site ordering', enable: 'Enable table',
+    downloadQr: 'Download QR', chairs: 'Chairs:',
+    occupancy: (a: number, v: number | undefined) => `(${a} occupied · ${v ?? 0} free)`,
+  },
+  es: {
+    title: 'Mesas y QR', refresh: 'Actualizar',
+    syncTitle: 'Sincronizar mesas + QR',
+    syncHint: 'Añade las mesas/asientos que faltan y elimina los sobrantes (se conservan los QR actuales)',
+    tableCount: 'Número de mesas', newSeats: 'Asientos de las mesas nuevas',
+    applyAll: 'Aplicar también este número a todas las mesas existentes',
+    sync: 'Sincronizar', printQr: 'Imprimir QR',
+    planLimit: (n: number) => `Tu plan actual permite un máximo de ${n} mesas — mejora al plan Pro para mesas ilimitadas.`,
+    syncFailed: 'Error al sincronizar', toggleFailed: 'No se pudo cambiar el estado de la mesa',
+    summary: (n: number) => `${n} mesas · un QR por mesa (asientos dinámicos) ·`,
+    mergeTitle: 'Unir mesas (para grupos grandes)', mergeInto: 'Unir en:',
+    pickMain: 'Elige la mesa principal', merge: 'Unir', mergedNow: 'Mesas unidas actualmente:', unmerge: 'Separar',
+    empty: 'Aún no hay mesas. Empieza generando tus mesas.',
+    noZone: 'Sin zona', zoneCount: (n: number) => `(${n} mesas)`,
+    table: (n: number) => `Mesa ${n}`, active: 'Activa', inactive: 'Inactiva',
+    mergedWith: (n: number | undefined) => `Unida con T${n ?? ''}`,
+    dCard: 'Tarjeta', dTent: 'Tienda', dStand: 'Soporte', dAcrylic: 'Acrílico',
+    pickupHint: 'Punto de recogida (food truck) — número de pedido en lugar de número de mesa',
+    zone: 'Zona', save: 'Guardar', cancel: 'Cancelar', editHint: 'Editar capacidad y tipo de soporte',
+    pickup: 'Punto de recogida', seats: (n: number) => `${n} asientos`,
+    disableHint: 'Desactivar mesa (deja de estar disponible para pedidos)', disable: 'Desactivar',
+    enableHint: 'Activar mesa — disponible para pedidos en el local', enable: 'Activar mesa',
+    downloadQr: 'Descargar QR', chairs: 'Número de sillas:',
+    occupancy: (a: number, v: number | undefined) => `(${a} ocupados · ${v ?? 0} libres)`,
+  },
 }
 
 function loadImage(src: string): Promise<HTMLImageElement> {
@@ -128,6 +232,8 @@ async function makeStealthQr(url: string, logoUrl: string | null): Promise<strin
 }
 
 export default function TablesPage() {
+  const { lang, isRTL } = useLang()
+  const t = T[lang]
   const [tables, setTables]       = useState<TableRow[]>([])
   const [loading, setLoading]     = useState(true)
   const [generating, setGenerating] = useState(false)
@@ -247,8 +353,8 @@ export default function TablesPage() {
     } else {
       const body = await r.json().catch(() => ({}))
       setSyncError(body.code === 'PLAN_TABLE_LIMIT'
-        ? `باقتك الحالية تسمح بـ ${body.maxTables} طاولة كحد أقصى — رقِّ إلى الباقة الاحترافية لطاولات غير محدودة.`
-        : (body.error || 'فشل المزامنة'))
+        ? t.planLimit(body.maxTables)
+        : (body.error || t.syncFailed))
     }
     setGenerating(false)
   }
@@ -309,7 +415,7 @@ export default function TablesPage() {
     })
     if (!r.ok) {
       const body = await r.json().catch(() => ({}))
-      alert(body.error || 'فشل تغيير حالة الطاولة')
+      alert(body.error || t.toggleFailed)
       return
     }
     setTables(prev => prev.map(t => t.id === tableId ? { ...t, isActive: activate } : t))
@@ -317,7 +423,7 @@ export default function TablesPage() {
 
   function printQr() {
     const w = window.open('', '_blank')!
-    w.document.write(`<html><head><title>QR Tables — Smart Resto</title>
+    w.document.write(`<html lang="${lang}" dir="${isRTL ? 'rtl' : 'ltr'}"><head><title>QR Tables — Smart Resto</title>
     <style>
       body { margin: 0; font-family: sans-serif; background: #fff; }
       .grid { display: flex; flex-wrap: wrap; gap: 16px; padding: 20px; }
@@ -328,9 +434,9 @@ export default function TablesPage() {
       @media print { @page { margin: 8mm; } }
     </style></head><body><div class="grid">`)
     // ONE QR per table (dynamic seat assignment on scan)
-    tables.forEach(t => {
-      const img = qrImages[t.qrToken] || ''
-      w.document.write(`<div class="card"><img src="${img}" /><div class="table">طاولة ${t.tableNumber}</div><div class="cap">${t.capacity} مقاعد</div></div>`)
+    tables.forEach(row => {
+      const img = qrImages[row.qrToken] || ''
+      w.document.write(`<div class="card"><img src="${img}" /><div class="table">${t.table(row.tableNumber)}</div><div class="cap">${t.seats(row.capacity)}</div></div>`)
     })
     w.document.write('</div></body></html>')
     w.document.close()
@@ -356,10 +462,10 @@ export default function TablesPage() {
   if (zoneGroups.has('')) { zoneOrder.splice(zoneOrder.indexOf(''), 1); zoneOrder.push('') }
 
   return (
-    <div className="p-4 sm:p-6 max-w-5xl mx-auto space-y-6" dir="rtl">
+    <div className="p-4 sm:p-6 max-w-5xl mx-auto space-y-6" dir={isRTL ? 'rtl' : 'ltr'}>
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-extrabold text-gray-900">الطاولات والـ QR</h1>
-        <button onClick={loadTables} className="text-gray-400 hover:text-emerald-600 transition-colors">
+        <h1 className="text-2xl font-extrabold text-gray-900">{t.title}</h1>
+        <button onClick={loadTables} aria-label={t.refresh} title={t.refresh} className="text-gray-400 hover:text-emerald-600 transition-colors">
           <RefreshCw className="w-5 h-5" />
         </button>
       </div>
@@ -367,12 +473,12 @@ export default function TablesPage() {
       {/* ── Generate form ───────────────────────────────────────── */}
       <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
         <h2 className="font-bold text-gray-800 mb-1 flex items-center gap-2">
-          <QrCode className="w-5 h-5 text-emerald-600" /> مزامنة الطاولات + QR
+          <QrCode className="w-5 h-5 text-emerald-600" /> {t.syncTitle}
         </h2>
-        <p className="text-xs text-gray-400 mb-4">يضيف الطاولات/المقاعد الناقصة ويحذف الزائدة (مع الحفاظ على الـ QR الحالية)</p>
+        <p className="text-xs text-gray-400 mb-4">{t.syncHint}</p>
         <div className="flex flex-wrap gap-4 items-end">
           <div>
-            <label className="text-xs text-gray-500 mb-1 block">عدد الطاولات</label>
+            <label className="text-xs text-gray-500 mb-1 block">{t.tableCount}</label>
             <div className="flex items-center gap-2 border border-gray-200 rounded-xl overflow-hidden">
               <button onClick={() => setTableCount(c => Math.max(1, c - 1))} className="px-3 py-2 bg-gray-50 hover:bg-gray-100 text-gray-600"><Minus className="w-4 h-4" /></button>
               <span className="w-8 text-center font-bold text-gray-800">{tableCount}</span>
@@ -380,7 +486,7 @@ export default function TablesPage() {
             </div>
           </div>
           <div>
-            <label className="text-xs text-gray-500 mb-1 block">مقاعد الطاولات الجديدة</label>
+            <label className="text-xs text-gray-500 mb-1 block">{t.newSeats}</label>
             <div className="flex items-center gap-2 border border-gray-200 rounded-xl overflow-hidden">
               <button onClick={() => setDefaultCapacity(c => Math.max(1, c - 1))} className="px-3 py-2 bg-gray-50 hover:bg-gray-100 text-gray-600"><Minus className="w-4 h-4" /></button>
               <span className="w-8 text-center font-bold text-gray-800">{defaultCapacity}</span>
@@ -388,7 +494,7 @@ export default function TablesPage() {
             </div>
             <label className="mt-1.5 flex items-center gap-1.5 text-[11px] text-gray-500 cursor-pointer">
               <input type="checkbox" checked={applyCapacityToAll} onChange={e => setApplyCapacityToAll(e.target.checked)} />
-              تطبيق هذا العدد على كل الطاولات الحالية أيضاً
+              {t.applyAll}
             </label>
           </div>
           <button
@@ -397,14 +503,14 @@ export default function TablesPage() {
             className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-semibold transition-colors disabled:opacity-60"
           >
             {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-            مزامنة
+            {t.sync}
           </button>
           {tables.length > 0 && (
             <button
               onClick={printQr}
               className="flex items-center gap-2 border border-gray-200 text-gray-700 hover:border-emerald-400 hover:text-emerald-700 px-5 py-2.5 rounded-xl font-semibold transition-colors"
             >
-              <Printer className="w-4 h-4" /> طباعة الـ QR
+              <Printer className="w-4 h-4" /> {t.printQr}
             </button>
           )}
         </div>
@@ -413,7 +519,7 @@ export default function TablesPage() {
         )}
         {tables.length > 0 && !syncError && (
           <p className="text-xs text-gray-400 mt-3">
-            {tables.length} طاولة · QR واحد لكل طاولة (مقاعد ديناميكية) ·{' '}
+            {t.summary(tables.length)}{' '}
             <span className="text-emerald-600 font-mono">{typeof window !== 'undefined' ? window.location.origin : ''}/{subdomain}/t/:n?token=…</span>
           </p>
         )}
@@ -423,7 +529,7 @@ export default function TablesPage() {
       {tables.length > 1 && (
         <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
           <h2 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
-            <Layers className="w-5 h-5 text-violet-600" /> دمج الطاولات (لمجموعات كبيرة)
+            <Layers className="w-5 h-5 text-violet-600" /> {t.mergeTitle}
           </h2>
           <div className="flex flex-wrap gap-2 mb-3">
             {tables.filter(t => !t.mergedIntoTableId).map(t => (
@@ -442,13 +548,13 @@ export default function TablesPage() {
           </div>
           {mergeSource.length > 0 && (
             <div className="flex items-center gap-3 flex-wrap">
-              <span className="text-sm text-gray-500">دمج في:</span>
+              <span className="text-sm text-gray-500">{t.mergeInto}</span>
               <select
                 className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm"
                 value={mergeTarget || ''}
                 onChange={e => setMergeTarget(e.target.value || null)}
               >
-                <option value="">اختر الطاولة الرئيسية</option>
+                <option value="">{t.pickMain}</option>
                 {tables.filter(t => !mergeSource.includes(t.id) && !t.mergedIntoTableId).map(t => (
                   <option key={t.id} value={t.id}>T{t.tableNumber}</option>
                 ))}
@@ -458,18 +564,18 @@ export default function TablesPage() {
                 disabled={!mergeTarget || merging}
                 className="bg-violet-600 hover:bg-violet-700 text-white px-4 py-1.5 rounded-lg text-sm font-semibold disabled:opacity-50 transition-colors"
               >
-                {merging ? <Loader2 className="w-4 h-4 animate-spin" /> : 'دمج'}
+                {merging ? <Loader2 className="w-4 h-4 animate-spin" /> : t.merge}
               </button>
             </div>
           )}
           {tables.some(t => t.mergedIntoTableId) && (
             <div className="mt-3 pt-3 border-t border-gray-100">
-              <p className="text-xs text-gray-500 mb-2">الطاولات المدمجة حالياً:</p>
+              <p className="text-xs text-gray-500 mb-2">{t.mergedNow}</p>
               <div className="flex flex-wrap gap-2">
-                {tables.filter(t => t.mergedIntoTableId).map(t => (
-                  <div key={t.id} className="flex items-center gap-1 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1 text-xs">
-                    <span className="text-amber-800">T{t.tableNumber} → T{t.mergedIntoTable?.tableNumber}</span>
-                    <button onClick={() => handleUnmerge(t.id)} className="text-amber-500 hover:text-red-500 ml-1">
+                {tables.filter(m => m.mergedIntoTableId).map(m => (
+                  <div key={m.id} className="flex items-center gap-1 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1 text-xs">
+                    <span className="text-amber-800">T{m.tableNumber} → T{m.mergedIntoTable?.tableNumber}</span>
+                    <button onClick={() => handleUnmerge(m.id)} className="text-amber-500 hover:text-red-500 ms-1" aria-label={t.unmerge} title={t.unmerge}>
                       <Unlink className="w-3 h-3" />
                     </button>
                   </div>
@@ -484,7 +590,7 @@ export default function TablesPage() {
       {tables.length === 0 ? (
         <div className="text-center py-16 text-gray-400">
           <QrCode className="w-12 h-12 mx-auto mb-3 opacity-30" />
-          <p>لا توجد طاولات بعد. ابدأ بتوليد طاولاتك.</p>
+          <p>{t.empty}</p>
         </div>
       ) : (
         <div className="space-y-6">
@@ -492,8 +598,8 @@ export default function TablesPage() {
           <div key={zoneKey || '__none__'} className="space-y-4">
             {zoneOrder.length > 1 && (
               <h2 className="flex items-center gap-2 text-sm font-bold text-violet-700 border-b border-violet-100 pb-2">
-                📍 {zoneKey || 'بدون منطقة'}
-                <span className="text-xs font-normal text-gray-400">({zoneGroups.get(zoneKey)!.length} طاولات)</span>
+                📍 {zoneKey || t.noZone}
+                <span className="text-xs font-normal text-gray-400">{t.zoneCount(zoneGroups.get(zoneKey)!.length)}</span>
               </h2>
             )}
           {zoneGroups.get(zoneKey)!.map(table => (
@@ -506,7 +612,7 @@ export default function TablesPage() {
             }`}>
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="font-bold text-gray-800">طاولة {table.tableNumber}</h3>
+                  <h3 className="font-bold text-gray-800">{t.table(table.tableNumber)}</h3>
 
                   {table.zone && (
                     <span className="text-xs bg-violet-50 text-violet-700 border border-violet-200 px-2 py-0.5 rounded-full font-medium">
@@ -517,17 +623,17 @@ export default function TablesPage() {
                   {/* ── Activation badge ── */}
                   {table.isActive ? (
                     <span className="inline-flex items-center gap-1 text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-medium">
-                      <Power className="w-3 h-3" /> نشطة
+                      <Power className="w-3 h-3" /> {t.active}
                     </span>
                   ) : (
                     <span className="inline-flex items-center gap-1 text-xs bg-gray-200 text-gray-500 px-2 py-0.5 rounded-full font-medium">
-                      <PowerOff className="w-3 h-3" /> خاملة
+                      <PowerOff className="w-3 h-3" /> {t.inactive}
                     </span>
                   )}
 
                   {table.mergedIntoTableId && (
                     <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">
-                      مدمجة مع T{table.mergedIntoTable?.tableNumber}
+                      {t.mergedWith(table.mergedIntoTable?.tableNumber)}
                     </span>
                   )}
                 </div>
@@ -554,13 +660,13 @@ export default function TablesPage() {
                         onChange={e => setEditDisplay(Number(e.target.value))}
                         className="text-xs border-0 bg-transparent text-gray-700 focus:outline-none"
                       >
-                        <option value={1}>🃏 كارت</option>
-                        <option value={2}>⛺ تنت</option>
-                        <option value={3}>🎋 ستاند</option>
-                        <option value={4}>🔮 أكريليك</option>
+                        <option value={1}>🃏 {t.dCard}</option>
+                        <option value={2}>⛺ {t.dTent}</option>
+                        <option value={3}>🎋 {t.dStand}</option>
+                        <option value={4}>🔮 {t.dAcrylic}</option>
                       </select>
                       <span className="text-gray-300 mx-0.5">|</span>
-                      <label className="flex items-center gap-1 text-xs text-gray-600 cursor-pointer" title="نقطة استلام (فود تراك) — رقم طلب بدل رقم طاولة">
+                      <label className="flex items-center gap-1 text-xs text-gray-600 cursor-pointer" title={t.pickupHint}>
                         <input type="checkbox" checked={editPickup} onChange={e => setEditPickup(e.target.checked)} className="w-3.5 h-3.5 accent-amber-500" />
                         🚚
                       </label>
@@ -570,9 +676,9 @@ export default function TablesPage() {
                         value={editZoneId}
                         onChange={e => setEditZoneId(e.target.value)}
                         className="text-xs border-0 bg-transparent text-gray-700 focus:outline-none max-w-[100px]"
-                        title="المنطقة"
+                        title={t.zone}
                       >
-                        <option value="">بدون منطقة</option>
+                        <option value="">{t.noZone}</option>
                         {zones.map(z => (
                           <option key={z.id} value={z.id}>{z.name}</option>
                         ))}
@@ -581,11 +687,11 @@ export default function TablesPage() {
                       <button
                         onClick={() => saveTableEdit(table.id)}
                         disabled={savingId === table.id}
-                        className="text-emerald-600 hover:text-emerald-800 disabled:opacity-50"
+                        className="text-emerald-600 hover:text-emerald-800 disabled:opacity-50" aria-label={t.save} title={t.save}
                       >
                         {savingId === table.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle className="w-3 h-3" />}
                       </button>
-                      <button onClick={() => setEditingId(null)} className="text-gray-400 hover:text-red-500">
+                      <button onClick={() => setEditingId(null)} aria-label={t.cancel} title={t.cancel} className="text-gray-400 hover:text-red-500">
                         <X className="w-3 h-3" />
                       </button>
                     </div>
@@ -593,9 +699,9 @@ export default function TablesPage() {
                     <button
                       onClick={() => { setEditingId(table.id); setEditCapacity(table.capacity); setEditDisplay(table.displayType); setEditPickup(table.isPickupCounter); setEditZoneId(table.zoneId || '') }}
                       className="flex items-center gap-1 text-xs text-gray-400 hover:text-emerald-700 border border-gray-100 hover:border-emerald-300 px-2 py-1 rounded-lg transition-colors"
-                      title="تعديل الطاقة ونوع الحامل"
+                      title={t.editHint}
                     >
-                      <Pencil className="w-3 h-3" /> {table.isPickupCounter ? '🚚 نقطة استلام' : `${table.capacity} مقاعد`}
+                      <Pencil className="w-3 h-3" /> {table.isPickupCounter ? `🚚 ${t.pickup}` : t.seats(table.capacity)}
                     </button>
                   )}
 
@@ -604,17 +710,17 @@ export default function TablesPage() {
                     <button
                       onClick={() => toggleActive(table.id, false)}
                       className="flex items-center gap-1.5 text-xs border border-gray-200 text-gray-500 hover:border-red-300 hover:text-red-600 px-3 py-1.5 rounded-lg transition-colors"
-                      title="تعطيل الطاولة (تصبح غير متاحة للطلب)"
+                      title={t.disableHint}
                     >
-                      <PowerOff className="w-3.5 h-3.5" /> تعطيل
+                      <PowerOff className="w-3.5 h-3.5" /> {t.disable}
                     </button>
                   ) : (
                     <button
                       onClick={() => toggleActive(table.id, true)}
                       className="flex items-center gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg transition-colors font-semibold"
-                      title="تفعيل الطاولة — تصبح متاحة للطلب ميدانياً"
+                      title={t.enableHint}
                     >
-                      <Power className="w-3.5 h-3.5" /> تفعيل الطاولة
+                      <Power className="w-3.5 h-3.5" /> {t.enable}
                     </button>
                   )}
                 </div>
@@ -645,7 +751,7 @@ export default function TablesPage() {
                   {table.isActive && qrImages[table.qrToken] && (
                     <a href={qrImages[table.qrToken]} download={`Table-${table.tableNumber}.png`}
                       className="text-xs text-emerald-600 hover:text-emerald-800 flex items-center gap-0.5">
-                      <Download className="w-3 h-3" /> تحميل QR
+                      <Download className="w-3 h-3" /> {t.downloadQr}
                     </a>
                   )}
                 </div>
@@ -653,10 +759,10 @@ export default function TablesPage() {
                 {/* Live seat map */}
                 <div className="flex-1">
                   <p className="text-sm text-gray-600 mb-2">
-                    🪑 عدد الكراسي: <span className="font-bold text-gray-900">{table.capacity}</span>
+                    🪑 {t.chairs} <span className="font-bold text-gray-900">{table.capacity}</span>
                     {table.activeCount !== undefined && (
-                      <span className="ml-2 text-emerald-600 font-semibold">
-                        ({table.activeCount} مشغول · {table.vacantCount} شاغر)
+                      <span className="ms-2 text-emerald-600 font-semibold">
+                        {t.occupancy(table.activeCount, table.vacantCount)}
                       </span>
                     )}
                   </p>
