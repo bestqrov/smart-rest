@@ -109,6 +109,8 @@ router.post('/api/pos/checkout/by-seats', authorizePOS, requireActiveBilling, as
           data: {
             isPaid:          true,
             paymentMethod:   method,
+            paidById:        staffId,
+            paidAt:          new Date(),
             billStatus,
             totalCommission,
             status:          'COMPLETED',

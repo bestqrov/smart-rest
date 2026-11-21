@@ -288,10 +288,14 @@ export async function applyOrderFee(
 ): Promise<void> {
   const cafe = await tx.cafe.findUnique({
     where:  { id: cafeId },
-    select: { trialEndsAt: true, walletBalance: true, hasSocialShareAddon: true, isPremium: true, country: true }
+    select: { trialEndsAt: true, walletBalance: true, hasSocialShareAddon: true, isPremium: true, country: true, partnerDiscountPct: true, planId: true }
   })
 
   if (!cafe) throw new Error(`Cafe ${cafeId} not found`)
+
+  // Gulf subscription plans replace per-order commission (owner decision
+  // 2026-11-20) — a subscribed venue must never be charged twice.
+  if (cafe.planId) return
 
   if (cafe.trialEndsAt && new Date() < cafe.trialEndsAt) return
   if (cafe.isPremium) {
@@ -300,7 +304,10 @@ export async function applyOrderFee(
   }
   if (isSocialAction && !cafe.hasSocialShareAddon) return
 
-  const fee             = calculateContextualFee(orderTotal, country, isSocialAction, itemCount)
+  // Agency partner clients get a % off platform fees (AgencyTiers.CLIENT_DISCOUNT_PCT).
+  const discountPct     = Math.min(100, Math.max(0, cafe.partnerDiscountPct ?? 0))
+  const baseFee         = calculateContextualFee(orderTotal, country, isSocialAction, itemCount)
+  const fee             = discountPct > 0 ? Math.round(baseFee * (100 - discountPct)) / 100 : baseFee
   const previousBalance = cafe.walletBalance
   const newBalance      = previousBalance - fee
 

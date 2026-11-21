@@ -8,6 +8,7 @@ import {
   Search, SlidersHorizontal, ChevronDown, X, BarChart3,
 } from 'lucide-react'
 import { useLang } from '../lang-context'
+import PlanGate from '../PlanGate'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -413,7 +414,7 @@ function DetailModal({
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export default function MarketingPage() {
+function MarketingPageInner() {
   const { lang, isRTL } = useLang() as { lang: Lang; isRTL: boolean }
   const t = T[lang] ?? T.fr
 
@@ -926,4 +927,9 @@ export default function MarketingPage() {
       )}
     </div>
   )
+}
+
+
+export default function MarketingPage() {
+  return <PlanGate feature="aiVideo"><MarketingPageInner /></PlanGate>
 }

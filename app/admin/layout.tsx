@@ -12,6 +12,7 @@ import {
   Cloud, CloudRain, CloudSnow, CloudLightning, CloudFog, Sun,
 } from 'lucide-react'
 import { AdminLangProvider, useLang, type AdminLang } from './lang-context'
+import SubscriptionLock from './subscription-lock'
 import { A, type AdminT } from '@/lib/adminI18n'
 import AdminSidebarNav from './AdminSidebarNav'
 
@@ -276,6 +277,8 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
   const [isDemo, setIsDemo] = useState(false)
   const [showDemoExit, setShowDemoExit] = useState(false)
   const [marketplaceEnabled, setMarketplaceEnabled] = useState(false)
+  const [subLock, setSubLock] = useState<{ payToken: string | null } | null>(null)
+  const [subChecked, setSubChecked] = useState(false)
 
   function authHeader() { return { Authorization: `Bearer ${localStorage.getItem('token')}` } }
 
@@ -469,6 +472,21 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
     SUSPENDED:       t.statusSuspend,
   }
 
+  // Subscription suspension: checked once after the venue profile has loaded.
+  useEffect(() => {
+    if (!cafe || subChecked) return
+    setSubChecked(true)
+    fetch('/api/admin/subscription-invoices', { headers: authHeader() })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (!d?.suspended) return
+        const unpaid = (d.invoices ?? []).filter((i: { status: string }) => i.status === 'ISSUED' || i.status === 'PENDING_CONFIRMATION')
+        const oldest = unpaid[unpaid.length - 1] // list is newest first
+        setSubLock({ payToken: oldest?.payToken ?? null })
+      })
+      .catch(() => {})
+  }, [cafe, subChecked])
+
   const showPaymentGate = cafe
     && pathname !== '/admin/billing'
     && !pathname.startsWith('/admin/onboarding')
@@ -546,7 +564,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
             )}
             <div className="flex-1 min-w-0">
               <div className="text-white font-bold text-sm">SmartMenu</div>
-              {cafe && <div className="text-gray-400 text-xs truncate">{cafe.subdomain}.smartmenu.ma</div>}
+              {cafe && <div className="text-gray-400 text-xs truncate">{cafe.subdomain}</div>}
             </div>
           </Link>
           {/* Cafe name under the logo row */}
@@ -628,7 +646,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
             </div>
             {cafe && (
               <div className="px-4 py-3 border-b border-[#243460]">
-                <p className="text-gray-400 text-xs truncate">{cafe.subdomain}.smartmenu.ma</p>
+                <p className="text-gray-400 text-xs truncate">{cafe.subdomain}</p>
                 <span className={`mt-1 inline-block text-xs font-semibold px-2 py-0.5 rounded-full ${billingBadge[cafe.billingStatus] || ''}`}>
                   {billingLabel[cafe.billingStatus] || cafe.billingStatus}
                 </span>
@@ -697,7 +715,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
             />
           )}
           <div className="relative z-10 h-full">
-            {children}
+            {subLock ? <SubscriptionLock lang={lang} payToken={subLock.payToken} /> : children}
           </div>
         </main>
       </div>
@@ -723,10 +741,10 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
 function LangSwitcherSidebar() {
   const { lang, setLang } = useLang()
   const LANGS: { code: AdminLang; flag: string }[] = [
-    { code: 'ar', flag: '🇲🇦' },
-    { code: 'en', flag: '🇬🇧' },
-    { code: 'fr', flag: '🇫🇷' },
-    { code: 'es', flag: '🇪🇸' },
+    { code: 'ar', flag: 'ع' },
+    { code: 'en', flag: 'EN' },
+    { code: 'fr', flag: 'FR' },
+    { code: 'es', flag: 'ES' },
   ]
   return (
     <div className="flex items-center gap-1 px-3 py-2">
@@ -755,10 +773,10 @@ function LangSwitcherSidebar() {
 function TopbarLangSwitcher() {
   const { lang, setLang } = useLang()
   const LANGS: { code: AdminLang; flag: string }[] = [
-    { code: 'ar', flag: '🇲🇦' },
-    { code: 'en', flag: '🇬🇧' },
-    { code: 'fr', flag: '🇫🇷' },
-    { code: 'es', flag: '🇪🇸' },
+    { code: 'ar', flag: 'ع' },
+    { code: 'en', flag: 'EN' },
+    { code: 'fr', flag: 'FR' },
+    { code: 'es', flag: 'ES' },
   ]
   return (
     <div className="flex items-center gap-1">

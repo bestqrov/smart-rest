@@ -130,6 +130,26 @@ function SignupInner() {
   const [sent,    setSent]        = useState(false)
   const [sentEmail, setSentEmail] = useState('')
 
+  // Agency partner referral (?ref=CODE) — remembered for 30 days on this device
+  // so a visitor who browses before signing up is still attributed.
+  const [referral, setReferral] = useState<{ code: string; agencyName: string; discountPct: number } | null>(null)
+  useEffect(() => {
+    let code = (params.get('ref') ?? '').trim().toUpperCase()
+    try {
+      if (code) localStorage.setItem('sm_ref', JSON.stringify({ code, at: Date.now() }))
+      else {
+        const saved = JSON.parse(localStorage.getItem('sm_ref') ?? 'null') as { code?: string; at?: number } | null
+        if (saved?.code && saved.at && Date.now() - saved.at < 30 * 24 * 3600 * 1000) code = saved.code
+      }
+    } catch {}
+    if (!/^[A-Z0-9]{4,16}$/.test(code)) return
+    fetch(`/api/partners/ref/${code}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.valid) setReferral({ code, agencyName: d.agencyName, discountPct: d.discountPct ?? 0 }) })
+      .catch(() => {})
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // Fetch logo from landing config
   useEffect(() => {
     fetch('/api/public/landing-config')
@@ -175,7 +195,7 @@ function SignupInner() {
     const res  = await fetch('/api/auth/magic-send', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ cafeName: form.cafeName, email: form.email, subdomain, country, lang })
+      body:    JSON.stringify({ cafeName: form.cafeName, email: form.email, subdomain, country, lang, ref: referral?.code })
     })
     const data = await res.json()
     if (!res.ok) {
@@ -364,6 +384,20 @@ function SignupInner() {
               <p className="text-gray-500 text-sm mt-1">{tx('page_subtitle', lang)}</p>
             </div>
 
+            {referral && (
+              <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+                🤝 {lang === 'ar' ? `مدعوّ من طرف ${referral.agencyName}`
+                  : lang === 'fr' ? `Invité par ${referral.agencyName}`
+                  : lang === 'es' ? `Invitado por ${referral.agencyName}`
+                  : `Invited by ${referral.agencyName}`}
+                {referral.discountPct > 0 && (
+                  <span className="font-bold"> · {lang === 'ar' ? `خصم ${referral.discountPct}% على رسوم المنصة`
+                    : lang === 'fr' ? `${referral.discountPct}% de réduction sur les frais`
+                    : lang === 'es' ? `${referral.discountPct}% de descuento en las tarifas`
+                    : `${referral.discountPct}% off platform fees`}</span>
+                )}
+              </div>
+            )}
             <form onSubmit={handleSubmit} className="space-y-4" noValidate>
 
               {/* Restaurant name */}

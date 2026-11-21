@@ -9,6 +9,7 @@ import {
   MessageCircle, RefreshCw, ExternalLink, AlertCircle
 } from 'lucide-react'
 import { useLang } from '../../lang-context'
+import InventoryGate from '../../InventoryGate'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -610,10 +611,15 @@ function PurchaseOrdersPageContent() {
   )
 }
 
-export default function PurchaseOrdersPage() {
+function PurchaseOrdersPageInner() {
   return (
     <Suspense fallback={<div className="p-6"><Loader2 className="w-6 h-6 animate-spin text-emerald-500" /></div>}>
       <PurchaseOrdersPageContent />
     </Suspense>
   )
+}
+
+
+export default function PurchaseOrdersPage() {
+  return <InventoryGate><PurchaseOrdersPageInner /></InventoryGate>
 }

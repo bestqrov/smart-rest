@@ -9,41 +9,44 @@ interface Props {
 
 const CARDS = (o: Overview, mrr: MrrData | null) => [
   {
-    label:  'Total Restaurants',
+    label:  'إجمالي المطاعم',
     value:  o.totalCafes,
-    sub:    'Registered tenants',
+    sub:    'المسجلة على المنصة',
     bg:     'bg-blue-500',
     shadow: 'shadow-blue-600/30',
     icon:   '🏪',
   },
   {
-    label:  'Active',
+    label:  'نشطة',
     value:  o.activeCafes,
-    sub:    `${Math.round((o.activeCafes / Math.max(o.totalCafes, 1)) * 100)}% of total`,
+    sub:    `${Math.round((o.activeCafes / Math.max(o.totalCafes, 1)) * 100)}% من الإجمالي`,
     bg:     'bg-emerald-500',
     shadow: 'shadow-emerald-600/30',
     icon:   '✅',
   },
   {
-    label:  'Trial',
+    label:  'تجريبية',
     value:  o.trialCafes,
-    sub:    'Grace period',
+    sub:    'فترة السماح',
     bg:     'bg-amber-500',
     shadow: 'shadow-amber-600/30',
     icon:   '⏳',
   },
   {
-    label:  'Suspended',
+    label:  'موقوفة',
     value:  o.suspendedCafes,
-    sub:    'Need attention',
+    sub:    'تحتاج متابعة',
     bg:     'bg-red-500',
     shadow: 'shadow-red-600/30',
     icon:   '⛔',
   },
   {
-    label:  'MRR',
-    value:  mrr ? `$${mrr.totalMRR_USD.toFixed(0)}` : '…',
-    sub:    'Monthly revenue',
+    label:  'الإيراد الشهري المتكرر',
+    // Same figure as the dashboard: real subscription MRR per currency.
+    value:  (o.subscriptionMrr ?? []).length
+      ? (o.subscriptionMrr ?? []).map(r => `${Math.round(r.amount).toLocaleString('en-US')} ${r.currency}`).join(' · ')
+      : '0',
+    sub:    `${(o.subscriptionMrr ?? []).reduce((n, r) => n + (r.venues ?? 0), 0)} مطعم مشترك`,
     bg:     'bg-violet-500',
     shadow: 'shadow-violet-600/30',
     icon:   '💎',
@@ -66,7 +69,7 @@ export default function KpiCards({ overview, mrrData, onOpenMrr }: Props) {
           {/* Main body */}
           <div className="px-5 py-4 flex items-center justify-between">
             <div>
-              <p className="text-white/70 text-xs font-semibold uppercase tracking-wide">{c.label}</p>
+              <p className="text-white/70 text-xs font-semibold ">{c.label}</p>
               <p className="text-white text-3xl font-black mt-1 leading-none">{c.value}</p>
             </div>
             <div className="text-5xl opacity-30 select-none">{c.icon}</div>
@@ -75,8 +78,8 @@ export default function KpiCards({ overview, mrrData, onOpenMrr }: Props) {
           <div className="bg-black/15 px-5 py-2 flex items-center gap-1">
             <span className="text-white/80 text-xs font-medium">{c.sub}</span>
             {c.onClick && (
-              <button onClick={c.onClick} className="ml-auto text-white/60 hover:text-white text-[10px] underline transition-colors">
-                Details
+              <button onClick={c.onClick} className="ms-auto text-white/60 hover:text-white text-[10px] underline transition-colors">
+                التفاصيل
               </button>
             )}
           </div>

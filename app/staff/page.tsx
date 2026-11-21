@@ -1,4 +1,5 @@
 'use client'
+import { getLang as getStaffLang, setLang as setStaffLang } from '../../src/lib/posI18n'
 
 import { useEffect, useState } from 'react'
 import { ChefHat, Monitor, Bell, Crown, ArrowLeft, Loader2, AlertCircle, Eye, EyeOff } from 'lucide-react'
@@ -20,6 +21,7 @@ interface CafeInfo {
 const T = {
   ar: {
     welcome: 'مرحباً بك',
+    changeCafe: 'ليس مطعمك؟ تغيير',
     chooseRole: 'اختر دورك',
     enterPin: 'أدخل رمز PIN',
     boss:       'المدير',
@@ -31,14 +33,15 @@ const T = {
     waiter:     'النادل',
     waiterSub:  'خدمة الطاولات',
     wrongRole:  'رمز PIN غير صحيح أو الدور غير مطابق',
-    errorNet:   'خطأ في الشبكة',
+    errorNet:   'تعذّر الاتصال، يرجى المحاولة مجدداً',
     back:       'رجوع',
-    cafeSub:    'أدخل الاسم المختصر للمقهى',
-    cafeLabel:  'المقهى',
-    login:      'دخول',
+    cafeSub:    'أدخل المعرّف المختصر للمنشأة',
+    cafeLabel:  'المنشأة',
+    login:      'تسجيل الدخول',
   },
   fr: {
     welcome: 'Bienvenue',
+    changeCafe: 'Pas votre établissement ? Changer',
     chooseRole: 'Choisissez votre rôle',
     enterPin: 'Entrez votre PIN',
     boss:       'Gérant',
@@ -58,6 +61,7 @@ const T = {
   },
   en: {
     welcome: 'Welcome',
+    changeCafe: 'Not your restaurant? Change',
     chooseRole: 'Choose your role',
     enterPin: 'Enter your PIN',
     boss:       'Manager',
@@ -89,7 +93,7 @@ const ROLES: { role: Role; icon: React.ElementType; color: string; gradient: str
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function StaffPortal() {
-  const [lang,      setLang]      = useState<Lang>('fr')
+  const [lang,      setLang]      = useState<Lang>('ar')
   const [step,      setStep]      = useState<Step>('role')
   const [role,      setRole]      = useState<Role | null>(null)
   const [pin,       setPin]       = useState('')
@@ -104,9 +108,13 @@ export default function StaffPortal() {
 
   // ── Load saved subdomain + cafe info ────────────────────────────────────────
   useEffect(() => {
-    const saved = localStorage.getItem('posLastSubdomain') ?? ''
+    // Per-restaurant staff link (/staff?sub=plage, shared by the manager from
+    // Admin → Staff) wins over whatever this device remembered last.
+    const fromLink = (new URLSearchParams(window.location.search).get('sub') ?? '').trim().toLowerCase()
+    const saved = fromLink || (localStorage.getItem('posLastSubdomain') ?? '')
+    if (fromLink) { try { localStorage.setItem('posLastSubdomain', fromLink) } catch {} }
     if (saved) { setSubdomain(saved); fetchCafe(saved) }
-    const l = localStorage.getItem('sm_lang')
+    const l = getStaffLang()
     if (l === 'ar' || l === 'fr' || l === 'en') setLang(l as Lang)
   }, [])
 
@@ -143,7 +151,7 @@ export default function StaffPortal() {
         body: JSON.stringify({ subdomain: subdomain.trim().toLowerCase(), pinCode: pin, action: 'login' }),
       })
       const data = await res.json()
-      if (!res.ok) { setError(data.error ?? t.wrongRole); setPin(''); setLoading(false); return }
+      if (!res.ok) { setError(res.status >= 500 ? t.errorNet : t.wrongRole); setPin(''); setLoading(false); return }
 
       const { token, staff } = data as { token: string; staff: { id: string; name: string; role: string } }
       const cfg = ROLES.find(c => c.role === role)!
@@ -185,7 +193,7 @@ export default function StaffPortal() {
       {/* Lang switcher */}
       <div className={`absolute top-5 ${isRTL ? 'left-5' : 'right-5'} flex gap-0.5 bg-white/5 rounded-lg p-0.5`}>
         {(['fr','ar','en'] as Lang[]).map(l => (
-          <button key={l} onClick={() => { setLang(l); localStorage.setItem('sm_lang', l) }}
+          <button key={l} onClick={() => { setLang(l); setStaffLang(l) }}
             className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all ${lang === l ? 'bg-white/20 text-white' : 'text-white/30 hover:text-white/60'}`}>
             {l.toUpperCase()}
           </button>
@@ -205,6 +213,13 @@ export default function StaffPortal() {
           }
           <h1 className="text-xl font-extrabold text-white">{cafe?.name ?? (subdomain || 'SmartMenu')}</h1>
           <p className="text-white/40 text-sm mt-0.5">{t.welcome}</p>
+          {cafe && (
+            <button type="button"
+              onClick={() => { setCafe(null); setSubdomain(''); try { localStorage.removeItem('posLastSubdomain') } catch {} }}
+              className="mt-1 text-[11px] text-white/30 hover:text-white/60 underline">
+              {t.changeCafe}
+            </button>
+          )}
         </div>
 
         {/* ── Subdomain input (if not known) ── */}

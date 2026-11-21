@@ -57,6 +57,8 @@ router.patch('/api/pos/orders/:orderId/checkout', authorizePOS, requireUnlockedS
         data: {
           isPaid:          true,
           paymentMethod:   method,
+          paidById:        staffId,
+          paidAt:          new Date(),
           billStatus,
           totalCommission,
           status:          'COMPLETED'
@@ -120,6 +122,8 @@ router.patch('/api/pos/tables/:tableId/checkout', authorizePOS, requireUnlockedS
           data: {
             isPaid:          true,
             paymentMethod:   paymentMethod ?? o.paymentMethod,
+            paidById:        staffId,
+            paidAt:          new Date(),
             billStatus,
             status:          'COMPLETED',
             totalCommission: o.items.reduce((s, i) => s + i.unitPrice * i.quantity * i.commissionRate, 0),

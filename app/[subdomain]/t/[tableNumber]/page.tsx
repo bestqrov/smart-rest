@@ -81,7 +81,7 @@ const T = {
     paymentSub: 'Choose how you would like to settle your bill.',
     optInTitle: '🎁 Get exclusive offers!',
     optInSub: 'Leave your WhatsApp to be the first to know about special deals.',
-    optInPhone: 'WhatsApp number (+212…)',
+    optInPhone: 'WhatsApp number ({dial}…)',
     optInName: 'Your name (optional)',
     optInConfirm: 'Yes, subscribe',
     optInSkip: 'No thanks',
@@ -145,13 +145,13 @@ const T = {
     paymentTitle: 'جاهز للدفع؟',
     paymentSub: 'اختر طريقة الدفع المناسبة لك.',
     optInTitle: '🎁 احصل على عروض حصرية!',
-    optInSub: 'خليّ رقم واتساب باش تكون أول من يعرف بالعروض الخاصة.',
-    optInPhone: 'رقم واتساب (+212…)',
+    optInSub: 'اترك رقم واتساب لتكون أول من يعلم بالعروض الخاصة.',
+    optInPhone: 'رقم واتساب ({dial}…)',
     optInName: 'اسمك (اختياري)',
     optInConfirm: 'نعم، اشترك',
     optInSkip: 'لا شكراً',
     optInDone: '✅ تم الاشتراك!',
-    loyaltyCta: '🎁 تحقق من نقط الولاء ديالي',
+    loyaltyCta: '🎁 تحقق من نقاط الولاء الخاصة بي',
   },
   fr: {
     scanningTitle: 'Préparation de votre table…',
@@ -211,7 +211,7 @@ const T = {
     paymentSub: 'Choisissez votre mode de paiement.',
     optInTitle: '🎁 Recevez des offres exclusives !',
     optInSub: 'Laissez votre WhatsApp pour être le premier informé des promotions.',
-    optInPhone: 'Numéro WhatsApp (+212…)',
+    optInPhone: 'Numéro WhatsApp ({dial}…)',
     optInName: 'Votre prénom (optionnel)',
     optInConfirm: 'Oui, s\'abonner',
     optInSkip: 'Non merci',
@@ -276,7 +276,7 @@ const T = {
     paymentSub: 'Elige cómo quieres pagar.',
     optInTitle: '🎁 ¡Recibe ofertas exclusivas!',
     optInSub: 'Deja tu WhatsApp para ser el primero en saber de las promociones.',
-    optInPhone: 'Número WhatsApp (+212…)',
+    optInPhone: 'Número WhatsApp ({dial}…)',
     optInName: 'Tu nombre (opcional)',
     optInConfirm: 'Sí, suscribirme',
     optInSkip: 'No gracias',
@@ -476,9 +476,13 @@ function TablePageInner() {
       moyasarPublishableKey: string | null
       hasStripe: boolean
       whatsappNumber: string | null
+      onlinePayment?: boolean
     } | null
-  }>({ socialLinks: null, hasSocialShareAddon: false, isDemo: false, googleMapsUrl: null, tripadvisorUrl: null, paymentGateway: null })
+    currency: string | null
+    country: string | null
+  }>({ socialLinks: null, hasSocialShareAddon: false, isDemo: false, googleMapsUrl: null, tripadvisorUrl: null, paymentGateway: null, currency: null, country: null })
 
+  const [payingOnline, setPayingOnline] = useState(false)
   const socketRef       = useRef<Socket | null>(null)
   const heartbeatRef    = useRef<ReturnType<typeof setInterval> | null>(null)
   const sharedOrderRef  = useRef('')
@@ -606,6 +610,8 @@ function TablePageInner() {
           googleMapsUrl:       data.googleMapsUrl ?? null,
           tripadvisorUrl:      data.tripadvisorUrl ?? null,
           paymentGateway:      data.paymentGateway ?? null,
+          currency:            data.currency ?? null,
+          country:             data.country ?? null,
         })
       }
     } catch {}
@@ -704,6 +710,49 @@ function TablePageInner() {
   }, [])
 
   const cartTotal = cart.reduce((s, c) => s + c.price * c.quantity, 0)
+  // Price label with the venue's currency (guests in the Gulf expect "SAR 44.00", not a bare number)
+  const money = (n: number) => `${n.toFixed(2)}${cafeShare.currency ? ' ' + cafeShare.currency : ''}`
+  const DIAL: Record<string, string> = { SA: '+966', AE: '+971', OM: '+968', KW: '+965', QA: '+974', BH: '+973', MA: '+212' }
+  const dialCode = DIAL[cafeShare.country ?? ''] ?? '+'
+
+  // ── Coupon (preview only — the server recomputes the discount at order time) ─
+  const [couponInput, setCouponInput]   = useState('')
+  const [coupon, setCoupon]             = useState<{ code: string; discount: number } | null>(null)
+  const [couponErr, setCouponErr]       = useState('')
+  const [couponBusy, setCouponBusy]     = useState(false)
+  const CPN = {
+    ar: { ph: 'كود الخصم', apply: 'تطبيق', remove: 'إزالة', discount: 'الخصم', NOT_FOUND: 'الكود غير صحيح', INACTIVE: 'الكود غير مفعّل', NOT_STARTED: 'العرض لم يبدأ بعد', EXPIRED: 'انتهت صلاحية الكود', USED_UP: 'تم استنفاد هذا الكود', MIN_ORDER: 'الحد الأدنى للطلب', err: 'تعذّر التحقق من الكود' },
+    en: { ph: 'Discount code', apply: 'Apply', remove: 'Remove', discount: 'Discount', NOT_FOUND: 'Invalid code', INACTIVE: 'Code is not active', NOT_STARTED: 'Offer has not started yet', EXPIRED: 'Code has expired', USED_UP: 'Code has been fully used', MIN_ORDER: 'Minimum order', err: 'Could not check the code' },
+    fr: { ph: 'Code promo', apply: 'Appliquer', remove: 'Retirer', discount: 'Remise', NOT_FOUND: 'Code invalide', INACTIVE: 'Code inactif', NOT_STARTED: "L'offre n'a pas commencé", EXPIRED: 'Code expiré', USED_UP: 'Code épuisé', MIN_ORDER: 'Commande minimum', err: 'Vérification impossible' },
+    es: { ph: 'Código de descuento', apply: 'Aplicar', remove: 'Quitar', discount: 'Descuento', NOT_FOUND: 'Código inválido', INACTIVE: 'Código inactivo', NOT_STARTED: 'La oferta aún no empieza', EXPIRED: 'Código caducado', USED_UP: 'Código agotado', MIN_ORDER: 'Pedido mínimo', err: 'No se pudo verificar' },
+  }[lang as 'ar' | 'en' | 'fr' | 'es'] ?? null
+  function couponErrorText(code: string, minOrder?: number) {
+    const c = CPN!
+    const k = code.replace(/^COUPON_/, '') as keyof typeof c
+    const base = (c[k] as string | undefined) ?? c.err
+    return k === 'MIN_ORDER' && minOrder != null ? `${base}: ${minOrder}` : base
+  }
+  async function checkCoupon(code: string) {
+    if (!scan || !code.trim()) return
+    setCouponBusy(true); setCouponErr('')
+    try {
+      const r = await fetch('/api/coupons/preview', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId: scan.sessionId, code, subtotal: cartTotal }),
+      })
+      const d = await r.json()
+      if (r.ok) setCoupon({ code: d.code, discount: d.discount })
+      else { setCoupon(null); setCouponErr(couponErrorText(d.code ?? '', d.minOrder)) }
+    } catch { setCouponErr(CPN!.err) }
+    finally { setCouponBusy(false) }
+  }
+  // Keep the preview in sync when the cart changes
+  useEffect(() => {
+    if (coupon && cart.length) checkCoupon(coupon.code)
+    if (!cart.length) { setCoupon(null); setCouponErr('') }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cartTotal])
+  const payableTotal = Math.max(0, cartTotal - (coupon?.discount ?? 0))
   const cartCount = cart.reduce((s, c) => s + c.quantity, 0)
 
   // ── Place order ───────────────────────────────────────────────────────────
@@ -717,9 +766,16 @@ function TablePageInner() {
         body: JSON.stringify({
           sessionId: scan.sessionId,
           items: cart.map(c => ({ productId: c.productId, quantity: c.quantity, notes: c.notes || undefined })),
+          couponCode: coupon?.code || undefined,
         }),
       })
       const data = await r.json()
+
+      if (r.status === 400 && typeof data.code === 'string' && data.code.startsWith('COUPON_')) {
+        setCoupon(null)
+        setCouponErr(couponErrorText(data.code, data.minOrder))
+        return
+      }
 
       if (r.status === 401 && data.code === 'SESSION_EXPIRED') {
         setPhase('expired')
@@ -728,10 +784,11 @@ function TablePageInner() {
       }
       if (!r.ok) { setOrderMsg(tr.failedOrder); return }
 
-      const newOrder = { orderId: data.orderId, status: 'PENDING', items: cart.map(c => ({ productId: c.productId, name: c.name, quantity: c.quantity, status: 'PENDING' })), totalPrice: cartTotal, queueNumber: data.queueNumber }
+      const newOrder = { orderId: data.orderId, status: 'PENDING', items: cart.map(c => ({ productId: c.productId, name: c.name, quantity: c.quantity, status: 'PENDING' })), totalPrice: data.totalPrice ?? cartTotal, queueNumber: data.queueNumber }
       setActiveOrder(newOrder)
       sharedOrderRef.current = ''
       setCart([])
+      setCoupon(null); setCouponInput(''); setCouponErr('')
       setCartOpen(false)
       setOrderMsg(tr.orderPlaced)
       setTimeout(() => setOrderMsg(''), 4000)
@@ -991,9 +1048,45 @@ function TablePageInner() {
     reader.readAsDataURL(file)
   }
 
+  // ── Pay the bill online — restaurant's own Tap / Moyasar / Stripe account ─
+  async function payOnline() {
+    if (!scan || payingOnline) return
+    setPayingOnline(true)
+    try {
+      const r = await fetch('/api/payment/online/start', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ sessionId: scan.sessionId }),
+      })
+      const data = await r.json()
+      if (r.ok && data.redirectUrl) {
+        try { localStorage.setItem('sm_pay_return', window.location.pathname + window.location.search) } catch {}
+        window.location.href = data.redirectUrl
+        return
+      }
+      setBillMsg(data.code === 'NOTHING_TO_PAY'
+        ? (isRTL ? 'لا توجد طلبات غير مدفوعة' : lang === 'fr' ? 'Aucune commande à payer' : 'Nothing left to pay')
+        : (isRTL ? 'تعذّر بدء الدفع، حاول مجدداً' : lang === 'fr' ? 'Paiement indisponible, réessayez' : 'Could not start payment, try again'))
+      setTimeout(() => setBillMsg(''), 4000)
+    } catch {
+      setBillMsg(isRTL ? 'تعذّر بدء الدفع، حاول مجدداً' : 'Could not start payment, try again')
+      setTimeout(() => setBillMsg(''), 4000)
+    } finally {
+      setPayingOnline(false)
+    }
+  }
+
   // ── Dynamic payment options — built from paymentGateway config ───────────
   const pg = cafeShare.paymentGateway
   const paymentOptions: { emoji: string; label: string; sub: string; action: () => void }[] = [
+    ...(pg?.onlinePayment ? [{
+      emoji: '📱',
+      label: isRTL ? 'ادفع الآن من هاتفك' : lang === 'fr' ? 'Payer maintenant' : 'Pay now on your phone',
+      sub:   payingOnline
+        ? (isRTL ? 'جارٍ التحويل…' : lang === 'fr' ? 'Redirection…' : 'Redirecting…')
+        : 'mada · Apple Pay · Visa / Mastercard',
+      action: () => { payOnline() },
+    }] : []),
     {
       emoji: '💵',
       label: tr.payCash,
@@ -1252,24 +1345,24 @@ function TablePageInner() {
         </div>
       </header>
 
-      {/* ── Cafe hero — logo + name + branding (non-sticky, scrolls away) ── */}
-      <div className="flex flex-col items-center gap-3 py-6 px-4 border-b border-gray-800/60">
+      {/* ── Cafe hero — compact single row so the menu starts above the fold.
+            (Branding stays in the bottom bar; it was shown twice.) ── */}
+      <div className="flex items-center gap-3 py-3 px-4 border-b border-gray-800/60">
         {scan.cafeLogoUrl ? (
           <img
             src={scan.cafeLogoUrl}
             alt={scan.cafeName ?? ''}
-            className="w-20 h-20 rounded-2xl object-contain bg-white/5 border border-white/10 shadow-2xl"
+            className="w-12 h-12 rounded-xl object-contain bg-white/5 border border-white/10 shrink-0"
           />
         ) : (
-          <div className="w-20 h-20 rounded-2xl bg-gray-800 flex items-center justify-center text-4xl shadow-2xl">🍽️</div>
+          <div className="w-12 h-12 rounded-xl bg-gray-800 flex items-center justify-center text-2xl shrink-0">🍽️</div>
         )}
-        {scan.cafeName && (
-          <h1 className="text-xl font-black text-white tracking-tight">{scan.cafeName}</h1>
-        )}
-        <CertifiedBadge certified={certified} lang={lang} />
-        <p className="text-[10px] text-gray-600 font-medium tracking-widest uppercase">
-          Powered by <span className="text-gray-500 font-bold">Smart</span><span className="text-orange-500/80 font-bold">Restau</span> © 2025
-        </p>
+        <div className="min-w-0 flex-1">
+          {scan.cafeName && (
+            <h1 className="text-lg font-black text-white tracking-tight truncate">{scan.cafeName}</h1>
+          )}
+          <CertifiedBadge certified={certified} lang={lang} />
+        </div>
       </div>
 
       {/* ── Smart WiFi — appears once there's a verified active order ── */}
@@ -1417,7 +1510,7 @@ function TablePageInner() {
                           {product.description && (
                             <p className="text-xs text-gray-500 mt-0.5 line-clamp-2 leading-relaxed">{product.description}</p>
                           )}
-                          <p className="text-emerald-400 font-black text-sm mt-1.5">{product.price.toFixed(2)}</p>
+                          <p className="text-emerald-400 font-black text-sm mt-1.5">{money(product.price)}</p>
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">
                           {inCart ? (
@@ -1460,15 +1553,17 @@ function TablePageInner() {
         </div>
         <div className="p-3 flex gap-2">
         {/* Waiter button */}
-        <button onClick={() => setWaiterOpen(true)}
-          className="flex-shrink-0 w-12 h-12 rounded-xl bg-gray-800/80 border border-gray-700/50 flex items-center justify-center text-xl active:scale-90 transition-transform">
-          🔔
+        <button onClick={() => setWaiterOpen(true)} aria-label={tr.callWaiter}
+          className="flex-shrink-0 w-14 h-12 rounded-xl bg-gray-800/80 border border-gray-700/50 flex flex-col items-center justify-center active:scale-90 transition-transform">
+          <span className="text-lg leading-none">🔔</span>
+          <span className="text-[9px] text-gray-400 mt-0.5 leading-none">{isRTL ? 'النادل' : lang === 'fr' ? 'Serveur' : lang === 'es' ? 'Mesero' : 'Waiter'}</span>
         </button>
 
         {/* Bill button */}
-        <button onClick={openBillModal}
-          className="flex-shrink-0 w-12 h-12 rounded-xl bg-blue-600/15 border border-blue-500/30 flex items-center justify-center text-xl active:scale-90 transition-transform">
-          🧾
+        <button onClick={openBillModal} aria-label={tr.requestBill}
+          className="flex-shrink-0 w-14 h-12 rounded-xl bg-blue-600/15 border border-blue-500/30 flex flex-col items-center justify-center active:scale-90 transition-transform">
+          <span className="text-lg leading-none">🧾</span>
+          <span className="text-[9px] text-blue-300/80 mt-0.5 leading-none">{isRTL ? 'الحساب' : lang === 'fr' ? 'Addition' : lang === 'es' ? 'Cuenta' : 'Bill'}</span>
         </button>
 
         {/* Cart button */}
@@ -1481,7 +1576,7 @@ function TablePageInner() {
           {cartCount > 0 && (
             <span className="flex items-center gap-2">
               <span className="bg-white/20 text-white text-xs font-black px-2 py-0.5 rounded-full">{cartCount}</span>
-              <span className="font-black">{cartTotal.toFixed(2)}</span>
+              <span className="font-black">{money(cartTotal)}</span>
             </span>
           )}
         </button>
@@ -1503,7 +1598,7 @@ function TablePageInner() {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="font-bold text-sm">{item.name}</p>
-                        <p className="text-xs text-gray-400">{(item.price * item.quantity).toFixed(2)}</p>
+                        <p className="text-xs text-gray-400">{money(item.price * item.quantity)}</p>
                       </div>
                       <div className="flex items-center gap-2">
                         <button onClick={() => removeFromCart(item.productId)} className="w-11 h-11 rounded-full bg-gray-700 flex items-center justify-center font-bold active:scale-90 transition-transform">−</button>
@@ -1521,9 +1616,31 @@ function TablePageInner() {
                   </div>
                 ))}
               </div>
+              {CPN && (
+                <div className="border-t border-gray-700 pt-3 mb-2">
+                  {coupon ? (
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-emerald-400 font-bold">🏷️ {coupon.code} · {CPN.discount} −{coupon.discount.toFixed(2)}</span>
+                      <button onClick={() => { setCoupon(null); setCouponInput('') }} className="text-xs text-gray-400 underline">{CPN.remove}</button>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <input value={couponInput} onChange={e => { setCouponInput(e.target.value.toUpperCase()); setCouponErr('') }}
+                        placeholder={CPN.ph} maxLength={20} dir="ltr"
+                        className="flex-1 min-w-0 bg-gray-800/60 text-white placeholder-gray-500 rounded-lg px-3 py-2 text-sm uppercase outline-none focus:ring-2 focus:ring-emerald-500" />
+                      <button onClick={() => checkCoupon(couponInput)} disabled={couponBusy || !couponInput.trim()}
+                        className="px-4 rounded-lg bg-gray-700 text-white text-sm font-bold disabled:opacity-50">{CPN.apply}</button>
+                    </div>
+                  )}
+                  {couponErr && <p className="text-xs text-red-400 mt-1">{couponErr}</p>}
+                </div>
+              )}
               <div className="border-t border-gray-700 pt-3 flex items-center justify-between mb-4">
                 <span className="font-bold">{tr.total}</span>
-                <span className="font-black text-emerald-400 text-lg">{cartTotal.toFixed(2)}</span>
+                <span className="font-black text-emerald-400 text-lg">
+                  {coupon && <span className="text-gray-500 line-through text-sm me-2">{cartTotal.toFixed(2)}</span>}
+                  {money(payableTotal)}
+                </span>
               </div>
               <button onClick={placeOrder} disabled={placing}
                 className="w-full py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-white font-black text-base active:scale-95 transition-all">
@@ -1728,7 +1845,7 @@ function TablePageInner() {
                       type="tel"
                       value={optInPhone}
                       onChange={e => setOptInPhone(e.target.value)}
-                      placeholder={tr.optInPhone}
+                      placeholder={tr.optInPhone.replace('{dial}', dialCode)}
                       inputMode="tel"
                       className="w-full bg-gray-800 text-white placeholder-gray-500 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500 font-mono"
                     />

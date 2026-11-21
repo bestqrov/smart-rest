@@ -32,6 +32,17 @@ export function verifyAdminToken(req: Request): AdminTokenPayload | null {
   }
 }
 
+const SUSPENSION_ALLOW = ['/api/admin/subscription-invoices', '/api/admin/plan-access', '/api/admin/cafe/profile']
+const suspendedCache = new Map<string, { v: boolean; at: number }>()
+async function isSuspended(cafeId: string): Promise<boolean> {
+  const hit = suspendedCache.get(cafeId)
+  if (hit && Date.now() - hit.at < 30_000) return hit.v
+  const c = await prisma.cafe.findUnique({ where: { id: cafeId }, select: { subscriptionSuspended: true } })
+  const v = !!c?.subscriptionSuspended
+  suspendedCache.set(cafeId, { v, at: Date.now() })
+  return v
+}
+
 export async function authorizeAdmin(req: Request, res: Response, next: NextFunction) {
   try {
     const auth = req.header('authorization')
@@ -46,6 +57,13 @@ export async function authorizeAdmin(req: Request, res: Response, next: NextFunc
     }
 
     req.admin = payload
+
+    // Unpaid subscription (14 days overdue): lock the restaurant dashboard API.
+    // Guest menu + staff screens use other auth and keep working; billing and
+    // plan endpoints stay open so the owner can see and pay the invoice.
+    if (!SUSPENSION_ALLOW.some(p => req.path.startsWith(p)) && await isSuspended(payload.cafeId)) {
+      return res.status(402).json({ error: 'Subscription suspended — please pay your invoice', code: 'SUBSCRIPTION_SUSPENDED' })
+    }
 
     // If route contains cafeId param, ensure it matches
     if (req.params.cafeId && req.params.cafeId !== payload.cafeId) {

@@ -14,6 +14,8 @@ import { initEmailEngine }          from './email/EmailEngine'
 import { initAffiliateEngine }      from './affiliate/AffiliateService'
 import { initIntelligenceCore }     from './intelligence'
 import { startEmailSchedulerCron }  from './cron/emailScheduler'
+import { startSubscriptionBillingCron } from './cron/subscriptionBilling'
+import subscriptionBillingRouter from './routes/subscriptionBilling'
 import { startSocialSchedulerCron } from './cron/socialScheduler'
 
 import express from 'express'
@@ -66,6 +68,8 @@ import suppliersRouter from './routes/suppliers'
 import reservationsRouter from './routes/reservations'
 import posParserRouter from './routes/posParser'
 import paymentRouter from './routes/payment'
+import onlinePaymentRouter from './routes/onlinePayment'
+import couponsRouter from './routes/coupons'
 import whatsappWebhookRouter from './routes/whatsappWebhook'
 import recipesRouter from './routes/recipes'
 import antiFraudRouter from './routes/antiFraud'
@@ -110,6 +114,7 @@ import billingAuditSARouter              from './routes/billingAuditSA'
 import usageLimitsSARouter               from './routes/usageLimitsSA'
 import branchesSARouter                  from './routes/branchesSA'
 import affiliateAdminRouter              from './routes/affiliateAdmin'
+import agencyPartnersRouter              from './routes/agencyPartners'
 import seoAdminRouter                    from './routes/seoAdmin'
 import inventoryAdminRouter from './routes/inventoryAdmin'
 import reviewGalleryRouter from './routes/reviewGallery'
@@ -167,8 +172,7 @@ async function main() {
   // in production so a missing key shows up in the first lines of the logs.
   if (nodeEnv === 'production') {
     const SOFT_REQUIRED_VARS = [
-      'STRIPE_SECRET_KEY',
-      'STRIPE_WEBHOOK_SECRET',
+      'PAYMENT_ENCRYPTION_KEY', // restaurants can't connect Tap / Moyasar / Stripe without it
       'GROQ_API_KEY',
       'N8N_WEBHOOK_URL',
       'N8N_WEBHOOK_SECRET',
@@ -247,8 +251,6 @@ async function main() {
   app.use(requestId)
 
   // ── Body parsing ─────────────────────────────────────────────────────────────
-  // Stripe webhook needs raw body — mount BEFORE bodyParser.json()
-  app.use('/api/payment/gulf/stripe-webhook', express.raw({ type: 'application/json' }))
 
   app.use(bodyParser.json({ limit: '10mb' }))
 
@@ -336,6 +338,8 @@ async function main() {
   app.use(reservationsRouter)
   app.use(posParserRouter)
   app.use(paymentRouter)
+  app.use(onlinePaymentRouter)
+  app.use(couponsRouter)
   app.use(whatsappWebhookRouter)
   app.use(recipesRouter)
   app.use(antiFraudRouter)
@@ -384,6 +388,8 @@ async function main() {
   app.use(usageLimitsSARouter)
   app.use(branchesSARouter)
   app.use(affiliateAdminRouter)
+  app.use(agencyPartnersRouter)
+  app.use(subscriptionBillingRouter)
   app.use(seoAdminRouter)
   app.use(inventoryAdminRouter)
   app.use(reviewGalleryRouter)
@@ -461,6 +467,7 @@ async function main() {
     startSubscriptionLifecycleCron(),
     startWhatsAppSchedulerCron(),
     startEmailSchedulerCron(),
+    startSubscriptionBillingCron(),
     startSocialSchedulerCron(),
     startShiftOvertimeLockCron(),
   ]

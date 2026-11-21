@@ -8,6 +8,7 @@ import {
   RefreshCw
 } from 'lucide-react'
 import { useLang } from '../lang-context'
+import OnlineGatewayCard from './OnlineGatewayCard'
 import { A } from '../../../lib/adminI18n'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -164,7 +165,7 @@ function SettingsInner() {
     try {
       const res = await fetch('/api/admin/cafe/payment-config', {
         method:  'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('adminToken')}` },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
         body:    JSON.stringify(payConfig),
       })
       setPayMsg(res.ok ? 'ok' : 'err')
@@ -255,7 +256,7 @@ function SettingsInner() {
     if (activeTab !== 'payments') return
     setPayLoading(true)
     fetch('/api/admin/cafe/payment-config', {
-      headers: { Authorization: `Bearer ${localStorage.getItem('adminToken')}` },
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
     })
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d) setPayConfig(d) })
@@ -731,7 +732,11 @@ function SettingsInner() {
             </div>
           ) : (
             <>
-              {/* Africa — Mobile Money */}
+              {/* Restaurant-owned online gateway (Tap / Moyasar / Stripe) */}
+              <OnlineGatewayCard lang={lang} />
+
+              {/* Africa — Mobile Money (hidden for Gulf venues) */}
+              {!['SA','AE','KW','QA','BH','OM'].includes(payConfig.country) && (
               <div className="bg-gray-900 rounded-2xl p-5 space-y-4">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-xl">🌍</span>
@@ -754,49 +759,7 @@ function SettingsInner() {
                   </div>
                 ))}
               </div>
-
-              {/* Gulf — Moyasar */}
-              <div className="bg-gray-900 rounded-2xl p-5 space-y-4">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-xl">🇸🇦</span>
-                  <h3 className="font-bold text-white">Gulf — Moyasar</h3>
-                  <span className="text-xs text-gray-500">(Visa · Mada · Apple Pay · Google Pay)</span>
-                </div>
-                <div>
-                  <label className="text-xs text-gray-400 font-semibold block mb-1">Moyasar Publishable Key</label>
-                  <input
-                    type="text"
-                    value={payConfig.moyasarPublishableKey}
-                    onChange={e => setPayConfig(p => ({ ...p, moyasarPublishableKey: e.target.value }))}
-                    placeholder="pk_live_..."
-                    className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono"
-                  />
-                </div>
-              </div>
-
-              {/* Global — Stripe */}
-              <div className="bg-gray-900 rounded-2xl p-5 space-y-4">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-xl">💳</span>
-                  <h3 className="font-bold text-white">Global — Stripe</h3>
-                  <span className="text-xs text-gray-500">(Visa · Apple Pay · Google Pay)</span>
-                </div>
-                {([
-                  { key: 'stripePublishableKey', label: 'Publishable Key', placeholder: 'pk_live_...' },
-                  { key: 'stripeAccountId',      label: 'Account ID (Connect)', placeholder: 'acct_...' },
-                ] as const).map(({ key, label, placeholder }) => (
-                  <div key={key}>
-                    <label className="text-xs text-gray-400 font-semibold block mb-1">{label}</label>
-                    <input
-                      type="text"
-                      value={payConfig[key]}
-                      onChange={e => setPayConfig(p => ({ ...p, [key]: e.target.value }))}
-                      placeholder={placeholder}
-                      className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono"
-                    />
-                  </div>
-                ))}
-              </div>
+              )}
 
               {/* Save */}
               {payMsg === 'ok'  && <p className="text-emerald-400 text-sm font-semibold">✅ {lang === 'ar' ? 'تم الحفظ' : lang === 'fr' ? 'Enregistré' : 'Saved'}</p>}

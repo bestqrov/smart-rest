@@ -9,6 +9,281 @@ import {
 } from 'lucide-react'
 import { tr, getLang, setLang as saveLang, POS_LANGS, type Lang } from '../../src/lib/posI18n'
 
+// ─── Local strings (keys identical across languages) ─────────────────────────
+
+const WT = {
+  ar: {
+    urgent: 'عاجل',
+    readyToServe: 'جاهز للتقديم',
+    served: 'تم التقديم ✓',
+    newOrders: 'طلبات جديدة',
+    gotIt: 'تم الاطلاع ✓',
+    customerCalls: 'نداءات الزبائن',
+    done: 'تم ✓',
+    billRequests: 'طلبات الحساب',
+    paid: 'تم الدفع ✓',
+    wholeTable: 'الطاولة كاملة',
+    allClear: 'لا شيء بانتظارك',
+    noAlerts: 'لا توجد تنبيهات نشطة',
+    onMyWay: 'في الطريق ✓',
+    onDuty: 'في الخدمة',
+    offDuty: 'خارج الخدمة',
+    noTables: 'لا توجد طاولات مخصّصة',
+    askSupervisor: 'تواصل مع المشرف',
+    noStaff: 'لا تتوفر بيانات الفريق',
+    addMore: 'أضف المزيد',
+    newOrder: '+ طلب جديد',
+    selectTable: 'اختر طاولة',
+    table: 'طاولة',
+    change: 'تغيير',
+    searchPh: 'ابحث عن صنف…',
+    noResults: 'لا توجد نتائج',
+    loadingMenu: 'جارٍ تحميل القائمة…',
+    sending: 'جارٍ الإرسال…',
+    navAlerts: 'التنبيهات',
+    navTeam: 'الفريق',
+    navOrder: 'طلب',
+    zone: 'المنطقة',
+    zonePh: 'مثال: التراس، الطابق العلوي…',
+    saving: 'جارٍ الحفظ…',
+    saveZone: 'حفظ المنطقة',
+    releasing: 'جارٍ التحرير…',
+    releaseTable: '✕ تحرير هذه الطاولة',
+    cancel: 'إلغاء',
+    failed: 'تعذّرت العملية، يرجى المحاولة مجدداً',
+    networkError: 'تعذّر الاتصال بالشبكة',
+    ackFailed: 'تعذّر تأكيد التنبيه، يرجى المحاولة مجدداً',
+    updateFailed: 'تعذّر تحديث الطلب، يرجى المحاولة مجدداً',
+    callWaiter: 'طلب النادل',
+    cashPayment: 'دفع نقدي',
+    cardPayment: 'دفع بالبطاقة',
+    callWater: 'ماء',
+    callClean: 'تنظيف',
+    callOther: 'نداء',
+    statusCompleted: 'مكتمل',
+    statusCancelled: 'ملغى',
+    logout: 'تسجيل الخروج',
+    roleWaiter: 'نادل',
+    roleSupervisor: 'مشرف',
+    roleCashier: 'كاشير',
+    roleManager: 'مدير',
+    more: (n: number) => `+${n} تنبيهات أخرى`,
+    seats: (s: string) => `المقاعد ${s}`,
+    seat: (n: number) => `المقعد ${n}`,
+    items: (n: number) => n === 1 ? 'صنف واحد' : n === 2 ? 'صنفان' : n <= 10 ? `${n} أصناف` : `${n} صنفاً`,
+    now: 'الآن',
+    min: (m: number) => `${m} د`,
+    hm: (h: number, m: number) => m > 0 ? `${h} س ${m} د` : `${h} س`,
+    lt1: 'أقل من دقيقة',
+    handover: (d: string) => `يُنصح بتسليم المناوبة — ${d} في الخدمة · أطلِع زميلك قبل المغادرة`,
+    tableSeat: (t: string | number, s: number) => `ط${t} · م${s}`,
+    tShort: (t: string | number) => `ط${t}`,
+  },
+  fr: {
+    urgent: 'Urgent',
+    readyToServe: 'Prêt à servir',
+    served: 'Servi ✓',
+    newOrders: 'Nouvelles commandes',
+    gotIt: 'Compris ✓',
+    customerCalls: 'Appels clients',
+    done: 'Terminé ✓',
+    billRequests: 'Demandes d’addition',
+    paid: 'Payé ✓',
+    wholeTable: 'Table entière',
+    allClear: 'Tout est en ordre',
+    noAlerts: 'Aucune alerte active',
+    onMyWay: 'J’arrive ✓',
+    onDuty: 'En service',
+    offDuty: 'Hors service',
+    noTables: 'Aucune table assignée',
+    askSupervisor: 'Demandez à votre superviseur',
+    noStaff: 'Aucune donnée d’équipe',
+    addMore: 'ajouter',
+    newOrder: '+ Nouvelle commande',
+    selectTable: 'Choisir une table',
+    table: 'Table',
+    change: 'Changer',
+    searchPh: 'Rechercher un produit…',
+    noResults: 'Aucun résultat',
+    loadingMenu: 'Chargement du menu…',
+    sending: 'Envoi…',
+    navAlerts: 'Alertes',
+    navTeam: 'Équipe',
+    navOrder: 'Commande',
+    zone: 'Zone',
+    zonePh: 'ex. Terrasse, Étage…',
+    saving: 'Enregistrement…',
+    saveZone: 'Enregistrer la zone',
+    releasing: 'Libération…',
+    releaseTable: '✕ Libérer cette table',
+    cancel: 'Annuler',
+    failed: 'Échec, réessayez',
+    networkError: 'Erreur réseau',
+    ackFailed: 'Échec de la confirmation — réessayez',
+    updateFailed: 'Échec de la mise à jour — réessayez',
+    callWaiter: 'Appel serveur',
+    cashPayment: 'Paiement espèces',
+    cardPayment: 'Paiement carte',
+    callWater: 'Eau',
+    callClean: 'Nettoyage',
+    callOther: 'Appel',
+    statusCompleted: 'Terminée',
+    statusCancelled: 'Annulée',
+    logout: 'Déconnexion',
+    roleWaiter: 'Serveur',
+    roleSupervisor: 'Superviseur',
+    roleCashier: 'Caissier',
+    roleManager: 'Gérant',
+    more: (n: number) => `+${n} autres alertes`,
+    seats: (s: string) => `Places ${s}`,
+    seat: (n: number) => `Place ${n}`,
+    items: (n: number) => `${n} article${n === 1 ? '' : 's'}`,
+    now: 'maintenant',
+    min: (m: number) => `${m} min`,
+    hm: (h: number, m: number) => m > 0 ? `${h}h${m}` : `${h}h`,
+    lt1: '< 1 min',
+    handover: (d: string) => `Passation recommandée — ${d} de service · Briefez votre collègue avant de partir`,
+    tableSeat: (t: string | number, s: number) => `T${t} · P${s}`,
+    tShort: (t: string | number) => `T${t}`,
+  },
+  en: {
+    urgent: 'Urgent',
+    readyToServe: 'Ready to serve',
+    served: 'Served ✓',
+    newOrders: 'New orders',
+    gotIt: '{w.gotIt}',
+    customerCalls: 'Customer calls',
+    done: 'Done ✓',
+    billRequests: 'Bill requests',
+    paid: '{w.paid}',
+    wholeTable: 'Whole table',
+    allClear: 'All clear',
+    noAlerts: 'No active alerts',
+    onMyWay: '{w.onMyWay}',
+    onDuty: 'On duty',
+    offDuty: 'Off duty',
+    noTables: 'No tables assigned',
+    askSupervisor: 'Ask your supervisor',
+    noStaff: 'No team data available',
+    addMore: 'add more',
+    newOrder: '+ New order',
+    selectTable: 'Select table',
+    table: 'Table',
+    change: 'Change',
+    searchPh: 'Search a product…',
+    noResults: 'No results',
+    loadingMenu: 'Loading menu…',
+    sending: 'Sending…',
+    navAlerts: 'Alerts',
+    navTeam: 'Team',
+    navOrder: 'Order',
+    zone: 'Zone',
+    zonePh: 'e.g. Terrace, Upstairs…',
+    saving: 'Saving…',
+    saveZone: 'Save zone',
+    releasing: 'Releasing…',
+    releaseTable: '✕ Release this table',
+    cancel: 'Cancel',
+    failed: 'Something went wrong, please try again',
+    networkError: 'Network error',
+    ackFailed: 'Failed to acknowledge — try again',
+    updateFailed: 'Failed to update — try again',
+    callWaiter: 'Call waiter',
+    cashPayment: 'Cash payment',
+    cardPayment: 'Card payment',
+    callWater: 'Water',
+    callClean: 'Cleaning',
+    callOther: 'Call',
+    statusCompleted: 'Completed',
+    statusCancelled: 'Cancelled',
+    logout: 'Log out',
+    roleWaiter: 'Waiter',
+    roleSupervisor: 'Supervisor',
+    roleCashier: 'Cashier',
+    roleManager: 'Manager',
+    more: (n: number) => `+${n} more alerts`,
+    seats: (s: string) => `Seats ${s}`,
+    seat: (n: number) => `Seat ${n}`,
+    items: (n: number) => `${n} item${n === 1 ? '' : 's'}`,
+    now: 'now',
+    min: (m: number) => `${m}m`,
+    hm: (h: number, m: number) => m > 0 ? `${h}h ${m}m` : `${h}h`,
+    lt1: '< 1m',
+    handover: (d: string) => `Handover recommended — ${d} on shift · Brief your colleague before leaving`,
+    tableSeat: (t: string | number, s: number) => `T${t} · S${s}`,
+    tShort: (t: string | number) => `T${t}`,
+  },
+  es: {
+    urgent: 'Urgente',
+    readyToServe: 'Listo para servir',
+    served: 'Servido ✓',
+    newOrders: 'Pedidos nuevos',
+    gotIt: 'Entendido ✓',
+    customerCalls: 'Llamadas de clientes',
+    done: 'Hecho ✓',
+    billRequests: 'Solicitudes de cuenta',
+    paid: 'Pagado ✓',
+    wholeTable: 'Mesa completa',
+    allClear: 'Todo en orden',
+    noAlerts: 'Sin alertas activas',
+    onMyWay: 'Voy ✓',
+    onDuty: 'En servicio',
+    offDuty: 'Fuera de servicio',
+    noTables: 'Sin mesas asignadas',
+    askSupervisor: 'Pregunta a tu supervisor',
+    noStaff: 'Sin datos del equipo',
+    addMore: 'añadir más',
+    newOrder: '+ Nuevo pedido',
+    selectTable: 'Elegir mesa',
+    table: 'Mesa',
+    change: 'Cambiar',
+    searchPh: 'Buscar un producto…',
+    noResults: 'Sin resultados',
+    loadingMenu: 'Cargando menú…',
+    sending: 'Enviando…',
+    navAlerts: 'Alertas',
+    navTeam: 'Equipo',
+    navOrder: 'Pedido',
+    zone: 'Zona',
+    zonePh: 'ej. Terraza, Planta alta…',
+    saving: 'Guardando…',
+    saveZone: 'Guardar zona',
+    releasing: 'Liberando…',
+    releaseTable: '✕ Liberar esta mesa',
+    cancel: 'Cancelar',
+    failed: 'Error, inténtalo de nuevo',
+    networkError: 'Error de red',
+    ackFailed: 'Error al confirmar — inténtalo de nuevo',
+    updateFailed: 'Error al actualizar — inténtalo de nuevo',
+    callWaiter: 'Llamar al camarero',
+    cashPayment: 'Pago en efectivo',
+    cardPayment: 'Pago con tarjeta',
+    callWater: 'Agua',
+    callClean: 'Limpieza',
+    callOther: 'Llamada',
+    statusCompleted: 'Completado',
+    statusCancelled: 'Cancelado',
+    logout: 'Cerrar sesión',
+    roleWaiter: 'Camarero',
+    roleSupervisor: 'Supervisor',
+    roleCashier: 'Cajero',
+    roleManager: 'Gerente',
+    more: (n: number) => `+${n} alertas más`,
+    seats: (s: string) => `Asientos ${s}`,
+    seat: (n: number) => `Asiento ${n}`,
+    items: (n: number) => `${n} artículo${n === 1 ? '' : 's'}`,
+    now: 'ahora',
+    min: (m: number) => `${m} min`,
+    hm: (h: number, m: number) => m > 0 ? `${h}h ${m}m` : `${h}h`,
+    lt1: '< 1 min',
+    handover: (d: string) => `Relevo recomendado — ${d} de servicio · Informa a tu compañero antes de salir`,
+    tableSeat: (t: string | number, s: number) => `M${t} · A${s}`,
+    tShort: (t: string | number) => `M${t}`,
+  },
+}
+type WStrings = (typeof WT)['en']
+const wtOf = (lang: string): WStrings => (WT as Record<string, WStrings>)[lang] ?? WT.ar
+
 // ─── Colour palettes ──────────────────────────────────────────────────────────
 
 const PALETTES = [
@@ -37,7 +312,7 @@ type ReadyOrder = {
   table: { tableNumber: number } | null
   originalTable: { tableNumber: number } | null
   seat: { seatNumber: number } | null
-  items: { id: string; quantity: number; product: { nameEn: string } }[]
+  items: { id: string; quantity: number; product: { nameEn: string; nameAr?: string | null; nameFr?: string | null } }[]
 }
 type LegacyCall  = { id: string; tableId: string; tableNumber?: number; type: string; message?: string | null; createdAt: string }
 type BillRequest = { id: string; tableId: string; tableNumber?: number; seatNumbers?: number[]; payScope?: string; message?: string | null; createdAt: string }
@@ -47,7 +322,7 @@ type TodayOrder = {
   table: { tableNumber: number } | null
   originalTable: { tableNumber: number } | null
   seat: { seatNumber: number } | null
-  items: { quantity: number; product: { id: string; nameEn: string } }[]
+  items: { quantity: number; product: { id: string; nameEn: string; nameAr?: string | null; nameFr?: string | null } }[]
 }
 type WaiterStatus = {
   id: string; name: string; role: string
@@ -58,21 +333,21 @@ type WaiterStatus = {
 
 // ─── Notification config ──────────────────────────────────────────────────────
 
-const NOTIF_META: Record<NotifType, { emoji: string; label: string; border: string; glow: string; btn: string }> = {
+const NOTIF_META: Record<NotifType, { emoji: string; label: 'callWaiter' | 'cashPayment' | 'cardPayment'; border: string; glow: string; btn: string }> = {
   call_waiter: {
-    emoji: '🔔', label: 'Call Waiter',
+    emoji: '🔔', label: 'callWaiter',
     border: 'border-l-amber-400',
     glow:   'shadow-amber-500/20',
     btn:    'bg-amber-500 hover:bg-amber-400',
   },
   pay_cash: {
-    emoji: '💵', label: 'Cash Payment',
+    emoji: '💵', label: 'cashPayment',
     border: 'border-l-red-400',
     glow:   'shadow-red-500/20',
     btn:    'bg-red-500 hover:bg-red-400',
   },
   pay_tpe: {
-    emoji: '💳', label: 'Card Payment',
+    emoji: '💳', label: 'cardPayment',
     border: 'border-l-violet-400',
     glow:   'shadow-violet-500/20',
     btn:    'bg-violet-500 hover:bg-violet-400',
@@ -107,21 +382,27 @@ const playReadyChime = () => playToneSeq([523, 659, 784, 1047], 140)
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function elapsed(iso: string) {
+function elapsed(iso: string, lang: string) {
+  const w = wtOf(lang)
   const m = Math.floor((Date.now() - new Date(iso).getTime()) / 60000)
-  if (m < 1)  return 'now'
-  if (m < 60) return `${m}m`
-  const h = Math.floor(m / 60); const rm = m % 60
-  return rm > 0 ? `${h}h${rm}m` : `${h}h`
+  if (m < 1)  return w.now
+  if (m < 60) return w.min(m)
+  return w.hm(Math.floor(m / 60), m % 60)
 }
 
-function shiftDuration(clockIn: string | null) {
+function shiftDuration(clockIn: string | null, lang: string) {
   if (!clockIn) return null
+  const w = wtOf(lang)
   const m = Math.floor((Date.now() - new Date(clockIn).getTime()) / 60000)
-  if (m < 1)  return '< 1m'
-  if (m < 60) return `${m}m`
-  const h = Math.floor(m / 60); const rm = m % 60
-  return rm > 0 ? `${h}h ${rm}m` : `${h}h`
+  if (m < 1)  return w.lt1
+  if (m < 60) return w.min(m)
+  return w.hm(Math.floor(m / 60), m % 60)
+}
+
+function roleLabel(role: string, lang: string) {
+  const w = wtOf(lang)
+  return role === 'WAITER' ? w.roleWaiter : role === 'SUPERVISOR' ? w.roleSupervisor
+    : role === 'CASHIER' ? w.roleCashier : role === 'MANAGER' || role === 'BOSS' || role === 'OWNER' ? w.roleManager : role
 }
 
 function initials(name: string) {
@@ -142,6 +423,12 @@ const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || ''
 
 // ─── Menu types ───────────────────────────────────────────────────────────────
 
+// Dish name in the staff member's language, falling back to whatever exists.
+function productName(p: { nameEn?: string | null; nameAr?: string | null; nameFr?: string | null }, lang: string): string {
+  const pick = lang === 'ar' ? p.nameAr : lang === 'fr' ? p.nameFr : p.nameEn
+  return pick || p.nameEn || p.nameAr || p.nameFr || ''
+}
+
 type MenuProduct = { id: string; nameEn: string; nameAr: string; nameFr: string; price: number }
 type MenuCat     = { id: string; nameEn: string; nameAr: string; products: MenuProduct[] }
 type CartItem    = { productId: string; name: string; price: number; qty: number }
@@ -152,6 +439,7 @@ export default function WaiterPage() {
   const [lang, setLangState] = useState<Lang>('ar')
   useEffect(() => { setLangState(getLang()) }, [])
   const L = (key: Parameters<typeof tr>[0]) => tr(key, lang)
+  const w = wtOf(lang)
 
   const [authed,    setAuthed]    = useState(false)
   const [isPOS,     setIsPOS]     = useState(false)
@@ -159,7 +447,7 @@ export default function WaiterPage() {
   const [staffName, setStaffName] = useState('')
   const [staffRole, setStaffRole] = useState('WAITER')
   const [connected, setConnected] = useState(false)
-  const [cafeInfo,  setCafeInfo]  = useState<{ name: string; logoUrl: string | null }>({ name: '', logoUrl: null })
+  const [cafeInfo,  setCafeInfo]  = useState<{ name: string; logoUrl: string | null; currency: string }>({ name: '', logoUrl: null, currency: '' })
 
   const [waiters,       setWaiters]       = useState<WaiterStatus[]>([])
   const [notifications, setNotifications] = useState<WaiterNotif[]>([])
@@ -204,11 +492,11 @@ export default function WaiterPage() {
         method: 'PATCH', headers: { ...authHeader(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ zone: zoneInput.trim() }),
       })
-      if (!res.ok) { const d = await res.json().catch(() => ({})); setManageError(d.error ?? 'Failed'); return }
+      if (!res.ok) { const d = await res.json().catch(() => ({})); setManageError(wtOf(lang).failed); return }
       setManageTable(null)
       loadWaiters()
     } catch {
-      setManageError('Network error')
+      setManageError(wtOf(lang).networkError)
     } finally {
       setSavingZone(false)
     }
@@ -221,11 +509,11 @@ export default function WaiterPage() {
       const res = await fetch(`/api/pos/tables/${manageTable.id}/release`, {
         method: 'DELETE', headers: authHeader(),
       })
-      if (!res.ok) { const d = await res.json().catch(() => ({})); setManageError(d.error ?? 'Failed'); return }
+      if (!res.ok) { const d = await res.json().catch(() => ({})); setManageError(wtOf(lang).failed); return }
       setManageTable(null)
       loadWaiters()
     } catch {
-      setManageError('Network error')
+      setManageError(wtOf(lang).networkError)
     } finally {
       setReleasing(false)
     }
@@ -263,17 +551,14 @@ export default function WaiterPage() {
     setStaffName(localStorage.getItem('staffName') ?? '')
     setStaffRole(p.staffRole ?? 'WAITER')
 
-    // Fetch cafe name + logo via public menu API
+    // Fetch cafe name + logo (the public menu API needs a table token, not a subdomain)
     const subdomain = localStorage.getItem('subdomain') || localStorage.getItem('posLastSubdomain')
     if (subdomain) {
-      fetch(`/api/menu/public?sub=${subdomain}`)
+      fetch(`/api/public/cafe/${encodeURIComponent(subdomain)}`)
         .then(r => r.ok ? r.json() : null)
         .then(d => {
           if (!d) return
-          setCafeInfo({
-            name:    d.cafeName || d.name || '',
-            logoUrl: d.logoSquareUrl || d.logoUrl || null,
-          })
+          setCafeInfo({ name: d.name || '', logoUrl: d.logoUrl || null, currency: d.currency || '' })
         })
         .catch(() => {})
     }
@@ -411,7 +696,7 @@ export default function WaiterPage() {
       setNotifications(prev => prev.map(n => n.orderId === orderId ? { ...n, isActive: true } : n))
       const original = notifsRef.current.find(n => n.orderId === orderId)
       startBeepLoop(original?.type ?? 'call_waiter')
-      flashActionError(lang === 'ar' ? 'فشل تأكيد التنبيه — حاول مجدداً' : 'Failed to acknowledge — try again')
+      flashActionError(wtOf(lang).ackFailed)
     }
   }
 
@@ -433,7 +718,7 @@ export default function WaiterPage() {
       // dropping it from the "ready to serve" list would hide a table that
       // still needs food brought out.
       if (order) setReady(prev => prev.find(o => o.id === orderId) ? prev : [...prev, order].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()))
-      flashActionError(lang === 'ar' ? 'فشل تحديث الطلب — حاول مجدداً' : 'Failed to update — try again')
+      flashActionError(wtOf(lang).updateFailed)
     }
   }
 
@@ -455,7 +740,7 @@ export default function WaiterPage() {
     setOrderCart(prev => {
       const ex = prev.find(c => c.productId === p.id)
       if (ex) return prev.map(c => c.productId === p.id ? { ...c, qty: c.qty + 1 } : c)
-      return [...prev, { productId: p.id, name: p.nameEn || p.nameAr, price: p.price, qty: 1 }]
+      return [...prev, { productId: p.id, name: productName(p, lang), price: p.price, qty: 1 }]
     })
   }
 
@@ -471,11 +756,11 @@ export default function WaiterPage() {
         method: 'POST', headers: { ...authHeader(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ tableId: orderTable.id, items: orderCart.map(c => ({ productId: c.productId, quantity: c.qty })), paymentMethod: 'CASH' }),
       })
-      if (!res.ok) { const d = await res.json(); setOrderErr(d.error ?? 'Failed'); return }
+      if (!res.ok) { const d = await res.json(); setOrderErr(wtOf(lang).failed); return }
       setLastOrderTable(orderTable)
       setOrderCart([]); setOrderTable(null); setOrderDone(true)
       setTimeout(() => setOrderDone(false), 3000)
-    } catch { setOrderErr('Network error') }
+    } catch { setOrderErr(wtOf(lang).networkError) }
     finally { setOrderSubmitting(false) }
   }
 
@@ -502,7 +787,7 @@ export default function WaiterPage() {
     ? Math.floor((Date.now() - new Date(clockInIso).getTime()) / 60000)
     : 0
   const clockInStr   = clockInIso
-    ? new Date(clockInIso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+    ? new Date(clockInIso).toLocaleTimeString(lang, { hour: '2-digit', minute: '2-digit' })
     : null
   const passation    = shiftMinutes >= 450  // warn after 7h 30m
 
@@ -514,7 +799,7 @@ export default function WaiterPage() {
         .notif-dot { animation: notif-pulse 1.2s ease-in-out infinite }
       `}</style>
 
-      <div className="h-screen bg-slate-100 flex flex-col overflow-hidden text-slate-900">
+      <div className="h-screen bg-slate-100 flex flex-col overflow-hidden text-slate-900" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
 
         {/* ── Header ─────────────────────────────────────────────────────── */}
         <header className="shrink-0 bg-white border-b-2 border-emerald-300 shadow-sm">
@@ -532,16 +817,16 @@ export default function WaiterPage() {
                   <p className="text-[11px] text-slate-400 font-medium truncate leading-none mb-0.5">{cafeInfo.name}</p>
                 )}
                 <p className="font-bold text-sm text-slate-800 leading-none truncate">
-                  {staffName || 'Waiter'}
-                  <span className="ml-1.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
-                    {staffRole}
+                  {staffName || w.roleWaiter}
+                  <span className="ms-1.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 whitespace-nowrap">
+                    {roleLabel(staffRole, lang)}
                   </span>
                 </p>
                 <div className="flex items-center gap-2 mt-0.5">
                   {clockInStr && (
                     <span className="text-[11px] text-slate-400 flex items-center gap-1">
                       <Clock className="w-2.5 h-2.5" />
-                      {clockInStr} · {shiftDuration(clockInIso)}
+                      {clockInStr} · {shiftDuration(clockInIso, lang)}
                     </span>
                   )}
                   {connected
@@ -562,7 +847,7 @@ export default function WaiterPage() {
                   </button>
                 ))}
               </div>
-              <button onClick={logout}
+              <button onClick={logout} title={w.logout} aria-label={w.logout}
                 className="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 flex items-center justify-center transition-all text-slate-500">
                 <LogOut className="w-4 h-4" />
               </button>
@@ -574,7 +859,7 @@ export default function WaiterPage() {
             <div className="px-4 py-2 bg-amber-50 border-t-2 border-amber-200 flex items-center gap-2">
               <span className="text-base shrink-0">⚑</span>
               <p className="text-xs text-amber-700 font-medium">
-                Passation recommandée — {shiftDuration(clockInIso)} de service · Briefer votre collègue avant de partir
+                {w.handover(shiftDuration(clockInIso, lang) ?? '')}
               </p>
             </div>
           )}
@@ -598,7 +883,7 @@ export default function WaiterPage() {
                 {/* Active notifications — urgent (red frame) */}
                 {activeNotifs.length > 0 && (
                   <div className="border-2 border-red-200 rounded-2xl overflow-hidden shadow-sm">
-                    <div className="bg-red-500 px-3 py-1.5"><Label text="Urgent" count={activeNotifs.length} light /></div>
+                    <div className="bg-red-500 px-3 py-1.5"><Label text={w.urgent} count={activeNotifs.length} light /></div>
                     <div className="p-2 space-y-2 bg-red-50/50">
                     {activeNotifs.slice(0, 6).map(n => {
                       const m = NOTIF_META[n.type]
@@ -607,18 +892,18 @@ export default function WaiterPage() {
                           className={`bg-white border border-slate-200 border-l-4 ${m.border} rounded-2xl p-4 flex items-center gap-3 shadow-sm`}>
                           <span className="notif-dot text-2xl shrink-0">{m.emoji}</span>
                           <div className="flex-1 min-w-0">
-                            <p className="font-bold text-slate-800 text-sm">Table {n.tableNumber ?? '?'}</p>
-                            <p className="text-xs text-slate-400 mt-0.5">{m.label} · {elapsed(n.receivedAt)}</p>
+                            <p className="font-bold text-slate-800 text-sm">{w.table} {n.tableNumber ?? '?'}</p>
+                            <p className="text-xs text-slate-400 mt-0.5">{w[m.label]} · {elapsed(n.receivedAt, lang)}</p>
                           </div>
                           <button onClick={() => ackNotification(n.orderId)}
                             className={`shrink-0 ${m.btn} text-white text-xs font-bold px-4 py-2.5 rounded-xl active:scale-95 transition-all`}>
-                            On my way ✓
+                            {w.onMyWay}
                           </button>
                         </div>
                       )
                     })}
                     {activeNotifs.length > 6 && (
-                      <p className="text-center text-xs text-slate-400 py-1">+{activeNotifs.length - 6} more notifications</p>
+                      <p className="text-center text-xs text-slate-400 py-1">{w.more(activeNotifs.length - 6)}</p>
                     )}
                     </div>
                   </div>
@@ -627,7 +912,7 @@ export default function WaiterPage() {
                 {/* Ready to serve (green frame) */}
                 {ready.length > 0 && (
                   <div className="border-2 border-emerald-200 rounded-2xl overflow-hidden shadow-sm">
-                    <div className="bg-emerald-500 px-3 py-1.5"><Label text="Ready to Serve" count={ready.length} light /></div>
+                    <div className="bg-emerald-500 px-3 py-1.5"><Label text={w.readyToServe} count={ready.length} light /></div>
                     <div className="p-2 space-y-2 bg-emerald-50/50">
                     {ready.map(order => {
                       const tableNum = (order.originalTable ?? order.table)?.tableNumber
@@ -636,24 +921,24 @@ export default function WaiterPage() {
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               <ChefHat className="w-4 h-4 text-emerald-600" />
-                              <span className="font-bold text-emerald-700 text-sm">Table {tableNum ?? '?'}</span>
-                              {order.seat && <span className="text-xs text-slate-400">· Seat {order.seat.seatNumber}</span>}
+                              <span className="font-bold text-emerald-700 text-sm">{w.table} {tableNum ?? '?'}</span>
+                              {order.seat && <span className="text-xs text-slate-400">· {w.seat(order.seat.seatNumber)}</span>}
                             </div>
                             <span className="text-xs text-slate-400 flex items-center gap-1">
-                              <Clock className="w-3 h-3" />{elapsed(order.createdAt)}
+                              <Clock className="w-3 h-3" />{elapsed(order.createdAt, lang)}
                             </span>
                           </div>
                           <ul className="space-y-1">
                             {order.items.map(item => (
                               <li key={item.id} className="text-sm text-slate-600 flex items-center gap-2">
                                 <span className="text-emerald-600 font-bold">{item.quantity}×</span>
-                                {item.product.nameEn}
+                                {productName(item.product, lang)}
                               </li>
                             ))}
                           </ul>
                           <button onClick={() => markServed(order.id)}
                             className="w-full bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold py-2.5 rounded-xl text-sm transition-all flex items-center justify-center gap-2">
-                            <CheckCircle2 className="w-4 h-4" /> Served ✓
+                            <CheckCircle2 className="w-4 h-4" /> {w.served}
                           </button>
                         </div>
                       )
@@ -665,18 +950,18 @@ export default function WaiterPage() {
                 {/* New orders (sky frame) */}
                 {newOrders.length > 0 && (
                   <div className="border-2 border-sky-200 rounded-2xl overflow-hidden shadow-sm">
-                    <div className="bg-sky-500 px-3 py-1.5"><Label text="New Orders" count={newOrders.length} light /></div>
+                    <div className="bg-sky-500 px-3 py-1.5"><Label text={w.newOrders} count={newOrders.length} light /></div>
                     <div className="p-2 space-y-2 bg-sky-50/50">
                     {newOrders.map(o => (
                       <div key={o.orderId} className="bg-white border border-sky-200 rounded-2xl p-4 flex items-center gap-3 shadow-sm">
                         <span className="text-2xl shrink-0">📋</span>
                         <div className="flex-1 min-w-0">
                           <p className="font-bold text-slate-800 text-sm truncate">{o.mergeLabel}</p>
-                          <p className="text-xs text-slate-400 mt-0.5">{o.totalPrice} · {elapsed(o.createdAt)}</p>
+                          <p className="text-xs text-slate-400 mt-0.5">{o.totalPrice} · {elapsed(o.createdAt, lang)}</p>
                         </div>
                         <button onClick={() => setNewOrders(prev => prev.filter(x => x.orderId !== o.orderId))}
                           className="shrink-0 bg-sky-600 hover:bg-sky-500 active:scale-95 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all">
-                          Got it ✓
+                          {w.gotIt}
                         </button>
                       </div>
                     ))}
@@ -687,7 +972,7 @@ export default function WaiterPage() {
                 {/* Customer calls (slate frame) */}
                 {legacyCalls.length > 0 && (
                   <div className="border-2 border-slate-300 rounded-2xl overflow-hidden shadow-sm">
-                    <div className="bg-slate-500 px-3 py-1.5"><Label text="Customer Calls" count={legacyCalls.length} light /></div>
+                    <div className="bg-slate-500 px-3 py-1.5"><Label text={w.customerCalls} count={legacyCalls.length} light /></div>
                     <div className="p-2 space-y-2 bg-slate-50">
                     {legacyCalls.map(c => (
                       <div key={c.id} className="bg-white border border-slate-200 rounded-2xl p-4 flex items-center gap-3 shadow-sm">
@@ -695,12 +980,12 @@ export default function WaiterPage() {
                           {c.type === 'WATER' ? '🧊' : c.type === 'CLEAN' ? '🧹' : '📣'}
                         </span>
                         <div className="flex-1 min-w-0">
-                          <p className="font-bold text-slate-800 text-sm">Table {c.tableNumber ?? '?'}</p>
-                          <p className="text-xs text-slate-400 mt-0.5">{c.type}{c.message ? ` · ${c.message}` : ''} · {elapsed(c.createdAt)}</p>
+                          <p className="font-bold text-slate-800 text-sm">{w.table} {c.tableNumber ?? '?'}</p>
+                          <p className="text-xs text-slate-400 mt-0.5">{c.type === 'WATER' ? w.callWater : c.type === 'CLEAN' ? w.callClean : w.callOther}{c.message ? ` · ${c.message}` : ''} · {elapsed(c.createdAt, lang)}</p>
                         </div>
                         <button onClick={() => ackLegacyCall(c.id)}
                           className="shrink-0 bg-slate-600 hover:bg-slate-500 active:scale-95 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all">
-                          Done ✓
+                          {w.done}
                         </button>
                       </div>
                     ))}
@@ -711,23 +996,23 @@ export default function WaiterPage() {
                 {/* Bill requests (violet frame) */}
                 {bills.length > 0 && (
                   <div className="border-2 border-violet-200 rounded-2xl overflow-hidden shadow-sm">
-                    <div className="bg-violet-500 px-3 py-1.5"><Label text="Bill Requests" count={bills.length} light /></div>
+                    <div className="bg-violet-500 px-3 py-1.5"><Label text={w.billRequests} count={bills.length} light /></div>
                     <div className="p-2 space-y-2 bg-violet-50/50">
                     {bills.map(b => (
                       <div key={b.id} className="bg-white border border-violet-200 rounded-2xl p-4 flex items-center gap-3 shadow-sm">
                         <span className="text-2xl shrink-0">🧾</span>
                         <div className="flex-1 min-w-0">
-                          <p className="font-bold text-slate-800 text-sm">Table {b.tableNumber ?? '?'}</p>
+                          <p className="font-bold text-slate-800 text-sm">{w.table} {b.tableNumber ?? '?'}</p>
                           <p className="text-xs text-slate-400 mt-0.5">
                             {b.payScope === 'SEATS' && b.seatNumbers?.length
-                              ? `Seats ${b.seatNumbers.join(', ')}`
-                              : 'Whole table'
-                            } · {elapsed(b.createdAt)}
+                              ? w.seats(b.seatNumbers.join(', '))
+                              : w.wholeTable
+                            } · {elapsed(b.createdAt, lang)}
                           </p>
                         </div>
                         <button onClick={() => setBills(prev => prev.filter(x => x.id !== b.id))}
                           className="shrink-0 bg-violet-600 hover:bg-violet-500 active:scale-95 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all">
-                          Paid ✓
+                          {w.paid}
                         </button>
                       </div>
                     ))}
@@ -740,8 +1025,8 @@ export default function WaiterPage() {
                     <div className="w-16 h-16 rounded-full bg-emerald-50 flex items-center justify-center mx-auto mb-4">
                       <CheckCircle2 className="w-8 h-8 text-emerald-500" />
                     </div>
-                    <p className="font-bold text-slate-700">All clear</p>
-                    <p className="text-sm text-slate-400 mt-1">No active alerts</p>
+                    <p className="font-bold text-slate-700">{w.allClear}</p>
+                    <p className="text-sm text-slate-400 mt-1">{w.noAlerts}</p>
                   </div>
                 )}
               </>
@@ -752,12 +1037,12 @@ export default function WaiterPage() {
               <>
                 {activeWaiters.length > 0 && (
                   <div className="border-2 border-emerald-200 rounded-2xl overflow-hidden shadow-sm">
-                    <div className="bg-emerald-500 px-3 py-1.5"><Label text="On Duty" count={activeWaiters.length} light /></div>
+                    <div className="bg-emerald-500 px-3 py-1.5"><Label text={w.onDuty} count={activeWaiters.length} light /></div>
                     <div className="p-2 space-y-2 bg-emerald-50/40">
                     {activeWaiters.map(w => {
                       const p    = PALETTES[waiters.indexOf(w) % PALETTES.length]
                       const myA  = activeNotifs.filter(n => n.tableId && w.assignedTables.some(t => t.id === n.tableId))
-                      const dur  = shiftDuration(w.clockInTime)
+                      const dur  = shiftDuration(w.clockInTime, lang)
                       return (
                         <div key={w.id} className={`bg-white border rounded-2xl p-4 space-y-3 shadow-sm ${myA.length > 0 ? 'border-red-300' : 'border-slate-200'}`}>
                           <div className="flex items-center gap-3">
@@ -768,7 +1053,7 @@ export default function WaiterPage() {
                             <div className="flex-1 min-w-0">
                               <p className="font-bold text-slate-800 text-sm truncate">{w.name}</p>
                               <div className="flex items-center gap-2 mt-0.5">
-                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${p.badge}`}>{w.role}</span>
+                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${p.badge} whitespace-nowrap`}>{roleLabel(w.role, lang)}</span>
                                 {dur && <span className="text-[10px] text-slate-400 flex items-center gap-0.5"><Clock className="w-2.5 h-2.5" />{dur}</span>}
                               </div>
                             </div>
@@ -784,7 +1069,7 @@ export default function WaiterPage() {
                                 const hasA = myA.some(n => n.tableId === t.id)
                                 const isMine = w.id === selfWaiter?.id
                                 const pillClass = `text-xs font-bold px-2.5 py-1.5 rounded-lg transition-all ${hasA ? 'bg-red-100 text-red-600 ring-1 ring-red-300' : 'bg-slate-100 text-slate-500'} ${isMine ? 'active:scale-95' : ''}`
-                                const label = `T${t.tableNumber}${t.zone ? ` · ${t.zone}` : ''}${hasA ? ' 🔔' : ''}`
+                                const label = `${wtOf(lang).tShort(t.tableNumber)}${t.zone ? ` · ${t.zone}` : ''}${hasA ? ' 🔔' : ''}`
                                 return isMine ? (
                                   <button key={t.id} onClick={() => openManageTable(t)} className={pillClass}>{label}</button>
                                 ) : (
@@ -793,7 +1078,7 @@ export default function WaiterPage() {
                               })}
                             </div>
                           ) : (
-                            <p className="text-xs text-slate-400 italic">No tables assigned</p>
+                            <p className="text-xs text-slate-400 italic">{wtOf(lang).noTables}</p>
                           )}
                         </div>
                       )
@@ -804,7 +1089,7 @@ export default function WaiterPage() {
 
                 {offWaiters.length > 0 && (
                   <div className="border-2 border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-                    <div className="bg-slate-400 px-3 py-1.5"><Label text="Off Duty" count={offWaiters.length} light /></div>
+                    <div className="bg-slate-400 px-3 py-1.5"><Label text={w.offDuty} count={offWaiters.length} light /></div>
                     <div className="p-2 bg-slate-50">
                     <div className="grid grid-cols-2 gap-2">
                       {offWaiters.map(w => {
@@ -816,7 +1101,7 @@ export default function WaiterPage() {
                             </div>
                             <div className="min-w-0">
                               <p className="font-bold text-sm text-slate-700 truncate">{w.name}</p>
-                              <p className="text-[10px] text-slate-400">{w.role}</p>
+                              <p className="text-[10px] text-slate-400">{roleLabel(w.role, lang)}</p>
                             </div>
                           </div>
                         )
@@ -829,7 +1114,7 @@ export default function WaiterPage() {
                 {waiters.length === 0 && (
                   <div className="text-center py-16 bg-white border-2 border-slate-200 rounded-2xl">
                     <Users className="w-10 h-10 mx-auto mb-3 text-slate-300" />
-                    <p className="text-slate-400 text-sm">No staff data — log in with POS token</p>
+                    <p className="text-slate-400 text-sm">{w.noStaff}</p>
                   </div>
                 )}
               </>
@@ -853,12 +1138,12 @@ export default function WaiterPage() {
                       <div key={o.id} className={`bg-white border rounded-2xl p-3 space-y-1.5 shadow-sm ${o.status === 'CANCELLED' ? 'border-red-200' : 'border-emerald-200'}`}>
                         <div className="flex items-center justify-between">
                           <span className="font-bold text-sm text-slate-800">
-                            {tableNum ? `T${tableNum}` : ''}{o.seat?.seatNumber ? ` · S${o.seat.seatNumber}` : ''}
+                            {tableNum ? (o.seat?.seatNumber ? w.tableSeat(tableNum, o.seat.seatNumber) : w.tShort(tableNum)) : ''}
                           </span>
-                          <span className={`text-[10px] font-black uppercase tracking-wider ${o.status === 'CANCELLED' ? 'text-red-500' : 'text-emerald-500'}`}>{o.status}</span>
+                          <span className={`text-[10px] font-black uppercase tracking-wider ${o.status === 'CANCELLED' ? 'text-red-500' : 'text-emerald-500'}`}>{o.status === 'CANCELLED' ? w.statusCancelled : w.statusCompleted}</span>
                         </div>
-                        <p className="text-xs text-slate-500">{itemCount} items</p>
-                        <p className="text-[10px] text-slate-400">{new Date(o.createdAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}</p>
+                        <p className="text-xs text-slate-500">{w.items(itemCount)}</p>
+                        <p className="text-[10px] text-slate-400">{new Date(o.createdAt).toLocaleTimeString(lang, { hour: '2-digit', minute: '2-digit' })}</p>
                       </div>
                     )
                   })}
@@ -879,23 +1164,23 @@ export default function WaiterPage() {
                       {lastOrderTable && (
                         <button onClick={() => { setOrderDone(false); setOrderTable(lastOrderTable); setProductSearch('') }}
                           className="px-5 py-3 bg-white border-2 border-emerald-300 text-emerald-700 rounded-xl font-bold text-sm active:scale-95 transition-all">
-                          Table {lastOrderTable.tableNumber} — {lang === 'ar' ? 'أضف المزيد' : 'add more'}
+                          {w.table} {lastOrderTable.tableNumber} — {w.addMore}
                         </button>
                       )}
                       <button onClick={() => { setOrderDone(false); setOrderTable(null) }}
                         className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-bold text-sm active:scale-95 transition-all">
-                        + New Order
+                        {w.newOrder}
                       </button>
                     </div>
                   </div>
                 ) : !orderTable ? (
                   <div className="border-2 border-sky-200 rounded-2xl overflow-hidden shadow-sm">
-                    <div className="bg-sky-500 px-3 py-1.5"><Label text="Select Table" count={selfTables.length} light /></div>
+                    <div className="bg-sky-500 px-3 py-1.5"><Label text={w.selectTable} count={selfTables.length} light /></div>
                     <div className="p-3 bg-sky-50/40">
                     {selfTables.length === 0 ? (
                       <div className="text-center py-12 text-slate-400">
-                        <p className="text-sm">No tables assigned</p>
-                        <p className="text-xs mt-1">Ask your supervisor</p>
+                        <p className="text-sm">{w.noTables}</p>
+                        <p className="text-xs mt-1">{w.askSupervisor}</p>
                       </div>
                     ) : (
                       <div className="grid grid-cols-4 gap-2">
@@ -903,7 +1188,7 @@ export default function WaiterPage() {
                           <button key={t.id} onClick={() => { setOrderTable(t); setProductSearch('') }}
                             className="bg-white border border-sky-200 hover:border-sky-400 rounded-2xl p-4 flex flex-col items-center gap-1 transition-all active:scale-95 shadow-sm">
                             <span className="text-2xl font-black text-slate-800">{t.tableNumber}</span>
-                            <span className="text-[10px] text-slate-400">Table</span>
+                            <span className="text-[10px] text-slate-400">{w.table}</span>
                           </button>
                         ))}
                       </div>
@@ -914,10 +1199,10 @@ export default function WaiterPage() {
                   <>
                     {/* Table banner */}
                     <div className="flex items-center justify-between bg-emerald-100 border-2 border-emerald-300 rounded-2xl px-4 py-3">
-                      <span className="font-black text-emerald-700">Table {orderTable.tableNumber}</span>
+                      <span className="font-black text-emerald-700">{w.table} {orderTable.tableNumber}</span>
                       <button onClick={() => { setOrderTable(null); setOrderCart([]); setProductSearch('') }}
                         className="text-xs bg-white hover:bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl font-bold text-emerald-700 transition-all">
-                        ← Change
+                        {w.change}
                       </button>
                     </div>
 
@@ -929,7 +1214,7 @@ export default function WaiterPage() {
                         <input
                           value={productSearch}
                           onChange={e => setProductSearch(e.target.value)}
-                          placeholder={lang === 'ar' ? 'ابحث عن صنف…' : 'Search a product…'}
+                          placeholder={w.searchPh}
                           className="w-full pl-10 pr-9 py-3 bg-white border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                         />
                         {productSearch && (
@@ -960,12 +1245,12 @@ export default function WaiterPage() {
                     {/* Product grid */}
                     {menuCats.length === 0 ? (
                       <div className="text-center py-8 text-slate-400">
-                        <p className="text-sm">Loading menu…</p>
+                        <p className="text-sm">{w.loadingMenu}</p>
                       </div>
                     ) : (() => {
                       const q = productSearch.trim().toLowerCase()
                       if (q && visibleProducts.length === 0) {
-                        return <p className="text-center text-sm text-slate-400 py-8">{lang === 'ar' ? 'لا توجد نتائج' : 'No results'}</p>
+                        return <p className="text-center text-sm text-slate-400 py-8">{w.noResults}</p>
                       }
                       return (
                         <div className="grid grid-cols-2 gap-2">
@@ -980,7 +1265,7 @@ export default function WaiterPage() {
                                   {lang === 'ar' ? (p.nameAr || p.nameEn) : (p.nameEn || p.nameAr)}
                                 </p>
                                 <div className="flex items-center justify-between">
-                                  <span className="text-xs font-bold text-emerald-600">{p.price} MAD</span>
+                                  <span className="text-xs font-bold text-emerald-600">{p.price} {cafeInfo.currency}</span>
                                   {inCart && (
                                     <span className="bg-emerald-500 text-white text-xs font-black w-5 h-5 rounded-full flex items-center justify-center">
                                       {inCart.qty}
@@ -999,14 +1284,14 @@ export default function WaiterPage() {
                       <div className="bg-white border-2 border-emerald-200 rounded-2xl p-4 space-y-3 shadow-sm">
                         <p className="font-bold text-sm text-slate-800 flex items-center gap-2">
                           <ShoppingCart className="w-4 h-4 text-emerald-600" />
-                          {cartQty} item{cartQty !== 1 ? 's' : ''} · {cartTotal.toFixed(2)} MAD
+                          {w.items(cartQty)} · {cartTotal.toFixed(2)} {cafeInfo.currency}
                         </p>
                         <div className="space-y-2 max-h-44 overflow-y-auto">
                           {orderCart.map(c => (
                             <div key={c.productId} className="flex items-center gap-2">
                               <div className="flex-1 min-w-0">
                                 <p className="text-sm text-slate-700 truncate">{c.name}</p>
-                                <p className="text-xs text-slate-400">{c.price} × {c.qty} = {(c.price * c.qty).toFixed(2)} MAD</p>
+                                <p className="text-xs text-slate-400">{c.price} × {c.qty} = {(c.price * c.qty).toFixed(2)} {cafeInfo.currency}</p>
                               </div>
                               <div className="flex items-center gap-1.5 shrink-0">
                                 <button onClick={() => updateCartQty(c.productId, -1)}
@@ -1026,7 +1311,7 @@ export default function WaiterPage() {
                         <button onClick={submitOrder} disabled={orderSubmitting}
                           className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-95">
                           {orderSubmitting
-                            ? <span>Sending…</span>
+                            ? <span>{w.sending}</span>
                             : <><Send className="w-4 h-4" />{L('submit_order')}</>
                           }
                         </button>
@@ -1050,13 +1335,13 @@ export default function WaiterPage() {
             {
               id: 'alerts' as const,
               icon: <Bell className="w-5 h-5" />,
-              label: 'Alerts',
+              label: w.navAlerts,
               badge: alertCount,
             },
             {
               id: 'team' as const,
               icon: <Users className="w-5 h-5" />,
-              label: 'Team',
+              label: w.navTeam,
               badge: activeWaiters.length,
             },
             {
@@ -1068,7 +1353,7 @@ export default function WaiterPage() {
             {
               id: 'order' as const,
               icon: <ShoppingCart className="w-5 h-5" />,
-              label: 'Order',
+              label: w.navOrder,
               badge: cartQty,
             },
           ] as const).map(item => (
@@ -1103,12 +1388,12 @@ export default function WaiterPage() {
           <div className="fixed inset-0 z-50 bg-black/60 flex items-end justify-center" onClick={() => setManageTable(null)}>
             <div className="w-full max-w-md bg-white rounded-t-3xl p-5 space-y-4" onClick={e => e.stopPropagation()}>
               <div className="w-10 h-1 bg-slate-200 rounded-full mx-auto" />
-              <h3 className="font-black text-lg text-slate-800">Table {manageTable.tableNumber}</h3>
+              <h3 className="font-black text-lg text-slate-800">{w.table} {manageTable.tableNumber}</h3>
 
               <div>
-                <label className="text-xs font-bold text-slate-500 block mb-1.5">Zone</label>
+                <label className="text-xs font-bold text-slate-500 block mb-1.5">{w.zone}</label>
                 <input value={zoneInput} onChange={e => setZoneInput(e.target.value)}
-                  placeholder="e.g. Terrace, Upstairs…"
+                  placeholder={w.zonePh}
                   className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
               </div>
 
@@ -1116,17 +1401,17 @@ export default function WaiterPage() {
 
               <button onClick={saveZone} disabled={savingZone || !zoneInput.trim()}
                 className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white rounded-xl font-bold text-sm active:scale-95 transition-all">
-                {savingZone ? 'Saving…' : 'Save zone'}
+                {savingZone ? w.saving : w.saveZone}
               </button>
 
               <button onClick={releaseTable} disabled={releasing}
                 className="w-full py-3 bg-white border-2 border-red-200 hover:bg-red-50 disabled:opacity-40 text-red-600 rounded-xl font-bold text-sm active:scale-95 transition-all">
-                {releasing ? 'Releasing…' : '✕ Release this table'}
+                {releasing ? w.releasing : w.releaseTable}
               </button>
 
               <button onClick={() => setManageTable(null)}
                 className="w-full py-2 text-slate-400 text-sm font-medium">
-                Cancel
+                {w.cancel}
               </button>
             </div>
           </div>

@@ -9,6 +9,7 @@ import {
   ResponsiveContainer, AreaChart, Area, CartesianGrid, XAxis, YAxis, Tooltip,
 } from 'recharts'
 import { useLang } from '../lang-context'
+import InventoryGate from '../InventoryGate'
 
 type Period = 'week' | 'month' | 'custom'
 
@@ -73,7 +74,7 @@ function fmt(n: number, currency = 'MAD') {
   return `${n.toLocaleString('fr-FR')} ${currency}`
 }
 
-export default function AchatsPage() {
+function AchatsPageInner() {
   const { lang, isRTL } = useLang()
   const t = T[lang]
   const [period, setPeriod]   = useState<Period>('month')
@@ -239,4 +240,9 @@ export default function AchatsPage() {
       )}
     </div>
   )
+}
+
+
+export default function AchatsPage() {
+  return <InventoryGate><AchatsPageInner /></InventoryGate>
 }

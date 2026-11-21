@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, RefreshCw, Check, X, Package2, Clock } from 'lucide-react'
+import { ArrowRight, RefreshCw, Check, X, Package2, Clock } from 'lucide-react'
 import { useSAAuth } from '../../../context'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -67,7 +67,7 @@ const TIMELINE = ['DRAFT','SUBMITTED','UNDER_REVIEW','APPROVED','FULFILLED']
 export default function OrderDetailPage() {
   const params   = useParams()
   const router   = useRouter()
-  const [lang, setLang]     = useState<'ar' | 'en'>('ar')
+  const lang = 'ar' as 'ar' | 'en' // console is Arabic-only
   const { header } = useSAAuth()
   const [order, setOrder]   = useState<Order | null>(null)
   const [items, setItems]   = useState<OrderItem[]>([])
@@ -90,11 +90,6 @@ export default function OrderDetailPage() {
   }, [header, id])
 
   useEffect(() => { load() }, [load])
-  useEffect(() => {
-    const l = localStorage.getItem('lang') as 'ar' | 'en' | null
-    if (l) setLang(l)
-  }, [])
-
   async function action(endpoint: string, body?: Record<string, unknown>) {
     setActing(true)
     try {
@@ -126,7 +121,7 @@ export default function OrderDetailPage() {
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
           <Link href="/superadmin/marketplace/orders" className="p-2 bg-zinc-800 rounded-lg hover:bg-zinc-700">
-            <ArrowLeft className="w-4 h-4" />
+            <ArrowRight className="w-4 h-4" />
           </Link>
           <div>
             <h1 className="text-xl font-bold text-zinc-100">{order?.orderNumber ?? '...'}</h1>
@@ -138,7 +133,6 @@ export default function OrderDetailPage() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <button onClick={() => setLang(l => l === 'ar' ? 'en' : 'ar')} className="px-3 py-1.5 text-sm bg-zinc-800 rounded-lg">{lang === 'ar' ? 'EN' : 'ع'}</button>
           <button onClick={load} disabled={loading} className="p-2 bg-zinc-800 rounded-lg hover:bg-zinc-700">
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /></button>
         </div>
@@ -180,7 +174,7 @@ export default function OrderDetailPage() {
                 </div>
               )}
               {order.status === 'CANCELLED' && (
-                <div className="mt-4 p-3 bg-zinc-800 rounded-lg text-sm text-zinc-400">Status: CANCELLED</div>
+                <div className="mt-4 p-3 bg-zinc-800 rounded-lg text-sm text-zinc-400">الحالة: ملغى</div>
               )}
             </div>
 
@@ -271,7 +265,7 @@ export default function OrderDetailPage() {
                   { label: t.currency,    value: order.currency },
                   { label: t.requestedBy, value: order.requestedBy },
                   { label: t.approvedBy,  value: order.approvedBy ?? '—' },
-                  { label: t.createdAt,   value: new Date(order.createdAt).toLocaleDateString(isRTL ? 'ar' : 'en') },
+                  { label: t.createdAt,   value: new Date(order.createdAt).toLocaleDateString('ar-u-nu-latn') },
                 ].map(({ label, value }) => (
                   <div key={label} className="flex items-center justify-between">
                     <span className="text-zinc-400">{label}</span>
@@ -280,7 +274,7 @@ export default function OrderDetailPage() {
                 ))}
                 {order.notes && (
                   <div className="pt-2 border-t border-zinc-800">
-                    <p className="text-zinc-400 text-xs mb-1">Notes</p>
+                    <p className="text-zinc-400 text-xs mb-1">ملاحظات</p>
                     <p className="text-zinc-300 text-sm">{order.notes}</p>
                   </div>
                 )}

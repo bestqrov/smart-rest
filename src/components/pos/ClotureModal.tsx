@@ -3,15 +3,18 @@
 import { useState } from 'react'
 import { Loader2, X } from 'lucide-react'
 import type { CashierShift } from '../../hooks/useCashierShift'
+import { tr, getLang, isRTL, type Lang } from '../../lib/posI18n'
 
 interface ClotureModalProps {
   shift: CashierShift
   currency: string
   onClose: () => void
   onConfirm: (countedCash: number) => Promise<CashierShift>
+  lang?: Lang
 }
 
-export default function ClotureModal({ shift, currency, onClose, onConfirm }: ClotureModalProps) {
+export default function ClotureModal({ shift, currency, onClose, onConfirm, lang: langProp }: ClotureModalProps) {
+  const lang = langProp ?? getLang()
   const [countedCash, setCountedCash] = useState('')
   const [submitting, setSubmitting]   = useState(false)
   const [error, setError]             = useState('')
@@ -22,13 +25,14 @@ export default function ClotureModal({ shift, currency, onClose, onConfirm }: Cl
   async function handleConfirm() {
     setError('')
     const counted = parseFloat(countedCash)
-    if (isNaN(counted) || counted < 0) { setError('Montant invalide'); return }
+    if (isNaN(counted) || counted < 0) { setError(tr('invalid_amount', lang)); return }
     setSubmitting(true)
     try {
       const closedShift = await onConfirm(counted)
       setResult({ discrepancy: closedShift.discrepancy ?? (counted - expected) })
     } catch (err: any) {
-      setError(err.message ?? 'Échec de la clôture')
+      console.error('[Cloture] close shift failed:', err?.message)
+      setError(tr('cl_failed', lang))
     } finally {
       setSubmitting(false)
     }
@@ -36,34 +40,34 @@ export default function ClotureModal({ shift, currency, onClose, onConfirm }: Cl
 
   return (
     <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
-      <div className="bg-gray-900 rounded-3xl p-6 w-full max-w-sm shadow-2xl">
+      <div className="bg-gray-900 rounded-3xl p-6 w-full max-w-sm shadow-2xl" dir={isRTL(lang) ? 'rtl' : 'ltr'}>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-black text-lg text-white">Clôture de caisse</h3>
-          <button onClick={onClose} className="text-gray-500 hover:text-white"><X className="w-5 h-5" /></button>
+          <h3 className="font-black text-lg text-white">{tr('cl_title', lang)}</h3>
+          <button onClick={onClose} aria-label={tr('close', lang)} className="text-gray-500 hover:text-white"><X className="w-5 h-5" /></button>
         </div>
 
         {result ? (
           <div className="text-center space-y-3">
-            <p className="text-gray-400 text-sm">Écart</p>
-            <p className={`text-3xl font-black ${result.discrepancy === 0 ? 'text-emerald-400' : result.discrepancy > 0 ? 'text-sky-400' : 'text-red-400'}`}>
+            <p className="text-gray-400 text-sm">{tr('cl_discrepancy', lang)}</p>
+            <p dir="ltr" className={`text-3xl font-black ${result.discrepancy === 0 ? 'text-emerald-400' : result.discrepancy > 0 ? 'text-sky-400' : 'text-red-400'}`}>
               {result.discrepancy > 0 ? '+' : ''}{result.discrepancy.toFixed(2)} {currency}
             </p>
             <p className="text-gray-500 text-xs">
-              {result.discrepancy === 0 ? 'Caisse exacte' : result.discrepancy > 0 ? 'Excédent' : 'Manque'}
+              {result.discrepancy === 0 ? tr('cl_exact', lang) : result.discrepancy > 0 ? tr('cl_over', lang) : tr('cl_short', lang)}
             </p>
             <button onClick={onClose} className="w-full mt-4 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-sm">
-              Terminé
+              {tr('cl_done', lang)}
             </button>
           </div>
         ) : (
           <>
             <div className="space-y-2 mb-4 text-sm">
-              <div className="flex justify-between text-gray-400"><span>Caisse de départ</span><span className="text-white font-mono">{shift.initialCash.toFixed(2)} {currency}</span></div>
-              <div className="flex justify-between text-gray-400"><span>Recette (cash)</span><span className="text-white font-mono">{shift.totalCollectedCash.toFixed(2)} {currency}</span></div>
-              <div className="flex justify-between font-bold border-t border-gray-800 pt-2"><span className="text-gray-300">Montant attendu</span><span className="text-white font-mono">{expected.toFixed(2)} {currency}</span></div>
+              <div className="flex justify-between text-gray-400"><span>{tr('today_cash_open', lang)}</span><span dir="ltr" className="text-white font-mono">{shift.initialCash.toFixed(2)} {currency}</span></div>
+              <div className="flex justify-between text-gray-400"><span>{tr('cl_cash_rev', lang)}</span><span dir="ltr" className="text-white font-mono">{shift.totalCollectedCash.toFixed(2)} {currency}</span></div>
+              <div className="flex justify-between font-bold border-t border-gray-800 pt-2"><span className="text-gray-300">{tr('cl_expected', lang)}</span><span dir="ltr" className="text-white font-mono">{expected.toFixed(2)} {currency}</span></div>
             </div>
 
-            <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wide">Montant compté</label>
+            <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wide">{tr('cl_counted', lang)}</label>
             <input
               type="number" min="0" step="0.5" autoFocus
               value={countedCash} onChange={e => setCountedCash(e.target.value)}
@@ -75,7 +79,7 @@ export default function ClotureModal({ shift, currency, onClose, onConfirm }: Cl
 
             <button onClick={handleConfirm} disabled={submitting}
               className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white rounded-xl font-bold text-sm active:scale-95">
-              {submitting ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Confirmer la clôture'}
+              {submitting ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : tr('cl_confirm', lang)}
             </button>
           </>
         )}

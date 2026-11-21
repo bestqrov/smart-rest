@@ -80,9 +80,13 @@ export function useCashierShift(token: string | null, subdomain: string) {
   const openShift = useCallback(async (params: {
     pinCode?: string; demoStaffId?: string; initialCash: number; plannedEndTime?: string
   }) => {
+    // Send the staff token too: staff arriving from /staff never typed their
+    // PIN on this page, so the server authenticates them by token instead.
+    let staffToken: string | null = null
+    try { staffToken = localStorage.getItem('posToken') } catch {}
     const res = await fetch('/api/pos/shift', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...(staffToken ? { Authorization: `Bearer ${staffToken}` } : {}) },
       body: JSON.stringify({
         subdomain,
         action: 'open',

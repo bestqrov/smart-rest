@@ -66,7 +66,7 @@ function StockInput({ productId, current, header, onRefresh }: {
     <div className="flex items-center gap-2">
       <select value={mode} onChange={e => setMode(e.target.value as any)}
         className="text-xs bg-zinc-800 border border-zinc-700 rounded px-2 py-1 text-zinc-300">
-        <option value="set">Set</option>
+        <option value="set">تحديد</option>
         <option value="adjust">±</option>
       </select>
       {mode === 'set' ? (
@@ -87,7 +87,7 @@ function StockInput({ productId, current, header, onRefresh }: {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function InventoryPage() {
-  const [lang, setLang]         = useState<'ar' | 'en'>('ar')
+  const lang = 'ar' as 'ar' | 'en' // console is Arabic-only
   const { header } = useSAAuth()
   const [items, setItems]       = useState<InventoryItem[]>([])
   const [loading, setLoading]   = useState(true)
@@ -108,11 +108,6 @@ export default function InventoryPage() {
   }, [header, showLowOnly])
 
   useEffect(() => { load() }, [load])
-  useEffect(() => {
-    const l = localStorage.getItem('lang') as 'ar' | 'en' | null
-    if (l) setLang(l)
-  }, [])
-
   const lowCount = items.filter(i => i.isLowStock).length
 
   return (
@@ -125,7 +120,6 @@ export default function InventoryPage() {
           <p className="text-zinc-400 text-sm mt-1">{t.subtitle}</p>
         </div>
         <div className="flex items-center gap-3">
-          <button onClick={() => setLang(l => l === 'ar' ? 'en' : 'ar')} className="px-3 py-1.5 text-sm bg-zinc-800 rounded-lg">{lang === 'ar' ? 'EN' : 'ع'}</button>
           <button onClick={load} disabled={loading} className="p-2 bg-zinc-800 rounded-lg hover:bg-zinc-700">
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /></button>
         </div>

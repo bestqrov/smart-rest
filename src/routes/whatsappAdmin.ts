@@ -1,5 +1,6 @@
 import express, { Request, Response } from 'express'
 import { authorizeAdmin } from '../middleware/authorizeAdmin'
+import { requirePlanFeature } from '../billing/planAccess'
 import logger from '../logger'
 import {
   sendMessage, sendTemplatedMessage, sendBroadcast, retryMessage,
@@ -9,7 +10,7 @@ import {
 const router = express.Router()
 
 // POST /api/admin/whatsapp/send — body: { phone, body, templateKey?, scheduledFor? }
-router.post('/api/admin/whatsapp/send', authorizeAdmin, async (req: Request, res: Response) => {
+router.post('/api/admin/whatsapp/send', authorizeAdmin, requirePlanFeature('whatsappMarketing'), async (req: Request, res: Response) => {
   try {
     const cafeId = req.admin!.cafeId
     const { phone, body, templateKey, scheduledFor } = req.body as {
@@ -29,7 +30,7 @@ router.post('/api/admin/whatsapp/send', authorizeAdmin, async (req: Request, res
 })
 
 // POST /api/admin/whatsapp/send-template — body: { phone, templateKey, vars?, scheduledFor? }
-router.post('/api/admin/whatsapp/send-template', authorizeAdmin, async (req: Request, res: Response) => {
+router.post('/api/admin/whatsapp/send-template', authorizeAdmin, requirePlanFeature('whatsappMarketing'), async (req: Request, res: Response) => {
   try {
     const cafeId = req.admin!.cafeId
     const { phone, templateKey, vars, scheduledFor } = req.body as {
@@ -46,7 +47,7 @@ router.post('/api/admin/whatsapp/send-template', authorizeAdmin, async (req: Req
 })
 
 // POST /api/admin/whatsapp/broadcast — body: { phones: string[], body, templateKey? }
-router.post('/api/admin/whatsapp/broadcast', authorizeAdmin, async (req: Request, res: Response) => {
+router.post('/api/admin/whatsapp/broadcast', authorizeAdmin, requirePlanFeature('whatsappMarketing'), async (req: Request, res: Response) => {
   try {
     const cafeId = req.admin!.cafeId
     const { phones, body, templateKey } = req.body as { phones?: string[]; body?: string; templateKey?: string }
@@ -82,7 +83,7 @@ router.get('/api/admin/whatsapp/templates', authorizeAdmin, async (req: Request,
   }
 })
 
-router.post('/api/admin/whatsapp/templates', authorizeAdmin, async (req: Request, res: Response) => {
+router.post('/api/admin/whatsapp/templates', authorizeAdmin, requirePlanFeature('whatsappMarketing'), async (req: Request, res: Response) => {
   try {
     const { key, body } = req.body as { key?: string; body?: string }
     if (!key?.trim() || !body?.trim()) return res.status(400).json({ error: 'key and body are required' })

@@ -5,6 +5,8 @@ import bcrypt from 'bcrypt'
 
 import logger from '../logger'
 import prisma from '../prisma'
+import { recordInvoiceCommission } from '../affiliate/AgencyService'
+import { issueDueInvoiceFor } from '../billing/subscriptionBilling'
 import { JWT_SECRET } from '../config'
 import { sendEmail } from '../services/email'
 import {
@@ -386,7 +388,12 @@ router.patch('/api/superadmin/tenants/:id/extend-trial', requireSuperAdmin, asyn
 router.post('/api/superadmin/tenants/:id/activate', requireSuperAdmin, async (req: Request, res: Response) => {
   try {
     const id = req.params['id'] as string
-    const { monthlyFee, tier } = req.body as { monthlyFee?: number; tier?: string }
+    const { monthlyFee, tier, planId, onlinePaymentAddon, aiVideoAddon } = req.body as {
+      monthlyFee?: number; tier?: string; planId?: string | null; onlinePaymentAddon?: boolean; aiVideoAddon?: boolean
+    }
+    if (planId != null && !['STARTER', 'PRO', 'ENTERPRISE'].includes(planId)) {
+      return res.status(400).json({ error: 'Invalid planId' })
+    }
 
     await prisma.cafe.update({
       where: { id },
@@ -394,11 +401,20 @@ router.post('/api/superadmin/tenants/:id/activate', requireSuperAdmin, async (re
         isActive:         true,
         billingStatus:    'COLLECTING_DEBT',
         ...(monthlyFee != null ? { monthlyFee: Number(monthlyFee) } : {}),
-        ...(tier        != null ? { subscriptionTier: tier }        : {})
+        ...(tier        != null ? { subscriptionTier: tier }        : {}),
+        // A plan switches the venue to subscription billing (no per-order fee).
+        ...(planId !== undefined ? { planId: planId || null } : {}),
+        ...(onlinePaymentAddon != null ? { onlinePaymentAddon: !!onlinePaymentAddon } : {}),
+        ...(aiVideoAddon       != null ? { aiVideoAddon: !!aiVideoAddon }             : {}),
       }
     })
 
-    logger.info({ msg: 'Cafe manually activated', cafeId: id, monthlyFee, tier })
+    logger.info({ msg: 'Cafe manually activated', cafeId: id, monthlyFee, tier, planId, onlinePaymentAddon, aiVideoAddon })
+
+    // Subscription venues: bill the first month now (period anchored on today).
+    if (planId) {
+      try { await issueDueInvoiceFor(id) } catch (err) { logger.error({ msg: 'First invoice failed', cafeId: id, err }) }
+    }
     return res.json({ ok: true })
   } catch (err) {
     return res.status(500).json({ error: 'Failed' })
@@ -423,6 +439,37 @@ router.get('/api/superadmin/billing/overview', requireSuperAdmin, async (_req: R
         prisma.cafe.aggregate({ _sum: { monthlyFee: true }, where: { billingStatus: 'COLLECTING_DEBT', monthlyFee: { not: null } } })
       ])
 
+    // Real platform revenue = invoices restaurants actually PAID us, per
+    // currency (MAD and SAR must never be summed together or shown as "$").
+    const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0)
+    // Subscription MRR (owner decision 2026-11-20: monthly plans, lib/gulfPlans.ts):
+    // sum of monthlyFee of active, paying (not in trial) venues, per currency.
+    const subscribed = await prisma.cafe.findMany({
+      where:  { isActive: true, billingStatus: { not: 'GRACE_PERIOD' }, monthlyFee: { gt: 0 } },
+      select: { monthlyFee: true, currency: true },
+    })
+    const mrrMap: Record<string, { amount: number; venues: number }> = {}
+    for (const c of subscribed) {
+      const cur = c.currency || 'USD'
+      mrrMap[cur] ??= { amount: 0, venues: 0 }
+      mrrMap[cur].amount += c.monthlyFee ?? 0
+      mrrMap[cur].venues += 1
+    }
+    const [paidAll, paidMonth, salesByCafe] = await Promise.all([
+      prisma.billingInvoice.groupBy({ by: ['currency'], where: { status: 'PAID' }, _sum: { amount: true }, _count: true }),
+      prisma.billingInvoice.groupBy({ by: ['currency'], where: { status: 'PAID', paidAt: { gte: monthStart } }, _sum: { amount: true } }),
+      prisma.order.groupBy({ by: ['cafeId'], where: { status: 'COMPLETED', isPaid: true }, _sum: { totalPrice: true } }),
+    ])
+    const cafeCurrency = new Map(
+      (await prisma.cafe.findMany({ where: { id: { in: salesByCafe.map(x => x.cafeId) } }, select: { id: true, currency: true } }))
+        .map(c => [c.id, c.currency || 'MAD'])
+    )
+    const restaurantSales: Record<string, number> = {}
+    for (const r of salesByCafe) {
+      const cur = cafeCurrency.get(r.cafeId) ?? 'MAD'
+      restaurantSales[cur] = Math.round(((restaurantSales[cur] ?? 0) + (r._sum.totalPrice ?? 0)) * 100) / 100
+    }
+
     return res.json({
       totalCafes,
       activeCafes,
@@ -431,8 +478,15 @@ router.get('/api/superadmin/billing/overview', requireSuperAdmin, async (_req: R
       economyCafes,
       advancedCafes,
       totalAccruedDebt: Math.abs(debtAgg._sum.walletBalance ?? 0),
+      // Kept for older clients — this is restaurants' guest SALES (mixed currencies), NOT platform revenue.
       totalRevenue:     revenueAgg._sum.totalPrice ?? 0,
-      mrr:              mrrAgg._sum.monthlyFee ?? 0
+      mrr:              mrrAgg._sum.monthlyFee ?? 0,
+      platformRevenue: {
+        allTime:   paidAll.map(r => ({ currency: r.currency, amount: r._sum.amount ?? 0, invoices: r._count })),
+        thisMonth: paidMonth.map(r => ({ currency: r.currency, amount: r._sum.amount ?? 0 })),
+      },
+      restaurantSales: Object.entries(restaurantSales).map(([currency, amount]) => ({ currency, amount })),
+      subscriptionMrr: Object.entries(mrrMap).map(([currency, v]) => ({ currency, amount: Math.round(v.amount * 100) / 100, venues: v.venues })),
     })
   } catch (err) {
     logger.error({ msg: 'billing overview error', err })
@@ -555,7 +609,7 @@ router.get('/api/superadmin/tenants/rich', requireSuperAdmin, async (req: Reques
           country: true, currency: true, isActive: true,
           walletBalance: true, billingStatus: true,
           trialEndsAt: true, hasExtendedTrial: true,
-          subscriptionTier: true, monthlyFee: true,
+          subscriptionTier: true, monthlyFee: true, planId: true, onlinePaymentAddon: true, aiVideoAddon: true,
           coffeeRefPrice: true, sandwichRefPrice: true,
           weeklyOrderCount: true,
           billingCycle: true, maintenancePack: true,
@@ -617,7 +671,7 @@ router.patch('/api/superadmin/payment-requests/:id/confirm', requireSuperAdmin, 
     })
     if (!payReq) return res.status(404).json({ error: 'Not found' })
 
-    await prisma.$transaction(async (tx) => {
+    const invoice = await prisma.$transaction(async (tx) => {
       await tx.paymentRequest.update({
         where: { id },
         data:  { status: 'CONFIRMED', reviewedAt: new Date(), reviewNote: reviewNote?.trim() || null }
@@ -646,7 +700,7 @@ router.patch('/api/superadmin/payment-requests/:id/confirm', requireSuperAdmin, 
       const year     = new Date().getFullYear()
       const yearCount = await tx.billingInvoice.count({ where: { issuedAt: { gte: new Date(`${year}-01-01`) } } })
       const invoiceNumber = `INV-${year}-${String(yearCount + 1).padStart(5, '0')}`
-      await tx.billingInvoice.create({
+      return tx.billingInvoice.create({
         data: {
           cafeId:          payReq.cafeId,
           invoiceNumber,
@@ -658,6 +712,15 @@ router.patch('/api/superadmin/payment-requests/:id/confirm', requireSuperAdmin, 
           paidAt:          new Date(),
         }
       })
+    })
+
+    // Agency partner program — recurring commission on what the restaurant
+    // actually paid. Best-effort and idempotent per invoice; never fails this request.
+    await recordInvoiceCommission({
+      cafeId:     payReq.cafeId,
+      sourceKey:  `billingInvoice:${invoice.id}`,
+      paidAmount: payReq.amount,
+      currency:   payReq.currency,
     })
 
     logger.info({ msg: 'Payment confirmed — cafe reactivated', id, cafeId: payReq.cafeId })
@@ -983,7 +1046,7 @@ router.get('/api/superadmin/revenue-history', requireSuperAdmin, async (_req: Re
         where: { isPaid: true, createdAt: { gte: start, lt: end } }
       })
       months.push({
-        month: start.toLocaleDateString('fr-MA', { month: 'short', year: '2-digit' }),
+        month: start.toLocaleDateString('ar-u-nu-latn', { month: 'short', year: '2-digit' }),
         value: parseFloat((agg._sum.totalCommission ?? 0).toFixed(2))
       })
     }

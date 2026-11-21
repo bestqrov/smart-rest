@@ -18,7 +18,7 @@ enum ActiveSessionStatus {
 enum OrderStatus {
   PENDING
   PREPARING
-  READY       // kitchen done, waiting for waiter to serve
+  READY // kitchen done, waiting for waiter to serve
   DELIVERED
   COMPLETED
   CANCELLED
@@ -27,59 +27,59 @@ enum OrderStatus {
 // ─── Certification ────────────────────────────────────────────────────────────
 
 enum CertificationStatus {
-  PENDING    // newly registered, not yet evaluated
-  ELIGIBLE   // passed all metrics, awaiting owner claim
-  CERTIFIED  // officially certified (kit delivered)
-  REVOKED    // previously certified but metrics dropped
+  PENDING // newly registered, not yet evaluated
+  ELIGIBLE // passed all metrics, awaiting owner claim
+  CERTIFIED // officially certified (kit delivered)
+  REVOKED // previously certified but metrics dropped
 }
 
 // Embedded — live metrics snapshot updated by the monthly cron
 type CertificationMetrics {
-  qrUsageRate      Float @default(0)  // % of orders placed via QR (0-100)
-  avgPreparationTime Float @default(0) // avg minutes from PENDING → READY
-  averageRating    Float @default(0)  // avg order rating (1-5)
-  reviewCount      Int   @default(0)  // total reviews submitted
-  evaluatedAt      DateTime?
+  qrUsageRate        Float     @default(0) // % of orders placed via QR (0-100)
+  avgPreparationTime Float     @default(0) // avg minutes from PENDING → READY
+  averageRating      Float     @default(0) // avg order rating (1-5)
+  reviewCount        Int       @default(0) // total reviews submitted
+  evaluatedAt        DateTime?
 }
 
 // ─── Product Modifiers ────────────────────────────────────────────────────────
 
 // A single selectable option within a modifier group (e.g. "Large +10 MAD")
 type ModifierOption {
-  id             String  // client-generated UUID
-  label          String  // display name: "Large", "Extra Cheese"
-  priceAdjustment Float  @default(0)  // positive = surcharge, negative = discount
+  id              String // client-generated UUID
+  label           String // display name: "Large", "Extra Cheese"
+  priceAdjustment Float  @default(0) // positive = surcharge, negative = discount
 }
 
 // A named group of options attached to a product (e.g. "Size", "Extras")
 type ModifierGroup {
   id          String
-  name        String          // "Taille", "Extras", "Cuisson"
-  required    Boolean @default(false)
-  multiSelect Boolean @default(false) // false = radio, true = checkbox
+  name        String // "Taille", "Extras", "Cuisson"
+  required    Boolean          @default(false)
+  multiSelect Boolean          @default(false) // false = radio, true = checkbox
   options     ModifierOption[]
 }
 
 // Snapshot of a customer's choice, stored on OrderItem (immutable history)
 type ChosenModifier {
-  groupId    String
-  groupName  String
-  optionId   String
-  optionLabel String
+  groupId         String
+  groupName       String
+  optionId        String
+  optionLabel     String
   priceAdjustment Float
 }
 
 enum OrderSource {
-  QR_CODE      // customer scanned table QR
-  POS_MANUAL   // staff entered order via Mini POS
-  MARKETPLACE  // manually logged from a 3rd-party delivery app (Glovo, Uber Eats...)
+  QR_CODE // customer scanned table QR
+  POS_MANUAL // staff entered order via Mini POS
+  MARKETPLACE // manually logged from a 3rd-party delivery app (Glovo, Uber Eats...)
 }
 
 enum BillStatus {
-  OPENED          // table is active, no bill yet
-  BILL_REQUESTED  // customer / waiter requested the bill
-  CLOSED_PRINTED  // paid and receipt printed
-  CLOSED_VIRTUAL  // paid digitally, no print
+  OPENED // table is active, no bill yet
+  BILL_REQUESTED // customer / waiter requested the bill
+  CLOSED_PRINTED // paid and receipt printed
+  CLOSED_VIRTUAL // paid digitally, no print
 }
 
 enum PaymentMethod {
@@ -118,23 +118,28 @@ type SmartWifi {
 // Embedded document — Mobile Money / Gulf payment gateway config
 type PaymentConfig {
   // Africa Mobile Money
-  orangeMoneyNumber String @default("")
-  mtnMoMoNumber     String @default("")
-  waveWallet        String @default("")
+  orangeMoneyNumber     String @default("")
+  mtnMoMoNumber         String @default("")
+  waveWallet            String @default("")
   // Gulf (Moyasar)
   moyasarPublishableKey String @default("")
   // Stripe (cards + Apple Pay + Google Pay)
   stripePublishableKey  String @default("")
   stripeAccountId       String @default("")
+  // Restaurant-owned online gateway (customer pays the bill from the QR page).
+  // Money goes straight to the restaurant's own gateway account.
+  onlineProvider        String @default("") // "" | TAP | MOYASAR | STRIPE
+  onlineSecretEnc       String @default("") // AES-256-GCM ciphertext of the secret key — never returned to clients
+  onlineSecretHint      String @default("") // last 4 chars, for display only
   // WhatsApp zero-rating ingest
-  whatsappNumber   String @default("")  // restaurant's WhatsApp number for *6 orders
+  whatsappNumber        String @default("") // restaurant's WhatsApp number for *6 orders
 }
 
 enum BillingStatus {
-  GRACE_PERIOD      // Trial window — commission-free
-  COLLECTING_DEBT   // Active billing — commissions accumulate
-  PAST_DUE          // Balance negative; 7-day grace period before suspension
-  SUSPENDED         // Grace period elapsed without payment; service halted
+  GRACE_PERIOD // Trial window — commission-free
+  COLLECTING_DEBT // Active billing — commissions accumulate
+  PAST_DUE // Balance negative; 7-day grace period before suspension
+  SUSPENDED // Grace period elapsed without payment; service halted
 }
 
 // ─── Online Payment ───────────────────────────────────────────────────────────
@@ -149,10 +154,11 @@ enum OnlinePaymentStatus {
 enum OnlinePaymentMethod {
   STRIPE
   MOYASAR
+  TAP
   ORANGE_MONEY
   MTN_MOMO
   WAVE
-  WHATSAPP_ORDER   // zero-rated WhatsApp ingest
+  WHATSAPP_ORDER // zero-rated WhatsApp ingest
 }
 
 enum WalletLogType {
@@ -194,7 +200,7 @@ model Cafe {
   socialLinks  Json?
 
   // ── Geo-targeting (used by n8n regional campaigns) ───────────────────────
-  city         String  @default("")
+  city String @default("")
 
   isActive            Boolean       @default(true)
   isProfileComplete   Boolean       @default(false)
@@ -202,8 +208,8 @@ model Cafe {
   trialEndsAt         DateTime?
   hasExtendedTrial    Boolean       @default(false)
   billingStatus       BillingStatus @default(GRACE_PERIOD)
-  gracePeriodEndsAt   DateTime?     // Set when status transitions to PAST_DUE; null otherwise
-  suspendedAt         DateTime?     // Set when status transitions to SUSPENDED; null otherwise
+  gracePeriodEndsAt   DateTime? // Set when status transitions to PAST_DUE; null otherwise
+  suspendedAt         DateTime? // Set when status transitions to SUSPENDED; null otherwise
   isPremium           Boolean       @default(false)
   hasSocialShareAddon Boolean       @default(false)
   // 'CAFE' = simple cafe (drinks + light snacks), 'RESTAURANT' = full meals + kitchen
@@ -215,11 +221,11 @@ model Cafe {
 
   // ── Subscription package (used for feature gating & n8n segmentation) ────
   // 'Free' | '6-Month' | 'Annual'
-  packageType         String    @default("Free")
+  packageType      String  @default("Free")
   // $5 one-time upsell for artistic/custom QR code design
-  isArtisticQrPaid    Boolean   @default(false)
+  isArtisticQrPaid Boolean @default(false)
   // Protected demo/seed account — never bulk-deleted
-  isDemo              Boolean   @default(false)
+  isDemo           Boolean @default(false)
 
   // ── Gamification counters (drive certification unlock) ────────────────────
   // Incremented by n8n webhook on every confirmed event/reservation
@@ -229,141 +235,151 @@ model Cafe {
   isCertified            Boolean @default(false)
 
   // ── Branding (QR menu appearance + logo analysis) ─────────────────────────
-  accentColor      String @default("#059669")  // hex color for QR menu theme
+  accentColor     String  @default("#059669") // hex color for QR menu theme
   // Primary brand color extracted from logo via n8n image analysis pipeline
-  logoAccentColor  String @default("")
-  primaryFont      String @default("Cairo")    // Google Font name
-  localIp          String?                     // LAN IP for offline fallback (set in Settings → e.g. 192.168.1.100)
+  logoAccentColor String  @default("")
+  primaryFont     String  @default("Cairo") // Google Font name
+  localIp         String? // LAN IP for offline fallback (set in Settings → e.g. 192.168.1.100)
 
   // ── Payment gateway configuration (set in Settings → Payments) ────────────
-  paymentConfig PaymentConfig?
+  paymentConfig         PaymentConfig?
+  // Agency partner program — set at signup via ?ref=CODE
+  referredByAffiliateId String?        @db.ObjectId
+  partnerDiscountPct    Float          @default(0) // % off per-order platform fees (agency clients: 15)
+  // Gulf subscription plan (lib/gulfPlans.ts). null = legacy per-order commission billing.
+  planId                String? // STARTER | PRO | ENTERPRISE
+  onlinePaymentAddon    Boolean        @default(false) // Starter add-on: online bill payment (+$19/mo)
+  aiVideoAddon          Boolean        @default(false) // add-on: AI marketing videos, 5/month (+$29/mo)
+  // Subscription billing (src/billing/subscriptionBilling.ts)
+  currentPeriodEnd      DateTime? // next invoice is issued when this passes
+  subscriptionSuspended Boolean        @default(false) // 14 days overdue -> admin dashboard locked (guest menu + staff keep working)
 
   // ── Per-restaurant feature flags (toggled by superadmin or admin) ──────────
-  smartWifiEnabled         Boolean @default(false)
-  cashierPosEnabled        Boolean @default(true)
-  orderingEnabled          Boolean @default(true)
-  reservationsEnabled      Boolean @default(true)
+  smartWifiEnabled               Boolean   @default(false)
+  cashierPosEnabled              Boolean   @default(true)
+  orderingEnabled                Boolean   @default(true)
+  reservationsEnabled            Boolean   @default(true)
   // Onboarding-configured capabilities (editable later in Settings → Feature Configuration)
-  kitchenDisplayEnabled    Boolean @default(true)
-  loyaltyEnabled           Boolean @default(true)
-  takeawayOnlyMode         Boolean @default(false)
-  traiteurEnabled          Boolean @default(true)
-  cakeOrdersEnabled        Boolean @default(true)
+  kitchenDisplayEnabled          Boolean   @default(true)
+  loyaltyEnabled                 Boolean   @default(true)
+  takeawayOnlyMode               Boolean   @default(false)
+  traiteurEnabled                Boolean   @default(true)
+  cakeOrdersEnabled              Boolean   @default(true)
   // Smart Inventory & Supplier Management add-on
-  isSmartInventoryEnabled          Boolean   @default(false)
+  isSmartInventoryEnabled        Boolean   @default(false)
   // Set to true when the restaurant owner requests activation (pending superadmin approval)
-  inventoryActivationRequested     Boolean   @default(false)
-  inventoryActivationRequestedAt   DateTime?
+  inventoryActivationRequested   Boolean   @default(false)
+  inventoryActivationRequestedAt DateTime?
 
   // ── Supplier-finder quota (resets monthly, Premium plan only) ─────────────
   supplierSearchesUsed Int       @default(0)
   lastCreditReset      DateTime?
 
   // ── Smart subscription (set after trial analysis) ─────────────────────────
-  subscriptionTier  String?   // 'ECONOMY' | 'ADVANCED' — kept for legacy/estimation
-  monthlyFee        Float?    // DEPRECATED — subscription is now free; kept for migration
-  coffeeRefPrice    Float?    // reference coffee price (used for estimation only)
-  sandwichRefPrice  Float?    // reference sandwich price (used for estimation only)
-  weeklyOrderCount  Int?      // order count captured at last trial-end analysis
+  subscriptionTier String? // 'ECONOMY' | 'ADVANCED' — kept for legacy/estimation
+  monthlyFee       Float? // DEPRECATED — subscription is now free; kept for migration
+  coffeeRefPrice   Float? // reference coffee price (used for estimation only)
+  sandwichRefPrice Float? // reference sandwich price (used for estimation only)
+  weeklyOrderCount Int? // order count captured at last trial-end analysis
 
   // ── Commission-based billing (new model) ─────────────────────────────────
   // Subscription is FREE. Revenue = per-order commission (billing.ts tiers)
   // Optional $25 maintenance pack for Gulf / Europe regions
-  billingCycle      Int?      // payment cycle in days: 8 | 15 | 26
-  maintenancePack   Boolean   @default(false)  // $25 service & maintenance fee
-  maintenanceFee    Float?    // maintenance amount (default 25 USD for Gulf/Europe)
-  nextBillingDate   DateTime? // next expected payment due date
+  billingCycle    Int? // payment cycle in days: 8 | 15 | 26
+  maintenancePack Boolean   @default(false) // $25 service & maintenance fee
+  maintenanceFee  Float? // maintenance amount (default 25 USD for Gulf/Europe)
+  nextBillingDate DateTime? // next expected payment due date
 
   // ── Review links (shown to customer on thank-you screen) ─────────────────
-  googleMapsUrl     String?  // e.g. https://g.page/r/xxx/review
-  tripadvisorUrl    String?  // e.g. https://www.tripadvisor.com/Restaurant_Review-...
+  googleMapsUrl  String? // e.g. https://g.page/r/xxx/review
+  tripadvisorUrl String? // e.g. https://www.tripadvisor.com/Restaurant_Review-...
 
   // ── WhatsApp re-engagement (sent to inactive customers via n8n cron) ──────
-  reEngagementMessage String?  // template — use {{name}} and {{cafe}} as placeholders
-  reEngagementDays    Int?     @default(7)  // days of inactivity before sending
+  reEngagementMessage String? // template — use {{name}} and {{cafe}} as placeholders
+  reEngagementDays    Int?    @default(7) // days of inactivity before sending
 
   // K21 — Google Business review link, shown to customers after a high (>=4) rating
   googleReviewLink String?
 
   // ── Social media credentials (per-cafe, filled when owner connects accounts) ─
-  fbPageId          String @default("")  // Facebook Page numeric ID
-  fbAccessToken     String @default("")  // long-lived FB page token (~60 days)
-  igUserId          String @default("")  // Instagram Business account ID
-  tiktokAccessToken String @default("")  // TikTok OAuth2 access token
-  snapAccessToken   String @default("")  // Snapchat OAuth2 access token
+  fbPageId            String @default("") // Facebook Page numeric ID
+  fbAccessToken       String @default("") // long-lived FB page token (~60 days)
+  igUserId            String @default("") // Instagram Business account ID
+  tiktokAccessToken   String @default("") // TikTok OAuth2 access token
+  snapAccessToken     String @default("") // Snapchat OAuth2 access token
   linkedinAccessToken String @default("") // K27 — LinkedIn OAuth2 access token
   xAccessToken        String @default("") // K27 — X (Twitter) OAuth2 access token
 
   // ── Google Business Profile (K29) ─────────────────────────────────────────
-  googleBusinessProfileId    String?   // GBP location id
-  googleBusinessAccessToken  String?   // OAuth2 access token
-  gbpSyncEnabled              Boolean  @default(false)
-  gbpLastSyncedAt             DateTime?
+  googleBusinessProfileId   String? // GBP location id
+  googleBusinessAccessToken String? // OAuth2 access token
+  gbpSyncEnabled            Boolean   @default(false)
+  gbpLastSyncedAt           DateTime?
 
   // ── Smart Resto Certified ─────────────────────────────────────────────────
-  ownerPhone             String              @default("")
-  ownerEmail             String              @default("")
-  certificationStatus    CertificationStatus @default(PENDING)
-  certificationMetrics   CertificationMetrics?
-  certifiedAt            DateTime?
+  ownerPhone           String                @default("")
+  ownerEmail           String                @default("")
+  certificationStatus  CertificationStatus   @default(PENDING)
+  certificationMetrics CertificationMetrics?
+  certifiedAt          DateTime?
 
   // ── Loyalty program configuration (admin-configurable, see /admin/loyalty) ──
   // Currency units required to earn 1 point (e.g. 10 means "10 MAD = 1 point").
-  loyaltyPointsPerCurrency    Float @default(10)
-  loyaltyTierSilverThreshold  Int   @default(500)
-  loyaltyTierGoldThreshold    Int   @default(2000)
+  loyaltyPointsPerCurrency   Float @default(10)
+  loyaltyTierSilverThreshold Int   @default(500)
+  loyaltyTierGoldThreshold   Int   @default(2000)
 
-  categories      Category[]
-  tables          Table[]
-  seats           Seat[]
-  orders          Order[]
-  billRequests    BillRequest[]
-  users           User[]
-  waiterCalls     WaiterCall[]
-  walletLogs      WalletLog[]
-  billingTiers    BillingTier[]
-  staff           Staff[]
-  cashierShifts   CashierShift[]
-  waiterShifts    WaiterShift[]
-  waiterQRTokens  WaiterQRToken[]
-  expenses        Expense[]
-  payrollApprovals PayrollApproval[]
-  paymentRequests PaymentRequest[]
-  reservations    Reservation[]
-  onlinePayments  OnlinePayment[]
-  recipes         Recipe[]
-  stockItems      StockItem[]
-  printerLogs     PrinterLog[]
-  qrScans         QrScan[]
-  fraudAlerts        FraudAlert[]
-  feedbacks          Feedback[]
-  marketingCampaigns MarketingCampaign[]
-  clientSessions     ClientSession[]
-  events             Event[]
-  guests             Guest[]
-  eventMenuItems     EventMenuItem[]
-  eventServices      EventService[]
-  eventPayments      EventPayment[]
-  eventTasks         EventTask[]
+  categories            Category[]
+  tables                Table[]
+  seats                 Seat[]
+  orders                Order[]
+  billRequests          BillRequest[]
+  users                 User[]
+  waiterCalls           WaiterCall[]
+  walletLogs            WalletLog[]
+  billingTiers          BillingTier[]
+  staff                 Staff[]
+  cashierShifts         CashierShift[]
+  waiterShifts          WaiterShift[]
+  waiterQRTokens        WaiterQRToken[]
+  expenses              Expense[]
+  payrollApprovals      PayrollApproval[]
+  paymentRequests       PaymentRequest[]
+  reservations          Reservation[]
+  onlinePayments        OnlinePayment[]
+  recipes               Recipe[]
+  stockItems            StockItem[]
+  printerLogs           PrinterLog[]
+  qrScans               QrScan[]
+  fraudAlerts           FraudAlert[]
+  feedbacks             Feedback[]
+  marketingCampaigns    MarketingCampaign[]
+  clientSessions        ClientSession[]
+  events                Event[]
+  guests                Guest[]
+  eventMenuItems        EventMenuItem[]
+  eventServices         EventService[]
+  eventPayments         EventPayment[]
+  eventTasks            EventTask[]
   eventStaffAssignments EventStaffAssignment[]
   cakeOrders            CakeOrder[]
-  loyaltyAccounts    LoyaltyAccount[]
-  loyaltyRewards     LoyaltyReward[]
+  loyaltyAccounts       LoyaltyAccount[]
+  loyaltyRewards        LoyaltyReward[]
   // Smart Inventory module relations
-  inventorySuppliers   InventorySupplier[]
-  purchaseOrders       PurchaseOrder[]
-  systemNotifications  SystemNotification[]
+  inventorySuppliers    InventorySupplier[]
+  purchaseOrders        PurchaseOrder[]
+  systemNotifications   SystemNotification[]
   // Viral marketing hub — user-generated content with consent tracking
-  reviewsGallery       ReviewGallery[]
+  reviewsGallery        ReviewGallery[]
   // Zone-Based Dynamic Token (Match Mode)
-  zones                Zone[]
-  activeSessions       ActiveSession[]
+  zones                 Zone[]
+  activeSessions        ActiveSession[]
   // Equipment & Maintenance Management
-  equipment          Equipment[]
-  supplierInvoices     SupplierInvoice[]
-  purchaseRequisitions PurchaseRequisition[]
-  cafeCustomers        CafeCustomer[]
-  billingInvoices      BillingInvoice[]
+  equipment             Equipment[]
+  supplierInvoices      SupplierInvoice[]
+  purchaseRequisitions  PurchaseRequisition[]
+  cafeCustomers         CafeCustomer[]
+  billingInvoices       BillingInvoice[]
 
   // Multi-Branch Operations (K18) — flat self-relation, same pattern as
   // Table.mergedIntoTableId/mergedTables. Null = standalone cafe (default,
@@ -381,19 +397,18 @@ model Cafe {
   @@index([certificationStatus])
   @@index([billingStatus])
   @@index([parentCafeId])
-
 }
 
 // ─── Table & Seat (Hybrid QR Layout) ─────────────────────────────────────────
 
 model Table {
-  id          String  @id @default(auto()) @map("_id") @db.ObjectId
-  cafeId      String  @db.ObjectId
-  cafe        Cafe    @relation(fields: [cafeId], references: [id])
-  tableNumber Int
-  qrToken     String  @unique
-  isActive    Boolean @default(true)
-  zone        String?
+  id           String  @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId       String  @db.ObjectId
+  cafe         Cafe    @relation(fields: [cafeId], references: [id])
+  tableNumber  Int
+  qrToken      String  @unique
+  isActive     Boolean @default(true)
+  zone         String?
   // K14 — explicit override for states not derivable from active orders
   // (RESERVED | CLEANING). Null = status is computed from orders (AVAILABLE/OCCUPIED),
   // same logic already used by routes/pos/tablesStatus.ts.
@@ -410,8 +425,8 @@ model Table {
   displayType Int @default(1)
 
   // Zone assignment (null = unzoned table)
-  zoneId          String? @db.ObjectId
-  zoneRef         Zone?   @relation(fields: [zoneId], references: [id])
+  zoneId  String? @db.ObjectId
+  zoneRef Zone?   @relation(fields: [zoneId], references: [id])
 
   // Pickup counter (food trucks, takeaway-only counters) — customers scanning
   // this table's QR get a daily queue number instead of a table number, since
@@ -422,13 +437,13 @@ model Table {
   mergedIntoTable   Table?  @relation("TableMerge", fields: [mergedIntoTableId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   mergedTables      Table[] @relation("TableMerge")
 
-  seats           Seat[]
-  orders          Order[]
-  originalOrders  Order[]         @relation("OriginalTable")
-  billRequests    BillRequest[]
-  waiterCalls     WaiterCall[]
-  clientSessions  ClientSession[]
-  activeSessions  ActiveSession[]
+  seats          Seat[]
+  orders         Order[]
+  originalOrders Order[]         @relation("OriginalTable")
+  billRequests   BillRequest[]
+  waiterCalls    WaiterCall[]
+  clientSessions ClientSession[]
+  activeSessions ActiveSession[]
 
   @@unique([cafeId, tableNumber])
   @@index([cafeId])
@@ -476,9 +491,9 @@ model Product {
   category       Category @relation(fields: [categoryId], references: [id])
   nameAr         String
   nameEn         String
-  nameFr         String  @default("")
-  nameEs         String  @default("")
-  nameDe         String  @default("")
+  nameFr         String   @default("")
+  nameEs         String   @default("")
+  nameDe         String   @default("")
   description    String?
   price          Float
   // PIECE (default, price = per unit) | WEIGHT (price = per KG — sold by
@@ -531,32 +546,38 @@ model Order {
   createdAt       DateTime      @default(now())
 
   // ── Mini POS additions ──────────────────────────────────────────────────
-  orderSource     OrderSource @default(QR_CODE)
-  billStatus      BillStatus  @default(OPENED)
+  orderSource      OrderSource @default(QR_CODE)
+  billStatus       BillStatus  @default(OPENED)
   // Set when orderSource = MARKETPLACE — which 3rd-party app it came from
   // (free text: "Glovo", "Uber Eats"...) and their order reference, for
   // reconciliation against the platform's payout statement.
-  externalPlatform String? @default("")
-  externalOrderRef String? @default("")
-  totalCommission Float       @default(0)
+  externalPlatform String?     @default("")
+  externalOrderRef String?     @default("")
+  totalCommission  Float       @default(0)
   // POS Core (K11) — order-level discount, applied on top of item subtotal
-  discountAmount  Float?
+  discountAmount   Float?
+  couponCode       String? // QR coupon applied at order time (see Coupon)
   // Order Management Core (K11) — DINE_IN | TAKEAWAY | DELIVERY (defaults to DINE_IN in code when absent)
-  orderType       String?
+  orderType        String?
   // POS Advanced (K16) — order-level notes, and hold/resume timestamp (null = not held)
-  notes           String?
-  heldAt          DateTime?
+  notes            String?
+  heldAt           DateTime?
   // staff member who entered the order manually (null for QR orders)
-  createdById  String? @db.ObjectId
-  createdBy    Staff?  @relation("OrderCreatedBy", fields: [createdById], references: [id])
+  // Who collected the payment and when — drives the cashier drawer count.
+  // (createdById is who RANG the order; for QR orders it's null, so counting
+  // the drawer by createdById silently dropped every QR order paid in cash.)
+  paidById         String?     @db.ObjectId
+  paidAt           DateTime?
+  createdById      String?     @db.ObjectId
+  createdBy        Staff?      @relation("OrderCreatedBy", fields: [createdById], references: [id])
 
   // Dynamic QR session — set when order comes from the new single-QR-per-table flow
-  sessionId        String?       @db.ObjectId
-  session          ClientSession? @relation(fields: [sessionId], references: [id])
+  sessionId String?        @db.ObjectId
+  session   ClientSession? @relation(fields: [sessionId], references: [id])
 
   // Zone-Based Dynamic Token — set when order comes from Match Mode / Hybrid zone flow
-  activeSessionId  String?       @db.ObjectId
-  activeSession    ActiveSession? @relation(fields: [activeSessionId], references: [id])
+  activeSessionId String?        @db.ObjectId
+  activeSession   ActiveSession? @relation(fields: [activeSessionId], references: [id])
 
   // Waiter who claimed/served this order (set when they acknowledge the notification)
   assignedWaiterId String? @db.ObjectId
@@ -581,26 +602,26 @@ model Order {
   @@index([billStatus])
   @@index([activeSessionId])
   // Compound indexes for the most frequent multi-field queries
-  @@index([cafeId, status])     // kitchen view: pending/preparing orders per cafe
-  @@index([cafeId, createdAt])  // stats: date-range revenue queries per cafe
-  @@index([cafeId, isPaid])     // billing/POS: unpaid orders per cafe
+  @@index([cafeId, status]) // kitchen view: pending/preparing orders per cafe
+  @@index([cafeId, createdAt]) // stats: date-range revenue queries per cafe
+  @@index([cafeId, isPaid]) // billing/POS: unpaid orders per cafe
 }
 
 model OrderItem {
-  id        String  @id @default(auto()) @map("_id") @db.ObjectId
-  orderId   String  @db.ObjectId
-  order     Order   @relation(fields: [orderId], references: [id])
-  productId String  @db.ObjectId
-  product   Product @relation(fields: [productId], references: [id])
-  quantity  Int
-  notes     String?
+  id              String           @id @default(auto()) @map("_id") @db.ObjectId
+  orderId         String           @db.ObjectId
+  order           Order            @relation(fields: [orderId], references: [id])
+  productId       String           @db.ObjectId
+  product         Product          @relation(fields: [productId], references: [id])
+  quantity        Int
+  notes           String?
   // snapshot of price and commission at time of order (immutable history)
-  unitPrice            Float           @default(0)
-  commissionRate       Float           @default(0)
+  unitPrice       Float            @default(0)
+  commissionRate  Float            @default(0)
   // sum of all chosen modifier price adjustments (immutable snapshot)
-  modifiersDelta       Float           @default(0)
+  modifiersDelta  Float            @default(0)
   // customer's chosen modifier options (immutable snapshot)
-  chosenModifiers      ChosenModifier[]
+  chosenModifiers ChosenModifier[]
 
   @@index([orderId])
   @@index([productId])
@@ -663,18 +684,18 @@ model WalletLog {
 // ─── Support models ───────────────────────────────────────────────────────────
 
 model BillRequest {
-  id         String    @id @default(auto()) @map("_id") @db.ObjectId
-  cafeId     String    @db.ObjectId
-  cafe       Cafe      @relation(fields: [cafeId], references: [id])
-  tableId    String    @db.ObjectId
-  table      Table     @relation(fields: [tableId], references: [id])
-  message    String?
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId      String    @db.ObjectId
+  cafe        Cafe      @relation(fields: [cafeId], references: [id])
+  tableId     String    @db.ObjectId
+  table       Table     @relation(fields: [tableId], references: [id])
+  message     String?
   // Split bill: which seat numbers to close. Empty array = whole table.
-  seatNumbers Int[]    @default([])
+  seatNumbers Int[]     @default([])
   // "TABLE" = everyone pays together | "SEATS" = specific seats only
-  payScope   String    @default("TABLE")
-  createdAt  DateTime  @default(now())
-  resolvedAt DateTime?
+  payScope    String    @default("TABLE")
+  createdAt   DateTime  @default(now())
+  resolvedAt  DateTime?
 
   @@index([cafeId])
   @@index([tableId])
@@ -733,13 +754,13 @@ model PasswordResetRequest {
 
 model AIJob {
   id              String    @id @default(auto()) @map("_id") @db.ObjectId
-  module          String    // 'marketing' | 'certification' | 'ocr' | 'translation' | ...
-  jobType         String    // 'campaign_generation' | 'menu_translation' | ...
-  provider        String?   // 'gemini' | 'claude' | 'openai' | 'groq' | 'openrouter'
-  model           String?   // 'gemini-1.5-flash' | 'claude-3-haiku' | ...
+  module          String // 'marketing' | 'certification' | 'ocr' | 'translation' | ...
+  jobType         String // 'campaign_generation' | 'menu_translation' | ...
+  provider        String? // 'gemini' | 'claude' | 'openai' | 'groq' | 'openrouter'
+  model           String? // 'gemini-1.5-flash' | 'claude-3-haiku' | ...
   status          String    @default("QUEUED") // QUEUED | RUNNING | COMPLETED | FAILED | CANCELLED
-  priority        Int       @default(5)        // 1 (highest) → 10 (lowest)
-  progress        Int       @default(0)        // 0-100
+  priority        Int       @default(5) // 1 (highest) → 10 (lowest)
+  progress        Int       @default(0) // 0-100
   queuedAt        DateTime  @default(now())
   startedAt       DateTime?
   completedAt     DateTime?
@@ -747,12 +768,12 @@ model AIJob {
   retryCount      Int       @default(0)
   estimatedCost   Float?
   totalTokens     Int?
-  inputReference  String?   // e.g. DemoRequest ID, CafeId
-  outputReference String?   // e.g. MarketingGeneration ID
-  metadata        String?   // JSON string
+  inputReference  String? // e.g. DemoRequest ID, CafeId
+  outputReference String? // e.g. MarketingGeneration ID
+  metadata        String? // JSON string
   errorMessage    String?
 
-  logs            AIJobLog[]
+  logs AIJobLog[]
 
   @@index([status])
   @@index([module])
@@ -768,7 +789,7 @@ model AIJobLog {
   timestamp DateTime @default(now())
   level     String   @default("INFO") // INFO | WARN | ERROR | DEBUG
   message   String
-  metadata  String?  // JSON string
+  metadata  String? // JSON string
 
   @@index([jobId])
   @@index([timestamp])
@@ -777,31 +798,31 @@ model AIJobLog {
 // ─── Mini POS — Staff & Shifts ────────────────────────────────────────────────
 
 model Staff {
-  id       String    @id @default(auto()) @map("_id") @db.ObjectId
-  cafeId   String    @db.ObjectId
-  cafe     Cafe      @relation(fields: [cafeId], references: [id])
-  name     String
-  role     StaffRole @default(WAITER)
+  id        String    @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId    String    @db.ObjectId
+  cafe      Cafe      @relation(fields: [cafeId], references: [id])
+  name      String
+  role      StaffRole @default(WAITER)
   // 4-8 digit PIN for fast POS login — bcrypt hash only, never stored in plaintext.
   // No "view existing PIN" capability by design; use PATCH /api/admin/staff/:id/pin to reset it.
-  pinCode  String
+  pinCode   String
   // Multi-role labels beyond the primary role (e.g. ["BARISTA","CLEANER"])
-  roles    String[]  @default([])
-  isActive Boolean   @default(true)
-  createdAt DateTime @default(now())
+  roles     String[]  @default([])
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
 
   // Daily rate for payroll calculation (set by admin)
-  dailyRate   Float            @default(0)
+  dailyRate Float @default(0)
 
   // Waiter shift state (updated on clock-in / clock-out)
   shiftStatus WaiterDutyStatus @default(OFF_DUTY)
   clockInTime DateTime?
 
-  orders         Order[]       @relation("OrderCreatedBy")
-  assignedOrders Order[]       @relation("OrderWaiterAssignment")
-  assignedTables Table[]       @relation("TableWaiterAssignment")
-  cashierShifts  CashierShift[]
-  waiterShifts   WaiterShift[]
+  orders           Order[]                @relation("OrderCreatedBy")
+  assignedOrders   Order[]                @relation("OrderWaiterAssignment")
+  assignedTables   Table[]                @relation("TableWaiterAssignment")
+  cashierShifts    CashierShift[]
+  waiterShifts     WaiterShift[]
   eventAssignments EventStaffAssignment[]
   payrollApprovals PayrollApproval[]
 
@@ -826,19 +847,19 @@ model VerificationToken {
 }
 
 model CashierShift {
-  id         String      @id @default(auto()) @map("_id") @db.ObjectId
-  cafeId     String      @db.ObjectId
-  cafe       Cafe        @relation(fields: [cafeId], references: [id])
-  staffId    String      @db.ObjectId
-  staff      Staff       @relation(fields: [staffId], references: [id])
-  status     ShiftStatus @default(OPEN)
-  startTime  DateTime    @default(now())
-  endTime    DateTime?
+  id                 String      @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId             String      @db.ObjectId
+  cafe               Cafe        @relation(fields: [cafeId], references: [id])
+  staffId            String      @db.ObjectId
+  staff              Staff       @relation(fields: [staffId], references: [id])
+  status             ShiftStatus @default(OPEN)
+  startTime          DateTime    @default(now())
+  endTime            DateTime?
   // cash in drawer at shift start
-  initialCash       Float @default(0)
+  initialCash        Float       @default(0)
   // sum of all cash payments collected during the shift
-  totalCollectedCash Float @default(0)
-  notes      String?
+  totalCollectedCash Float       @default(0)
+  notes              String?
 
   // Staff-declared time they expect to leave, entered alongside initialCash
   // when the shift opens. Drives the "Timing to out" UI and the overtime
@@ -882,7 +903,7 @@ model Expense {
   cafeId      String   @db.ObjectId
   cafe        Cafe     @relation(fields: [cafeId], references: [id])
   amount      Float
-  category    String   // supplies | utilities | wages | rent | other
+  category    String // supplies | utilities | wages | rent | other
   description String
   date        DateTime @default(now())
   createdAt   DateTime @default(now())
@@ -897,17 +918,17 @@ model Expense {
 // linked Expense(category: 'wages') so existing financial reporting picks
 // it up with no separate wiring.
 model PayrollApproval {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  cafeId      String   @db.ObjectId
-  cafe        Cafe     @relation(fields: [cafeId], references: [id])
-  staffId     String   @db.ObjectId
-  staff       Staff    @relation(fields: [staffId], references: [id])
-  periodFrom  DateTime
-  periodTo    DateTime
-  netSalary   Float
-  expenseId   String   @db.ObjectId
-  approvedBy  String   @db.ObjectId
-  approvedAt  DateTime @default(now())
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId     String   @db.ObjectId
+  cafe       Cafe     @relation(fields: [cafeId], references: [id])
+  staffId    String   @db.ObjectId
+  staff      Staff    @relation(fields: [staffId], references: [id])
+  periodFrom DateTime
+  periodTo   DateTime
+  netSalary  Float
+  expenseId  String   @db.ObjectId
+  approvedBy String   @db.ObjectId
+  approvedAt DateTime @default(now())
 
   @@unique([staffId, periodFrom, periodTo])
   @@index([cafeId])
@@ -941,7 +962,7 @@ model Lead {
   rating       Float    @default(0)
   // New | Contacted | Interested | Registered
   status       String   @default("New")
-  platform     String   // google | facebook | instagram
+  platform     String // google | facebook | instagram
   notes        String   @default("")
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -963,23 +984,23 @@ type ReservationItem {
 }
 
 model Reservation {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  cafeId      String   @db.ObjectId
-  cafe        Cafe     @relation(fields: [cafeId], references: [id])
-  name        String
-  phone       String
-  guests      Int
-  tableNumber Int?     // physical table number (optional, set by staff on confirmation)
-  date        DateTime
-  notes       String   @default("")
+  id           String            @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId       String            @db.ObjectId
+  cafe         Cafe              @relation(fields: [cafeId], references: [id])
+  name         String
+  phone        String
+  guests       Int
+  tableNumber  Int? // physical table number (optional, set by staff on confirmation)
+  date         DateTime
+  notes        String            @default("")
   // PENDING | ACCEPTED | COMPLETED | CANCELLED | CHECKED_IN | NO_SHOW (K15)
   // COMPLETED triggers n8n review-request flow and gamification counter increment
-  status      String   @default("PENDING")
+  status       String            @default("PENDING")
   // Pre-order snapshot captured at reservation or updated by waiter during visit
   // Used by n8n to generate personalised dish highlight content
   itemsOrdered ReservationItem[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
 
   // A completed reservation can produce one review gallery entry
   reviewGallery ReviewGallery?
@@ -1007,18 +1028,18 @@ model Reservation {
 //   - Blog queue: WHERE isPublishedToSmartRestoBlog=false AND rating >= 4
 
 model ReviewGallery {
-  id            String   @id @default(auto()) @map("_id") @db.ObjectId
-  cafeId        String   @db.ObjectId
-  cafe          Cafe     @relation(fields: [cafeId], references: [id])
+  id            String       @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId        String       @db.ObjectId
+  cafe          Cafe         @relation(fields: [cafeId], references: [id])
   // Optional link to the originating reservation — enables personalised content
-  reservationId String?  @db.ObjectId @unique
+  reservationId String?      @unique @db.ObjectId
   reservation   Reservation? @relation(fields: [reservationId], references: [id])
 
   // ── Media ──────────────────────────────────────────────────────────────────
-  imageUrl      String?  // Cloudinary URL of privacy-processed review photo
-  qrCodeUrl     String?  // Cloudinary URL of the generated artistic QR code
-  reviewText    String   @default("")
-  rating        Int      @default(5)  // 1–5 stars
+  imageUrl   String? // Cloudinary URL of privacy-processed review photo
+  qrCodeUrl  String? // Cloudinary URL of the generated artistic QR code
+  reviewText String  @default("")
+  rating     Int     @default(5) // 1–5 stars
 
   // ── Privacy & Consent (GDPR-aligned) ──────────────────────────────────────
   // TRUE  → n8n may publish full image including faces
@@ -1027,28 +1048,28 @@ model ReviewGallery {
 
   // ── Publishing state (updated by n8n after successful post) ───────────────
   // Published to the restaurant's own connected social accounts (Instagram, etc.)
-  isPublishedToClientSocial    Boolean  @default(false)
-  publishedToClientSocialAt    DateTime?
+  isPublishedToClientSocial   Boolean   @default(false)
+  publishedToClientSocialAt   DateTime?
   // Published to the Smart Resto marketing blog (premium packages only)
-  isPublishedToSmartRestoBlog  Boolean  @default(false)
-  publishedToSmartRestoBlogAt  DateTime?
+  isPublishedToSmartRestoBlog Boolean   @default(false)
+  publishedToSmartRestoBlogAt DateTime?
 
   // ── Moderation ─────────────────────────────────────────────────────────────
   // 'pending' | 'approved' | 'rejected'
   // n8n only picks up 'approved' items for publication
-  moderationStatus  String   @default("pending")
-  moderatedAt       DateTime?
+  moderationStatus String    @default("pending")
+  moderatedAt      DateTime?
 
   // ── n8n tracing ────────────────────────────────────────────────────────────
-  n8nExecutionId    String?  // execution ID of the publish workflow run
+  n8nExecutionId String? // execution ID of the publish workflow run
 
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([cafeId])
-  @@index([cafeId, isPublishedToClientSocial])   // n8n publish queue
+  @@index([cafeId, isPublishedToClientSocial]) // n8n publish queue
   @@index([cafeId, isPublishedToSmartRestoBlog]) // blog queue
-  @@index([cafeId, rating])                      // rating analytics
+  @@index([cafeId, rating]) // rating analytics
   @@index([moderationStatus])
   @@index([createdAt])
 }
@@ -1056,23 +1077,23 @@ model ReviewGallery {
 // ─── Smart Costing — Recipes & Ingredients ───────────────────────────────────
 
 type RecipeIngredient {
-  ingredientName     String
-  quantityGramsOrMl  Float
-  costPerUnit        Float   // cost per gram / ml in local currency
+  ingredientName    String
+  quantityGramsOrMl Float
+  costPerUnit       Float // cost per gram / ml in local currency
 }
 
 model Recipe {
-  id               String             @id @default(auto()) @map("_id") @db.ObjectId
-  cafeId           String             @db.ObjectId
-  cafe             Cafe               @relation(fields: [cafeId], references: [id])
-  productId        String             @db.ObjectId @unique
-  product          Product            @relation(fields: [productId], references: [id])
-  costingMode      String             @default("Standard")  // Standard | Smart_Costing
-  ingredients      RecipeIngredient[]
-  calculatedCost   Float              @default(0)
-  profitMargin     Float              @default(0)           // product.price - calculatedCost
-  createdAt        DateTime           @default(now())
-  updatedAt        DateTime           @updatedAt
+  id             String             @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId         String             @db.ObjectId
+  cafe           Cafe               @relation(fields: [cafeId], references: [id])
+  productId      String             @unique @db.ObjectId
+  product        Product            @relation(fields: [productId], references: [id])
+  costingMode    String             @default("Standard") // Standard | Smart_Costing
+  ingredients    RecipeIngredient[]
+  calculatedCost Float              @default(0)
+  profitMargin   Float              @default(0) // product.price - calculatedCost
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
 
   @@index([cafeId])
 }
@@ -1080,17 +1101,17 @@ model Recipe {
 // ─── Inventory Stock ──────────────────────────────────────────────────────────
 
 model StockItem {
-  id                String   @id @default(auto()) @map("_id") @db.ObjectId
-  cafeId            String   @db.ObjectId
-  cafe              Cafe     @relation(fields: [cafeId], references: [id])
-  ingredientName    String
-  unit              String   @default("g")   // g | ml | pcs
-  currentQty        Float    @default(0)
-  minimumThreshold  Float    @default(0)     // alert fires below this
-  costPerUnit       Float    @default(0)
-  isLow             Boolean  @default(false)
-  lastRestockedAt   DateTime?
-  updatedAt         DateTime @updatedAt
+  id               String    @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId           String    @db.ObjectId
+  cafe             Cafe      @relation(fields: [cafeId], references: [id])
+  ingredientName   String
+  unit             String    @default("g") // g | ml | pcs
+  currentQty       Float     @default(0)
+  minimumThreshold Float     @default(0) // alert fires below this
+  costPerUnit      Float     @default(0)
+  isLow            Boolean   @default(false)
+  lastRestockedAt  DateTime?
+  updatedAt        DateTime  @updatedAt
 
   @@unique([cafeId, ingredientName])
   @@index([cafeId])
@@ -1100,14 +1121,14 @@ model StockItem {
 // ─── Printer Logs (ingested from Silent Print Spy / POS Bridge) ───────────────
 
 model PrinterLog {
-  id         String   @id @default(auto()) @map("_id") @db.ObjectId
-  cafeId     String   @db.ObjectId
-  cafe       Cafe     @relation(fields: [cafeId], references: [id])
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId      String   @db.ObjectId
+  cafe        Cafe     @relation(fields: [cafeId], references: [id])
   tableNumber Int?
-  items      Json     // [{ name, price, qty }]
-  totalPrice Float
-  source     String   @default("pos_bridge")  // pos_bridge | manual
-  receivedAt DateTime @default(now())
+  items       Json // [{ name, price, qty }]
+  totalPrice  Float
+  source      String   @default("pos_bridge") // pos_bridge | manual
+  receivedAt  DateTime @default(now())
 
   @@index([cafeId])
   @@index([receivedAt])
@@ -1117,16 +1138,16 @@ model PrinterLog {
 // ─── QR Scan Activity (anti-fraud session tracking) ──────────────────────────
 
 model QrScan {
-  id             String   @id @default(auto()) @map("_id") @db.ObjectId
-  cafeId         String   @db.ObjectId
-  cafe           Cafe     @relation(fields: [cafeId], references: [id])
-  tableNumber    Int
-  tableToken     String
-  scanTime       DateTime @default(now())
-  lastActiveAt   DateTime @default(now())   // bumped by heartbeat
-  activeDurationMin Int   @default(0)       // minutes since first scan
-  orderedItems   Json?    // snapshot of items added to cart (set on order)
-  hasOrder       Boolean  @default(false)   // true once /api/orders is called
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId            String   @db.ObjectId
+  cafe              Cafe     @relation(fields: [cafeId], references: [id])
+  tableNumber       Int
+  tableToken        String
+  scanTime          DateTime @default(now())
+  lastActiveAt      DateTime @default(now()) // bumped by heartbeat
+  activeDurationMin Int      @default(0) // minutes since first scan
+  orderedItems      Json? // snapshot of items added to cart (set on order)
+  hasOrder          Boolean  @default(false) // true once /api/orders is called
 
   @@index([cafeId])
   @@index([scanTime])
@@ -1136,13 +1157,13 @@ model QrScan {
 // ─── Fraud Alerts ─────────────────────────────────────────────────────────────
 
 model FraudAlert {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  cafeId      String   @db.ObjectId
-  cafe        Cafe     @relation(fields: [cafeId], references: [id])
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId      String    @db.ObjectId
+  cafe        Cafe      @relation(fields: [cafeId], references: [id])
   tableNumber Int
-  detectedAt  DateTime @default(now())
+  detectedAt  DateTime  @default(now())
   details     String
-  status      String   @default("Pending")  // Pending | Reviewed | Dismissed
+  status      String    @default("Pending") // Pending | Reviewed | Dismissed
   resolvedAt  DateTime?
 
   @@index([cafeId])
@@ -1158,7 +1179,7 @@ model Feedback {
   cafe        Cafe     @relation(fields: [cafeId], references: [id])
   tableNumber Int?
   tableToken  String?
-  score       Int      // 1–5
+  score       Int // 1–5
   comment     String   @default("")
   lang        String   @default("ar")
   createdAt   DateTime @default(now())
@@ -1178,8 +1199,8 @@ model SupportTicket {
   sourceId    String
   phone       String?
   subject     String
-  status      String    @default("OPEN")     // OPEN | IN_PROGRESS | ESCALATED | RESOLVED
-  priority    String    @default("NORMAL")   // NORMAL | HIGH | URGENT
+  status      String    @default("OPEN") // OPEN | IN_PROGRESS | ESCALATED | RESOLVED
+  priority    String    @default("NORMAL") // NORMAL | HIGH | URGENT
   createdAt   DateTime  @default(now())
   escalatedAt DateTime?
   resolvedAt  DateTime?
@@ -1198,7 +1219,7 @@ model WhatsAppMessage {
   direction    String    @default("OUTBOUND") // OUTBOUND | INBOUND
   templateKey  String?
   body         String
-  status       String    @default("PENDING")  // PENDING | SENT | FAILED | SKIPPED
+  status       String    @default("PENDING") // PENDING | SENT | FAILED | SKIPPED
   retryCount   Int       @default(0)
   error        String?
   scheduledFor DateTime?
@@ -1213,9 +1234,9 @@ model WhatsAppMessage {
 model WhatsAppTemplate {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
   cafeId    String   @db.ObjectId
-  key       String   // e.g. "review_request", "low_stock_alert" — same idea as
-                      // the existing Cafe.reEngagementMessage, generalized
-  body      String   // supports {{placeholders}}
+  key       String // e.g. "review_request", "low_stock_alert" — same idea as
+  // the existing Cafe.reEngagementMessage, generalized
+  body      String // supports {{placeholders}}
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1230,7 +1251,7 @@ model EmailMessage {
   id           String    @id @default(auto()) @map("_id") @db.ObjectId
   cafeId       String    @db.ObjectId
   to           String
-  providerId   String?   // Resend message id, used to correlate webhook events
+  providerId   String? // Resend message id, used to correlate webhook events
   templateKey  String?
   subject      String
   body         String
@@ -1254,7 +1275,7 @@ model EmailTemplate {
   cafeId    String   @db.ObjectId
   key       String
   subject   String
-  body      String   // supports {{placeholders}}
+  body      String // supports {{placeholders}}
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1265,45 +1286,51 @@ model EmailTemplate {
 // ─── Online Payment Sessions (Gulf Stripe / Africa Mobile Money) ─────────────
 
 model OnlinePayment {
-  id            String              @id @default(auto()) @map("_id") @db.ObjectId
-  cafeId        String              @db.ObjectId
-  cafe          Cafe                @relation(fields: [cafeId], references: [id])
-  orderId       String?             @db.ObjectId   // null until order confirmed post-payment
-  amount        Float
-  currency      String
-  method        OnlinePaymentMethod
-  status        OnlinePaymentStatus @default(PENDING)
+  id       String              @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId   String              @db.ObjectId
+  cafe     Cafe                @relation(fields: [cafeId], references: [id])
+  orderId  String?             @db.ObjectId // null until order confirmed post-payment
+  amount   Float
+  currency String
+  method   OnlinePaymentMethod
+  status   OnlinePaymentStatus @default(PENDING)
 
   // Stripe fields (Gulf)
   stripeSessionId     String?
   stripePaymentIntent String?
 
   // Moyasar fields (Gulf alternative)
-  moyasarPaymentId    String?
+  moyasarPaymentId String?
+
+  // Bill payment (restaurant-owned gateway): which orders this payment settles
+  clientSessionId String?  @db.ObjectId
+  orderIds        String[] @db.ObjectId
+  providerRef     String? // Tap charge id / Moyasar invoice id / Stripe session id
 
   // Mobile Money fields (Africa)
-  mobileMoneyOperator String?        // orange | mtn | wave
-  mobileMoneyRef      String?        // reference code returned by operator
+  mobileMoneyOperator String? // orange | mtn | wave
+  mobileMoneyRef      String? // reference code returned by operator
 
   // WhatsApp ingest (zero-rating)
-  whatsappMessageId   String?
-  rawWhatsappText     String?        // original message body
+  whatsappMessageId String?
+  rawWhatsappText   String? // original message body
 
   // Table context (carried through payment flow before order creation)
-  tableToken          String?
-  seatToken           String?
-  customerPhone       String?
-  itemsSnapshot       Json?          // [{productId, quantity, notes}] at time of initiation
+  tableToken    String?
+  seatToken     String?
+  customerPhone String?
+  itemsSnapshot Json? // [{productId, quantity, notes}] at time of initiation
 
-  expiresAt     DateTime
-  confirmedAt   DateTime?
-  createdAt     DateTime  @default(now())
+  expiresAt   DateTime
+  confirmedAt DateTime?
+  createdAt   DateTime  @default(now())
 
   @@index([cafeId])
   @@index([status])
   @@index([stripeSessionId])
   @@index([stripePaymentIntent])
   @@index([moyasarPaymentId])
+  @@index([providerRef])
   @@index([createdAt])
   @@index([expiresAt])
 }
@@ -1320,17 +1347,17 @@ model SiteConfig {
 // ─── Payment Requests (Superadmin Payment Gateway) ────────────────────────────
 
 model PaymentRequest {
-  id         String   @id @default(auto()) @map("_id") @db.ObjectId
-  cafeId     String   @db.ObjectId
-  cafe       Cafe     @relation(fields: [cafeId], references: [id])
+  id         String    @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId     String    @db.ObjectId
+  cafe       Cafe      @relation(fields: [cafeId], references: [id])
   amount     Float
   currency   String
-  method     String            // BANK_TRANSFER | WESTERN_UNION | PAYPAL
+  method     String // BANK_TRANSFER | WESTERN_UNION | PAYPAL
   reference  String
   proofNote  String?
-  status     String   @default("PENDING")  // PENDING | CONFIRMED | REJECTED
+  status     String    @default("PENDING") // PENDING | CONFIRMED | REJECTED
   reviewNote String?
-  createdAt  DateTime @default(now())
+  createdAt  DateTime  @default(now())
   reviewedAt DateTime?
 
   @@index([cafeId])
@@ -1342,7 +1369,7 @@ model PaymentRequest {
 
 model ProcessedWebhook {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  provider    String   // stripe | moyasar
+  provider    String // stripe | moyasar
   eventId     String
   processedAt DateTime @default(now())
 
@@ -1353,27 +1380,39 @@ model ProcessedWebhook {
 // ─── Billing Invoices (generated on every confirmed payment) ─────────────────
 
 model BillingInvoice {
-  id               String    @id @default(auto()) @map("_id") @db.ObjectId
-  cafeId           String    @db.ObjectId
-  cafe             Cafe      @relation(fields: [cafeId], references: [id])
+  id     String @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId String @db.ObjectId
+  cafe   Cafe   @relation(fields: [cafeId], references: [id])
 
-  invoiceNumber    String    @unique              // INV-YYYY-NNNNN
-  amount           Float
-  currency         String
-  method           String?                        // BANK_TRANSFER | WESTERN_UNION | PAYPAL
-  periodStart      DateTime?
-  periodEnd        DateTime?
+  invoiceNumber String    @unique // INV-YYYY-NNNNN
+  amount        Float
+  currency      String
+  method        String? // BANK_TRANSFER | WESTERN_UNION | PAYPAL
+  periodStart   DateTime?
+  periodEnd     DateTime?
 
-  paymentRequestId String?   @db.ObjectId        // linked PaymentRequest
+  paymentRequestId String? @db.ObjectId // linked PaymentRequest
 
-  status           String    @default("ISSUED")  // ISSUED | PAID | VOID
+  status String @default("ISSUED") // ISSUED | PENDING_CONFIRMATION | PAID | VOID
 
-  issuedAt         DateTime  @default(now())
-  paidAt           DateTime?
+  issuedAt DateTime  @default(now())
+  paidAt   DateTime?
+
+  // Subscription invoices (planId set). Public pay page: /billing/pay/<payToken>
+  planId             String?
+  dueAt              DateTime?
+  payToken           String? // random, unguessable — not @unique (Mongo would collide on nulls)
+  reminder1At        DateTime?
+  reminder2At        DateTime?
+  suspendedAt        DateTime?
+  transferRef        String? // reference the restaurant gave for a bank transfer
+  transferReportedAt DateTime?
+  tapChargeId        String?
 
   @@index([cafeId])
   @@index([status])
   @@index([issuedAt])
+  @@index([payToken])
 }
 
 // ─── Dynamic QR — Client Sessions (one QR per table, seats assigned at scan) ──
@@ -1384,27 +1423,27 @@ model BillingInvoice {
 //       → all orders from that device carry sessionId (no seatToken needed)
 
 model ClientSession {
-  id           String   @id @default(auto()) @map("_id") @db.ObjectId
-  cafeId       String   @db.ObjectId
-  cafe         Cafe     @relation(fields: [cafeId], references: [id])
-  tableId      String   @db.ObjectId
-  table        Table    @relation(fields: [tableId], references: [id])
+  id      String @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId  String @db.ObjectId
+  cafe    Cafe   @relation(fields: [cafeId], references: [id])
+  tableId String @db.ObjectId
+  table   Table  @relation(fields: [tableId], references: [id])
 
   // Dynamically assigned seat number (1 .. Table.capacity)
-  seatNumber   Int
+  seatNumber Int
 
   // Opaque device identifier (UUID generated once in browser, stored in localStorage)
-  deviceId     String
+  deviceId String
 
   // active | completed | expired
-  status       String   @default("active")
+  status String @default("active")
 
   createdAt    DateTime @default(now())
   lastActiveAt DateTime @default(now())
   // Auto-expires 2h after last heartbeat; nightly cron marks stale ones expired
   expiresAt    DateTime
 
-  orders       Order[]
+  orders Order[]
 
   @@index([cafeId])
   @@index([tableId, status])
@@ -1416,34 +1455,34 @@ model ClientSession {
 // ─── Marketing Campaigns (Automated Video Engine) ─────────────────────────────
 
 model MarketingCampaign {
-  id           String   @id @default(auto()) @map("_id") @db.ObjectId
-  cafeId       String   @db.ObjectId
-  cafe         Cafe     @relation(fields: [cafeId], references: [id])
+  id     String @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId String @db.ObjectId
+  cafe   Cafe   @relation(fields: [cafeId], references: [id])
 
   // Dish snapshot at time of generation (immutable — product may change later)
-  productId    String?  @db.ObjectId
+  productId    String? @db.ObjectId
   productName  String
   productPrice Float
-  imageUrl     String?  // dish image URL passed to Creatomate
+  imageUrl     String? // dish image URL passed to Creatomate
 
   // Localisation
-  country      String   // MA | SA | AE
-  caption      String?  // AI-generated marketing caption (Darija / Gulf Arabic)
+  country String // MA | SA | AE
+  caption String? // AI-generated marketing caption (Darija / Gulf Arabic)
 
   // Render output
-  videoUrl        String?  // final Creatomate .mp4 URL
-  hasWatermark    Boolean  @default(false)
-  creatomateId    String?  // render ID for polling / audit
+  videoUrl     String? // final Creatomate .mp4 URL
+  hasWatermark Boolean @default(false)
+  creatomateId String? // render ID for polling / audit
 
   // Publishing
   // pending | rendering | published | failed
   status          String   @default("pending")
-  platforms       String[] @default([])  // ["tiktok","snapchat"] | ["instagram","facebook"]
-  uploadPostJobId String?  // job reference from Upload-Post.com
-  socialLinks     Json?    // analytics URLs returned by Upload-Post after publish
+  platforms       String[] @default([]) // ["tiktok","snapchat"] | ["instagram","facebook"]
+  uploadPostJobId String? // job reference from Upload-Post.com
+  socialLinks     Json? // analytics URLs returned by Upload-Post after publish
 
   // n8n tracing
-  n8nExecutionId  String?
+  n8nExecutionId String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1463,7 +1502,7 @@ model MarketingCampaign {
 model SocialPost {
   id               String    @id @default(auto()) @map("_id") @db.ObjectId
   cafeId           String    @db.ObjectId
-  platform         String    // facebook | instagram | tiktok | snapchat | linkedin | x
+  platform         String // facebook | instagram | tiktok | snapchat | linkedin | x
   contentType      String    @default("TEXT") // VIDEO | IMAGE | TEXT
   caption          String    @default("")
   mediaUrl         String?
@@ -1483,42 +1522,42 @@ model SocialPost {
 // ─── SmartTraiteur — Events & Catering ───────────────────────────────────────
 
 model Event {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  cafeId      String   @db.ObjectId
-  cafe        Cafe     @relation(fields: [cafeId], references: [id])
+  id     String @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId String @db.ObjectId
+  cafe   Cafe   @relation(fields: [cafeId], references: [id])
 
-  name        String
-  type        String   @default("WEDDING")   // WEDDING | CORPORATE | BIRTHDAY | REUNION | GALA | OTHER
-  date        DateTime
-  venue       String   @default("")
-  guestCount  Int      @default(0)
-  status      String   @default("DRAFT")     // DRAFT | CONFIRMED | ACTIVE | COMPLETED | CANCELLED
-  notes       String   @default("")
+  name       String
+  type       String   @default("WEDDING") // WEDDING | CORPORATE | BIRTHDAY | REUNION | GALA | OTHER
+  date       DateTime
+  venue      String   @default("")
+  guestCount Int      @default(0)
+  status     String   @default("DRAFT") // DRAFT | CONFIRMED | ACTIVE | COMPLETED | CANCELLED
+  notes      String   @default("")
 
-  clientName  String   @default("")
-  clientPhone String   @default("")
-  clientEmail String   @default("")
+  clientName  String @default("")
+  clientPhone String @default("")
+  clientEmail String @default("")
 
-  quotedPrice  Float?
-  depositPaid  Float?
-  depositDate  DateTime?
+  quotedPrice Float?
+  depositPaid Float?
+  depositDate DateTime?
 
   actualAttendees  Int?
   commissionAmount Float?
 
-  menuPackageName String @default("")   // e.g. "Menu Doré"
+  menuPackageName String @default("") // e.g. "Menu Doré"
   pricePerGuest   Float?
 
-  invitationMessage String @default("")   // template with {{name}} {{event}} {{date}} {{venue}}
+  invitationMessage String @default("") // template with {{name}} {{event}} {{date}} {{venue}}
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  guests      Guest[]
-  menuItems   EventMenuItem[]
-  services    EventService[]
-  payments    EventPayment[]
-  tasks       EventTask[]
+  guests           Guest[]
+  menuItems        EventMenuItem[]
+  services         EventService[]
+  payments         EventPayment[]
+  tasks            EventTask[]
   staffAssignments EventStaffAssignment[]
 
   @@index([cafeId])
@@ -1527,16 +1566,16 @@ model Event {
 }
 
 model EventMenuItem {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  cafeId    String   @db.ObjectId
-  cafe      Cafe     @relation(fields: [cafeId], references: [id])
-  eventId   String   @db.ObjectId
-  event     Event    @relation(fields: [eventId], references: [id])
+  id      String @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId  String @db.ObjectId
+  cafe    Cafe   @relation(fields: [cafeId], references: [id])
+  eventId String @db.ObjectId
+  event   Event  @relation(fields: [eventId], references: [id])
 
-  category    String  @default("MAIN")   // STARTER | MAIN | DESSERT | DRINK | OTHER
+  category    String @default("MAIN") // STARTER | MAIN | DESSERT | DRINK | OTHER
   name        String
-  description String  @default("")
-  order       Int     @default(0)
+  description String @default("")
+  order       Int    @default(0)
 
   createdAt DateTime @default(now())
 
@@ -1545,17 +1584,17 @@ model EventMenuItem {
 }
 
 model EventService {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  cafeId    String   @db.ObjectId
-  cafe      Cafe     @relation(fields: [cafeId], references: [id])
-  eventId   String   @db.ObjectId
-  event     Event    @relation(fields: [eventId], references: [id])
+  id      String @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId  String @db.ObjectId
+  cafe    Cafe   @relation(fields: [cafeId], references: [id])
+  eventId String @db.ObjectId
+  event   Event  @relation(fields: [eventId], references: [id])
 
-  name    String            // e.g. "ديكور", "صوت", "DJ" — free text, not an enum
-  details String  @default("")   // e.g. "20 طاولة مستديرة + كراسي ذهبية"
-  vendor  String  @default("")   // supplier / provider name
+  name    String // e.g. "ديكور", "صوت", "DJ" — free text, not an enum
+  details String @default("") // e.g. "20 طاولة مستديرة + كراسي ذهبية"
+  vendor  String @default("") // supplier / provider name
   cost    Float?
-  status  String  @default("NEEDED")   // NEEDED | CONFIRMED | DONE
+  status  String @default("NEEDED") // NEEDED | CONFIRMED | DONE
 
   createdAt DateTime @default(now())
 
@@ -1564,18 +1603,18 @@ model EventService {
 }
 
 model EventPayment {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  cafeId    String   @db.ObjectId
-  cafe      Cafe     @relation(fields: [cafeId], references: [id])
-  eventId   String   @db.ObjectId
-  event     Event    @relation(fields: [eventId], references: [id])
+  id      String @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId  String @db.ObjectId
+  cafe    Cafe   @relation(fields: [cafeId], references: [id])
+  eventId String @db.ObjectId
+  event   Event  @relation(fields: [eventId], references: [id])
 
-  label   String            // e.g. "عربون", "دفعة وسطى", "الباقي يوم الحفل" — free text
-  amount  Float
+  label    String // e.g. "عربون", "دفعة وسطى", "الباقي يوم الحفل" — free text
+  amount   Float
   dueDate  DateTime?
   paidDate DateTime?
-  method   String  @default("")   // CASH | TRANSFER | CARD | ... free text
-  status   String  @default("PENDING")   // PENDING | PAID
+  method   String    @default("") // CASH | TRANSFER | CARD | ... free text
+  status   String    @default("PENDING") // PENDING | PAID
 
   createdAt DateTime @default(now())
 
@@ -1584,17 +1623,17 @@ model EventPayment {
 }
 
 model EventTask {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  cafeId    String   @db.ObjectId
-  cafe      Cafe     @relation(fields: [cafeId], references: [id])
-  eventId   String   @db.ObjectId
-  event     Event    @relation(fields: [eventId], references: [id])
+  id      String @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId  String @db.ObjectId
+  cafe    Cafe   @relation(fields: [cafeId], references: [id])
+  eventId String @db.ObjectId
+  event   Event  @relation(fields: [eventId], references: [id])
 
   title   String
   dueDate DateTime?
-  done    Boolean  @default(false)
+  done    Boolean   @default(false)
   doneAt  DateTime?
-  order   Int      @default(0)
+  order   Int       @default(0)
 
   createdAt DateTime @default(now())
 
@@ -1603,16 +1642,16 @@ model EventTask {
 }
 
 model EventStaffAssignment {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  cafeId    String   @db.ObjectId
-  cafe      Cafe     @relation(fields: [cafeId], references: [id])
-  eventId   String   @db.ObjectId
-  event     Event    @relation(fields: [eventId], references: [id])
-  staffId   String   @db.ObjectId
-  staff     Staff    @relation(fields: [staffId], references: [id])
+  id      String @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId  String @db.ObjectId
+  cafe    Cafe   @relation(fields: [cafeId], references: [id])
+  eventId String @db.ObjectId
+  event   Event  @relation(fields: [eventId], references: [id])
+  staffId String @db.ObjectId
+  staff   Staff  @relation(fields: [staffId], references: [id])
 
-  role  String  @default("")   // free-text role for this event (e.g. "Serveur", "Chef")
-  notes String  @default("")
+  role  String @default("") // free-text role for this event (e.g. "Serveur", "Chef")
+  notes String @default("")
 
   createdAt DateTime @default(now())
 
@@ -1622,31 +1661,31 @@ model EventStaffAssignment {
 }
 
 model Guest {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  cafeId    String   @db.ObjectId
-  cafe      Cafe     @relation(fields: [cafeId], references: [id])
-  eventId   String   @db.ObjectId
-  event     Event    @relation(fields: [eventId], references: [id])
+  id      String @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId  String @db.ObjectId
+  cafe    Cafe   @relation(fields: [cafeId], references: [id])
+  eventId String @db.ObjectId
+  event   Event  @relation(fields: [eventId], references: [id])
 
-  name        String
-  phone       String   @default("")
-  email       String   @default("")
+  name  String
+  phone String @default("")
+  email String @default("")
 
   tableNumber Int?
   seatNumber  Int?
 
-  qrToken     String   @unique @default(uuid())
+  qrToken String @unique @default(uuid())
 
-  dietaryReq  String   @default("")
+  dietaryReq String @default("")
 
-  checkedIn   Boolean  @default(false)
+  checkedIn   Boolean   @default(false)
   checkedInAt DateTime?
 
   invitationSentAt DateTime?
 
-  sessionId   String?  @db.ObjectId
+  sessionId String? @db.ObjectId
 
-  createdAt   DateTime @default(now())
+  createdAt DateTime @default(now())
 
   @@index([cafeId])
   @@index([eventId])
@@ -1664,12 +1703,12 @@ model CakeOrder {
   clientName  String
   clientPhone String @default("")
 
-  description     String   // flavor, filling, size (e.g. "Chocolat, 20 personnes")
-  writingText     String @default("")   // message to write on the cake
+  description       String // flavor, filling, size (e.g. "Chocolat, 20 personnes")
+  writingText       String  @default("") // message to write on the cake
   referenceImageUrl String?
 
   pickupDate DateTime
-  status     String   @default("PENDING")   // PENDING | CONFIRMED | IN_PROGRESS | READY | COMPLETED | CANCELLED
+  status     String   @default("PENDING") // PENDING | CONFIRMED | IN_PROGRESS | READY | COMPLETED | CANCELLED
 
   price       Float?
   depositPaid Float?
@@ -1689,22 +1728,22 @@ model CakeOrder {
 // Points are scoped to each restaurant — no cross-restaurant sharing.
 
 model LoyaltyAccount {
-  id      String @id @default(auto()) @map("_id") @db.ObjectId
-  cafeId  String @db.ObjectId
-  cafe    Cafe   @relation(fields: [cafeId], references: [id])
+  id     String @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId String @db.ObjectId
+  cafe   Cafe   @relation(fields: [cafeId], references: [id])
 
   // Customer identifier — phone is the most reliable anonymous key we have
-  phone   String
+  phone String
 
   // Accumulated points (never goes negative)
-  points  Int    @default(0)
+  points Int @default(0)
 
   // K20 — increment-only total ever earned, used for membership tier
   // (unlike `points`, redemption never lowers this)
   lifetimePoints Int @default(0)
 
   // Running ledger — each entry is immutable
-  ledger  LoyaltyEntry[]
+  ledger LoyaltyEntry[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1731,9 +1770,9 @@ model LoyaltyReward {
 
 // Embedded ledger entry — appended on earn or redeem, never mutated
 type LoyaltyEntry {
-  type      String   // "EARN" | "REDEEM"
-  points    Int      // positive = earned, negative = redeemed
-  orderId   String?  // reference to the order that triggered this entry
+  type      String // "EARN" | "REDEEM"
+  points    Int // positive = earned, negative = redeemed
+  orderId   String? // reference to the order that triggered this entry
   note      String   @default("")
   createdAt DateTime
 }
@@ -1742,8 +1781,8 @@ type LoyaltyEntry {
 
 // Embedded line-item inside a PurchaseOrder document
 type PurchaseOrderItem {
-  stockItemName  String
-  unit           String   // g | ml | pcs | kg | L
+  stockItemName   String
+  unit            String // g | ml | pcs | kg | L
   quantityOrdered Float
   unitCost        Float
   totalCost       Float
@@ -1770,24 +1809,24 @@ model InventorySupplier {
 
 // Tracks purchase order sent to a supplier for restocking
 model PurchaseOrder {
-  id         String   @id @default(auto()) @map("_id") @db.ObjectId
-  cafeId     String   @db.ObjectId
-  cafe       Cafe     @relation(fields: [cafeId], references: [id])
-  supplierId String   @db.ObjectId
+  id         String            @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId     String            @db.ObjectId
+  cafe       Cafe              @relation(fields: [cafeId], references: [id])
+  supplierId String            @db.ObjectId
   supplier   InventorySupplier @relation(fields: [supplierId], references: [id])
 
   // pending | ordered | received | cancelled
-  status    String   @default("pending")
-  notes     String   @default("")
+  status    String              @default("pending")
+  notes     String              @default("")
   items     PurchaseOrderItem[]
-  totalCost Float    @default(0)
+  totalCost Float               @default(0)
 
   // Optional link back to the requisition this PO was created from.
   // Null when the PO was created directly (no requisition involved).
   requisitionId String? @db.ObjectId
 
   // Set when the PO is sent via WhatsApp/n8n webhook
-  sentViaWhatsApp Boolean  @default(false)
+  sentViaWhatsApp Boolean   @default(false)
   sentAt          DateTime?
 
   createdAt DateTime @default(now())
@@ -1803,24 +1842,24 @@ model PurchaseOrder {
 // ─── Demo Requests — inbound leads from /demo page ───────────────────────────
 // Superadmin reviews and activates a 7-day trial for qualified leads.
 model DemoRequest {
-  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
   ownerName    String
   businessName String
-  businessType String   @default("RESTAURANT")  // RESTAURANT | CAFE | TRAITEUR | PASTRY | FOOD_TRUCK | HOTEL
+  businessType String    @default("RESTAURANT") // RESTAURANT | CAFE | TRAITEUR | PASTRY | FOOD_TRUCK | HOTEL
   phone        String
   email        String
   city         String
-  country      String   @default("MA")
-  notes        String   @default("")
+  country      String    @default("MA")
+  notes        String    @default("")
   // 'pending' | 'activated' | 'rejected'
-  status       String   @default("pending")
+  status       String    @default("pending")
   // Set when superadmin activates the trial → points to the created Cafe
-  cafeId       String?  @db.ObjectId
+  cafeId       String?   @db.ObjectId
   activatedAt  DateTime?
-  activatedBy  String?  // superadmin userId
+  activatedBy  String? // superadmin userId
   rejectedAt   DateTime?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   @@index([status])
   @@index([createdAt])
@@ -1839,7 +1878,7 @@ model SystemNotification {
   isRead    Boolean  @default(false)
   // optional reference to the triggering entity
   refId     String?
-  refType   String?  // "stock_item" | "purchase_order"
+  refType   String? // "stock_item" | "purchase_order"
   createdAt DateTime @default(now())
 
   @@index([cafeId])
@@ -1859,23 +1898,23 @@ model SystemNotification {
 //   → all orders carry activeSessionId
 
 model Zone {
-  id               String  @id @default(auto()) @map("_id") @db.ObjectId
-  cafeId           String  @db.ObjectId
-  cafe             Cafe    @relation(fields: [cafeId], references: [id])
+  id     String @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId String @db.ObjectId
+  cafe   Cafe   @relation(fields: [cafeId], references: [id])
 
-  name             String  // e.g. 'Terrasse', 'Salon VIP', 'Trottoir'
+  name String // e.g. 'Terrasse', 'Salon VIP', 'Trottoir'
 
   // QR holder decor style: 1=card, 2=tent, 3=stand, 4=acrylic
-  displayType      Int     @default(1)
+  displayType Int @default(1)
 
   // When true: ignore tables, use row-chair dynamic tokens
-  matchModeActive  Boolean @default(false)
+  matchModeActive Boolean @default(false)
 
   // Max concurrent token slots (safety cap to avoid overbooking)
-  maxDynamicTokens Int     @default(50)
+  maxDynamicTokens Int @default(50)
 
-  tables           Table[]
-  activeSessions   ActiveSession[]
+  tables         Table[]
+  activeSessions ActiveSession[]
 
   @@index([cafeId])
   @@index([cafeId, matchModeActive])
@@ -1888,52 +1927,52 @@ model Zone {
 // tableId is null in Match Mode (row chairs have no fixed table).
 
 model ActiveSession {
-  id             String              @id @default(auto()) @map("_id") @db.ObjectId
-  cafeId         String              @db.ObjectId
-  cafe           Cafe                @relation(fields: [cafeId], references: [id])
+  id     String @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId String @db.ObjectId
+  cafe   Cafe   @relation(fields: [cafeId], references: [id])
 
-  zoneId         String              @db.ObjectId
-  zone           Zone                @relation(fields: [zoneId], references: [id])
+  zoneId String @db.ObjectId
+  zone   Zone   @relation(fields: [zoneId], references: [id])
 
   // Null in Match Mode (row-chair); set when zone has fixed tables
-  tableId        String?             @db.ObjectId
-  table          Table?              @relation(fields: [tableId], references: [id])
+  tableId String? @db.ObjectId
+  table   Table?  @relation(fields: [tableId], references: [id])
 
   // Sequential number within the zone scope (e.g. token #7 at Terrasse)
   // Application assigns: MAX(tokenNumber) + 1 WHERE zoneId = X AND status = ACTIVE
-  tokenNumber    Int
+  tokenNumber Int
 
   // Opaque browser fingerprint — UUID generated once, stored in cookie/localStorage
   userIdentifier String
 
-  status         ActiveSessionStatus @default(ACTIVE)
+  status ActiveSessionStatus @default(ACTIVE)
 
-  createdAt      DateTime            @default(now())
-  updatedAt      DateTime            @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  orders         Order[]
+  orders Order[]
 
   @@index([cafeId])
   @@index([zoneId])
-  @@index([zoneId, status])           // token assignment query
-  @@index([userIdentifier])           // device re-identification
-  @@index([cafeId, status])           // dashboard live view
-  @@index([tableId, status])          // per-table active tokens
+  @@index([zoneId, status]) // token assignment query
+  @@index([userIdentifier]) // device re-identification
+  @@index([cafeId, status]) // dashboard live view
+  @@index([tableId, status]) // per-table active tokens
 }
 
 // ─── Premium Subscription Plans ───────────────────────────────────────────────
 // One document per country/region. Superadmin can update prices and feature flags at runtime.
 
 model PremiumPlan {
-  id           String   @id @default(auto()) @map("_id") @db.ObjectId
-  country      String   @unique  // "MA" | "SN" | "SA" | "AE" | "EU"
-  currency     String            // "MAD" | "XOF" | "SAR" | "AED" | "EUR"
-  monthlyPrice Float             // 199 | 13000 | 159
+  id           String @id @default(auto()) @map("_id") @db.ObjectId
+  country      String @unique // "MA" | "SN" | "SA" | "AE" | "EU"
+  currency     String // "MAD" | "XOF" | "SAR" | "AED" | "EUR"
+  monthlyPrice Float // 199 | 13000 | 159
 
-  hasMarketing     Boolean @default(true)  // video marketing feature
-  hasCertification Boolean @default(true)  // certification badge
-  hasAnalytics     Boolean @default(true)  // advanced analytics
-  hasNoCommission  Boolean @default(true)  // skip per-order commission
+  hasMarketing     Boolean @default(true) // video marketing feature
+  hasCertification Boolean @default(true) // certification badge
+  hasAnalytics     Boolean @default(true) // advanced analytics
+  hasNoCommission  Boolean @default(true) // skip per-order commission
 
   updatedAt DateTime @updatedAt
 }
@@ -1941,27 +1980,27 @@ model PremiumPlan {
 // ─── Equipment & Maintenance Management ───────────────────────────────────────
 
 model Equipment {
-  id              String   @id @default(auto()) @map("_id") @db.ObjectId
-  cafeId          String   @db.ObjectId
-  cafe            Cafe     @relation(fields: [cafeId], references: [id])
+  id     String @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId String @db.ObjectId
+  cafe   Cafe   @relation(fields: [cafeId], references: [id])
 
-  name            String
-  category        String
-  brand           String?
-  serialNumber    String?
-  purchaseDate    DateTime?
-  purchasePrice   Float?
-  supplier        String?
-  warrantyEndsAt  DateTime?
-  receiptUrl      String?
-  photoUrl        String?
-  status          String    @default("active")
-  notes           String?
+  name           String
+  category       String
+  brand          String?
+  serialNumber   String?
+  purchaseDate   DateTime?
+  purchasePrice  Float?
+  supplier       String?
+  warrantyEndsAt DateTime?
+  receiptUrl     String?
+  photoUrl       String?
+  status         String    @default("active")
+  notes          String?
 
   maintenanceRecords MaintenanceRecord[]
 
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([cafeId])
   @@index([cafeId, status])
@@ -1969,20 +2008,20 @@ model Equipment {
 }
 
 model MaintenanceRecord {
-  id            String     @id @default(auto()) @map("_id") @db.ObjectId
-  equipmentId   String     @db.ObjectId
-  equipment     Equipment  @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
-  cafeId        String     @db.ObjectId
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  equipmentId String    @db.ObjectId
+  equipment   Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  cafeId      String    @db.ObjectId
 
-  date          DateTime   @default(now())
-  description   String
-  technicianName String?
+  date            DateTime  @default(now())
+  description     String
+  technicianName  String?
   technicianPhone String?
-  cost          Float      @default(0)
-  receiptUrl    String?
-  nextServiceAt DateTime?
+  cost            Float     @default(0)
+  receiptUrl      String?
+  nextServiceAt   DateTime?
 
-  createdAt     DateTime   @default(now())
+  createdAt DateTime @default(now())
 
   @@index([equipmentId])
   @@index([cafeId])
@@ -1992,21 +2031,21 @@ model MaintenanceRecord {
 // ─── Supplier Invoices (Fawatir) ──────────────────────────────────────────────
 
 model SupplierInvoice {
-  id            String   @id @default(auto()) @map("_id") @db.ObjectId
-  cafeId        String   @db.ObjectId
-  cafe          Cafe     @relation(fields: [cafeId], references: [id])
+  id     String @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId String @db.ObjectId
+  cafe   Cafe   @relation(fields: [cafeId], references: [id])
 
   supplierName  String
   invoiceNumber String?
   amount        Float
-  currency      String   @default("MAD")
+  currency      String    @default("MAD")
   issueDate     DateTime
   dueDate       DateTime?
   // unpaid | partial | paid | overdue — recomputed whenever a payment is
   // recorded (see src/services/supplierInvoiceStatus.ts). Still a plain
   // stored field (not a Prisma computed field) so existing reads/filters
   // keep working unchanged.
-  status        String   @default("unpaid")
+  status        String    @default("unpaid")
   documentUrl   String?
   notes         String?
 
@@ -2016,10 +2055,10 @@ model SupplierInvoice {
   // Running total of payments recorded against this invoice.
   amountPaid      Float   @default(0)
 
-  payments      SupplierPayment[]
+  payments SupplierPayment[]
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([cafeId, id])
   @@index([cafeId])
@@ -2035,11 +2074,11 @@ model SupplierPayment {
   invoice   SupplierInvoice @relation(fields: [invoiceId], references: [id])
   cafeId    String          @db.ObjectId
 
-  amount    Float
-  paidAt    DateTime @default(now())
+  amount Float
+  paidAt DateTime @default(now())
   // cash | card | virement
-  method    String   @default("cash")
-  notes     String?
+  method String   @default("cash")
+  notes  String?
 
   createdAt DateTime @default(now())
 
@@ -2050,25 +2089,25 @@ model SupplierPayment {
 // ─── Purchase Requisitions (I7tiyajat) ────────────────────────────────────────
 
 model PurchaseRequisition {
-  id             String   @id @default(auto()) @map("_id") @db.ObjectId
-  cafeId         String   @db.ObjectId
-  cafe           Cafe     @relation(fields: [cafeId], references: [id])
+  id     String @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId String @db.ObjectId
+  cafe   Cafe   @relation(fields: [cafeId], references: [id])
 
   itemName       String
   quantity       Float
-  unit           String   @default("units")
+  unit           String  @default("units")
   estimatedPrice Float?
-  urgency        String   @default("normal")
+  urgency        String  @default("normal")
   requestedBy    String
   notes          String?
-  status         String   @default("pending")
+  status         String  @default("pending")
 
   // Set once a PurchaseOrder is created from this requisition.
   purchaseOrderId String? @db.ObjectId
 
-  approvedAt     DateTime?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  approvedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
   @@index([cafeId])
   @@index([cafeId, status])
@@ -2079,12 +2118,12 @@ model PurchaseRequisition {
 // ─── WhatsApp Re-engagement Customers ────────────────────────────────────────
 
 model CafeCustomer {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  cafeId    String   @db.ObjectId
-  cafe      Cafe     @relation(fields: [cafeId], references: [id])
+  id     String @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId String @db.ObjectId
+  cafe   Cafe   @relation(fields: [cafeId], references: [id])
 
-  phone     String   // WhatsApp number (international format, e.g. +212612345678)
-  name      String?  // Optional — collected at opt-in
+  phone     String // WhatsApp number (international format, e.g. +212612345678)
+  name      String? // Optional — collected at opt-in
   lastVisit DateTime @default(now())
   optIn     Boolean  @default(true)
   visits    Int      @default(1)
@@ -2121,7 +2160,7 @@ model CafeCustomer {
 // displayed and edited via the AI Center dashboard.
 model AIProviderSettings {
   id            String   @id @default(auto()) @map("_id") @db.ObjectId
-  providerId    String   @unique   // 'gemini' | 'claude' | 'openai' | 'groq' | 'openrouter'
+  providerId    String   @unique // 'gemini' | 'claude' | 'openai' | 'groq' | 'openrouter'
   isEnabled     Boolean  @default(true)
   priority      Int      @default(1)
   isDefault     Boolean  @default(false)
@@ -2138,11 +2177,11 @@ model AIProviderSettings {
 
 model RefreshToken {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  tokenHash String   @unique         // SHA-256(rawToken) — raw token never stored
+  tokenHash String   @unique // SHA-256(rawToken) — raw token never stored
   userId    String   @db.ObjectId
   cafeId    String   @db.ObjectId
-  ip        String?                  // issuing client IP (for future session management)
-  userAgent String?                  // issuing User-Agent (for future session management)
+  ip        String? // issuing client IP (for future session management)
+  userAgent String? // issuing User-Agent (for future session management)
   createdAt DateTime @default(now())
   expiresAt DateTime
 
@@ -2174,7 +2213,7 @@ model AuditEntry {
 
 model CoreNotification {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  level     String   // INFO | SUCCESS | WARNING | ERROR | SYSTEM
+  level     String // INFO | SUCCESS | WARNING | ERROR | SYSTEM
   title     String
   message   String
   module    String?
@@ -2220,7 +2259,7 @@ model FeatureFlag {
   name        String
   description String?
   status      String   @default("disabled") // enabled | disabled | beta | comingSoon
-  scope       String   @default("global")   // global | tenant | role
+  scope       String   @default("global") // global | tenant | role
   targetIds   String[]
   metadata    String?
   updatedAt   DateTime @updatedAt
@@ -2240,14 +2279,14 @@ model CertificationResult {
   score           Float
   maxScore        Float
   percentage      Float
-  level           String   // NONE | BRONZE | SILVER | GOLD | PLATINUM | DIAMOND
-  status          String   // PENDING | COMPLETED | FAILED | EXPIRED | CANCELLED
+  level           String // NONE | BRONZE | SILVER | GOLD | PLATINUM | DIAMOND
+  status          String // PENDING | COMPLETED | FAILED | EXPIRED | CANCELLED
   evaluatedAt     DateTime @default(now())
   expiresAt       DateTime
-  ruleResults     String   // JSON[]
+  ruleResults     String // JSON[]
   evidenceIds     String[]
   summary         String
-  recommendations String   // JSON[]
+  recommendations String // JSON[]
   metadata        String?
 
   @@index([tenantId])
@@ -2279,7 +2318,7 @@ model CertificationEvidence {
 model RuntimeSetting {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
   key       String   @unique
-  value     String                    // JSON-serialized
+  value     String // JSON-serialized
   updatedBy String?
   updatedAt DateTime @updatedAt
 
@@ -2289,9 +2328,9 @@ model RuntimeSetting {
 model PlatformBackup {
   id          String    @id @default(auto()) @map("_id") @db.ObjectId
   label       String
-  status      String    @default("pending")  // pending | running | completed | failed
+  status      String    @default("pending") // pending | running | completed | failed
   sizeBytes   Int?
-  entities    String    // JSON: { cafes: N, orders: N, ... }
+  entities    String // JSON: { cafes: N, orders: N, ... }
   triggeredBy String
   error       String?
   metadata    String?
@@ -2305,14 +2344,14 @@ model PlatformBackup {
 
 model MetricSnapshot {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  metricId    String                          // e.g. 'billing.mrr'
-  period      String                          // 'today' | '7d' | '30d' | 'month' | 'year' | 'custom'
+  metricId    String // e.g. 'billing.mrr'
+  period      String // 'today' | '7d' | '30d' | 'month' | 'year' | 'custom'
   periodStart DateTime
   periodEnd   DateTime
   value       Float
-  trend       Float?                          // % change vs previous period
-  tenantId    String?                         // null = platform-wide
-  metadata    String?                         // JSON blob for future BI use
+  trend       Float? // % change vs previous period
+  tenantId    String? // null = platform-wide
+  metadata    String? // JSON blob for future BI use
   createdAt   DateTime @default(now())
 
   @@index([metricId, period])
@@ -2346,14 +2385,14 @@ model MarketplaceProduct {
   name             String
   slug             String   @unique
   description      String
-  type             String   // HARDWARE | SOFTWARE | DIGITAL | SERVICE | SUBSCRIPTION | LICENSE
+  type             String // HARDWARE | SOFTWARE | DIGITAL | SERVICE | SUBSCRIPTION | LICENSE
   categoryId       String
   brand            String?
-  status           String   @default("DRAFT")   // DRAFT | ACTIVE | ARCHIVED | OUT_OF_STOCK
-  visibility       String   @default("PRIVATE")  // PUBLIC | PRIVATE | MODULE_ONLY
+  status           String   @default("DRAFT") // DRAFT | ACTIVE | ARCHIVED | OUT_OF_STOCK
+  visibility       String   @default("PRIVATE") // PUBLIC | PRIVATE | MODULE_ONLY
   images           String[]
   tags             String[]
-  metadata         String?  // JSON
+  metadata         String? // JSON
   supportedModules String[] // RESTAURANT | HOTEL | CLINIC | RETAIL | ALL
   supplierId       String?
   createdAt        DateTime @default(now())
@@ -2367,19 +2406,19 @@ model MarketplaceProduct {
 }
 
 model ProductPricing {
-  id               String   @id @default(auto()) @map("_id") @db.ObjectId
-  productId        String   @unique
+  id               String    @id @default(auto()) @map("_id") @db.ObjectId
+  productId        String    @unique
   basePrice        Float
-  currency         String   @default("MAD")
-  discount         Float?   // percentage 0–100
-  promotionalPrice Float?   // explicit price override
-  taxRate          Float    @default(0)
+  currency         String    @default("MAD")
+  discount         Float? // percentage 0–100
+  promotionalPrice Float? // explicit price override
+  taxRate          Float     @default(0)
   costPrice        Float?
-  isActive         Boolean  @default(true)
+  isActive         Boolean   @default(true)
   validFrom        DateTime?
   validTo          DateTime?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   @@map("marketplace_pricing")
 }
@@ -2393,7 +2432,7 @@ model MarketplaceSupplier {
   country   String
   rating    Float    @default(3.0)
   notes     String?
-  status    String   @default("ACTIVE")  // ACTIVE | INACTIVE | BLOCKED
+  status    String   @default("ACTIVE") // ACTIVE | INACTIVE | BLOCKED
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -2419,7 +2458,7 @@ model MarketplaceOrder {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
   orderNumber String   @unique
   tenantId    String
-  module      String   // RESTAURANT | HOTEL | CLINIC | RETAIL
+  module      String // RESTAURANT | HOTEL | CLINIC | RETAIL
   status      String   @default("DRAFT")
   requestedBy String
   approvedBy  String?
@@ -2497,23 +2536,23 @@ model RecommendationLog {
 }
 
 model PaymentTransaction {
-  id          String    @id @default(auto()) @map("_id") @db.ObjectId
-  orderId     String
-  tenantId    String
-  module      String    @default("MARKETPLACE")
-  provider    String
-  method      String
-  status      String    @default("PENDING")
-  amount      Float
-  currency    String    @default("MAD")
-  reference   String?
-  notes       String?
-  paidAt      DateTime?
-  refundedAt  DateTime?
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
+  orderId      String
+  tenantId     String
+  module       String    @default("MARKETPLACE")
+  provider     String
+  method       String
+  status       String    @default("PENDING")
+  amount       Float
+  currency     String    @default("MAD")
+  reference    String?
+  notes        String?
+  paidAt       DateTime?
+  refundedAt   DateTime?
   refundAmount Float?
-  metadata    String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  metadata     String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   @@index([orderId])
   @@index([tenantId, status])
@@ -2525,29 +2564,29 @@ model PaymentTransaction {
 // ─── Tenant Lifecycle Engine ──────────────────────────────────────────────────
 
 model TenantProfile {
-  id                 String    @id @default(auto()) @map("_id") @db.ObjectId
-  tenantId           String    @unique
-  tenantType         String    @default("RESTAURANT")
-  state              String    @default("PENDING")
-  plan               String    @default("FREE")
-  trialEndsAt        DateTime?
-  suspendedAt        DateTime?
-  suspensionType     String?
-  suspensionReason   String?
-  gracePeriodEndsAt  DateTime?
-  activatedAt        DateTime?
-  cancelledAt        DateTime?
-  archivedAt         DateTime?
-  defaultLanguage    String    @default("ar")
-  defaultCurrency    String    @default("MAD")
-  country            String    @default("MA")
-  timezone           String    @default("Africa/Casablanca")
-  featureOverrides   String?   // JSON: Record<string, boolean>
-  tempPromotions     String?   // JSON: TempPromotion[]
-  customLimits       String?   // JSON: Partial<PlanLimits>
-  metadata           String?   // JSON: arbitrary extra data
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
+  id                String    @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId          String    @unique
+  tenantType        String    @default("RESTAURANT")
+  state             String    @default("PENDING")
+  plan              String    @default("FREE")
+  trialEndsAt       DateTime?
+  suspendedAt       DateTime?
+  suspensionType    String?
+  suspensionReason  String?
+  gracePeriodEndsAt DateTime?
+  activatedAt       DateTime?
+  cancelledAt       DateTime?
+  archivedAt        DateTime?
+  defaultLanguage   String    @default("ar")
+  defaultCurrency   String    @default("MAD")
+  country           String    @default("MA")
+  timezone          String    @default("Africa/Casablanca")
+  featureOverrides  String? // JSON: Record<string, boolean>
+  tempPromotions    String? // JSON: TempPromotion[]
+  customLimits      String? // JSON: Partial<PlanLimits>
+  metadata          String? // JSON: arbitrary extra data
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   @@index([state])
   @@index([plan])
@@ -2556,19 +2595,19 @@ model TenantProfile {
 }
 
 model TenantUsageSnapshot {
-  id                 String   @id @default(auto()) @map("_id") @db.ObjectId
-  tenantId           String
-  period             String   // YYYY-MM
-  storageBytes       Float    @default(0)
-  aiRequests         Int      @default(0)
-  userCount          Int      @default(0)
-  tableCount         Int      @default(0)
-  qrCount            Int      @default(0)
-  reservations       Int      @default(0)
-  marketplaceOrders  Int      @default(0)
-  automations        Int      @default(0)
-  certificates       Int      @default(0)
-  updatedAt          DateTime @updatedAt
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId          String
+  period            String // YYYY-MM
+  storageBytes      Float    @default(0)
+  aiRequests        Int      @default(0)
+  userCount         Int      @default(0)
+  tableCount        Int      @default(0)
+  qrCount           Int      @default(0)
+  reservations      Int      @default(0)
+  marketplaceOrders Int      @default(0)
+  automations       Int      @default(0)
+  certificates      Int      @default(0)
+  updatedAt         DateTime @updatedAt
 
   @@unique([tenantId, period])
   @@index([tenantId])
@@ -2576,14 +2615,14 @@ model TenantUsageSnapshot {
 }
 
 model TenantSuspensionLog {
-  id           String    @id @default(auto()) @map("_id") @db.ObjectId
-  tenantId     String
-  type         String    // MANUAL | AUTOMATIC | BILLING | SECURITY | MAINTENANCE
-  reason       String
-  suspendedBy  String?
-  resolvedAt   DateTime?
-  resolvedBy   String?
-  createdAt    DateTime  @default(now())
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId    String
+  type        String // MANUAL | AUTOMATIC | BILLING | SECURITY | MAINTENANCE
+  reason      String
+  suspendedBy String?
+  resolvedAt  DateTime?
+  resolvedBy  String?
+  createdAt   DateTime  @default(now())
 
   @@index([tenantId])
   @@map("tenant_suspension_logs")
@@ -2626,16 +2665,23 @@ model BillingPlatformInvoice {
 // a plain denormalized id (same convention as PaymentTransaction.tenantId
 // and other K18+ models), no formal relation.
 model AffiliateAccount {
-  id               String   @id @default(auto()) @map("_id") @db.ObjectId
-  name             String
-  email            String   @unique
-  phone            String?
-  referralCode     String   @unique
-  status           String   @default("ACTIVE")  // ACTIVE | SUSPENDED
-  commissionType   String   @default("PERCENT")  // PERCENT | FIXED
-  commissionValue  Float    @default(10)         // 10 = 10% if PERCENT, or a flat amount if FIXED
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id              String    @id @default(auto()) @map("_id") @db.ObjectId
+  name            String
+  email           String    @unique
+  phone           String?
+  referralCode    String    @unique
+  status          String    @default("ACTIVE") // ACTIVE | SUSPENDED
+  commissionType  String    @default("PERCENT") // PERCENT | FIXED
+  commissionValue Float     @default(10) // 10 = 10% if PERCENT, or a flat amount if FIXED
+  // Agency partner program — tiered recurring commission (see src/affiliate/AgencyTiers.ts).
+  // AGENCY ignores commissionType/commissionValue; the rate comes from the live tier.
+  type            String    @default("AFFILIATE") // AFFILIATE | AGENCY
+  passwordHash    String? // partner portal login (/partners)
+  lastLoginAt     DateTime?
+  accountManager  String    @default("") // Platinum perk — shown in the portal
+  coBrandName     String    @default("") // Platinum perk — co-branding label
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   @@index([status])
 }
@@ -2648,11 +2694,12 @@ model ReferralConversion {
   affiliateId      String    @db.ObjectId
   referralCode     String
   referredCafeId   String    @db.ObjectId
-  status           String    @default("TRACKED")  // TRACKED | CONVERTED | REJECTED
+  status           String    @default("TRACKED") // TRACKED | CONVERTED | REJECTED
   commissionAmount Float?
-  commissionStatus String    @default("PENDING")  // PENDING | APPROVED | PAID
+  commissionStatus String    @default("PENDING") // PENDING | APPROVED | PAID
   convertedAt      DateTime?
   paidAt           DateTime?
+  freeMenuSetup    Boolean   @default(false) // Gold perk — free menu setup for the agency's first 3 restaurants at Gold+
   createdAt        DateTime  @default(now())
 
   @@unique([referredCafeId])
@@ -2667,7 +2714,7 @@ model ReferralConversion {
 model SeoCitation {
   id            String    @id @default(auto()) @map("_id") @db.ObjectId
   cafeId        String    @db.ObjectId
-  source        String    // GOOGLE | YELP | TRIPADVISOR | FACEBOOK | OTHER
+  source        String // GOOGLE | YELP | TRIPADVISOR | FACEBOOK | OTHER
   url           String?
   status        String    @default("MISSING") // LISTED | MISSING | INCONSISTENT
   lastCheckedAt DateTime?
@@ -2683,7 +2730,7 @@ model SeoCitation {
 model SeoReviewReply {
   id             String   @id @default(auto()) @map("_id") @db.ObjectId
   cafeId         String   @db.ObjectId
-  sourceType     String   // FEEDBACK | ORDER_REVIEW
+  sourceType     String // FEEDBACK | ORDER_REVIEW
   sourceId       String
   suggestedReply String
   aiJobId        String?
@@ -2724,7 +2771,7 @@ model IntelligenceEventLog {
   actor      String?
   resourceId String?
   source     String
-  metadata   String?  // JSON string
+  metadata   String? // JSON string
   timestamp  DateTime
   createdAt  DateTime @default(now())
 
@@ -2749,8 +2796,8 @@ model Recommendation {
   description String
   priority    String    @default("MEDIUM") // LOW | MEDIUM | HIGH | URGENT
   score       Float
-  status      String    @default("NEW")    // NEW | ACTIVE | DISMISSED | COMPLETED
-  metadata    String?   // JSON string
+  status      String    @default("NEW") // NEW | ACTIVE | DISMISSED | COMPLETED
+  metadata    String? // JSON string
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   dismissedAt DateTime?
@@ -2774,9 +2821,9 @@ model Insight {
   severity       String    @default("INFO") // INFO | WARNING | CRITICAL
   title          String
   description    String
-  status         String    @default("NEW")  // NEW | ACKNOWLEDGED | RESOLVED | DISMISSED
-  sourceEventId  String?                    // NormalizedIntelligenceEvent.eventId that triggered this
-  metadata       String?                    // JSON string
+  status         String    @default("NEW") // NEW | ACKNOWLEDGED | RESOLVED | DISMISSED
+  sourceEventId  String? // NormalizedIntelligenceEvent.eventId that triggered this
+  metadata       String? // JSON string
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
   acknowledgedAt DateTime?
@@ -2800,11 +2847,11 @@ model Action {
   executorId    String
   category      String
   mode          String    @default("MANUAL") // MANUAL | AUTOMATIC
-  status        String    @default("QUEUED")  // QUEUED | RUNNING | COMPLETED | FAILED | CANCELLED
-  input         String?   // JSON string
+  status        String    @default("QUEUED") // QUEUED | RUNNING | COMPLETED | FAILED | CANCELLED
+  input         String? // JSON string
   resultSuccess Boolean?
   resultMessage String?
-  resultData    String?   // JSON string
+  resultData    String? // JSON string
   createdAt     DateTime  @default(now())
   startedAt     DateTime?
   completedAt   DateTime?
@@ -2828,12 +2875,12 @@ model Decision {
   title                     String
   description               String
   priority                  String    @default("MEDIUM") // LOW | MEDIUM | HIGH | URGENT
-  confidence                Float                          // 0-1
-  status                    String    @default("PENDING")  // PENDING | APPROVED | REJECTED | EXECUTED
+  confidence                Float // 0-1
+  status                    String    @default("PENDING") // PENDING | APPROVED | REJECTED | EXECUTED
   suggestedActionExecutorId String?
-  suggestedActionInput      String?   // JSON string
-  linkedActionId            String?   // Action.id, set once executeDecision queues it
-  metadata                  String?   // JSON string
+  suggestedActionInput      String? // JSON string
+  linkedActionId            String? // Action.id, set once executeDecision queues it
+  metadata                  String? // JSON string
   createdAt                 DateTime  @default(now())
   updatedAt                 DateTime  @updatedAt
   decidedAt                 DateTime?
@@ -2851,9 +2898,9 @@ model Decision {
 model KnowledgeEntry {
   id         String   @id @default(auto()) @map("_id") @db.ObjectId
   tenantId   String
-  key        String                     // namespaced, e.g. "billing.mrr", "business.peakHours"
-  value      String                     // JSON-stringified string|number|boolean|null
-  sourceType String                     // MANUAL | DATA_HUB | INSIGHT | DECISION | SYSTEM
+  key        String // namespaced, e.g. "billing.mrr", "business.peakHours"
+  value      String // JSON-stringified string|number|boolean|null
+  sourceType String // MANUAL | DATA_HUB | INSIGHT | DECISION | SYSTEM
   sourceId   String?
   confidence Float?
   version    Int      @default(1)
@@ -2874,16 +2921,16 @@ model KnowledgeEntry {
 // counter in one table, no separate history table.
 model IntelRule {
   id           String   @id @default(auto()) @map("_id") @db.ObjectId
-  key          String                     // stable id across versions, e.g. "low-mrr-alert"
-  tenantId     String?                    // null = platform default; set = tenant-specific override
+  key          String // stable id across versions, e.g. "low-mrr-alert"
+  tenantId     String? // null = platform default; set = tenant-specific override
   name         String
   category     String
   version      Int      @default(1)
   isCurrent    Boolean  @default(true)
   isActive     Boolean  @default(true)
-  conditions   String                     // JSON RuleConditionGroup
-  actionType   String                     // ACTION | DECISION
-  actionConfig String                     // JSON RuleActionBinding
+  conditions   String // JSON RuleConditionGroup
+  actionType   String // ACTION | DECISION
+  actionConfig String // JSON RuleActionBinding
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -2899,7 +2946,7 @@ model IntelRule {
 // IntelRule (K41): isCurrent flag + version counter, one table.
 model IntelPromptTemplate {
   id           String   @id @default(auto()) @map("_id") @db.ObjectId
-  key          String                     // stable id across versions, e.g. "seo-tip-summary"
+  key          String // stable id across versions, e.g. "seo-tip-summary"
   name         String
   category     String
   version      Int      @default(1)
@@ -2942,4 +2989,49 @@ model BillingPlan {
   @@index([isActive])
   @@index([displayOrder])
   @@map("billing_plans")
+}
+
+// ─── Discount coupons (restaurant-created codes, applied on QR orders) ───────
+model Coupon {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  cafeId      String    @db.ObjectId
+  code        String // stored UPPERCASE, unique per cafe
+  type        String // PERCENT | FIXED
+  value       Float // percent (1-100) or fixed amount in cafe currency
+  minOrder    Float     @default(0)
+  maxDiscount Float? // cap for PERCENT coupons
+  maxUses     Int? // null = unlimited
+  usedCount   Int       @default(0)
+  startsAt    DateTime?
+  endsAt      DateTime?
+  isActive    Boolean   @default(true)
+  note        String    @default("")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([cafeId, code])
+  @@index([cafeId, isActive])
+}
+
+// ─── Agency commission ledger — one row per PAID restaurant invoice ──────────
+// Recurring for as long as the referred restaurant keeps paying. Rate is the
+// agency's tier at the moment of payment; base is what the restaurant actually
+// paid (after its partner discount). sourceKey makes recording idempotent.
+model AffiliateCommission {
+  id               String    @id @default(auto()) @map("_id") @db.ObjectId
+  affiliateId      String    @db.ObjectId
+  referredCafeId   String    @db.ObjectId
+  sourceKey        String    @unique // "billingInvoice:<id>"
+  paidAmount       Float
+  currency         String
+  tier             String // SILVER | GOLD | PLATINUM
+  ratePct          Float
+  commissionAmount Float
+  status           String    @default("PENDING") // PENDING | APPROVED | PAID
+  approvedAt       DateTime?
+  paidAt           DateTime?
+  createdAt        DateTime  @default(now())
+
+  @@index([affiliateId, status])
+  @@index([affiliateId, createdAt])
 }

@@ -47,8 +47,8 @@ export default memo(function ClientsMap({ tenants }: Props) {
     <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
       <div className="px-5 py-3 border-b border-gray-800 flex items-center justify-between">
         <div>
-          <h3 className="text-white font-bold text-sm">Client Distribution</h3>
-          <p className="text-gray-500 text-xs">{Object.keys(counts).length} countries · {tenants.length} restaurants</p>
+          <h3 className="text-white font-bold text-sm">توزيع العملاء</h3>
+          <p className="text-gray-500 text-xs">{Object.keys(counts).length} دولة · {tenants.length} مطعم (من القائمة المحمَّلة)</p>
         </div>
         {/* Legend */}
         <div className="flex items-center gap-3 text-xs text-gray-500">

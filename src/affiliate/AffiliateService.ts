@@ -11,6 +11,7 @@ import crypto from 'crypto'
 import prisma from '../prisma'
 import logger from '../logger'
 import { eventBus, publishStandardEvent } from '../core'
+import { recordInvoiceCommission } from './AgencyService'
 
 export interface CreateAffiliateInput {
   name:            string
@@ -79,68 +80,26 @@ export async function trackReferral(referralCode: string, referredCafeId: string
   return referral
 }
 
-// ─── Conversion + commission ────────────────────────────────────────────────
-function calculateCommission(type: string, value: number, amount: number): number {
-  return type === 'PERCENT' ? Math.round(amount * value) / 100 : value
-}
-
-export async function recordConversion(referredCafeId: string, invoiceAmount: number) {
-  const referral = await prisma.referralConversion.findUnique({ where: { referredCafeId } })
-  if (!referral || referral.status === 'CONVERTED') return referral
-
-  const affiliate = await prisma.affiliateAccount.findUniqueOrThrow({ where: { id: referral.affiliateId } })
-  const commissionAmount = calculateCommission(affiliate.commissionType, affiliate.commissionValue, invoiceAmount)
-
-  const updated = await prisma.referralConversion.update({
-    where: { referredCafeId },
-    data:  { status: 'CONVERTED', convertedAt: new Date(), commissionAmount, commissionStatus: 'PENDING' },
-  })
-
-  publishStandardEvent('ReferralConverted', {
-    tenantId: affiliate.id, resourceId: updated.id, metadata: { referredCafeId, invoiceAmount },
-  }, 'affiliate-engine')
-  publishStandardEvent('CommissionEarned', {
-    tenantId: affiliate.id, resourceId: updated.id, metadata: { commissionAmount },
-  }, 'affiliate-engine')
-
-  return updated
-}
-
-// ─── Commission lifecycle (payout-ready) ───────────────────────────────────
-export async function approveCommission(conversionId: string) {
-  const conversion = await prisma.referralConversion.findUniqueOrThrow({ where: { id: conversionId } })
-  if (conversion.commissionStatus !== 'PENDING') throw new Error(`Commission ${conversionId} is not PENDING`)
-
-  const updated = await prisma.referralConversion.update({ where: { id: conversionId }, data: { commissionStatus: 'APPROVED' } })
-  publishStandardEvent('CommissionApproved', { tenantId: conversion.affiliateId, resourceId: conversionId, metadata: {} }, 'affiliate-engine')
-  return updated
-}
-
-export async function markCommissionPaid(conversionId: string) {
-  const conversion = await prisma.referralConversion.findUniqueOrThrow({ where: { id: conversionId } })
-  if (conversion.commissionStatus !== 'APPROVED') throw new Error(`Commission ${conversionId} is not APPROVED`)
-
-  const updated = await prisma.referralConversion.update({
-    where: { id: conversionId },
-    data:  { commissionStatus: 'PAID', paidAt: new Date() },
-  })
-  publishStandardEvent('CommissionPaid', { tenantId: conversion.affiliateId, resourceId: conversionId, metadata: {} }, 'affiliate-engine')
-  return updated
-}
+// Commission recording + approve/pay moved to AgencyService (recurring ledger,
+// AffiliateCommission). ReferralConversion is now the attribution record only.
 
 // ─── Commission history + summary ──────────────────────────────────────────
 export async function getCommissionHistory(affiliateId: string) {
-  return prisma.referralConversion.findMany({ where: { affiliateId }, orderBy: { createdAt: 'desc' } })
+  return prisma.affiliateCommission.findMany({ where: { affiliateId }, orderBy: { createdAt: 'desc' } })
 }
 
 export async function getAffiliateSummary(affiliateId: string) {
-  const rows = await prisma.referralConversion.findMany({ where: { affiliateId } })
+  const [referrals, rows] = await Promise.all([
+    prisma.referralConversion.findMany({ where: { affiliateId }, select: { status: true } }),
+    prisma.affiliateCommission.findMany({ where: { affiliateId }, select: { commissionAmount: true, status: true } }),
+  ])
+  const sum = (f: (r: typeof rows[number]) => boolean) => rows.filter(f).reduce((s, r) => s + r.commissionAmount, 0)
   return {
-    totalReferrals:  rows.length,
-    totalConverted:  rows.filter(r => r.status === 'CONVERTED').length,
-    totalCommission: rows.reduce((s, r) => s + (r.commissionAmount ?? 0), 0),
-    pendingPayout:   rows.filter(r => r.commissionStatus === 'APPROVED').reduce((s, r) => s + (r.commissionAmount ?? 0), 0),
-    paidOut:         rows.filter(r => r.commissionStatus === 'PAID').reduce((s, r) => s + (r.commissionAmount ?? 0), 0),
+    totalReferrals:  referrals.length,
+    totalConverted:  referrals.filter(r => r.status === 'CONVERTED').length,
+    totalCommission: sum(() => true),
+    pendingPayout:   sum(r => r.status === 'APPROVED'),
+    paidOut:         sum(r => r.status === 'PAID'),
   }
 }
 
@@ -149,12 +108,17 @@ export async function getAffiliateSummary(affiliateId: string) {
 // referred cafe's tenantId is the same id used as referredCafeId elsewhere
 // in this codebase's billing integration (K7-K10 convention).
 export function initAffiliateEngine(): void {
+  // Platform-invoice payments (billing orchestrator). Today the real payment
+  // path is superadmin payment-request confirm, which calls
+  // recordInvoiceCommission directly; this keeps both paths on one function.
   eventBus.subscribe('InvoicePaid', async (event: any) => {
     try {
-      const { tenantId, metadata } = event.payload as { tenantId: string; metadata?: { total?: number } }
-      const amount = metadata?.total
-      if (!tenantId || !amount) return
-      await recordConversion(tenantId, amount)
+      const { tenantId, resourceId, metadata } = event.payload as { tenantId: string; resourceId?: string; metadata?: { total?: number; currency?: string } }
+      if (!tenantId || !resourceId || !metadata?.total) return
+      await recordInvoiceCommission({
+        cafeId: tenantId, sourceKey: `platformInvoice:${resourceId}`,
+        paidAmount: metadata.total, currency: metadata.currency ?? '',
+      })
     } catch (err) {
       logger.error({ msg: '[AffiliateEngine] InvoicePaid handler failed', err })
     }

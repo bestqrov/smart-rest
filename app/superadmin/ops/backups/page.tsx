@@ -18,19 +18,19 @@ interface BackupRecord {
 
 const T = {
   ar: {
-    title: 'مركز النسخ الاحتياطي', subtitle: 'نسخ يدوية وتاريخ الحفظ',
-    trigger: 'بدء نسخة احتياطية', refresh: 'تحديث',
-    label: 'التسمية', status: 'الحالة', size: 'الحجم', by: 'بواسطة',
-    createdAt: 'وقت الإنشاء', entities: 'البيانات المُنسَخة',
+    title: 'لقطات عدد السجلات', subtitle: 'تسجيل عدد السجلات في كل جدول للمقارنة — ليست نسخة احتياطية',
+    trigger: 'تسجيل لقطة الآن', refresh: 'تحديث',
+    label: 'التسمية', status: 'الحالة', size: 'حجم تقديري', by: 'بواسطة',
+    createdAt: 'وقت الإنشاء', entities: 'عدد السجلات',
     completed: 'مكتملة', failed: 'فشلت', running: 'جاري', pending: 'قيد الانتظار',
-    delete: 'حذف', empty: 'لا توجد نسخ احتياطية',
-    confirmDelete: 'هل تريد حذف هذه النسخة الاحتياطية؟',
+    delete: 'حذف', empty: 'لا توجد لقطات',
+    confirmDelete: 'هل تريد حذف هذه اللقطة؟',
   },
   en: {
-    title: 'Backup Center', subtitle: 'Manual backups and history',
-    trigger: 'Trigger Backup', refresh: 'Refresh',
+    title: 'Record-count snapshots', subtitle: 'Counts rows per collection for comparison — not a backup',
+    trigger: 'Take snapshot', refresh: 'Refresh',
     label: 'Label', status: 'Status', size: 'Size', by: 'By',
-    createdAt: 'Created', entities: 'Entities Backed',
+    createdAt: 'Created', entities: 'Record counts',
     completed: 'Completed', failed: 'Failed', running: 'Running', pending: 'Pending',
     delete: 'Delete', empty: 'No backups yet',
     confirmDelete: 'Delete this backup record?',
@@ -96,6 +96,14 @@ export default function BackupsPage() {
 
   return (
     <div dir={isRTL ? 'rtl' : 'ltr'} className="min-h-screen bg-zinc-950 text-zinc-100 p-6">
+      {/* Honesty banner: this feature only counts records (BackupService.collectEntityCounts);
+          it copies no data. Real backups/restores must come from MongoDB Atlas. */}
+      <div className="mb-5 rounded-xl border border-amber-700/60 bg-amber-950/40 px-4 py-3 text-sm text-amber-200">
+        {isRTL
+          ? '⚠️ هذه الصفحة لا تنسخ أي بيانات — تسجّل فقط عدد السجلات. النسخ الاحتياطي والاسترجاع الحقيقي يتمّان من MongoDB Atlas (Backup / Point-in-Time Restore). تأكّد من تفعيله هناك.'
+          : '⚠️ This page copies no data — it only records row counts. Real backups and restores come from MongoDB Atlas (Backup / Point-in-Time Restore). Make sure it is enabled there.'}
+      </div>
+
       {/* Header */}
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <div>

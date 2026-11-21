@@ -1,4 +1,5 @@
 'use client'
+import { getLang as getStaffLang, setLang as setStaffLang } from '../../src/lib/posI18n'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { io as socketIO, Socket } from 'socket.io-client'
@@ -10,6 +11,15 @@ type Lang = 'ar' | 'en' | 'fr' | 'es'
 
 const T = {
   en: {
+    ordersTab: 'Orders',
+    ticketsHeader: 'Tickets',
+    startShort: 'Start',
+    readyShort: 'Ready',
+    failOrder: 'Failed to update order — try again',
+    failRes: 'Failed to update reservation — try again',
+    delivery: 'Delivery',
+    tableShort: 'T',
+    itemsShort: (n: number) => `${n} item${n === 1 ? '' : 's'}`,
     title: 'Kitchen Display',
     sub: 'Real-time order queue',
     newOrders: 'NEW',
@@ -39,35 +49,53 @@ const T = {
     itemsCount: (n: number) => `${n} item${n === 1 ? '' : 's'}`,
   },
   ar: {
+    ordersTab: 'الطلبات',
+    ticketsHeader: 'التذاكر',
+    startShort: 'ابدأ',
+    readyShort: 'جاهز',
+    failOrder: 'تعذّر تحديث الطلب، يرجى المحاولة مجدداً',
+    failRes: 'تعذّر تحديث الحجز، يرجى المحاولة مجدداً',
+    delivery: 'توصيل',
+    tableShort: 'طاولة ',
+    itemsShort: (n: number) => n === 1 ? 'صنف واحد' : n === 2 ? 'صنفان' : n <= 10 ? `${n} أصناف` : `${n} صنفاً`,
     title: 'شاشة المطبخ',
     sub: 'قائمة الطلبات اللحظية',
     newOrders: 'جديد',
-    cooking: 'تحضير',
+    cooking: 'قيد التحضير',
     reservations: 'حجوزات',
-    noNew: 'لا يوجد طلبات معلقة',
-    noCooking: 'لا يوجد طلبات قيد التحضير',
-    noReservations: 'لا يوجد حجوزات معلقة',
+    noNew: 'لا توجد طلبات معلّقة',
+    noCooking: 'لا توجد طلبات قيد التحضير',
+    noReservations: 'لا توجد حجوزات معلّقة',
     accept: 'بدء التحضير',
     ready: 'جاهز',
     resAccept: 'قبول',
     resCancel: 'رفض',
     urgent: 'عاجل',
-    seat: 'مقعد',
+    seat: 'المقعد',
     guests: 'أشخاص',
     justNow: 'الآن',
-    minAgo: (m: number) => `${m}د`,
-    mute: 'كتم',
-    unmute: 'تشغيل',
+    minAgo: (m: number) => `منذ ${m} د`,
+    mute: 'كتم الصوت',
+    unmute: 'تشغيل الصوت',
     loading: 'جارٍ التحميل…',
     completedToday: 'مكتملة',
     cancelledToday: 'ملغاة',
     selectOrder: 'اختر طلباً',
-    selectOrderSub: 'اضغط على تذكرة لعرض التفاصيل',
+    selectOrderSub: 'اضغط على إحدى التذاكر لعرض تفاصيلها',
     todayTab: 'اليوم',
-    noToday: 'لا يوجد طلبات منتهية اليوم بعد',
-    itemsCount: (n: number) => `${n} صنف`,
+    noToday: 'لا توجد طلبات منتهية اليوم بعد',
+    itemsCount: (n: number) => n === 1 ? 'صنف واحد' : n === 2 ? 'صنفان' : n <= 10 ? `${n} أصناف` : `${n} صنفاً`,
   },
   fr: {
+    ordersTab: 'Commandes',
+    ticketsHeader: 'Tickets',
+    startShort: 'Démarrer',
+    readyShort: 'Prêt',
+    failOrder: 'Échec de la mise à jour — réessayez',
+    failRes: 'Échec de la mise à jour de la réservation — réessayez',
+    delivery: 'Livraison',
+    tableShort: 'T',
+    itemsShort: (n: number) => `${n} article${n === 1 ? '' : 's'}`,
     title: 'Écran Cuisine',
     sub: "File d'attente",
     newOrders: 'NOUV.',
@@ -97,6 +125,15 @@ const T = {
     itemsCount: (n: number) => `${n} article${n === 1 ? '' : 's'}`,
   },
   es: {
+    ordersTab: 'Pedidos',
+    ticketsHeader: 'Tickets',
+    startShort: 'Iniciar',
+    readyShort: 'Listo',
+    failOrder: 'Error al actualizar el pedido — inténtalo de nuevo',
+    failRes: 'Error al actualizar la reserva — inténtalo de nuevo',
+    delivery: 'Delivery',
+    tableShort: 'M',
+    itemsShort: (n: number) => `${n} artículo${n === 1 ? '' : 's'}`,
     title: 'Cocina',
     sub: 'Cola en tiempo real',
     newOrders: 'NUEVO',
@@ -163,7 +200,7 @@ type TodayOrder = {
   table: { tableNumber: number; mergedIntoTableId: string | null; mergedIntoTable: { tableNumber: number } | null } | null
   originalTable: { tableNumber: number } | null
   seat: { seatNumber: number } | null
-  items: { quantity: number; product: { id: string; nameEn: string } }[]
+  items: { quantity: number; product: { id: string; nameEn: string; nameAr?: string | null; nameFr?: string | null } }[]
 }
 
 // ─── Audio ────────────────────────────────────────────────────────────────────
@@ -230,7 +267,7 @@ export default function KitchenPage() {
   const [cafeId, setCafeId]             = useState('')
   const [authed, setAuthed]             = useState(false)
   const [muted, setMuted]               = useState(false)
-  const [lang, setLang]                 = useState<Lang>('en')
+  const [lang, setLang]                 = useState<Lang>('ar')
   const [selectedId, setSelectedId]     = useState<string | null>(null)
   const [, setTick]                     = useState(0)
   const [completedToday, setCompletedToday] = useState(0)
@@ -254,7 +291,7 @@ export default function KitchenPage() {
   const beepTimerRef  = useRef<ReturnType<typeof setInterval> | null>(null)
   const mutedRef      = useRef(false)
 
-  const tr    = T[lang]
+  const tr    = T[lang] ?? T.ar
   const isRTL = lang === 'ar'
 
   useEffect(() => { mutedRef.current = muted }, [muted])
@@ -287,8 +324,7 @@ export default function KitchenPage() {
     localStorage.setItem('kitchenToken', activeToken)
     setCafeId(cafeIdFromToken); setAuthed(true)
 
-    const saved = localStorage.getItem('sm_lang')
-    if (saved === 'ar' || saved === 'en' || saved === 'fr' || saved === 'es') setLang(saved as Lang)
+    setLang(getStaffLang() as Lang)
 
     ;(async () => {
       try {
@@ -313,15 +349,15 @@ export default function KitchenPage() {
       orderId:            o.id,
       cafeId:             o.cafeId ?? '',
       billingTableNumber: (o.originalTable ?? o.table)?.tableNumber ?? 0,
-      mergeLabel:         isMarketplace(o) ? `🛵 ${o.externalPlatform || 'Delivery'}`
+      mergeLabel:         isMarketplace(o) ? `🛵 ${o.externalPlatform || T[getStaffLang() as Lang]?.delivery || T.ar.delivery}`
                           : o.queueNumber != null ? `#${o.queueNumber}`
-                          : `T${(o.originalTable ?? o.table)?.tableNumber ?? '?'}`,
+                          : `${(T[getStaffLang() as Lang] ?? T.ar).tableShort}${(o.originalTable ?? o.table)?.tableNumber ?? '?'}`,
       seatGroups: [{
         seatNumber:          o.seat?.seatNumber ?? null,
         physicalTableNumber: (o.originalTable ?? o.table)?.tableNumber ?? 0,
         items: o.items.map((i: any) => ({
           productId:   i.product?.id ?? '',
-          productName: i.product?.nameEn ?? '',
+          productName: (() => { const l = getStaffLang(); const p = i.product ?? {}; return (l === 'ar' ? p.nameAr : l === 'fr' ? p.nameFr : p.nameEn) || p.nameEn || p.nameAr || '' })(),
           quantity:    i.quantity,
           notes:       i.notes ?? null,
         })),
@@ -392,7 +428,9 @@ export default function KitchenPage() {
     socket.on('reconnect', () => socket.emit('join', `kds_room_${cafeId}`))
     socket.on('kds_new_order', (ticket: KdsTicket) => {
       if (deliveredIds.current.has(ticket.orderId)) return
-      alertOrderIds.current.add(ticket.orderId); startBeepLoop()
+      // Auto-accept (owner decision 2026-11-20): one chime on arrival instead of
+      // the repeating alarm; the effect below moves the ticket to PREPARING.
+      if (!mutedRef.current) playKitchenAlert()
       setTickets(prev => {
         if (prev.find(t => t.orderId === ticket.orderId)) return prev
         return [...prev, { ...ticket, status: 'PENDING' as const }]
@@ -424,6 +462,20 @@ export default function KitchenPage() {
     return () => { socket.disconnect(); if (beepTimerRef.current) { clearInterval(beepTimerRef.current); beepTimerRef.current = null } }
   }, [authed, cafeId])
 
+  // Auto-accept: every PENDING ticket that reaches this screen (live or on
+  // load) is moved to PREPARING once. If that fails, accept() reverts it to
+  // PENDING with the alarm, and the manual Start button remains as fallback.
+  const autoAccepted = useRef<Set<string>>(new Set())
+  useEffect(() => {
+    for (const t of tickets) {
+      if (t.status === 'PENDING' && !autoAccepted.current.has(t.orderId)) {
+        autoAccepted.current.add(t.orderId)
+        accept(t.orderId)
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tickets])
+
   // actions
   async function accept(orderId: string) {
     alertOrderIds.current.delete(orderId); stopBeepLoopIfEmpty()
@@ -437,7 +489,7 @@ export default function KitchenPage() {
       // see it's still PENDING and retry.
       setTickets(prev => prev.map(t => t.orderId === orderId ? { ...t, status: 'PENDING' as const } : t))
       alertOrderIds.current.add(orderId); startBeepLoop()
-      flashActionError(lang === 'ar' ? 'فشل تحديث الطلب — حاول مجدداً' : 'Failed to update order — try again')
+      flashActionError(tr.failOrder)
     }
   }
   async function markReady(orderId: string) {
@@ -452,7 +504,7 @@ export default function KitchenPage() {
       deliveredIds.current.delete(orderId)
       setCompletedToday(n => Math.max(0, n - 1))
       if (ticket) setTickets(prev => prev.find(t => t.orderId === orderId) ? prev : [...prev, ticket])
-      flashActionError(lang === 'ar' ? 'فشل تحديث الطلب — حاول مجدداً' : 'Failed to update order — try again')
+      flashActionError(tr.failOrder)
     }
   }
   async function handleReservation(id: string, action: 'accept' | 'cancel') {
@@ -463,7 +515,7 @@ export default function KitchenPage() {
       if (!res.ok) throw new Error()
     } catch {
       if (reservation) setReservations(prev => prev.find(r => r.id === id) ? prev : [reservation, ...prev])
-      flashActionError(lang === 'ar' ? 'فشل تحديث الحجز — حاول مجدداً' : 'Failed to update reservation — try again')
+      flashActionError(tr.failRes)
     }
   }
 
@@ -514,7 +566,7 @@ export default function KitchenPage() {
           <div className="flex items-center gap-0.5 bg-slate-100 border border-slate-200 rounded-lg p-0.5">
             <button onClick={() => setActiveTab('orders')}
               className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all ${activeTab === 'orders' ? 'bg-amber-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>
-              🍳 Orders {allTickets.length > 0 && <span className="ml-1 bg-red-500 text-white rounded-full px-1 text-xs">{allTickets.length}</span>}
+              🍳 {tr.ordersTab} {allTickets.length > 0 && <span className="ml-1 bg-red-500 text-white rounded-full px-1 text-xs">{allTickets.length}</span>}
             </button>
             <button onClick={() => { setActiveTab('reservations'); setNewReservationAlert(false) }}
               className={`relative px-2.5 py-1 rounded-md text-xs font-bold transition-all ${activeTab === 'reservations' ? 'bg-violet-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>
@@ -530,7 +582,7 @@ export default function KitchenPage() {
           </div>
 
           {/* Mute */}
-          <button onClick={() => setMuted(m => !m)}
+          <button onClick={() => setMuted(m => !m)} title={muted ? tr.unmute : tr.mute} aria-label={muted ? tr.unmute : tr.mute}
             className={`p-1.5 rounded-lg border transition-all ${muted ? 'bg-slate-100 border-slate-200 text-slate-400' : 'bg-amber-50 border-amber-200 text-amber-500'}`}>
             {muted ? <BellOff className="w-4 h-4" /> : <Bell className="w-4 h-4" />}
           </button>
@@ -538,7 +590,7 @@ export default function KitchenPage() {
           {/* Lang */}
           <div className="flex items-center gap-0.5 bg-slate-100 border border-slate-200 rounded-lg px-1.5 py-1">
             {(['ar','en','fr','es'] as Lang[]).map(l => (
-              <button key={l} onClick={() => { setLang(l); localStorage.setItem('sm_lang', l) }}
+              <button key={l} onClick={() => { setLang(l); setStaffLang(l) }}
                 className={`text-xs font-bold px-1.5 py-0.5 rounded-md transition-all ${lang === l ? 'bg-amber-500 text-white' : 'text-slate-400 hover:text-slate-700'}`}>
                 {l.toUpperCase()}
               </button>
@@ -562,7 +614,7 @@ export default function KitchenPage() {
           {/* ── LEFT: ticket list (blue frame) ── */}
           <div className="w-56 lg:w-64 bg-white border-2 border-sky-200 rounded-2xl flex flex-col overflow-hidden shrink-0 shadow-sm">
             <div className="bg-sky-500 px-4 py-2 shrink-0">
-              <span className="text-white text-xs font-black uppercase tracking-widest">🎫 Tickets</span>
+              <span className="text-white text-xs font-black uppercase tracking-widest">🎫 {tr.ticketsHeader}</span>
             </div>
             <div className="overflow-y-auto flex-1" style={{touchAction:'pan-y'}}>
               {allTickets.length === 0 ? (
@@ -616,7 +668,7 @@ export default function KitchenPage() {
                       <span className="text-2xl font-black text-slate-800 leading-none">{t.mergeLabel}</span>
                       {/* Item count */}
                       <span className={`text-xs ${timeColor}`}>
-                        {t.seatGroups.flatMap(sg => sg.items).reduce((s, i) => s + i.quantity, 0)} items · {min === 0 ? tr.justNow : tr.minAgo(min)}
+                        {tr.itemsShort(t.seatGroups.flatMap(sg => sg.items).reduce((s, i) => s + i.quantity, 0))} · {min === 0 ? tr.justNow : tr.minAgo(min)}
                         {tier === 'critical' && ` · ${tr.urgent}`}
                       </span>
                     </div>
@@ -633,17 +685,19 @@ export default function KitchenPage() {
                         <button
                           onClick={(e) => { e.stopPropagation(); accept(t.orderId) }}
                           aria-label={tr.accept}
-                          className="w-11 h-11 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-90 text-white transition-all flex items-center justify-center"
+                          className="min-w-[2.75rem] h-11 px-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-90 text-white transition-all flex flex-col items-center justify-center leading-none"
                         >
-                          <CheckCircle2 className="w-5 h-5" />
+                          <CheckCircle2 className="w-4 h-4" />
+                          <span className="text-[10px] font-bold mt-0.5">{tr.startShort}</span>
                         </button>
                       ) : (
                         <button
                           onClick={(e) => { e.stopPropagation(); markReady(t.orderId) }}
                           aria-label={tr.ready}
-                          className="w-11 h-11 rounded-xl bg-[#22c55e] hover:bg-[#16a34a] active:scale-90 text-white transition-all flex items-center justify-center"
+                          className="min-w-[2.75rem] h-11 px-2 rounded-xl bg-[#22c55e] hover:bg-[#16a34a] active:scale-90 text-white transition-all flex flex-col items-center justify-center leading-none"
                         >
-                          <Check className="w-5 h-5 stroke-[3]" />
+                          <Check className="w-4 h-4 stroke-[3]" />
+                          <span className="text-[10px] font-bold mt-0.5">{tr.readyShort}</span>
                         </button>
                       )}
                     </div>
@@ -772,7 +826,7 @@ export default function KitchenPage() {
                       <span className="text-[10px] font-black uppercase tracking-wider">{o.status === 'CANCELLED' ? tr.cancelledToday : tr.completedToday}</span>
                     </div>
                     <p className="text-xs text-slate-500">{tr.itemsCount(itemCount)}</p>
-                    <p className="text-[10px] text-slate-400">{new Date(o.createdAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}</p>
+                    <p className="text-[10px] text-slate-400">{new Date(o.createdAt).toLocaleTimeString(lang, { hour: '2-digit', minute: '2-digit' })}</p>
                   </div>
                 )
               })}
@@ -796,8 +850,8 @@ export default function KitchenPage() {
               )}
               {pendingRes.map(r => {
                 const date    = new Date(r.date)
-                const dateStr = date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
-                const timeStr = date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+                const dateStr = date.toLocaleDateString(lang, { weekday: 'short', month: 'short', day: 'numeric' })
+                const timeStr = date.toLocaleTimeString(lang, { hour: '2-digit', minute: '2-digit' })
                 return (
                   <div key={r.id} className="rounded-2xl border-2 border-violet-200 bg-white p-4 space-y-3 shadow-sm">
                     <div className="flex items-center justify-between">

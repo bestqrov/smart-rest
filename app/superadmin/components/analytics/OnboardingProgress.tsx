@@ -11,11 +11,11 @@ interface Step {
 
 function getSteps(t: Tenant): Step[] {
   return [
-    { label: 'منيو',     done: t._count.categories > 0 },
-    { label: 'طاولات',   done: t._count.tables > 0 },
-    { label: 'موظفين',   done: t._count.staff > 0 },
-    { label: 'طلبية',    done: t._count.orders > 0 },
-    { label: 'فاتورة',   done: t.subscriptionTier != null },
+    { label: 'القائمة',     done: t._count.categories > 0 },
+    { label: 'الطاولات',   done: t._count.tables > 0 },
+    { label: 'الموظفون',   done: t._count.staff > 0 },
+    { label: 'أول طلب',    done: t._count.orders > 0 },
+    { label: 'الفوترة',   done: t.subscriptionTier != null },
   ]
 }
 

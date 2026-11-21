@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Save, Package } from 'lucide-react'
+import { ArrowRight, Save, Package } from 'lucide-react'
 import { useSAAuth } from '../../../context'
 
 // ─── i18n ─────────────────────────────────────────────────────────────────────
@@ -45,7 +45,7 @@ const MODULES = ['RESTAURANT','HOTEL','CLINIC','RETAIL','ALL']
 
 export default function NewProductPage() {
   const router = useRouter()
-  const [lang, setLang] = useState<'ar' | 'en'>('ar')
+  const lang = 'ar' as 'ar' | 'en' // console is Arabic-only
   const { header } = useSAAuth()
   const [tab, setTab]     = useState<'general' | 'pricing' | 'inventory' | 'modules'>('general')
   const [saving, setSaving] = useState(false)
@@ -66,8 +66,6 @@ export default function NewProductPage() {
   const isRTL = lang === 'ar'
 
   useEffect(() => {
-    const l = localStorage.getItem('lang') as 'ar' | 'en' | null
-    if (l) setLang(l)
     Promise.all([
       fetch('/api/superadmin/marketplace/categories?onlyActive=0', { headers: header() }).then(r => r.json()),
       fetch('/api/superadmin/marketplace/suppliers', { headers: header() }).then(r => r.json()),
@@ -129,7 +127,7 @@ export default function NewProductPage() {
         body:   JSON.stringify(body),
       })
       const json = await res.json()
-      if (!res.ok) throw new Error(json.error ?? 'Failed')
+      if (!res.ok) throw new Error(json.error ?? 'فشل الحفظ')
 
       const productId = json.product.id
       if (form.initialStock !== '0') {
@@ -162,12 +160,11 @@ export default function NewProductPage() {
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
             <Link href="/superadmin/marketplace/products" className="p-2 bg-zinc-800 rounded-lg hover:bg-zinc-700">
-              <ArrowLeft className="w-4 h-4" />
+              <ArrowRight className="w-4 h-4" />
             </Link>
             <h1 className="text-xl font-bold flex items-center gap-3"><Package className="w-6 h-6 text-blue-400" />{t.title}</h1>
           </div>
           <div className="flex items-center gap-3">
-            <button onClick={() => setLang(l => l === 'ar' ? 'en' : 'ar')} className="px-3 py-1.5 text-sm bg-zinc-800 rounded-lg">{lang === 'ar' ? 'EN' : 'ع'}</button>
             <button onClick={save} disabled={saving}
               className="flex items-center gap-2 px-4 py-2 bg-blue-700 hover:bg-blue-600 rounded-lg text-sm font-medium disabled:opacity-50">
               <Save className="w-4 h-4" />{saving ? t.saving : t.save}
@@ -194,7 +191,7 @@ export default function NewProductPage() {
               <div className="grid grid-cols-2 gap-4">
                 <Field label={t.sku}><input value={form.sku} onChange={e => set('sku', e.target.value)} className={inputCls} /></Field>
                 <Field label={t.name}><input value={form.name} onChange={e => set('name', e.target.value)} className={inputCls} /></Field>
-                <Field label={t.slug}><input value={form.slug} onChange={e => set('slug', e.target.value)} className={inputCls} placeholder="auto-generated" /></Field>
+                <Field label={t.slug}><input value={form.slug} onChange={e => set('slug', e.target.value)} className={inputCls} placeholder="يُنشأ تلقائياً" /></Field>
                 <Field label={t.brand}><input value={form.brand} onChange={e => set('brand', e.target.value)} className={inputCls} /></Field>
                 <Field label={t.type}>
                   <select value={form.type} onChange={e => set('type', e.target.value)} className={selectCls}>
@@ -203,7 +200,7 @@ export default function NewProductPage() {
                 </Field>
                 <Field label={t.category}>
                   <select value={form.categoryId} onChange={e => set('categoryId', e.target.value)} className={selectCls}>
-                    <option value="">— Select —</option>
+                    <option value="">— اختر —</option>
                     {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                 </Field>
@@ -214,7 +211,7 @@ export default function NewProductPage() {
                 </Field>
                 <Field label={t.supplier}>
                   <select value={form.supplierId} onChange={e => set('supplierId', e.target.value)} className={selectCls}>
-                    <option value="">— None —</option>
+                    <option value="">— بدون —</option>
                     {suppliers.map(s => <option key={s.id} value={s.id}>{s.company}</option>)}
                   </select>
                 </Field>
@@ -223,7 +220,7 @@ export default function NewProductPage() {
                 <textarea value={form.description} onChange={e => set('description', e.target.value)} rows={3} className={inputCls} />
               </Field>
               <Field label={t.tags}>
-                <input value={form.tags} onChange={e => set('tags', e.target.value)} className={inputCls} placeholder="e.g. pos, tablet, hardware" />
+                <input value={form.tags} onChange={e => set('tags', e.target.value)} className={inputCls} placeholder="مثال: pos, tablet, hardware" />
               </Field>
               <Field label={t.images}>
                 <textarea value={form.images} onChange={e => set('images', e.target.value)} rows={3} className={inputCls} placeholder="https://..." />

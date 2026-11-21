@@ -2,6 +2,7 @@ import express, { Request, Response } from 'express'
 import { Server as SocketIOServer } from 'socket.io'
 import { randomUUID } from 'crypto'
 import { authorizeAdmin } from '../middleware/authorizeAdmin'
+import { tableLimitError } from '../billing/planAccess'
 import { validateSeatQR } from '../middleware/validateSeatQR'
 import logger from '../logger'
 import prisma from '../prisma'
@@ -127,6 +128,11 @@ router.post('/api/tables/generate', authorizeAdmin, async (req: Request, res: Re
       take: 1
     })
     const startFrom = existing.length > 0 ? existing[0].tableNumber + 1 : 1
+    {
+      const current = await prisma.table.count({ where: { cafeId } })
+      const limitErr = await tableLimitError(cafeId, current + tableCount)
+      if (limitErr) return res.status(403).json(limitErr)
+    }
 
     const created = await prisma.$transaction(async (tx) => {
       const tables = []
@@ -357,6 +363,10 @@ router.post('/api/tables/sync', authorizeAdmin, async (req: Request, res: Respon
     }
     if (tableCount > 100 || capacity > 20) {
       return res.status(400).json({ error: 'Max 100 tables, 20 seats capacity per table' })
+    }
+    {
+      const limitErr = await tableLimitError(cafeId, tableCount)
+      if (limitErr) return res.status(403).json(limitErr)
     }
 
     // ── Pre-flight: identify tables to be removed ──────────────────────────

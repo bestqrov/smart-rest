@@ -244,7 +244,9 @@ export default function TablesPage() {
       loadSessions(data.tables)
     } else {
       const body = await r.json().catch(() => ({}))
-      setSyncError(body.error || 'فشل المزامنة')
+      setSyncError(body.code === 'PLAN_TABLE_LIMIT'
+        ? `باقتك الحالية تسمح بـ ${body.maxTables} طاولة كحد أقصى — رقِّ إلى الباقة الاحترافية لطاولات غير محدودة.`
+        : (body.error || 'فشل المزامنة'))
     }
     setGenerating(false)
   }

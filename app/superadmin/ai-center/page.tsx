@@ -20,9 +20,13 @@ import {
   GripVertical,
   ExternalLink,
   Loader2,
-  ArrowLeft,
+  ArrowRight,
 } from 'lucide-react'
 import { useSAAuth } from '../context'
+
+const JOB_STATUS_AR: Record<string, string> = {
+  QUEUED: 'في الانتظار', RUNNING: 'قيد التشغيل', COMPLETED: 'مكتملة', FAILED: 'فشلت', CANCELLED: 'ملغاة',
+}
 
 // ─── i18n ─────────────────────────────────────────────────────────────────────
 
@@ -30,7 +34,7 @@ const T = {
   ar: {
     title:          'مركز الذكاء الاصطناعي',
     subtitle:       'إدارة مزودي الذكاء الاصطناعي',
-    back:           '→ لوحة المشرف',
+    back:           'لوحة المشرف',
     login:          'تسجيل الدخول',
     email:          'البريد الإلكتروني',
     secret:         'كلمة السر',
@@ -41,7 +45,7 @@ const T = {
     tokensToday:    'الرموز اليوم',
     costToday:      'التكلفة اليوم',
     costMonth:      'التكلفة هذا الشهر',
-    avgLatency:     'متوسط الكمون',
+    avgLatency:     'متوسط زمن الاستجابة',
     failureRate:    'معدل الفشل',
     enabled:        'مفعّل',
     disabled:       'معطّل',
@@ -67,7 +71,7 @@ const T = {
     green:          'سليم',
     yellow:         'تحذير',
     red:            'غير متاح',
-    latency:        'الكمون',
+    latency:        'زمن الاستجابة',
     reqMonth:       'طلبات الشهر',
     drag:           'اسحب لإعادة الترتيب',
     notes:          'ملاحظات',
@@ -318,7 +322,7 @@ function fmtNum(n: number) {
 function fmtDate(iso: string | null) {
   if (!iso) return '—'
   const d = new Date(iso)
-  return d.toLocaleString('en-GB', { hour12: false, day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+  return d.toLocaleString('ar-u-nu-latn', { hour12: false, day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
 }
 
 // ─── Health badge ─────────────────────────────────────────────────────────────
@@ -378,7 +382,7 @@ function ProviderCard({
       const data = await r.json()
       setTestResult(data)
     } catch {
-      setTestResult({ ok: false, status: 'unavailable', latencyMs: null, error: 'Network error' })
+      setTestResult({ ok: false, status: 'unavailable', latencyMs: null, error: 'خطأ في الشبكة' })
     } finally {
       setTesting(false)
     }
@@ -791,7 +795,7 @@ function AnalyticsPage({
       {/* Platform totals */}
       {totals && (
         <div>
-          <h3 className="text-xs text-zinc-500 uppercase tracking-wider mb-3">Platform — Today</h3>
+          <h3 className="text-xs text-zinc-500 uppercase tracking-wider mb-3">المنصة — اليوم</h3>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
               { icon: <BarChart3 className="w-4 h-4 text-blue-400" />, label: t.reqToday,    val: fmtNum(totals.requestsToday) },
@@ -801,7 +805,7 @@ function AnalyticsPage({
               { icon: <Clock className="w-4 h-4 text-blue-400" />,      label: t.avgLatency,  val: fmtMs(totals.avgLatencyMs) },
               { icon: <XCircle className="w-4 h-4 text-red-400" />,    label: t.failureRate,  val: fmtPct(totals.failureRate) },
               { icon: <BarChart3 className="w-4 h-4 text-zinc-400" />, label: t.reqMonth,     val: fmtNum(totals.requestsMonth) },
-              { icon: <Zap className="w-4 h-4 text-zinc-400" />,        label: 'Tokens MTD',  val: fmtNum(totals.tokensMonth) },
+              { icon: <Zap className="w-4 h-4 text-zinc-400" />,        label: 'الرموز منذ بداية الشهر',  val: fmtNum(totals.tokensMonth) },
             ].map((card, i) => (
               <div key={i} className="bg-zinc-900 border border-zinc-800 rounded-xl p-3">
                 <div className="flex items-center gap-1.5 mb-1">{card.icon}<span className="text-xs text-zinc-500">{card.label}</span></div>
@@ -815,28 +819,28 @@ function AnalyticsPage({
       {/* Per-provider breakdown */}
       {perProvider.length > 0 && (
         <div>
-          <h3 className="text-xs text-zinc-500 uppercase tracking-wider mb-3">Per Provider — Today</h3>
+          <h3 className="text-xs text-zinc-500 uppercase tracking-wider mb-3">حسب المزوّد — اليوم</h3>
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
                 <tr className="text-zinc-600 border-b border-zinc-800">
-                  <th className="text-left py-2 px-3">Provider</th>
-                  <th className="text-right py-2 px-3">{t.reqToday}</th>
-                  <th className="text-right py-2 px-3">{t.tokensToday}</th>
-                  <th className="text-right py-2 px-3">{t.costToday}</th>
-                  <th className="text-right py-2 px-3">{t.avgLatency}</th>
-                  <th className="text-right py-2 px-3">{t.successRate}</th>
+                  <th className="text-start py-2 px-3">المزوّد</th>
+                  <th className="text-end py-2 px-3">{t.reqToday}</th>
+                  <th className="text-end py-2 px-3">{t.tokensToday}</th>
+                  <th className="text-end py-2 px-3">{t.costToday}</th>
+                  <th className="text-end py-2 px-3">{t.avgLatency}</th>
+                  <th className="text-end py-2 px-3">{t.successRate}</th>
                 </tr>
               </thead>
               <tbody>
                 {perProvider.map(p => (
                   <tr key={p.providerId} className="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors">
                     <td className="py-2 px-3 text-zinc-300 font-medium capitalize">{p.providerId}</td>
-                    <td className="py-2 px-3 text-right text-zinc-400">{fmtNum(p.requestsToday)}</td>
-                    <td className="py-2 px-3 text-right text-zinc-400">{fmtNum(p.tokensToday)}</td>
-                    <td className="py-2 px-3 text-right text-purple-300">{fmt$(p.costUsdToday)}</td>
-                    <td className="py-2 px-3 text-right text-blue-300">{fmtMs(p.avgLatencyMsToday)}</td>
-                    <td className={`py-2 px-3 text-right font-medium ${p.successRateToday > 0.95 ? 'text-green-400' : p.successRateToday > 0.8 ? 'text-yellow-400' : 'text-red-400'}`}>
+                    <td className="py-2 px-3 text-end text-zinc-400">{fmtNum(p.requestsToday)}</td>
+                    <td className="py-2 px-3 text-end text-zinc-400">{fmtNum(p.tokensToday)}</td>
+                    <td className="py-2 px-3 text-end text-purple-300">{fmt$(p.costUsdToday)}</td>
+                    <td className="py-2 px-3 text-end text-blue-300">{fmtMs(p.avgLatencyMsToday)}</td>
+                    <td className={`py-2 px-3 text-end font-medium ${p.successRateToday > 0.95 ? 'text-green-400' : p.successRateToday > 0.8 ? 'text-yellow-400' : 'text-red-400'}`}>
                       {fmtPct(p.successRateToday)}
                     </td>
                   </tr>
@@ -854,7 +858,7 @@ function AnalyticsPage({
 
 export default function AICenterPage() {
   const { header: ctxHeader } = useSAAuth()
-  const [lang, setLang] = useState<Lang>('ar')
+  const lang: Lang = 'ar' // console is Arabic-only
   const [tab, setTab] = useState<'providers' | 'analytics' | 'health' | 'jobs'>('providers')
 
   const [providers, setProviders] = useState<Provider[]>([])
@@ -938,7 +942,7 @@ export default function AICenterPage() {
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <a href="/superadmin" className="text-zinc-500 hover:text-zinc-300 text-xs transition-colors">
-              <ArrowLeft className="w-4 h-4 inline" /> {t.back}
+              <ArrowRight className="w-4 h-4 inline" /> {t.back}
             </a>
             <span className="text-zinc-700">|</span>
             <div className="flex items-center gap-1.5">
@@ -948,16 +952,6 @@ export default function AICenterPage() {
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Lang switcher */}
-            <div className="flex gap-1">
-              {(['ar', 'fr', 'en'] as Lang[]).map(l => (
-                <button key={l} onClick={() => setLang(l)}
-                  className={`px-2 py-0.5 text-xs rounded border transition-all ${lang === l ? 'bg-purple-600 border-purple-500 text-white' : 'border-zinc-700 text-zinc-500 hover:border-zinc-600'}`}>
-                  {l === 'ar' ? 'ع' : l === 'fr' ? 'FR' : 'EN'}
-                </button>
-              ))}
-            </div>
-
             <button onClick={loadProviders} disabled={loading}
               className="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-300 transition-colors">
               <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> {t.refresh}
@@ -1052,7 +1046,7 @@ export default function AICenterPage() {
               <div className="grid grid-cols-3 gap-3">
                 {[
                   { label: t.jobsAvgDuration, val: jobsStats.avgDurationMs ? `${(jobsStats.avgDurationMs/1000).toFixed(1)}s` : '—' },
-                  { label: t.jobsAvgTokens,   val: jobsStats.avgTokens ? jobsStats.avgTokens.toLocaleString() : '—' },
+                  { label: t.jobsAvgTokens,   val: jobsStats.avgTokens ? jobsStats.avgTokens.toLocaleString('ar-u-nu-latn') : '—' },
                   { label: t.jobsAvgCost,     val: jobsStats.avgCost ? `$${jobsStats.avgCost.toFixed(4)}` : '—' },
                 ].map(s => (
                   <div key={s.label} className="bg-zinc-900 border border-zinc-800 rounded-xl p-3 text-center">
@@ -1070,7 +1064,7 @@ export default function AICenterPage() {
                   className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all ${
                     jobFilter.status === s ? 'bg-purple-600 border-purple-500 text-white' : 'bg-zinc-900 border-zinc-700 text-zinc-400 hover:border-zinc-500'
                   }`}>
-                  {s || t.jobsAll}
+                  {s ? (JOB_STATUS_AR[s] ?? s) : t.jobsAll}
                 </button>
               ))}
               <input value={jobFilter.search} onChange={e => setJobFilter(f => ({ ...f, search: e.target.value }))}
@@ -1083,7 +1077,7 @@ export default function AICenterPage() {
               {/* List */}
               <div className="flex-1 space-y-2 min-w-0">
                 {jobsLoading && jobs.length === 0 && (
-                  <div className="text-center py-8 text-zinc-600 text-sm"><Loader2 className="w-5 h-5 animate-spin inline mr-2" />{t.loading}</div>
+                  <div className="text-center py-8 text-zinc-600 text-sm"><Loader2 className="w-5 h-5 animate-spin inline me-2" />{t.loading}</div>
                 )}
                 {!jobsLoading && jobs.length === 0 && (
                   <div className="text-center py-8 text-zinc-600 text-sm">{t.jobsEmpty}</div>
@@ -1098,10 +1092,10 @@ export default function AICenterPage() {
                     <div key={job.id} onClick={() => loadJobDetail(job.id)}
                       className={`bg-zinc-900 border rounded-xl p-3 cursor-pointer transition-all hover:border-purple-700 ${jobDetail?.id === job.id ? 'border-purple-600' : 'border-zinc-800'}`}>
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${STATUS_COLOR[job.status] ?? 'bg-zinc-800 text-zinc-400'}`}>{job.status}</span>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${STATUS_COLOR[job.status] ?? 'bg-zinc-800 text-zinc-400'}`}>{JOB_STATUS_AR[job.status] ?? job.status}</span>
                         <span className="text-xs font-semibold text-white truncate">{job.module} / {job.jobType}</span>
                         {job.provider && <span className="text-[10px] text-zinc-500 bg-zinc-800 px-2 py-0.5 rounded-full">{job.provider}</span>}
-                        <span className="ml-auto text-[10px] text-zinc-600">{new Date(job.queuedAt).toLocaleTimeString()}</span>
+                        <span className="ms-auto text-[10px] text-zinc-600">{new Date(job.queuedAt).toLocaleTimeString('ar-u-nu-latn')}</span>
                       </div>
                       {job.status === 'RUNNING' && (
                         <div className="mt-2 h-1 bg-zinc-800 rounded-full overflow-hidden">
@@ -1111,7 +1105,7 @@ export default function AICenterPage() {
                       {job.errorMessage && <p className="text-[10px] text-red-400 mt-1 truncate">{job.errorMessage}</p>}
                       <div className="flex gap-3 mt-1 text-[10px] text-zinc-600">
                         {job.durationMs && <span>{(job.durationMs/1000).toFixed(1)}s</span>}
-                        {job.totalTokens && <span>{job.totalTokens.toLocaleString()} tok</span>}
+                        {job.totalTokens && <span>{job.totalTokens.toLocaleString()} رمز</span>}
                         {job.estimatedCost && <span>${job.estimatedCost.toFixed(4)}</span>}
                         {job.retryCount > 0 && <span>{job.retryCount} retries</span>}
                       </div>
@@ -1130,14 +1124,14 @@ export default function AICenterPage() {
 
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     {[
-                      ['Status',        jobDetail.status],
-                      ['Provider',      jobDetail.provider ?? '—'],
-                      ['Model',         jobDetail.model ?? '—'],
+                      ['الحالة',        JOB_STATUS_AR[jobDetail.status] ?? jobDetail.status],
+                      [t.jobsProvider,  jobDetail.provider ?? '—'],
+                      [t.model,         jobDetail.model ?? '—'],
                       [t.jobsDuration,  jobDetail.durationMs ? `${(jobDetail.durationMs/1000).toFixed(2)}s` : '—'],
-                      [t.jobsTokens,    jobDetail.totalTokens?.toLocaleString() ?? '—'],
+                      [t.jobsTokens,    jobDetail.totalTokens?.toLocaleString('ar-u-nu-latn') ?? '—'],
                       [t.jobsCost,      jobDetail.estimatedCost ? `$${jobDetail.estimatedCost.toFixed(5)}` : '—'],
                       [t.jobsRetries,   String(jobDetail.retryCount ?? 0)],
-                      ['Input ref',     jobDetail.inputReference ?? '—'],
+                      ['مرجع المدخلات',     jobDetail.inputReference ?? '—'],
                     ].map(([k, v]) => (
                       <div key={k} className="bg-zinc-800 rounded-lg p-2">
                         <p className="text-zinc-500 text-[10px]">{k}</p>
@@ -1159,7 +1153,7 @@ export default function AICenterPage() {
                       <div className="space-y-1 max-h-48 overflow-y-auto">
                         {jobDetail.logs.map((log: any) => (
                           <div key={log.id} className="flex gap-2 text-[10px]">
-                            <span className="text-zinc-600 shrink-0">{new Date(log.timestamp).toLocaleTimeString()}</span>
+                            <span className="text-zinc-600 shrink-0">{new Date(log.timestamp).toLocaleTimeString('ar-u-nu-latn')}</span>
                             <span className={`shrink-0 font-bold ${log.level === 'ERROR' ? 'text-red-400' : log.level === 'WARN' ? 'text-amber-400' : 'text-zinc-500'}`}>{log.level}</span>
                             <span className="text-zinc-300">{log.message}</span>
                           </div>

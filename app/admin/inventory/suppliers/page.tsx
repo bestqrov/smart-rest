@@ -7,6 +7,7 @@ import {
   UserX, Phone, Mail, User, Loader2, Search, CheckCircle2
 } from 'lucide-react'
 import { useLang } from '../../lang-context'
+import InventoryGate from '../../InventoryGate'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -196,7 +197,7 @@ function SupplierCard({
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
-export default function SuppliersPage() {
+function SuppliersPageInner() {
   const { lang } = useLang()
   const isAr     = lang === 'ar'
   const isFr     = lang === 'fr'
@@ -348,4 +349,9 @@ export default function SuppliersPage() {
       )}
     </div>
   )
+}
+
+
+export default function SuppliersPage() {
+  return <InventoryGate><SuppliersPageInner /></InventoryGate>
 }

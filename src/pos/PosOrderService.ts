@@ -223,6 +223,8 @@ export async function closeOrder(
     data: {
       isPaid:          true,
       paymentMethod:   method,
+      paidById:        input.staffId ?? null,
+      paidAt:          new Date(),
       billStatus,
       totalCommission: computeCommission(order.items),
       status:          'COMPLETED',

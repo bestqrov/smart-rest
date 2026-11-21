@@ -2,11 +2,16 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Loader2, Trash2, X, BarChart3, CalendarPlus, Zap, Coffee } from 'lucide-react'
-import type { Overview, Tenant, MrrData, ModalState, Theme } from '../components/types'
-import ThemeA from '../components/themes/ThemeA'
-import ThemeB from '../components/themes/ThemeB'
-import ThemeC from '../components/themes/ThemeC'
+import type { Overview, Tenant, MrrData, ModalState } from '../components/types'
+import RestaurantsConsole from '../components/RestaurantsConsole'
 import { useSAAuth } from '../context'
+import { GULF_PLANS, PLAN_CURRENCIES, planCurrencyFor, type PlanId } from '@/lib/gulfPlans'
+const PLAN_LABEL_AR: Record<PlanId, string> = { STARTER: 'الأساسية', PRO: 'الاحترافية', ENTERPRISE: 'الأعمال' }
+/** Add-on priced in USD -> venue currency, using the Pro plan's local/USD ratio. */
+function addonLocal(usd: number, cur: ReturnType<typeof planCurrencyFor>): number {
+  const pro = GULF_PLANS.find(p => p.id === 'PRO')!
+  return Math.round(usd * pro.monthly[cur] / pro.monthly.USD)
+}
 
 const MAINTENANCE_COUNTRIES = ['SA','AE','KW','QA','BH','OM','FR','ES','BE','DE','IT','NL','PT','GB','US']
 
@@ -62,7 +67,7 @@ export default function RestaurantsPage() {
   const [sweeping, setSweeping] = useState(false)
   const [sweepMsg, setSweepMsg] = useState('')
 
-  const [filterCountry, setFilterCountry] = useState('MA')
+  const [filterCountry, setFilterCountry] = useState('')
   const [filterStatus,  setFilterStatus]  = useState('')
   const [filterTier,    setFilterTier]    = useState('')
   const [sortBal,       setSortBal]       = useState<'asc' | 'desc'>('asc')
@@ -76,20 +81,7 @@ export default function RestaurantsPage() {
 
   const [revenueHistory, setRevenueHistory] = useState<{ month: string; value: number }[]>([])
 
-  const [theme, setTheme] = useState<Theme>(() => {
-    if (typeof window !== 'undefined') {
-      return (localStorage.getItem('superadmin-theme') as Theme) ?? 'A'
-    }
-    return 'A'
-  })
-
-  function handleSetTheme(t: Theme) {
-    setTheme(t)
-    localStorage.setItem('superadmin-theme', t)
-  }
-
   const [pwResets,       setPwResets]       = useState<any[]>([])
-  const [pwResetsOpen,   setPwResetsOpen]   = useState(false)
   const [pwResetLoading, setPwResetLoading] = useState(false)
   const [approvingReset, setApprovingReset] = useState<string | null>(null)
 
@@ -143,6 +135,8 @@ export default function RestaurantsPage() {
   }, [superHeader, filterCountry, filterStatus, filterTier])
 
   useEffect(() => { loadAll(1) }, [loadAll])
+  // Load reset requests once so the header badge shows the pending count.
+  useEffect(() => { loadPwResets() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function loadPwResets() {
     setPwResetLoading(true)
@@ -157,14 +151,14 @@ export default function RestaurantsPage() {
     try {
       const res  = await fetch(`/api/superadmin/password-reset-requests/${id}/approve`, { method: 'POST', headers: superHeader() })
       const data = await res.json()
-      if (!res.ok) { alert(data.error ?? 'Error'); return }
-      alert('✅ Mot de passe temporaire envoyé par email!')
+      if (!res.ok) { alert(data.error ?? 'حدث خطأ'); return }
+      alert('✅ تم إرسال كلمة مرور مؤقتة بالبريد الإلكتروني')
       loadPwResets()
     } finally { setApprovingReset(null) }
   }
 
   async function rejectReset(id: string) {
-    if (!confirm('Rejeter cette demande?')) return
+    if (!confirm('رفض هذا الطلب؟')) return
     await fetch(`/api/superadmin/password-reset-requests/${id}/reject`, { method: 'POST', headers: superHeader() })
     loadPwResets()
   }
@@ -174,7 +168,7 @@ export default function RestaurantsPage() {
     try {
       const res  = await fetch('/api/superadmin/billing/run-sweep', { method: 'POST', headers: superHeader() })
       const data = await res.json()
-      setSweepMsg(`تم تحليل ${data.processed} مقهى`)
+      setSweepMsg(`تم تحليل ${data.processed} مطعم`)
       loadAll(1)
     } catch { setSweepMsg('فشل التحليل') }
     finally   { setSweeping(false) }
@@ -214,6 +208,9 @@ export default function RestaurantsPage() {
       sandwich:       String(tenant.sandwichRefPrice ?? ''),
       days:           '7',
       fee:            String(tenant.monthlyFee ?? ''),
+      planId:         (tenant as { planId?: string | null }).planId ?? null,
+      onlineAddon:    !!(tenant as { onlinePaymentAddon?: boolean }).onlinePaymentAddon,
+      videoAddon:     !!(tenant as { aiVideoAddon?: boolean }).aiVideoAddon,
       tier:           tenant.subscriptionTier ?? 'ECONOMY',
       billingCycle:   tenant.billingCycle ?? 15,
       maintenance:    tenant.maintenancePack ?? defaultMaintenance(tenant.country),
@@ -260,11 +257,14 @@ export default function RestaurantsPage() {
 
   async function manualActivate() {
     if (!modal) return
+    // Send the fee the admin typed (it was hardcoded to 0, silently dropping it).
+    const fee = Number(String(modal.fee).replace(',', '.'))
+    if (!Number.isFinite(fee) || fee < 0) { setMF('error', 'أدخل مبلغاً شهرياً صحيحاً'); return }
     setMF('loading', true); setMF('error', '')
     try {
       const res = await fetch(`/api/superadmin/tenants/${modal.tenant.id}/activate`, {
         method: 'POST', headers: superHeader(),
-        body: JSON.stringify({ monthlyFee: 0, tier: modal.tier })
+        body: JSON.stringify({ monthlyFee: fee, tier: modal.tier, planId: modal.planId ?? null, onlinePaymentAddon: modal.planId === 'STARTER' && !!modal.onlineAddon, aiVideoAddon: !!modal.videoAddon })
       })
       if (!res.ok) { setMF('error', 'فشل التفعيل'); return }
       setModal(null); loadAll(1)
@@ -274,7 +274,7 @@ export default function RestaurantsPage() {
   async function deleteByEmail() {
     const em = deleteEmail.trim().toLowerCase()
     if (!em) return
-    if (!confirm(`⚠️ حذف كامل لحساب:\n${em}\n\nسيُحذف المستخدم + المقهى + كل البيانات. هل أنت متأكد؟`)) return
+    if (!confirm(`⚠️ حذف كامل لحساب:\n${em}\n\nسيُحذف المستخدم + المطعم + كل البيانات. هل أنت متأكد؟`)) return
     setDelByEmail(true)
     try {
       const res  = await fetch(`/api/superadmin/users/by-email?email=${encodeURIComponent(em)}`, {
@@ -282,7 +282,7 @@ export default function RestaurantsPage() {
       })
       const data = await res.json()
       if (!res.ok) { alert(data.error ?? 'فشل الحذف'); return }
-      alert(`✅ تم الحذف\nالإيميل: ${em}\nالمقهى: ${data.cafeId ?? 'لا يوجد'}`)
+      alert(`✅ تم الحذف\nالإيميل: ${em}\nالمطعم: ${data.cafeId ?? 'لا يوجد'}`)
       setDeleteEmail(''); loadAll(1)
     } finally { setDelByEmail(false) }
   }
@@ -333,7 +333,7 @@ export default function RestaurantsPage() {
       })
       const data = await res.json()
       if (!res.ok) { alert(data.error ?? 'فشل التفعيل'); return }
-      alert(`✅ تم التفعيل! subdomain: ${data.subdomain}`)
+      alert(`✅ تم التفعيل! النطاق الفرعي: ${data.subdomain}`)
       loadDemoRequests(demoTab)
     } finally { setActivatingDemo(null) }
   }
@@ -354,7 +354,7 @@ export default function RestaurantsPage() {
       const data = await res.json()
       setPurgeResult({ deleted: data.deleted ?? [], failed: data.failed ?? [] })
       loadAll(1)
-    } catch { setPurgeResult({ deleted: [], failed: ['network error'] }) }
+    } catch { setPurgeResult({ deleted: [], failed: ['خطأ في الشبكة'] }) }
     finally { setPurging(false) }
   }
 
@@ -372,7 +372,7 @@ export default function RestaurantsPage() {
     overview, tenants, total, mrrData, demoRequests, demoTab, revenueHistory,
     loading, sweeping, sweepMsg, page, filterCountry, filterStatus, filterTier,
     sortBal, actionId, selectedIds, bulkDeleting, deleteEmail, delByEmail,
-    demoLoading, activatingDemo, mrrOpen, theme,
+    demoLoading, activatingDemo, mrrOpen,
     onOpenPurge:        () => { setShowPurge(true); setPurgeResult(null) },
     onLoadAll:          loadAll,
     onRunSweep:         runSweep,
@@ -397,81 +397,20 @@ export default function RestaurantsPage() {
     onSetFilterTier:    setFilterTier,
     onSetSortBal:       setSortBal,
     onSetMrrOpen:       setMrrOpen,
-    onSetTheme:         handleSetTheme,
     onLoadMore:         () => { const n = page + 1; setPage(n); loadAll(n, true) },
     premiumPlans,
     editingPlan,
     onSavePlan:         savePlan,
     onSetEditingPlan:   setEditingPlan,
+    pwResets, pwResetLoading, approvingReset,
+    onLoadPwResets:     loadPwResets,
+    onApproveReset:     approveReset,
+    onRejectReset:      rejectReset,
   }
 
   return (
     <>
-      {theme === 'A' && <ThemeA {...themeProps} />}
-      {theme === 'B' && <ThemeB {...themeProps} />}
-      {theme === 'C' && <ThemeC {...themeProps} />}
-
-      {/* Password Reset Requests */}
-      <div className="fixed bottom-6 left-6 z-50 flex flex-col items-start gap-3">
-        <button
-          onClick={() => { setPwResetsOpen(o => !o); if (!pwResetsOpen) loadPwResets() }}
-          className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2.5 rounded-full shadow-xl text-sm font-semibold transition-all"
-        >
-          🔑 Réinitialisations
-          {pwResets.filter(r => r.status === 'PENDING').length > 0 && (
-            <span className="bg-white text-red-600 rounded-full text-xs font-bold w-5 h-5 flex items-center justify-center">
-              {pwResets.filter(r => r.status === 'PENDING').length}
-            </span>
-          )}
-        </button>
-
-        {pwResetsOpen && (
-          <div className="bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl w-80 p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <p className="font-bold text-white text-sm">🔑 Demandes de mot de passe</p>
-              <button onClick={() => setPwResetsOpen(false)} className="text-gray-400 hover:text-white">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            {pwResetLoading ? (
-              <div className="flex justify-center py-4"><Loader2 className="w-5 h-5 animate-spin text-gray-400" /></div>
-            ) : pwResets.length === 0 ? (
-              <p className="text-gray-500 text-xs text-center py-3">Aucune demande en attente</p>
-            ) : (
-              <div className="space-y-2 max-h-72 overflow-y-auto">
-                {pwResets.map(r => (
-                  <div key={r.id} className="bg-gray-800 rounded-xl p-3 space-y-1.5">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="text-white text-xs font-semibold truncate">{r.cafeName || '—'}</p>
-                        <p className="text-gray-400 text-xs truncate">{r.email}</p>
-                        <p className="text-gray-500 text-[10px]">{new Date(r.createdAt).toLocaleString('fr-FR')}</p>
-                      </div>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
-                        r.status === 'PENDING' ? 'bg-amber-900 text-amber-300' :
-                        r.status === 'SENT'    ? 'bg-blue-900 text-blue-300'  :
-                        'bg-gray-700 text-gray-400'
-                      }`}>{r.status}</span>
-                    </div>
-                    {['PENDING','SENT'].includes(r.status) && (
-                      <div className="flex gap-2">
-                        <button onClick={() => approveReset(r.id)} disabled={approvingReset === r.id}
-                          className="flex-1 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-semibold py-1.5 rounded-lg transition-all disabled:opacity-50">
-                          {approvingReset === r.id ? '…' : '✉️ Envoyer'}
-                        </button>
-                        <button onClick={() => rejectReset(r.id)}
-                          className="flex-1 bg-gray-700 hover:bg-red-800 text-gray-300 text-xs font-semibold py-1.5 rounded-lg transition-all">
-                          Rejeter
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+      <RestaurantsConsole {...themeProps} />
 
       {modal && (
         <TenantModalInline
@@ -489,33 +428,33 @@ export default function RestaurantsPage() {
                 <Trash2 className="w-5 h-5 text-orange-400" />
               </div>
               <div>
-                <h3 className="text-white font-extrabold text-base">Purge Test Data</h3>
-                <p className="text-gray-400 text-xs mt-0.5">Deletes all cafes except protected subdomains</p>
+                <h3 className="text-white font-extrabold text-base">حذف بيانات الاختبار</h3>
+                <p className="text-gray-400 text-xs mt-0.5">يحذف كل المطاعم ما عدا النطاقات الفرعية المحمية</p>
               </div>
             </div>
             <div className="space-y-2">
-              <label className="text-gray-400 text-xs font-semibold">Protected subdomains (comma-separated)</label>
+              <label className="text-gray-400 text-xs font-semibold">النطاقات الفرعية المحمية (مفصولة بفواصل)</label>
               <input value={purgeKeep} onChange={e => setPurgeKeep(e.target.value)}
                 className="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-white text-sm font-mono" placeholder="plage, qa" />
-              <p className="text-gray-600 text-xs">isDemo=true cafes are always kept regardless.</p>
+              <p className="text-gray-600 text-xs">المطاعم المعلَّمة كتجريبية تُستثنى دائماً.</p>
             </div>
             {purgeResult && (
               <div className={`rounded-xl px-4 py-3 text-sm ${purgeResult.failed.length ? 'bg-red-950/40 border border-red-800' : 'bg-emerald-950/40 border border-emerald-800'}`}>
                 {purgeResult.failed.length > 0
-                  ? <p className="text-red-300">Failed: {purgeResult.failed.join(', ')}</p>
-                  : <p className="text-emerald-300">Deleted {purgeResult.deleted.length}: {purgeResult.deleted.join(', ') || 'none'}</p>
+                  ? <p className="text-red-300">فشل: {purgeResult.failed.join('، ')}</p>
+                  : <p className="text-emerald-300">تم حذف {purgeResult.deleted.length}: {purgeResult.deleted.join('، ') || 'لا شيء'}</p>
                 }
               </div>
             )}
             <div className="flex gap-2">
               <button onClick={() => { setShowPurge(false); setPurgeResult(null) }} disabled={purging}
                 className="flex-1 px-4 py-2.5 rounded-xl border border-gray-700 text-gray-400 hover:bg-gray-800 text-sm font-semibold">
-                Cancel
+                إلغاء
               </button>
               <button onClick={runPurge} disabled={purging}
                 className="flex-1 px-4 py-2.5 rounded-xl bg-orange-700 hover:bg-orange-600 text-white text-sm font-bold flex items-center justify-center gap-2">
                 {purging ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                {purging ? 'Purging…' : 'Purge'}
+                {purging ? 'جارٍ الحذف…' : 'تأكيد الحذف'}
               </button>
             </div>
           </div>
@@ -608,37 +547,37 @@ function TenantModalInline({ modal, setModal, setMF, saveBillingConfig, extendTr
             <div className="flex items-center gap-3 bg-emerald-950/40 border border-emerald-800 rounded-2xl px-4 py-3">
               <span className="text-2xl">🆓</span>
               <div>
-                <p className="text-emerald-300 font-bold text-sm">Abonnement GRATUIT</p>
-                <p className="text-emerald-600 text-xs">Revenue = commission par commande uniquement</p>
+                <p className="text-emerald-300 font-bold text-sm">الاشتراك مجاني</p>
+                <p className="text-emerald-600 text-xs">الإيراد = عمولة على كل طلب فقط</p>
               </div>
             </div>
 
             <div className="space-y-2">
               <div className="flex items-center justify-between bg-gray-800/50 rounded-xl px-4 py-3">
                 <div>
-                  <p className="text-sm font-bold text-white">Pack Maintenance ($25)</p>
-                  <p className="text-xs text-gray-500">Service & Maintenance — Golfe / Europe</p>
+                  <p className="text-sm font-bold text-white">باقة الصيانة (25 USD)</p>
+                  <p className="text-xs text-gray-500">الخدمة والصيانة — الخليج / أوروبا</p>
                 </div>
                 <button onClick={() => setMF('maintenance', !modal.maintenance)}
                   className={`w-12 h-6 rounded-full transition-colors relative ${modal.maintenance ? 'bg-emerald-600' : 'bg-gray-600'}`}>
-                  <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${modal.maintenance ? 'translate-x-6' : 'translate-x-0.5'}`} />
+                  <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${modal.maintenance ? '-translate-x-6' : '-translate-x-0.5'}`} />
                 </button>
               </div>
               {modal.maintenance && (
-                <FInput label="Montant maintenance (USD)" value={modal.maintenanceFee}
+                <FInput label="مبلغ الصيانة (USD)" value={modal.maintenanceFee}
                   onChange={v => setMF('maintenanceFee', v)} placeholder="25" type="number" />
               )}
             </div>
 
             <div>
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Cycle de paiement</p>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">دورة الدفع</p>
               <div className="grid grid-cols-3 gap-2">
                 {[8, 15, 26].map(d => (
                   <button key={d} onClick={() => setMF('billingCycle', d)}
                     className={`py-3 rounded-xl text-sm font-bold transition-all border-2 ${
                       modal.billingCycle === d ? 'bg-emerald-600 border-emerald-500 text-white' : 'bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-500'
                     }`}>
-                    {d} jours
+                    {d} يوم
                   </button>
                 ))}
               </div>
@@ -652,29 +591,29 @@ function TenantModalInline({ modal, setModal, setMF, saveBillingConfig, extendTr
               const sandwichComm = getCommission(sandwichP, modal.tenant.country)
               return (
                 <div className="bg-sky-950/30 border border-sky-800 rounded-2xl p-4 space-y-3">
-                  <p className="text-xs font-bold text-sky-400 uppercase tracking-widest">Estimation / {modal.billingCycle} jours</p>
+                  <p className="text-xs font-bold text-sky-400 uppercase tracking-widest">تقدير / {modal.billingCycle} يوم</p>
                   <div className="space-y-1.5 text-xs">
                     <div className="flex justify-between items-center">
-                      <span className="text-gray-500">☕ 10 cafés/j × {modal.billingCycle}j × {coffeeComm} {modal.tenant.currency}</span>
+                      <span className="text-gray-500">☕ 10 قهوة/يوم × {modal.billingCycle} يوم × {coffeeComm} {modal.tenant.currency}</span>
                       <span className="text-white font-bold">{(10 * modal.billingCycle * coffeeComm).toFixed(2)} {modal.tenant.currency}</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-gray-500">🥪 10 sandwichs/j × {modal.billingCycle}j × {sandwichComm} {modal.tenant.currency}</span>
+                      <span className="text-gray-500">🥪 10 سندويتش/يوم × {modal.billingCycle} يوم × {sandwichComm} {modal.tenant.currency}</span>
                       <span className="text-white font-bold">{(10 * modal.billingCycle * sandwichComm).toFixed(2)} {modal.tenant.currency}</span>
                     </div>
                     <div className="flex justify-between items-center border-t border-sky-800/60 pt-1.5">
-                      <span className="text-gray-400 font-semibold">Commission totale</span>
+                      <span className="text-gray-400 font-semibold">إجمالي العمولة</span>
                       <span className="text-sky-300 font-bold">{est.commission.toFixed(2)} {modal.tenant.currency}</span>
                     </div>
                     {modal.maintenance && (
                       <div className="flex justify-between items-center">
-                        <span className="text-gray-400 font-semibold">Pack Maintenance</span>
+                        <span className="text-gray-400 font-semibold">باقة الصيانة</span>
                         <span className="text-amber-400 font-bold">+ ${est.maintenanceAmt}</span>
                       </div>
                     )}
                   </div>
                   <div className="flex items-center justify-between bg-white/5 rounded-xl px-3 py-2.5">
-                    <span className="text-sm font-bold text-white">TOTAL / {modal.billingCycle}j</span>
+                    <span className="text-sm font-bold text-white">الإجمالي / {modal.billingCycle} يوم</span>
                     <div className="text-end">
                       <span className="text-2xl font-extrabold text-amber-400">{est.total.toFixed(2)}</span>
                       {' '}<span className="text-amber-300 text-sm">{modal.tenant.currency}</span>
@@ -686,28 +625,28 @@ function TenantModalInline({ modal, setModal, setMF, saveBillingConfig, extendTr
 
             <details className="group">
               <summary className="text-xs text-gray-500 cursor-pointer hover:text-gray-300 list-none flex items-center gap-1">
-                <Coffee className="w-3 h-3" /> Prix de référence ▸
+                <Coffee className="w-3 h-3" /> الأسعار المرجعية ▸
               </summary>
               <div className="grid grid-cols-2 gap-3 mt-2">
-                <FInput label="☕ Prix café" value={modal.coffee} onChange={v => setMF('coffee', v)} placeholder="0.00" type="number" />
-                <FInput label="🥪 Prix sandwich" value={modal.sandwich} onChange={v => setMF('sandwich', v)} placeholder="0.00" type="number" />
+                <FInput label="☕ سعر القهوة" value={modal.coffee} onChange={v => setMF('coffee', v)} placeholder="0.00" type="number" />
+                <FInput label="🥪 سعر السندويتش" value={modal.sandwich} onChange={v => setMF('sandwich', v)} placeholder="0.00" type="number" />
               </div>
             </details>
 
             <button onClick={saveBillingConfig} disabled={modal.loading}
               className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold py-3.5 rounded-2xl transition-colors">
-              {modal.loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : '💾 Enregistrer la configuration'}
+              {modal.loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : '💾 حفظ الإعدادات'}
             </button>
           </>}
 
           {modal.tab === 'trial' && <>
             <p className="text-gray-400 text-xs leading-relaxed">
-              تمديد الفترة التجريبية يُعيد ضبط حالة الاشتراك ويمنح المقهى مهلة إضافية.
-              <br />انتهاء التجربة: <span className="text-white">{modal.tenant.trialEndsAt ? new Date(modal.tenant.trialEndsAt).toLocaleDateString('ar') : '—'}</span>
+              تمديد الفترة التجريبية يُعيد ضبط حالة الاشتراك ويمنح المطعم مهلة إضافية.
+              <br />انتهاء التجربة: <span className="text-white">{modal.tenant.trialEndsAt ? new Date(modal.tenant.trialEndsAt).toLocaleDateString('ar-u-nu-latn') : '—'}</span>
             </p>
             <FInput label="عدد الأيام الإضافية" value={modal.days} onChange={v => setMF('days', v)} placeholder="7" type="number" />
             <div className="bg-amber-950/30 border border-amber-800 rounded-xl p-3 text-xs text-amber-300">
-              التاريخ الجديد: <strong>{new Date(Date.now() + Number(modal.days || 0) * 86_400_000).toLocaleDateString('ar')}</strong>
+              التاريخ الجديد: <strong>{new Date(Date.now() + Number(modal.days || 0) * 86_400_000).toLocaleDateString('ar-u-nu-latn')}</strong>
             </div>
             <button onClick={extendTrial} disabled={modal.loading || !modal.days}
               className="w-full bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white font-bold py-3.5 rounded-2xl transition-colors">
@@ -717,8 +656,44 @@ function TenantModalInline({ modal, setModal, setMF, saveBillingConfig, extendTr
 
           {modal.tab === 'activate' && <>
             <p className="text-gray-400 text-xs leading-relaxed">
-              تفعيل يدوي يتجاوز التحليل التلقائي ويُحوّل المقهى مباشرة إلى حالة "نشط".
+              تفعيل يدوي يتجاوز التحليل التلقائي ويُحوّل المطعم مباشرة إلى حالة "نشط".
             </p>
+            {/* Plan picker — fills the monthly fee from lib/gulfPlans.ts in the
+                venue's currency, so MRR is the real subscription price. */}
+            {(PLAN_CURRENCIES as string[]).includes(String(modal.tenant.currency).toUpperCase()) ? (
+              <div className="grid grid-cols-3 gap-2">
+                {GULF_PLANS.map(p => {
+                  const cur = planCurrencyFor(modal.tenant.currency)
+                  const price = p.monthly[cur]
+                  const active = modal.planId === p.id
+                  return (
+                    <button key={p.id} type="button"
+                      onClick={() => { setMF('fee', String(price + (p.id === 'STARTER' && modal.onlineAddon ? addonLocal(19, cur) : 0) + (modal.videoAddon ? addonLocal(29, cur) : 0))); setMF('tier', p.id === 'STARTER' ? 'ECONOMY' : 'ADVANCED'); setMF('planId', p.id) }}
+                      className={`rounded-xl border px-2 py-2 text-center transition-colors ${active ? 'border-violet-500 bg-violet-500/15' : 'border-gray-700 bg-gray-800 hover:border-gray-500'}`}>
+                      <p className="text-xs text-gray-400">{PLAN_LABEL_AR[p.id]}</p>
+                      <p className="text-sm font-bold text-white" dir="ltr">{price} {cur}</p>
+                    </button>
+                  )
+                })}
+              </div>
+            ) : null}
+            {(PLAN_CURRENCIES as string[]).includes(String(modal.tenant.currency).toUpperCase()) && (
+              <div className="space-y-1.5 text-xs text-gray-300">
+                <label className={`flex items-center gap-2 ${modal.planId === 'STARTER' ? '' : 'opacity-40'}`}>
+                  <input type="checkbox" disabled={modal.planId !== 'STARTER'} checked={!!modal.onlineAddon}
+                    onChange={e => setMF('onlineAddon', e.target.checked)} />
+                  إضافة الدفع الإلكتروني (19$ شهرياً — للباقة الأساسية فقط)
+                </label>
+                <label className="flex items-center gap-2">
+                  <input type="checkbox" checked={!!modal.videoAddon} onChange={e => setMF('videoAddon', e.target.checked)} />
+                  إضافة فيديوهات الذكاء الاصطناعي (29$ شهرياً — 5 فيديوهات)
+                </label>
+                <p className="text-gray-500">بعد تغيير الإضافات أعد اختيار الباقة لتحديث المبلغ.</p>
+              </div>
+            )}
+            {(PLAN_CURRENCIES as string[]).includes(String(modal.tenant.currency).toUpperCase()) ? null : (
+              <p className="text-xs text-amber-300/80">باقات الخليج مسعّرة بـ SAR / AED / OMR / USD — عملة هذا المطعم ({modal.tenant.currency}) تتطلب إدخال المبلغ يدوياً.</p>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <p className="text-xs text-gray-500 mb-1">الشريحة</p>
