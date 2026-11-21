@@ -7,6 +7,7 @@
 // service never touches PaymentTransaction directly beyond calling it.
 
 import prisma from '../prisma'
+import { releaseSettledSessions } from '../tables/sessionRelease'
 import logger from '../logger'
 import { eventBus, publishStandardEvent } from '../core'
 import { createTransaction, markPaid } from '../payments/services/PaymentService'
@@ -257,6 +258,7 @@ export async function closeOrder(
     orderId, cafeId, staffId: input.staffId, totalPrice: totals.totalPrice, transactionId: tx.id,
   }, 'pos-core')
 
+  await releaseSettledSessions(cafeId, updated.tableId)
   return updated
 }
 

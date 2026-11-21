@@ -354,7 +354,10 @@ router.post('/api/tables/sync', authorizeAdmin, async (req: Request, res: Respon
   try {
     const cafeId = req.admin!.cafeId
     // Accept 'capacity' (new) or 'seatsPerTable' (legacy alias) — both set Table.capacity
-    const body = req.body as { tableCount: number; capacity?: number; seatsPerTable?: number }
+    const body = req.body as { tableCount: number; capacity?: number; seatsPerTable?: number; applyCapacityToAll?: boolean }
+    // Existing tables keep their own capacity (set per table in the editor)
+    // unless the owner explicitly asks to apply one value to every table.
+    const applyToAll = body.applyCapacityToAll === true
     const { tableCount } = body
     const capacity = body.capacity ?? body.seatsPerTable ?? 4
 
@@ -433,10 +436,12 @@ router.post('/api/tables/sync', authorizeAdmin, async (req: Request, res: Respon
           select: { id: true }
         })
         if (existing) {
-          await tx.table.update({
-            where: { id: existing.id },
-            data:  { capacity }
-          })
+          if (applyToAll) {
+            await tx.table.update({
+              where: { id: existing.id },
+              data:  { capacity }
+            })
+          }
         } else {
           await tx.table.create({
             data: { cafeId, tableNumber: tNum, qrToken: randomUUID(), capacity }
@@ -471,6 +476,10 @@ router.post('/api/tables/sync', authorizeAdmin, async (req: Request, res: Respon
 // ═══════════════════════════════════════════════════════════════════════════
 
 const SESSION_TTL_MS = 2 * 60 * 60 * 1000 // 2 hours
+// Owner decision (2026-11-21): a table accepts up to 2 guests beyond its
+// configured seats (5 friends at a 4-seat table can all order); only then
+// is it "full".
+export const SEAT_OVERFLOW = 2
 
 // ─── Core: assign or resume a client session ─────────────────────────────────
 // Race-condition safe: wraps in a retry loop with small jitter.
@@ -510,9 +519,9 @@ async function assignOrResumeSession(
       })
       const occupied = new Set(activeSessions.map(s => s.seatNumber))
 
-      // 3. Find next free seat (sequential 1..capacity)
+      // 3. Find next free seat (sequential 1..capacity, then up to SEAT_OVERFLOW extra)
       let assignedSeat: number | null = null
-      for (let i = 1; i <= capacity; i++) {
+      for (let i = 1; i <= capacity + SEAT_OVERFLOW; i++) {
         if (!occupied.has(i)) { assignedSeat = i; break }
       }
 

@@ -3,16 +3,22 @@
 import { useEffect, useState } from 'react'
 import {
   Plus, Pencil, Trash2, ChevronDown, ChevronUp,
-  ImageIcon, Save, X, Loader2, Tag, DollarSign
+  ImageIcon, Save, X, Loader2, Tag
 } from 'lucide-react'
 import { useLang } from '../lang-context'
 import { A } from '../../../lib/adminI18n'
 
 type Category = { id: string; nameAr: string; nameEn: string; nameFr: string; nameEs: string; nameDe: string; order: number; _count?: { products: number } }
-type Product  = { id: string; categoryId: string; nameAr: string; nameEn: string; nameFr: string; price: string | number; costPrice?: string | number | null; unitType?: string; description?: string; imageUrl?: string; isAvailable: boolean; category?: { nameEn: string } }
+type Product  = { id: string; categoryId: string; nameAr: string; nameEn: string; nameFr: string; price: string | number; costPrice?: string | number | null; unitType?: string; description?: string; descriptionAr?: string; descriptionEn?: string; descriptionFr?: string; descriptionEs?: string; imageUrl?: string; isAvailable: boolean; category?: { nameEn: string } }
 
 const EMPTY_CAT: Omit<Category, 'id' | 'order' | '_count'> = { nameAr: '', nameEn: '', nameFr: '', nameEs: '', nameDe: '' }
-const EMPTY_PRD = { categoryId: '', nameAr: '', nameEn: '', nameFr: '', price: '', costPrice: '', unitType: 'PIECE', description: '', imageUrl: '' }
+const EMPTY_PRD = { categoryId: '', nameAr: '', nameEn: '', nameFr: '', price: '', costPrice: '', unitType: 'PIECE', description: '', descriptionAr: '', descriptionEn: '', descriptionFr: '', descriptionEs: '', imageUrl: '' }
+const DESC_LANGS = [
+  { key: 'descriptionAr', label: 'العربية',  dir: 'rtl' },
+  { key: 'descriptionEn', label: 'English',  dir: 'ltr' },
+  { key: 'descriptionFr', label: 'Français', dir: 'ltr' },
+  { key: 'descriptionEs', label: 'Español',  dir: 'ltr' },
+] as const
 
 function margin(price: number, cost: number) {
   if (!cost || cost <= 0) return null
@@ -42,6 +48,12 @@ export default function MenuPage() {
   const [catModal, setCatModal] = useState<{ open: boolean; data: typeof EMPTY_CAT; id?: string }>({ open: false, data: { ...EMPTY_CAT } })
   const [prdModal, setPrdModal] = useState<{ open: boolean; data: typeof EMPTY_PRD; id?: string }>({ open: false, data: { ...EMPTY_PRD } })
   const [saving, setSaving] = useState(false)
+  // Venue currency for price fields (was a hardcoded $ icon even for MAD/SAR venues)
+  const [currency, setCurrency] = useState('')
+  useEffect(() => {
+    fetch('/api/admin/cafe/profile', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } })
+      .then(r => r.ok ? r.json() : null).then(d => { if (d?.currency) setCurrency(d.currency) }).catch(() => {})
+  }, [])
   const [seeding, setSeeding] = useState(false)
   const [imgPreview, setImgPreview] = useState<string>('')
 
@@ -85,7 +97,7 @@ export default function MenuPage() {
   }
 
   function openEditProduct(p: Product) {
-    setPrdModal({ open: true, data: { categoryId: p.categoryId, nameAr: p.nameAr, nameEn: p.nameEn, nameFr: p.nameFr || '', price: String(p.price), costPrice: p.costPrice != null ? String(p.costPrice) : '', unitType: p.unitType || 'PIECE', description: p.description || '', imageUrl: p.imageUrl || '' }, id: p.id })
+    setPrdModal({ open: true, data: { categoryId: p.categoryId, nameAr: p.nameAr, nameEn: p.nameEn, nameFr: p.nameFr || '', price: String(p.price), costPrice: p.costPrice != null ? String(p.costPrice) : '', unitType: p.unitType || 'PIECE', description: p.description || '', descriptionAr: p.descriptionAr || '', descriptionEn: p.descriptionEn || '', descriptionFr: p.descriptionFr || '', descriptionEs: p.descriptionEs || '', imageUrl: p.imageUrl || '' }, id: p.id })
     setImgPreview(p.imageUrl || '')
   }
 
@@ -381,25 +393,25 @@ export default function MenuPage() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1">
-                  {t.price} * <span className="text-gray-400">({(prdModal.data as any).unitType === 'WEIGHT' ? (lang === 'fr' ? 'par kg' : lang === 'ar' ? 'للكيلو' : 'per kg') : (lang === 'fr' ? 'vente' : lang === 'ar' ? 'بيع' : 'sale')})</span>
+                  {t.price} * <span className="text-gray-400">({(prdModal.data as any).unitType === 'WEIGHT' ? (lang === 'fr' ? 'par kg' : lang === 'ar' ? 'للكيلو' : lang === 'es' ? 'por kg' : 'per kg') : (lang === 'fr' ? 'vente' : lang === 'ar' ? 'بيع' : lang === 'es' ? 'venta' : 'sale')})</span>
                 </label>
                 <div className="relative">
-                  <DollarSign className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-gray-400">{currency}</span>
                   <input type="number" step="0.01" min="0" value={prdModal.data.price}
                     onChange={e => setPrdModal(m => ({ ...m, data: { ...m.data, price: e.target.value } }))}
-                    className="w-full pr-9 pl-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400" dir="ltr" />
+                    className="w-full pr-12 pl-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400" dir="ltr" />
                 </div>
               </div>
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1">
-                  {lang === 'fr' ? 'Coût de revient' : lang === 'ar' ? 'سعر التكلفة' : 'Cost Price'} <span className="text-gray-400">(تكلفة)</span>
+                  {lang === 'fr' ? 'Coût de revient' : lang === 'ar' ? 'سعر التكلفة' : lang === 'es' ? 'Precio de coste' : 'Cost Price'}
                 </label>
                 <div className="relative">
-                  <DollarSign className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-amber-400" />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-amber-500">{currency}</span>
                   <input type="number" step="0.01" min="0" value={(prdModal.data as any).costPrice ?? ''}
                     placeholder="0.00"
                     onChange={e => setPrdModal(m => ({ ...m, data: { ...m.data, costPrice: e.target.value } }))}
-                    className="w-full pr-9 pl-3 py-2.5 border border-amber-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 bg-amber-50" dir="ltr" />
+                    className="w-full pr-12 pl-3 py-2.5 border border-amber-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 bg-amber-50" dir="ltr" />
                 </div>
               </div>
             </div>
@@ -421,12 +433,28 @@ export default function MenuPage() {
             })()}
 
             <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1">{t.description}</label>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">{t.descMain}</label>
               <textarea rows={2} value={prdModal.data.description}
                 onChange={e => setPrdModal(m => ({ ...m, data: { ...m.data, description: e.target.value } }))}
-                dir="rtl"
+                dir="auto"
                 className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-400" />
             </div>
+
+            {/* Per-language descriptions — guests see their language, else the main text */}
+            <details className="rounded-xl border border-gray-200 px-3 py-2" open={DESC_LANGS.some(l => prdModal.data[l.key])}>
+              <summary className="text-xs font-semibold text-gray-600 cursor-pointer select-none">{t.descTranslations}</summary>
+              <p className="text-[11px] text-gray-400 mt-1 mb-2">{t.descHint}</p>
+              <div className="space-y-2">
+                {DESC_LANGS.map(l => (
+                  <div key={l.key}>
+                    <label className="block text-[11px] font-semibold text-gray-500 mb-0.5">{l.label}</label>
+                    <textarea rows={2} dir={l.dir} value={prdModal.data[l.key]} maxLength={500}
+                      onChange={e => setPrdModal(m => ({ ...m, data: { ...m.data, [l.key]: e.target.value } }))}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+                  </div>
+                ))}
+              </div>
+            </details>
 
             <button onClick={saveProduct} disabled={saving} className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold flex items-center justify-center gap-2 disabled:opacity-50">
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}

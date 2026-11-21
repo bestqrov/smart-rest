@@ -102,7 +102,7 @@ router.get('/api/admin/products', authorizeAdmin, async (req: Request, res: Resp
 router.post('/api/admin/products', authorizeAdmin, async (req: Request, res: Response) => {
   try {
     const cafeId = req.admin!.cafeId
-    const { categoryId, nameAr, nameEn, nameFr = '', nameEs = '', nameDe = '', description, price, imageUrl, costPrice, unitType } = req.body
+    const { categoryId, nameAr, nameEn, nameFr = '', nameEs = '', nameDe = '', description, price, imageUrl, costPrice, unitType, descriptionAr = '', descriptionEn = '', descriptionFr = '', descriptionEs = '' } = req.body
     if (!categoryId || !nameAr || !nameEn || price === undefined) {
       return res.status(400).json({ error: 'categoryId, nameAr, nameEn, price required' })
     }
@@ -110,7 +110,7 @@ router.post('/api/admin/products', authorizeAdmin, async (req: Request, res: Res
     if (!cat || cat.cafeId !== cafeId) return res.status(403).json({ error: 'Category not yours' })
 
     const product = await prisma.product.create({
-      data: { categoryId: String(categoryId), nameAr, nameEn, nameFr, nameEs, nameDe, description: description || null, price, imageUrl: imageUrl || null,
+      data: { categoryId: String(categoryId), nameAr, nameEn, nameFr, nameEs, nameDe, description: description || null, descriptionAr: String(descriptionAr).slice(0, 500), descriptionEn: String(descriptionEn).slice(0, 500), descriptionFr: String(descriptionFr).slice(0, 500), descriptionEs: String(descriptionEs).slice(0, 500), price, imageUrl: imageUrl || null,
         costPrice: costPrice !== undefined && costPrice !== '' ? Number(costPrice) : null,
         unitType: unitType === 'WEIGHT' ? 'WEIGHT' : 'PIECE' }
     })
@@ -128,7 +128,7 @@ router.put('/api/admin/products/:id', authorizeAdmin, async (req: Request, res: 
     const existing = await prisma.product.findUnique({ where: { id }, include: { category: { select: { cafeId: true } } } })
     if (!existing || existing.category.cafeId !== cafeId) return res.status(404).json({ error: 'Not found' })
 
-    const { nameAr, nameEn, nameFr, nameEs, nameDe, description, price, imageUrl, isAvailable, costPrice, unitType } = req.body
+    const { nameAr, nameEn, nameFr, nameEs, nameDe, description, price, imageUrl, isAvailable, costPrice, unitType, descriptionAr, descriptionEn, descriptionFr, descriptionEs } = req.body
     const product = await prisma.product.update({
       where: { id },
       data: {
@@ -138,6 +138,10 @@ router.put('/api/admin/products/:id', authorizeAdmin, async (req: Request, res: 
         ...(nameEs !== undefined && { nameEs }),
         ...(nameDe !== undefined && { nameDe }),
         ...(description !== undefined && { description }),
+        ...(descriptionAr !== undefined && { descriptionAr: String(descriptionAr).slice(0, 500) }),
+        ...(descriptionEn !== undefined && { descriptionEn: String(descriptionEn).slice(0, 500) }),
+        ...(descriptionFr !== undefined && { descriptionFr: String(descriptionFr).slice(0, 500) }),
+        ...(descriptionEs !== undefined && { descriptionEs: String(descriptionEs).slice(0, 500) }),
         ...(price !== undefined && { price }),
         ...(imageUrl !== undefined && { imageUrl }),
         ...(isAvailable !== undefined && { isAvailable }),

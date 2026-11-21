@@ -10,7 +10,12 @@
  */
 
 import { useState, useEffect, useRef, useCallback, Suspense } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence, MotionConfig } from 'framer-motion'
+import { Armchair, Bell, Clock, QrCode, Receipt, Search, ShoppingBag, X, ChevronLeft, ChevronRight } from 'lucide-react'
+import {
+  BottomSheet, SheetHeader, StatusScreen, MenuSkeleton, LangSwitch, ProductRow, ProductSheet,
+  EmptySearch, Toast, brandVars, stripEmoji, haptic,
+} from './GuestUI'
 import { useParams, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { io as socketIO, Socket } from 'socket.io-client'
@@ -58,7 +63,7 @@ const T = {
     waiterCalled: '✅ Waiter on the way!',
     mergedWith: 'Merged with',
     invalidTitle: 'Invalid QR Code',
-    invalidSub: 'This QR code is invalid or has expired. Please scan the code on your table again.',
+    invalidSub: 'This code has expired or is no longer valid. Rescan the QR on your table, or ask a staff member for a new one.',
     orderMore: 'Order more items',
     requestBill: 'Request Bill 🧾',
     billMyself: 'Just me',
@@ -87,6 +92,20 @@ const T = {
     optInSkip: 'No thanks',
     optInDone: '✅ Subscribed!',
     loyaltyCta: '🎁 Check my loyalty points',
+    addToOrder: 'Add to order',
+    addItem: 'Add',
+    removeItem: 'Remove one',
+    clearSearch: 'Clear search',
+    noItemsSub: 'Try another word or browse the categories.',
+    noteLabel: 'Special request',
+    language: 'Language',
+    close: 'Close',
+    waiterShort: 'Waiter',
+    billShort: 'Bill',
+    back: 'Back',
+    me: 'me',
+    emptyHint: 'Tap + on any dish to start your order',
+    items: (n: number) => `${n} ${n === 1 ? 'item' : 'items'}`,
   },
   ar: {
     scanningTitle: 'جارٍ تجهيز طاولتك…',
@@ -123,10 +142,10 @@ const T = {
     waiterCalled: '✅ النادل في الطريق!',
     mergedWith: 'مدمجة مع',
     invalidTitle: 'رمز QR غير صالح',
-    invalidSub: 'رمز QR غير صالح أو منتهي الصلاحية. يرجى المسح مرة أخرى.',
+    invalidSub: 'انتهت صلاحية هذا الرمز أو لم يعد صالحاً. امسح رمز QR الموجود على طاولتك من جديد، أو اطلب رمزاً جديداً من أحد الموظفين.',
     orderMore: 'طلب المزيد',
     requestBill: 'طلب الفاتورة 🧾',
-    billMyself: 'على راسي فقط',
+    billMyself: 'حسابي فقط',
     billMyselfSub: 'أدفع فقط لمقعدي',
     billTable: 'الطاولة كلها',
     billTableSub: 'الجميع يدفع معاً',
@@ -152,6 +171,20 @@ const T = {
     optInSkip: 'لا شكراً',
     optInDone: '✅ تم الاشتراك!',
     loyaltyCta: '🎁 تحقق من نقاط الولاء الخاصة بي',
+    addToOrder: 'أضف إلى الطلب',
+    addItem: 'إضافة',
+    removeItem: 'إزالة واحدة',
+    clearSearch: 'مسح البحث',
+    noItemsSub: 'جرّب كلمة أخرى أو تصفح الأقسام.',
+    noteLabel: 'طلب خاص',
+    language: 'اللغة',
+    close: 'إغلاق',
+    waiterShort: 'النادل',
+    billShort: 'الحساب',
+    back: 'رجوع',
+    me: 'أنا',
+    emptyHint: 'اضغط + على أي طبق لبدء طلبك',
+    items: (n: number) => `${n} ${n === 1 ? 'صنف' : n === 2 ? 'صنفان' : n <= 10 ? 'أصناف' : 'صنفاً'}`,
   },
   fr: {
     scanningTitle: 'Préparation de votre table…',
@@ -188,7 +221,7 @@ const T = {
     waiterCalled: '✅ Serveur en route !',
     mergedWith: 'Fusionnée avec',
     invalidTitle: 'QR Code invalide',
-    invalidSub: 'Ce QR code est invalide ou expiré. Veuillez rescanner.',
+    invalidSub: 'Ce code a expiré ou n\'est plus valide. Rescannez le QR de votre table ou demandez-en un nouveau au personnel.',
     orderMore: "Commander d'autres articles",
     requestBill: "Demander l'addition 🧾",
     billMyself: 'Rien que moi',
@@ -217,6 +250,20 @@ const T = {
     optInSkip: 'Non merci',
     optInDone: '✅ Abonné !',
     loyaltyCta: '🎁 Voir mes points de fidélité',
+    addToOrder: 'Ajouter à la commande',
+    addItem: 'Ajouter',
+    removeItem: 'Retirer un',
+    clearSearch: 'Effacer la recherche',
+    noItemsSub: 'Essayez un autre mot ou parcourez les catégories.',
+    noteLabel: 'Demande particulière',
+    language: 'Langue',
+    close: 'Fermer',
+    waiterShort: 'Serveur',
+    billShort: 'Addition',
+    back: 'Retour',
+    me: 'moi',
+    emptyHint: 'Touchez + sur un plat pour commencer',
+    items: (n: number) => `${n} article${n > 1 ? 's' : ''}`,
   },
   es: {
     scanningTitle: 'Preparando tu mesa…',
@@ -253,7 +300,7 @@ const T = {
     waiterCalled: '✅ ¡Camarero en camino!',
     mergedWith: 'Fusionada con',
     invalidTitle: 'QR Code inválido',
-    invalidSub: 'El QR code es inválido o expirado. Vuelve a escanear.',
+    invalidSub: 'Este código ha caducado o ya no es válido. Vuelve a escanear el QR de tu mesa o pide uno nuevo al personal.',
     orderMore: 'Pedir más',
     requestBill: 'Pedir la cuenta 🧾',
     billMyself: 'Solo yo',
@@ -282,6 +329,20 @@ const T = {
     optInSkip: 'No gracias',
     optInDone: '✅ ¡Suscrito!',
     loyaltyCta: '🎁 Ver mis puntos de fidelidad',
+    addToOrder: 'Añadir al pedido',
+    addItem: 'Añadir',
+    removeItem: 'Quitar uno',
+    clearSearch: 'Borrar búsqueda',
+    noItemsSub: 'Prueba otra palabra o explora las categorías.',
+    noteLabel: 'Petición especial',
+    language: 'Idioma',
+    close: 'Cerrar',
+    waiterShort: 'Mesero',
+    billShort: 'Cuenta',
+    back: 'Volver',
+    me: 'yo',
+    emptyHint: 'Toca + en un plato para empezar tu pedido',
+    items: (n: number) => `${n} ${n === 1 ? 'artículo' : 'artículos'}`,
   },
 } as const
 
@@ -384,6 +445,7 @@ type ActiveOrder = { orderId: string; items: OrderItem[]; status: string; totalP
 type Product = {
   id: string; nameAr: string; nameEn: string; nameFr: string; nameEs: string
   description: string | null; price: number; imageUrl: string | null
+  descriptionAr?: string; descriptionEn?: string; descriptionFr?: string; descriptionEs?: string
   isAvailable: boolean; calories: number | null; likesCount: number
 }
 type Category = { id: string; nameAr: string; nameEn: string; nameFr: string; nameEs: string; products: Product[] }
@@ -483,8 +545,18 @@ function TablePageInner() {
   }>({ socialLinks: null, hasSocialShareAddon: false, isDemo: false, googleMapsUrl: null, tripadvisorUrl: null, paymentGateway: null, currency: null, country: null })
 
   const [payingOnline, setPayingOnline] = useState(false)
+  const [accentColor, setAccentColor] = useState<string | null>(null)
+  const [detail, setDetail] = useState<Product | null>(null)
+  const [cartBump, setCartBump] = useState(0)
+  const stickyRef       = useRef<HTMLDivElement | null>(null)
+  const chipBarRef      = useRef<HTMLDivElement | null>(null)
+  const spyLockRef      = useRef(0)
+  const [stickyH, setStickyH] = useState(150)
   const socketRef       = useRef<Socket | null>(null)
   const heartbeatRef    = useRef<ReturnType<typeof setInterval> | null>(null)
+  // Latest scan for long-lived callbacks (heartbeat interval captured a stale null)
+  const scanRef         = useRef<typeof scan>(null)
+  useEffect(() => { scanRef.current = scan }, [scan])
   const sharedOrderRef  = useRef('')
   const cameraInputRef  = useRef<HTMLInputElement | null>(null)
 
@@ -581,7 +653,9 @@ function TablePageInner() {
         totalPrice: o.totalPrice,
         items: o.items.map((i: any) => ({
           productId: i.productId,
-          name: currentLang === 'ar' ? i.nameAr : currentLang === 'fr' ? i.nameFr : i.nameEn,
+          // API sends the English name as `name` (+ nameAr/nameFr/nameEs); there is no nameEn,
+          // which made the tracker read "2× undefined" in English and Spanish.
+          name: (currentLang === 'ar' ? i.nameAr : currentLang === 'fr' ? i.nameFr : currentLang === 'es' ? i.nameEs : i.name) || i.name || i.nameAr || '',
           quantity:  i.quantity,
           status:    i.status,
         }))
@@ -599,6 +673,7 @@ function TablePageInner() {
         if (cats.length > 0) setActiveCat(cats[0].id)
         // Already present on this same response — just wasn't read before.
         setCertified(data.certificationStatus === 'CERTIFIED')
+        if (typeof data.accentColor === 'string') setAccentColor(data.accentColor)
         // Enrich scan state with logo/name (kept out of /api/qr/scan to avoid huge base64 payload)
         if (data.cafeName || data.cafeLogoUrl) {
           setScan(prev => prev ? { ...prev, cafeName: data.cafeName ?? prev.cafeName, cafeLogoUrl: data.cafeLogoUrl ?? prev.cafeLogoUrl } : prev)
@@ -646,7 +721,7 @@ function TablePageInner() {
       if (r.status === 401) {
         setPhase('expired')
         clearInterval(heartbeatRef.current!)
-        if (scan) clearSession(scan.tableId)
+        if (scanRef.current) clearSession(scanRef.current.tableId)
       }
     }, 5 * 60 * 1000) // every 5 min
   }
@@ -699,6 +774,22 @@ function TablePageInner() {
       return [...prev, { productId: product.id, name, price: product.price, quantity: 1, notes: '' }]
     })
   }, [lang])
+
+  // Product sheet: add N at once, optionally setting the line's note (same `notes` field the cart edits)
+  const addToCartQty = useCallback((product: Product, qty: number, note: string) => {
+    const name = lang === 'ar' ? product.nameAr : lang === 'fr' ? product.nameFr : product.nameEn
+    setCart(prev => {
+      const ex = prev.find(c => c.productId === product.id)
+      if (ex) return prev.map(c => c.productId === product.id ? { ...c, quantity: c.quantity + qty, notes: note || c.notes } : c)
+      return [...prev, { productId: product.id, name, price: product.price, quantity: qty, notes: note }]
+    })
+  }, [lang])
+
+  const handleAdd = useCallback((product: Product) => {
+    haptic()
+    addToCart(product)
+    setCartBump(b => b + 1)
+  }, [addToCart])
 
   const removeFromCart = useCallback((productId: string) => {
     setCart(prev => {
@@ -850,15 +941,40 @@ function TablePageInner() {
   // ── Waiter call ───────────────────────────────────────────────────────────
   async function callWaiter(type: 'call_waiter' | 'pay_cash' | 'pay_tpe' | 'water' | 'clean' | 'question') {
     if (!scan) return
-    setWaiterMsg(tr.waiterCalled)
-    setTimeout(() => setWaiterMsg(''), 3000)
-    try {
-      await fetch('/api/waiter-calls', {
+    // Two server paths (this page used to send everything to /api/waiter-calls
+    // with tableId/cafeId + lowercase types, which that endpoint rejects — so
+    // every call silently failed while the guest saw "waiter on the way"):
+    //   • call_waiter / pay_cash / pay_tpe → PATCH /api/orders/:id/notify-waiter
+    //     (needs an open order; ownership via sessionId)
+    //   • water / clean / question → POST /api/waiter-calls { tableToken, TYPE }
+    //   • call_waiter with no order yet → a QUESTION call so staff still come.
+    let ok = false
+    const orderId = activeOrder?.orderId
+    const postCall = (t: 'WATER' | 'CLEAN' | 'QUESTION', message?: string) =>
+      fetch('/api/waiter-calls', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tableId: scan.tableId, cafeId: scan.cafeId, type }),
+        body:    JSON.stringify({ tableToken, type: t, message }),
       })
+    try {
+      let r: Response
+      if ((type === 'call_waiter' || type === 'pay_cash' || type === 'pay_tpe') && orderId) {
+        r = await fetch(`/api/orders/${orderId}/notify-waiter`, {
+          method:  'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ type, sessionId: scan.sessionId }),
+        })
+      } else if (type === 'water' || type === 'clean' || type === 'question') {
+        r = await postCall(type.toUpperCase() as 'WATER' | 'CLEAN' | 'QUESTION')
+      } else {
+        const note = type === 'pay_cash' ? 'pay_cash' : type === 'pay_tpe' ? 'pay_tpe' : 'call_waiter'
+        r = await postCall('QUESTION', note)
+      }
+      ok = r.ok
     } catch {}
+    // Only tell the guest a waiter is coming if the request actually reached us.
+    setWaiterMsg(ok ? tr.waiterCalled : (lang === 'ar' ? '⚠️ تعذّر الإرسال، حاول مجدداً أو نادِ أحد الموظفين' : lang === 'fr' ? '⚠️ Envoi impossible, réessayez ou appelez un serveur' : lang === 'es' ? '⚠️ No se pudo enviar, inténtalo de nuevo o llama a un camarero' : '⚠️ Could not send — try again or wave to a staff member'))
+    setTimeout(() => setWaiterMsg(''), ok ? 3000 : 5000)
   }
 
   // ── Request bill (split or full table) ───────────────────────────────────
@@ -866,7 +982,7 @@ function TablePageInner() {
     if (!scan || billSending) return
     setBillSending(true)
     try {
-      await fetch('/api/bill-requests', {
+      const r = await fetch('/api/bill-requests', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -875,13 +991,14 @@ function TablePageInner() {
           payScope:    scope,
         }),
       })
+      if (!r.ok) throw new Error('bill request failed')
       setBillMsg(tr.billRequested)
       setBillOpen(false)
       setBillPhase('choice')
       setBillSeats([])
       setTimeout(() => setBillMsg(''), 5000)
     } catch {
-      setBillMsg('Failed to send request')
+      setBillMsg((lang === 'ar' ? '⚠️ تعذّر الإرسال، حاول مجدداً أو نادِ أحد الموظفين' : lang === 'fr' ? '⚠️ Envoi impossible, réessayez ou appelez un serveur' : lang === 'es' ? '⚠️ No se pudo enviar, inténtalo de nuevo o llama a un camarero' : '⚠️ Could not send — try again or wave to a staff member'))
       setTimeout(() => setBillMsg(''), 3000)
     } finally {
       setBillSending(false)
@@ -911,6 +1028,78 @@ function TablePageInner() {
         })
       })).filter(c => c.products.length > 0)
     : categories
+
+  // ── Sticky header height + category scroll-spy ───────────────────────────
+  const catsRef = useRef<Category[]>([])
+  catsRef.current = filteredCategories
+  const spyTargetRef = useRef<string | null>(null)
+  const prefersReduced = () =>
+    typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+
+  useEffect(() => {
+    const el = stickyRef.current
+    if (!el || typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(() => setStickyH(el.offsetHeight))
+    ro.observe(el)
+    setStickyH(el.offsetHeight)
+    return () => ro.disconnect()
+  }, [phase])
+
+  useEffect(() => {
+    if (phase !== 'menu') return
+    let raf = 0
+    const onScroll = () => {
+      cancelAnimationFrame(raf)
+      raf = requestAnimationFrame(() => {
+        const cats = catsRef.current
+        if (!cats.length) return
+        const line = (stickyRef.current?.offsetHeight ?? 0) + 24
+        // While a chip-triggered smooth scroll runs, don't fight it
+        if (spyTargetRef.current) {
+          const t = document.getElementById(`cat-${spyTargetRef.current}`)
+          const arrived = !t || Math.abs(t.getBoundingClientRect().top - (line - 16)) < 6
+          if (!arrived && Date.now() < spyLockRef.current) return
+          spyTargetRef.current = null
+        }
+        let current = cats[0].id
+        for (const c of cats) {
+          const el = document.getElementById(`cat-${c.id}`)
+          if (!el) continue
+          if (el.getBoundingClientRect().top - line <= 0) current = c.id
+          else break
+        }
+        const doc = document.documentElement
+        if (window.scrollY > 0 && window.innerHeight + window.scrollY >= doc.scrollHeight - 4) current = cats[cats.length - 1].id
+        setActiveCat(prev => (prev === current ? prev : current))
+      })
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    onScroll()
+    return () => { window.removeEventListener('scroll', onScroll); cancelAnimationFrame(raf) }
+  }, [phase, search])
+
+  // Keep the active chip visible inside the horizontal chip bar
+  useEffect(() => {
+    const bar = chipBarRef.current
+    if (!bar || !activeCat) return
+    const chip = bar.querySelector<HTMLElement>(`[data-cat="${activeCat}"]`)
+    if (!chip) return
+    const b = bar.getBoundingClientRect()
+    const c = chip.getBoundingClientRect()
+    const delta = (c.left + c.width / 2) - (b.left + b.width / 2)
+    if (Math.abs(delta) > 4) bar.scrollBy({ left: delta, behavior: prefersReduced() ? 'auto' : 'smooth' })
+  }, [activeCat])
+
+  function goToCategory(id: string) {
+    setActiveCat(id)
+    const el = document.getElementById(`cat-${id}`)
+    if (!el) return
+    const offset = (stickyRef.current?.offsetHeight ?? stickyH) + 8
+    const top = el.getBoundingClientRect().top + window.scrollY - offset
+    spyTargetRef.current = id
+    spyLockRef.current = Date.now() + 1200
+    window.scrollTo({ top: Math.max(0, top), behavior: prefersReduced() ? 'auto' : 'smooth' })
+  }
 
   // ── Share helpers ─────────────────────────────────────────────────────────
 
@@ -1135,96 +1324,82 @@ function TablePageInner() {
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
-  // Scanning / loading
+  const brandStyle = brandVars(accentColor)
+  const dir: 'rtl' | 'ltr' = isRTL ? 'rtl' : 'ltr'
+  // Description in the guest's language; falls back to the main description.
+  const pDesc = (p: { description: string | null; descriptionAr?: string; descriptionEn?: string; descriptionFr?: string; descriptionEs?: string }) =>
+    (lang === 'ar' ? p.descriptionAr : lang === 'fr' ? p.descriptionFr : lang === 'es' ? p.descriptionEs : p.descriptionEn) || p.description || null
+  const pName = (p: { nameAr: string; nameEn: string; nameFr: string; nameEs?: string }) =>
+    (lang === 'ar' ? p.nameAr : lang === 'fr' ? p.nameFr : lang === 'es' ? p.nameEs : p.nameEn) || p.nameEn || p.nameAr
+
+  // Scanning / loading — skeleton of the menu instead of a blank spinner
   if (phase === 'scanning') {
-    return (
-      <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center gap-4">
-        <div className="w-12 h-12 rounded-full border-4 border-emerald-500 border-t-transparent animate-spin" />
-        <p className="text-gray-300 font-semibold">{tr.scanningTitle}</p>
-      </div>
-    )
+    return <div style={brandStyle}><MenuSkeleton label={tr.scanningTitle} dir={dir} /></div>
   }
 
   // Table full
   if (phase === 'full') {
-    return (
-      <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center gap-4 p-6 text-center">
-        <div className="text-5xl">🪑</div>
-        <h2 className="text-xl font-bold text-white">{tr.tableFull}</h2>
-        <p className="text-gray-400 text-sm max-w-xs">{tr.tableFullSub}</p>
-      </div>
-    )
+    return <div style={brandStyle}><StatusScreen dir={dir} tone="warn" icon={<Armchair size={40} />} title={tr.tableFull} sub={tr.tableFullSub} /></div>
   }
 
   // Session expired
   if (phase === 'expired') {
-    return (
-      <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center gap-4 p-6 text-center">
-        <div className="text-5xl">⏰</div>
-        <h2 className="text-xl font-bold text-white">{tr.sessionExpired}</h2>
-        <p className="text-gray-400 text-sm max-w-xs mb-2">{tr.sessionExpiredSub}</p>
-      </div>
-    )
+    return <div style={brandStyle}><StatusScreen dir={dir} icon={<Clock size={40} />} title={tr.sessionExpired} sub={tr.sessionExpiredSub} /></div>
   }
 
   // Invalid QR
   if (phase === 'invalid') {
-    return (
-      <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center gap-4 p-6 text-center">
-        <div className="text-5xl">❌</div>
-        <h2 className="text-xl font-bold text-white">{tr.invalidTitle}</h2>
-        <p className="text-gray-400 text-sm max-w-xs">{tr.invalidSub}</p>
-      </div>
-    )
+    return <div style={brandStyle}><StatusScreen dir={dir} icon={<QrCode size={40} />} title={tr.invalidTitle} sub={tr.invalidSub} /></div>
   }
 
   // Welcome splash
   if (phase === 'welcome' && scan) {
     return (
       <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
+        initial={{ opacity: 0, scale: 0.97 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="min-h-screen bg-gray-950 flex flex-col items-center justify-center gap-5 p-6 text-center"
+        style={brandStyle}
+        dir={dir}
+        className="min-h-[100dvh] bg-zinc-950 flex flex-col items-center justify-center gap-6 p-6 text-center"
       >
         <motion.div
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ type: 'spring', delay: 0.1 }}
-          className="flex flex-col items-center gap-2"
+          initial={{ scale: 0.6, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: 'spring', delay: 0.1, damping: 16 }}
+          className="flex flex-col items-center gap-3"
         >
           {scan.cafeLogoUrl
-            ? <img src={scan.cafeLogoUrl} alt={scan.cafeName} className="w-24 h-24 rounded-3xl object-contain bg-white/5 border border-white/10 shadow-xl" />
-            : <div className="w-24 h-24 rounded-3xl bg-emerald-500/20 flex items-center justify-center text-5xl">🪑</div>
+            ? <img src={scan.cafeLogoUrl} alt={scan.cafeName} className="w-24 h-24 rounded-3xl object-contain bg-white/[0.06] ring-1 ring-white/10 shadow-2xl" />
+            : <div className="w-24 h-24 rounded-3xl bg-[var(--brand-soft)] text-[var(--brand-text)] flex items-center justify-center"><Armchair size={44} /></div>
           }
-          {scan.cafeName && <span className="text-lg font-black text-white">{scan.cafeName}</span>}
-          <span className="text-[10px] text-gray-600 font-medium">Powered by SmartMenu</span>
+          {scan.cafeName && <span className="text-lg font-extrabold text-white">{scan.cafeName}</span>}
         </motion.div>
 
         <div>
-          <h1 className="text-3xl font-black text-white">{tr.welcome(scan.seatNumber)}</h1>
-          <p className="text-gray-400 text-sm mt-2 max-w-xs">{tr.welcomeSub}</p>
+          <h1 className="text-3xl font-extrabold text-white">{tr.welcome(scan.seatNumber)}</h1>
+          <p className="text-zinc-400 text-sm mt-2 max-w-xs">{tr.welcomeSub}</p>
         </div>
 
         {/* Seat occupancy visual */}
-        <div className="flex gap-2 mt-2">
-          {Array.from({ length: scan.capacity }, (_, i) => (
+        <div className="flex flex-wrap justify-center gap-2 max-w-xs">
+          {Array.from({ length: Math.max(scan.capacity, scan.seatNumber, scan.occupiedCount) }, (_, i) => (
             <div
               key={i}
-              className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold
+              className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold
                 ${i + 1 === scan.seatNumber
-                  ? 'bg-emerald-500 text-white ring-2 ring-emerald-300'
+                  ? 'bg-[var(--brand)] text-[var(--brand-fg)] ring-2 ring-[var(--brand-soft)] ring-offset-2 ring-offset-zinc-950'
                   : i + 1 <= scan.occupiedCount
-                    ? 'bg-gray-600 text-gray-300'
-                    : 'bg-gray-800 text-gray-600'
+                    ? 'bg-zinc-700 text-zinc-300'
+                    : 'bg-zinc-800/70 text-zinc-500'
                 }`}
             >
               {i + 1}
             </div>
           ))}
         </div>
-        <p className="text-xs text-gray-600">{tr.scanningSeats(scan.occupiedCount, scan.capacity)}</p>
+        <p className="text-xs text-zinc-500">{tr.scanningSeats(scan.occupiedCount, scan.capacity)}</p>
 
-        <div className="w-8 h-1 rounded-full bg-emerald-500 animate-pulse mt-2" />
+        <div className="w-10 h-1 rounded-full bg-[var(--brand)] animate-pulse motion-reduce:animate-none" />
       </motion.div>
     )
   }
@@ -1237,15 +1412,16 @@ function TablePageInner() {
       <motion.div
         initial={{ opacity: 0, scale: 0.96 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="min-h-screen bg-gray-950 flex flex-col items-center justify-center p-8 text-center gap-6"
-        dir={isRTL ? 'rtl' : 'ltr'}
+        style={brandStyle}
+        className="min-h-[100dvh] bg-zinc-950 flex flex-col items-center justify-center p-8 text-center gap-6"
+        dir={dir}
       >
         {/* Animated checkmark */}
         <motion.div
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
           transition={{ type: 'spring', delay: 0.1, stiffness: 200 }}
-          className="w-24 h-24 rounded-full bg-emerald-500/20 border-2 border-emerald-500 flex items-center justify-center"
+          className="w-24 h-24 rounded-full bg-[var(--brand-soft)] ring-2 ring-[var(--brand)] flex items-center justify-center"
         >
           <span className="text-5xl">✅</span>
         </motion.div>
@@ -1254,10 +1430,10 @@ function TablePageInner() {
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
           className="flex flex-col items-center gap-3">
           {logoUrl && (
-            <img src={logoUrl} alt={cafeName} className="w-20 h-20 rounded-2xl object-contain border border-white/10 bg-white/5 shadow-xl" />
+            <img src={logoUrl} alt={cafeName} className="w-20 h-20 rounded-2xl object-contain ring-1 ring-white/10 bg-white/[0.06] shadow-xl" />
           )}
-          <h1 className="text-2xl font-black text-white">{tr.thankTitle(cafeName)}</h1>
-          <p className="text-gray-400 text-sm max-w-xs leading-relaxed">{tr.thankSub}</p>
+          <h1 className="text-2xl font-extrabold text-white">{tr.thankTitle(cafeName)}</h1>
+          <p className="text-zinc-400 text-sm max-w-xs leading-relaxed">{tr.thankSub}</p>
         </motion.div>
 
         {/* Decorative stars */}
@@ -1272,18 +1448,13 @@ function TablePageInner() {
         {(cafeShare.googleMapsUrl || cafeShare.tripadvisorUrl) && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.7 }}
             className="w-full max-w-xs space-y-2.5">
-            <p className="text-xs text-gray-500 text-center">
+            <p className="text-xs text-zinc-500 text-center">
               {lang === 'ar' ? '⭐ شاركنا رأيك' : lang === 'fr' ? '⭐ Laissez-nous un avis' : '⭐ Leave us a review'}
             </p>
             {cafeShare.googleMapsUrl && (
               <a href={cafeShare.googleMapsUrl} target="_blank" rel="noopener noreferrer"
                 className="flex items-center justify-center gap-3 w-full py-3.5 rounded-2xl bg-white text-gray-800 font-bold text-sm active:scale-95 transition-all shadow-lg">
-                <svg width="20" height="20" viewBox="0 0 48 48" fill="none">
-                  <path d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 7.9 2.9l5.7-5.7C34.5 6.5 29.5 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.2-.1-2.5-.4-3.5z" fill="#FFC107"/>
-                  <path d="M6.3 14.7l6.6 4.8C14.5 16 19 12 24 12c3.1 0 5.8 1.1 7.9 2.9l5.7-5.7C34.5 6.5 29.5 4 24 4 16.3 4 9.7 8.3 6.3 14.7z" fill="#FF3D00"/>
-                  <path d="M24 44c5.3 0 10.1-1.9 13.8-5.1l-6.4-5.4C29.4 35.1 26.8 36 24 36c-5.3 0-9.7-3.3-11.3-8H6.1C9.4 37 16.1 44 24 44z" fill="#4CAF50"/>
-                  <path d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.4 5.4C37.4 38.6 44 33 44 24c0-1.2-.1-2.5-.4-3.5z" fill="#1976D2"/>
-                </svg>
+                <GoogleIcon />
                 {lang === 'ar' ? 'قيّمنا على Google' : lang === 'fr' ? 'Nous noter sur Google' : 'Rate us on Google'}
               </a>
             )}
@@ -1298,21 +1469,19 @@ function TablePageInner() {
         )}
 
         {/* Loyalty — customer just ordered, this is the moment to remind them
-            points exist. The loyalty lookup page already works end-to-end
-            (points/tier/profile) but had no link from anywhere a customer
-            could actually reach it. */}
+            points exist. */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.75 }}
           className="w-full max-w-xs">
           <Link href={`/${subdomain}/loyalty`}
-            className="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-300 font-bold text-sm active:scale-95 transition-all">
+            className="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl bg-amber-500/15 ring-1 ring-amber-500/30 text-amber-300 font-bold text-sm active:scale-95 transition-all">
             {tr.loyaltyCta}
           </Link>
         </motion.div>
 
         {/* Powered by */}
         <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.9 }}
-          className="text-xs text-gray-700 mt-2">
-          Powered by <span className="text-white font-bold">Smart</span><span className="text-orange-500 font-bold">Restau</span>
+          className="text-xs text-zinc-600 mt-2">
+          Powered by <span className="text-zinc-300 font-bold">Smart</span><span className="text-orange-500 font-bold">Restau</span>
         </motion.p>
       </motion.div>
     )
@@ -1321,49 +1490,90 @@ function TablePageInner() {
   // ── Main menu ─────────────────────────────────────────────────────────────
   if (!scan) return null
 
+  const trackerVisible = !!activeOrder && activeOrder.status !== 'DELIVERED'
+  const BackIcon = isRTL ? ChevronRight : ChevronLeft
+  const detailInCart = detail ? cart.find(c => c.productId === detail.id) : undefined
+
   return (
-    <div className="min-h-screen bg-gray-950 text-white" dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className="min-h-[100dvh] bg-zinc-950 text-white overflow-x-clip" dir={dir} style={brandStyle}>
 
-      {/* ── Sticky top bar — minimal navigation ── */}
-      <header className="sticky top-0 z-30 bg-gray-950/95 backdrop-blur border-b border-gray-800/60 px-4 py-2 flex items-center justify-between">
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs font-bold bg-emerald-500/20 text-emerald-400 px-2.5 py-1 rounded-full">
-            {tr.table} {scan.isMerged ? scan.billingTableNumber : scan.tableNumber}
-            {scan.isMerged && <span className={`${isRTL ? 'mr-1' : 'ml-1'} text-amber-400`}>({tr.mergedWith} {scan.billingTableNumber})</span>}
-          </span>
-          <span className="text-xs bg-gray-800 text-gray-400 px-2.5 py-1 rounded-full font-bold">
-            {tr.seat} {scan.seatNumber}
-          </span>
-        </div>
-        <div className="flex items-center gap-0.5">
-          {(['ar','en','fr','es'] as Lang[]).map(l => (
-            <button key={l} onClick={() => { setLang(l); localStorage.setItem('sm_lang', l) }}
-              className={`text-xs px-1.5 py-0.5 rounded font-bold transition-all ${lang === l ? 'bg-emerald-500 text-white' : 'text-gray-500'}`}>
-              {l.toUpperCase()}
-            </button>
-          ))}
-        </div>
-      </header>
-
-      {/* ── Cafe hero — compact single row so the menu starts above the fold.
-            (Branding stays in the bottom bar; it was shown twice.) ── */}
-      <div className="flex items-center gap-3 py-3 px-4 border-b border-gray-800/60">
-        {scan.cafeLogoUrl ? (
-          <img
-            src={scan.cafeLogoUrl}
-            alt={scan.cafeName ?? ''}
-            className="w-12 h-12 rounded-xl object-contain bg-white/5 border border-white/10 shrink-0"
-          />
-        ) : (
-          <div className="w-12 h-12 rounded-xl bg-gray-800 flex items-center justify-center text-2xl shrink-0">🍽️</div>
-        )}
-        <div className="min-w-0 flex-1">
-          {scan.cafeName && (
-            <h1 className="text-lg font-black text-white tracking-tight truncate">{scan.cafeName}</h1>
+      {/* ── Sticky header: venue + table chip + language, then search + categories ── */}
+      <div ref={stickyRef} className="sticky top-0 z-30 bg-zinc-950/90 backdrop-blur-xl border-b border-white/[0.05]">
+        <header className="px-4 pt-3 pb-2 flex items-center gap-3">
+          {scan.cafeLogoUrl ? (
+            <img src={scan.cafeLogoUrl} alt="" className="w-9 h-9 rounded-xl object-contain bg-white/[0.06] ring-1 ring-white/10 shrink-0" />
+          ) : (
+            <div className="w-9 h-9 rounded-xl bg-[var(--brand-soft)] text-[var(--brand-text)] flex items-center justify-center shrink-0"><ShoppingBag size={18} /></div>
           )}
+          <div className="min-w-0 flex-1">
+            {scan.cafeName && <h1 className="text-[15px] font-extrabold text-white leading-tight truncate">{scan.cafeName}</h1>}
+            <p className="text-[11px] text-zinc-400 font-semibold truncate">
+              {tr.table} {scan.isMerged ? scan.billingTableNumber : scan.tableNumber}
+              <span className="mx-1 text-zinc-600">·</span>
+              {tr.seat} {scan.seatNumber}
+              {scan.isMerged && <span className="ms-1 text-amber-300">({tr.mergedWith} {scan.billingTableNumber})</span>}
+            </p>
+          </div>
+          <LangSwitch
+            lang={lang}
+            langs={['ar', 'en', 'fr', 'es'] as Lang[]}
+            label={tr.language}
+            onChange={l => { setLang(l); localStorage.setItem('sm_lang', l) }}
+          />
+        </header>
+
+        <div className="px-4 pb-2">
+          <div className="relative">
+            <Search size={17} className="absolute top-1/2 -translate-y-1/2 start-3.5 text-zinc-500 pointer-events-none" />
+            <input
+              value={search} onChange={e => setSearch(e.target.value)}
+              placeholder={tr.search}
+              type="search"
+              enterKeyHint="search"
+              className="w-full h-11 bg-white/[0.07] text-white placeholder-zinc-500 rounded-2xl ps-10 pe-10 text-sm outline-none focus:ring-2 focus:ring-[var(--brand)] [&::-webkit-search-cancel-button]:hidden"
+            />
+            {search && (
+              <button onClick={() => setSearch('')} aria-label={tr.clearSearch}
+                className="absolute top-1/2 -translate-y-1/2 end-2 w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-zinc-300">
+                <X size={14} />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {filteredCategories.length > 0 && (
+          <div className="relative">
+            <div
+              ref={chipBarRef}
+              className="flex gap-2 overflow-x-auto px-4 pb-2.5 pt-0.5 overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              style={{
+                WebkitOverflowScrolling: 'touch',
+                maskImage: 'linear-gradient(to right, transparent 0, #000 16px, #000 calc(100% - 16px), transparent 100%)',
+                WebkitMaskImage: 'linear-gradient(to right, transparent 0, #000 16px, #000 calc(100% - 16px), transparent 100%)',
+              }}
+            >
+              {filteredCategories.map(cat => (
+                <button key={cat.id} data-cat={cat.id}
+                  onClick={() => goToCategory(cat.id)}
+                  aria-current={activeCat === cat.id ? 'true' : undefined}
+                  className={`shrink-0 h-8 px-3.5 rounded-full text-[13px] font-bold transition-colors whitespace-nowrap ${
+                    activeCat === cat.id
+                      ? 'bg-[var(--brand)] text-[var(--brand-fg)]'
+                      : 'bg-white/[0.06] text-zinc-300 active:bg-white/10'
+                  }`}>
+                  {pName(cat)}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {certified && (
+        <div className="px-4 pt-3">
           <CertifiedBadge certified={certified} lang={lang} />
         </div>
-      </div>
+      )}
 
       {/* ── Smart WiFi — appears once there's a verified active order ── */}
       {wifiData && (
@@ -1376,708 +1586,584 @@ function TablePageInner() {
         </div>
       )}
 
-      {/* ── Order tracker — floating prominent card above bottom bar ── */}
+      {/* ── Order tracker — floating card above bottom bar ── */}
       <AnimatePresence>
-        {activeOrder && activeOrder.status !== 'DELIVERED' && (
+        {trackerVisible && activeOrder && (
           <motion.div
             initial={{ y: 120, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 120, opacity: 0 }}
             transition={{ type: 'spring', damping: 24, stiffness: 280 }}
-            className="fixed left-3 right-3 z-[25] rounded-2xl overflow-hidden shadow-2xl"
-            style={{ bottom: '76px' }}
+            className="fixed inset-x-3 z-[25] mx-auto max-w-lg"
+            style={{ bottom: 'calc(84px + env(safe-area-inset-bottom))' }}
           >
-            {/* Pulsing glow behind card */}
-            <div className={`absolute inset-0 rounded-2xl blur-xl opacity-40 -z-10 ${
-              activeOrder.status === 'PREPARING' ? 'bg-amber-500' : 'bg-sky-500'
-            }`} />
-            <div className={`relative rounded-2xl border px-4 py-3 backdrop-blur-md ${
-              activeOrder.status === 'PREPARING'
-                ? 'bg-amber-950/90 border-amber-700/60'
-                : 'bg-sky-950/90 border-sky-700/60'
-            }`}>
-              {/* Header row */}
-              <div className="flex items-center justify-between mb-2.5">
-                <div className="flex items-center gap-2">
-                  <span className={`w-2.5 h-2.5 rounded-full animate-pulse ${
-                    activeOrder.status === 'PREPARING' ? 'bg-amber-400' : 'bg-sky-400'
-                  }`} />
-                  <span className={`text-sm font-black ${
-                    activeOrder.status === 'PREPARING' ? 'text-amber-300' : 'text-sky-300'
-                  }`}>
+            <div className="rounded-3xl bg-zinc-900/95 backdrop-blur-xl ring-1 ring-white/[0.08] shadow-2xl shadow-black/50 px-4 pt-3 pb-3.5">
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="w-2 h-2 rounded-full bg-[var(--brand)] animate-pulse motion-reduce:animate-none" />
+                  <span className="text-sm font-extrabold text-white">
                     {activeOrder.status === 'PREPARING' ? tr.preparing : tr.pending}
                   </span>
                 </div>
-                <span className="text-[10px] text-gray-500 max-w-[55%] text-right truncate">
+                <span className="text-[11px] text-zinc-500 min-w-0 truncate text-end">
                   {activeOrder.items.map(i => `${i.quantity}× ${i.name}`).join(' · ')}
                 </span>
               </div>
 
               {/* Queue number — pickup counters (food trucks) instead of a table */}
               {activeOrder.queueNumber != null && (
-                <div className="flex items-center justify-center gap-2 mb-2.5 bg-black/20 rounded-xl py-2">
-                  <span className="text-xs text-gray-400 font-semibold">
+                <div className="flex items-center justify-center gap-2 mb-3 bg-white/[0.05] rounded-2xl py-2">
+                  <span className="text-xs text-zinc-400 font-semibold">
                     {lang === 'ar' ? 'رقم طلبك' : lang === 'fr' ? 'Votre numéro' : 'Your order #'}
                   </span>
-                  <span className="text-2xl font-black text-white">#{activeOrder.queueNumber}</span>
+                  <span className="text-2xl font-extrabold text-white tabular-nums">#{activeOrder.queueNumber}</span>
                 </div>
               )}
               <LiveOrderTracker
                 status={activeOrder.status}
                 orderId={activeOrder.orderId}
-                lang={lang as 'ar' | 'fr' | 'en'}
+                lang={lang}
               />
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* ── Bill toast ── */}
-      <AnimatePresence>
-        {billMsg && (
-          <motion.div initial={{ y: -40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -40, opacity: 0 }}
-            className="fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-blue-600 text-white text-sm font-bold px-4 py-2 rounded-xl shadow-lg whitespace-nowrap">
-            {billMsg}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* ── Toast messages ── */}
-      <AnimatePresence>
-        {orderMsg && (
-          <motion.div initial={{ y: -40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -40, opacity: 0 }}
-            className="fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-emerald-600 text-white text-sm font-bold px-4 py-2 rounded-xl shadow-lg">
-            {orderMsg}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* ── Sticky search + category pills ── */}
-      <div className="sticky top-[40px] z-20 bg-gray-950 border-b border-gray-800/60">
-        <div className="px-4 pt-3 pb-2">
-          <input
-            value={search} onChange={e => setSearch(e.target.value)}
-            placeholder={tr.search}
-            className="w-full bg-gray-800 text-white placeholder-gray-500 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500"
-          />
-        </div>
-        {categories.length > 0 && (
-          <div className="flex gap-2 overflow-x-auto px-4 pb-3" style={{ scrollbarWidth: 'none' }}>
-            {categories.map(cat => {
-              const name = lang === 'ar' ? cat.nameAr : lang === 'fr' ? cat.nameFr : cat.nameEn
-              return (
-                <button key={cat.id}
-                  onClick={() => {
-                    setActiveCat(cat.id)
-                    document.getElementById(`cat-${cat.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-                  }}
-                  className={`shrink-0 px-4 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap ${
-                    activeCat === cat.id
-                      ? 'bg-emerald-500 text-white'
-                      : 'bg-gray-800 text-gray-400 hover:text-white'
-                  }`}>
-                  {name}
-                </button>
-              )
-            })}
-          </div>
-        )}
-      </div>
+      {/* ── Toasts ── */}
+      <Toast msg={billMsg} tone={billMsg.startsWith('⚠️') ? 'error' : 'info'} />
+      <Toast msg={orderMsg} />
 
       {/* ── Menu ── */}
-      <div className="pb-40 px-4 space-y-8 pt-4">
+      <main className="px-4 pt-4 space-y-7" style={{ paddingBottom: trackerVisible ? 300 : 128 }}>
         {filteredCategories.length === 0 && (
-          <p className="text-center text-gray-600 py-12">{tr.noItems}</p>
+          search
+            ? <EmptySearch title={tr.noItems} sub={tr.noItemsSub} clearLabel={tr.clearSearch} onClear={() => setSearch('')} />
+            : <p className="text-center text-zinc-500 py-12">{tr.noItems}</p>
         )}
-        {filteredCategories.map(cat => {
-          const catName = lang === 'ar' ? cat.nameAr : lang === 'fr' ? cat.nameFr : cat.nameEn
-          return (
-            <section key={cat.id} id={`cat-${cat.id}`} style={{ scrollMarginTop: '120px' }}>
-              <h2 className="text-sm font-black uppercase tracking-widest text-emerald-400 mb-3">{catName}</h2>
-              <div className="space-y-2">
-                {cat.products.filter(p => p.isAvailable).map(product => {
-                  const name = lang === 'ar' ? product.nameAr : lang === 'fr' ? product.nameFr : product.nameEn
-                  const inCart = cart.find(c => c.productId === product.id)
-                  return (
-                    <div key={product.id} className={`bg-gray-900 rounded-2xl border border-gray-800/80 overflow-hidden flex ${product.imageUrl ? 'items-stretch' : 'items-center p-3'}`}>
-                      {product.imageUrl && (
-                        <img src={product.imageUrl} alt={name} loading="lazy"
-                          className="w-24 h-24 object-cover shrink-0 self-stretch" />
-                      )}
-                      <div className={`flex-1 min-w-0 flex items-center justify-between gap-2 ${product.imageUrl ? 'p-3' : ''}`}>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-bold text-sm text-white leading-tight">{name}</p>
-                          {product.description && (
-                            <p className="text-xs text-gray-500 mt-0.5 line-clamp-2 leading-relaxed">{product.description}</p>
-                          )}
-                          <p className="text-emerald-400 font-black text-sm mt-1.5">{money(product.price)}</p>
-                        </div>
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          {inCart ? (
-                            <>
-                              <button onClick={() => removeFromCart(product.id)}
-                                className="w-11 h-11 rounded-full bg-gray-700 flex items-center justify-center text-white font-bold text-lg leading-none active:scale-90 transition-transform">−</button>
-                              <span className="text-sm font-black w-5 text-center text-white">{inCart.quantity}</span>
-                              <button onClick={() => addToCart(product)}
-                                className="w-11 h-11 rounded-full bg-emerald-500 flex items-center justify-center text-white font-bold text-lg leading-none active:scale-90 transition-transform">+</button>
-                            </>
-                          ) : (
-                            <button onClick={() => addToCart(product)}
-                              className="w-11 h-11 rounded-full bg-emerald-500 flex items-center justify-center text-white font-bold text-2xl leading-none active:scale-90 transition-transform shadow-lg shadow-emerald-500/20">+</button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </section>
-          )
-        })}
-      </div>
+        {filteredCategories.map(cat => (
+          <section key={cat.id} id={`cat-${cat.id}`} style={{ scrollMarginTop: stickyH + 8 }}>
+            <h2 className="text-base font-extrabold text-white mb-3 flex items-center gap-2">
+              <span className="w-1 h-4 rounded-full bg-[var(--brand)]" />
+              {pName(cat)}
+            </h2>
+            <div className="space-y-2.5">
+              {cat.products.filter(p => p.isAvailable).map(product => {
+                const inCart = cart.find(c => c.productId === product.id)
+                return (
+                  <ProductRow
+                    key={product.id}
+                    name={pName(product)}
+                    description={pDesc(product)}
+                    price={money(product.price)}
+                    imageUrl={product.imageUrl}
+                    qty={inCart?.quantity ?? 0}
+                    onOpen={() => setDetail(product)}
+                    onAdd={() => handleAdd(product)}
+                    onRemove={() => removeFromCart(product.id)}
+                    addLabel={tr.addItem}
+                    removeLabel={tr.removeItem}
+                  />
+                )
+              })}
+            </div>
+          </section>
+        ))}
 
-      {/* ── Footer copyright ── */}
-      <div className="text-center py-6">
-        <p className="text-[10px] text-gray-700 font-medium tracking-widest uppercase">
-          Powered by <span className="text-gray-600 font-bold">Smart</span><span className="text-orange-500/60 font-bold">Restau</span> · © {new Date().getFullYear()} All rights reserved
+        {/* ── Footer — single, subtle brand mention ── */}
+        <p className="text-center text-[10px] text-zinc-600 font-medium tracking-wider pt-2">
+          Powered by <span className="text-zinc-400 font-bold">Smart</span><span className="text-orange-500/70 font-bold">Restau</span> · © {new Date().getFullYear()}
         </p>
-      </div>
+      </main>
 
       {/* ── Bottom bar ── */}
-      <div className="fixed bottom-0 left-0 right-0 z-30 bg-gray-950/98 backdrop-blur border-t border-gray-800/80">
-        {/* SmartRestau copyright bar */}
-        <div className="flex items-center justify-center py-1 border-b border-gray-800/50">
-          <span className="text-[9px] text-gray-700 font-medium tracking-widest">
-            Powered by <span className="text-gray-600 font-bold">Smart</span><span className="text-orange-500/50 font-bold">Restau</span>
-          </span>
-        </div>
-        <div className="p-3 flex gap-2">
-        {/* Waiter button */}
-        <button onClick={() => setWaiterOpen(true)} aria-label={tr.callWaiter}
-          className="flex-shrink-0 w-14 h-12 rounded-xl bg-gray-800/80 border border-gray-700/50 flex flex-col items-center justify-center active:scale-90 transition-transform">
-          <span className="text-lg leading-none">🔔</span>
-          <span className="text-[9px] text-gray-400 mt-0.5 leading-none">{isRTL ? 'النادل' : lang === 'fr' ? 'Serveur' : lang === 'es' ? 'Mesero' : 'Waiter'}</span>
-        </button>
-
-        {/* Bill button */}
-        <button onClick={openBillModal} aria-label={tr.requestBill}
-          className="flex-shrink-0 w-14 h-12 rounded-xl bg-blue-600/15 border border-blue-500/30 flex flex-col items-center justify-center active:scale-90 transition-transform">
-          <span className="text-lg leading-none">🧾</span>
-          <span className="text-[9px] text-blue-300/80 mt-0.5 leading-none">{isRTL ? 'الحساب' : lang === 'fr' ? 'Addition' : lang === 'es' ? 'Cuenta' : 'Bill'}</span>
-        </button>
-
-        {/* Cart button */}
-        <button onClick={() => cartCount > 0 && setCartOpen(true)}
-          disabled={cartCount === 0}
-          className={`flex-1 h-12 rounded-xl font-bold text-sm flex items-center justify-between px-4 transition-all
-            ${cartCount > 0 ? 'bg-emerald-500 text-white active:scale-95 shadow-lg shadow-emerald-500/20' : 'bg-gray-800/80 text-gray-600 border border-gray-700/50'}`}
-        >
-          <span>{cartCount > 0 ? tr.viewCart : tr.menu}</span>
-          {cartCount > 0 && (
-            <span className="flex items-center gap-2">
-              <span className="bg-white/20 text-white text-xs font-black px-2 py-0.5 rounded-full">{cartCount}</span>
-              <span className="font-black">{money(cartTotal)}</span>
-            </span>
+      <div className="fixed bottom-0 inset-x-0 z-30 pointer-events-none">
+        <div className="mx-auto max-w-lg px-3 pt-6 bg-gradient-to-t from-zinc-950 via-zinc-950/90 to-transparent"
+          style={{ paddingBottom: 'calc(12px + env(safe-area-inset-bottom))' }}>
+          {cartCount === 0 && !trackerVisible && (
+            <p className="text-center text-[11px] text-zinc-500 mb-2">{tr.emptyHint}</p>
           )}
-        </button>
+          <div className="flex gap-2 pointer-events-auto">
+            <button onClick={() => setWaiterOpen(true)} aria-label={stripEmoji(tr.callWaiter)}
+              className={`h-14 rounded-2xl bg-zinc-800/95 ring-1 ring-white/[0.06] flex items-center justify-center gap-2 text-zinc-100 active:scale-95 transition-transform ${cartCount > 0 ? 'w-14 flex-col gap-0.5' : 'flex-1'}`}>
+              <Bell size={cartCount > 0 ? 18 : 18} />
+              <span className={cartCount > 0 ? 'text-[10px] text-zinc-400 leading-none' : 'text-sm font-bold'}>{tr.waiterShort}</span>
+            </button>
+
+            <button onClick={openBillModal} aria-label={stripEmoji(tr.requestBill)}
+              className={`h-14 rounded-2xl bg-zinc-800/95 ring-1 ring-white/[0.06] flex items-center justify-center gap-2 text-zinc-100 active:scale-95 transition-transform ${cartCount > 0 ? 'w-14 flex-col gap-0.5' : 'flex-1'}`}>
+              <Receipt size={18} />
+              <span className={cartCount > 0 ? 'text-[10px] text-zinc-400 leading-none' : 'text-sm font-bold'}>{tr.billShort}</span>
+            </button>
+
+            <AnimatePresence>
+              {cartCount > 0 && (
+                <motion.button
+                  key="cart"
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  onClick={() => setCartOpen(true)}
+                  className="flex-1 min-w-0 h-14 rounded-full bg-[var(--brand)] text-[var(--brand-fg)] font-bold text-sm flex items-center gap-3 ps-2 pe-4 shadow-xl shadow-black/40 active:scale-[0.98] transition-transform"
+                >
+                  <motion.span
+                    key={cartBump}
+                    initial={{ scale: 1.35 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: 'spring', stiffness: 500, damping: 15 }}
+                    className="relative w-10 h-10 shrink-0 rounded-full bg-black/15 flex items-center justify-center"
+                  >
+                    <ShoppingBag size={18} />
+                    <span className="absolute -top-1 -end-1 min-w-[20px] h-5 px-1 rounded-full bg-white text-zinc-900 text-[11px] font-extrabold flex items-center justify-center tabular-nums">{cartCount}</span>
+                  </motion.span>
+                  <span className="flex-1 min-w-0 truncate text-start">{tr.viewCart}</span>
+                  <span className="font-extrabold tabular-nums shrink-0">{money(cartTotal)}</span>
+                </motion.button>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
       </div>
 
-      {/* ── Cart Modal ── */}
-      <AnimatePresence>
-        {cartOpen && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-40 bg-black/60 flex items-end" onClick={() => setCartOpen(false)}>
-            <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', damping: 30 }}
-              className="w-full bg-gray-900 rounded-t-3xl p-5 max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-              <div className="w-12 h-1 bg-gray-700 rounded-full mx-auto mb-4" />
-              <h3 className="font-black text-lg mb-4">{tr.viewCart}</h3>
-              <div className="space-y-3 mb-4">
-                {cart.map(item => (
-                  <div key={item.productId} className="pb-3 border-b border-gray-800/60 last:border-0 last:pb-0">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-bold text-sm">{item.name}</p>
-                        <p className="text-xs text-gray-400">{money(item.price * item.quantity)}</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button onClick={() => removeFromCart(item.productId)} className="w-11 h-11 rounded-full bg-gray-700 flex items-center justify-center font-bold active:scale-90 transition-transform">−</button>
-                        <span className="w-5 text-center font-bold">{item.quantity}</span>
-                        <button onClick={() => setCart(prev => prev.map(c => c.productId === item.productId ? { ...c, quantity: c.quantity + 1 } : c))} className="w-11 h-11 rounded-full bg-emerald-500 flex items-center justify-center font-bold text-white active:scale-90 transition-transform">+</button>
-                      </div>
-                    </div>
-                    <input
-                      value={item.notes}
-                      onChange={e => setCart(prev => prev.map(c => c.productId === item.productId ? { ...c, notes: e.target.value } : c))}
-                      placeholder={tr.notePlaceholder}
-                      maxLength={140}
-                      className="mt-2 w-full bg-gray-800/60 text-white placeholder-gray-500 rounded-lg px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-emerald-500"
-                    />
+      {/* ── Product detail sheet ── */}
+      <ProductSheet
+        product={detail ? { id: detail.id, name: pName(detail), description: pDesc(detail), imageUrl: detail.imageUrl, price: detail.price } : null}
+        onClose={() => setDetail(null)}
+        onConfirm={(qty, note) => {
+          if (detail) { haptic(); addToCartQty(detail, qty, note); setCartBump(b => b + 1) }
+          setDetail(null)
+        }}
+        money={money}
+        initialNote={detailInCart?.notes ?? ''}
+        labels={{ addToOrder: tr.addToOrder, note: tr.noteLabel, notePlaceholder: tr.notePlaceholder, add: tr.addItem, remove: tr.removeItem, close: tr.close }}
+      />
+
+      {/* ── Cart sheet ── */}
+      <BottomSheet open={cartOpen} onClose={() => setCartOpen(false)} ariaLabel={tr.viewCart}>
+        <SheetHeader title={tr.viewCart} sub={tr.items(cartCount)} onClose={() => setCartOpen(false)} closeLabel={tr.close} />
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-5">
+          <div className="divide-y divide-white/[0.05]">
+            {cart.map(item => (
+              <div key={item.productId} className="py-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-bold text-sm text-white truncate">{item.name}</p>
+                    <p className="text-xs text-[var(--brand-text)] font-bold tabular-nums mt-0.5">{money(item.price * item.quantity)}</p>
                   </div>
-                ))}
+                  <div className="h-9 flex items-center rounded-full bg-white/[0.08] shrink-0">
+                    <button onClick={() => removeFromCart(item.productId)} aria-label={tr.removeItem}
+                      className="w-9 h-9 rounded-full flex items-center justify-center text-zinc-200 active:scale-90 transition-transform">−</button>
+                    <span className="min-w-[1.25rem] text-center font-extrabold text-sm tabular-nums">{item.quantity}</span>
+                    <button onClick={() => setCart(prev => prev.map(c => c.productId === item.productId ? { ...c, quantity: c.quantity + 1 } : c))} aria-label={tr.addItem}
+                      className="w-9 h-9 rounded-full bg-[var(--brand)] text-[var(--brand-fg)] flex items-center justify-center font-bold active:scale-90 transition-transform">+</button>
+                  </div>
+                </div>
+                <input
+                  value={item.notes}
+                  onChange={e => setCart(prev => prev.map(c => c.productId === item.productId ? { ...c, notes: e.target.value } : c))}
+                  placeholder={tr.notePlaceholder}
+                  maxLength={140}
+                  className="mt-2 w-full bg-white/[0.05] text-white placeholder-zinc-500 rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-[var(--brand)]"
+                />
               </div>
-              {CPN && (
-                <div className="border-t border-gray-700 pt-3 mb-2">
-                  {coupon ? (
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-emerald-400 font-bold">🏷️ {coupon.code} · {CPN.discount} −{coupon.discount.toFixed(2)}</span>
-                      <button onClick={() => { setCoupon(null); setCouponInput('') }} className="text-xs text-gray-400 underline">{CPN.remove}</button>
-                    </div>
-                  ) : (
-                    <div className="flex gap-2">
-                      <input value={couponInput} onChange={e => { setCouponInput(e.target.value.toUpperCase()); setCouponErr('') }}
-                        placeholder={CPN.ph} maxLength={20} dir="ltr"
-                        className="flex-1 min-w-0 bg-gray-800/60 text-white placeholder-gray-500 rounded-lg px-3 py-2 text-sm uppercase outline-none focus:ring-2 focus:ring-emerald-500" />
-                      <button onClick={() => checkCoupon(couponInput)} disabled={couponBusy || !couponInput.trim()}
-                        className="px-4 rounded-lg bg-gray-700 text-white text-sm font-bold disabled:opacity-50">{CPN.apply}</button>
-                    </div>
-                  )}
-                  {couponErr && <p className="text-xs text-red-400 mt-1">{couponErr}</p>}
+            ))}
+          </div>
+        </div>
+        <div className="shrink-0 px-5 pt-3 pb-4 border-t border-white/[0.05] space-y-3">
+          {CPN && (
+            <div>
+              {coupon ? (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-[var(--brand-text)] font-bold">🏷️ {coupon.code} · {CPN.discount} −{coupon.discount.toFixed(2)}</span>
+                  <button onClick={() => { setCoupon(null); setCouponInput('') }} className="text-xs text-zinc-400 underline">{CPN.remove}</button>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <input value={couponInput} onChange={e => { setCouponInput(e.target.value.toUpperCase()); setCouponErr('') }}
+                    placeholder={CPN.ph} maxLength={20} dir="ltr"
+                    className="flex-1 min-w-0 bg-white/[0.06] text-white placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm uppercase outline-none focus:ring-2 focus:ring-[var(--brand)]" />
+                  <button onClick={() => checkCoupon(couponInput)} disabled={couponBusy || !couponInput.trim()}
+                    className="px-4 rounded-xl bg-white/10 text-white text-sm font-bold disabled:opacity-40">{CPN.apply}</button>
                 </div>
               )}
-              <div className="border-t border-gray-700 pt-3 flex items-center justify-between mb-4">
-                <span className="font-bold">{tr.total}</span>
-                <span className="font-black text-emerald-400 text-lg">
-                  {coupon && <span className="text-gray-500 line-through text-sm me-2">{cartTotal.toFixed(2)}</span>}
-                  {money(payableTotal)}
-                </span>
-              </div>
-              <button onClick={placeOrder} disabled={placing}
-                className="w-full py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-white font-black text-base active:scale-95 transition-all">
-                {placing ? tr.placing : tr.placeOrder}
-              </button>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              {couponErr && <p className="text-xs text-red-400 mt-1">{couponErr}</p>}
+            </div>
+          )}
+          <div className="flex items-center justify-between">
+            <span className="font-bold text-zinc-300">{tr.total}</span>
+            <span className="font-extrabold text-white text-lg tabular-nums">
+              {coupon && <span className="text-zinc-500 line-through text-sm me-2">{cartTotal.toFixed(2)}</span>}
+              {money(payableTotal)}
+            </span>
+          </div>
+          <motion.button whileTap={{ scale: 0.98 }} onClick={placeOrder} disabled={placing}
+            className="w-full py-3.5 rounded-full bg-[var(--brand)] text-[var(--brand-fg)] disabled:opacity-50 font-extrabold text-base">
+            {placing ? tr.placing : tr.placeOrder}
+          </motion.button>
+        </div>
+      </BottomSheet>
 
-      {/* ── Bill Modal ── */}
-      <AnimatePresence>
-        {billOpen && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-40 bg-black/60 flex items-end" onClick={() => { setBillOpen(false); setBillPhase('choice') }}>
-            <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', damping: 30 }}
-              className="w-full bg-gray-900 rounded-t-3xl p-5" onClick={e => e.stopPropagation()}>
-              <div className="w-12 h-1 bg-gray-700 rounded-full mx-auto mb-4" />
-
-              {billPhase === 'choice' && (
-                <>
-                  <h3 className="font-black text-lg mb-5">{tr.billModalTitle}</h3>
-                  <div className="space-y-3">
-                    {/* Just me */}
-                    <button
-                      onClick={() => requestBill('SEATS', [scan!.seatNumber])}
-                      disabled={billSending}
-                      className="w-full bg-gray-800 hover:bg-gray-700 active:scale-95 rounded-2xl p-4 text-left transition-all flex items-center gap-4 disabled:opacity-50"
-                    >
-                      <span className="text-3xl">🙋</span>
-                      <div>
-                        <p className="font-bold text-white">{tr.billMyself}</p>
-                        <p className="text-xs text-gray-400">{tr.billMyselfSub} — {tr.seat} {scan!.seatNumber}</p>
-                      </div>
-                    </button>
-
-                    {/* Whole table */}
-                    <button
-                      onClick={() => requestBill('TABLE')}
-                      disabled={billSending}
-                      className="w-full bg-gray-800 hover:bg-gray-700 active:scale-95 rounded-2xl p-4 text-left transition-all flex items-center gap-4 disabled:opacity-50"
-                    >
-                      <span className="text-3xl">👨‍👩‍👧‍👦</span>
-                      <div>
-                        <p className="font-bold text-white">{tr.billTable}</p>
-                        <p className="text-xs text-gray-400">{tr.billTableSub}</p>
-                      </div>
-                    </button>
-
-                    {/* Choose seats */}
-                    {scan!.capacity > 1 && (
-                      <button
-                        onClick={() => setBillPhase('pick')}
-                        className="w-full bg-gray-800 hover:bg-gray-700 active:scale-95 rounded-2xl p-4 text-left transition-all flex items-center gap-4"
-                      >
-                        <span className="text-3xl">🪑</span>
-                        <div>
-                          <p className="font-bold text-white">{tr.billGroup}</p>
-                          <p className="text-xs text-gray-400">{tr.billGroupSub}</p>
-                        </div>
-                      </button>
-                    )}
-                  </div>
-                </>
-              )}
-
-              {billPhase === 'pick' && (
-                <>
-                  <div className="flex items-center gap-3 mb-5">
-                    <button onClick={() => setBillPhase('choice')} className="text-gray-400 text-sm">← Back</button>
-                    <h3 className="font-black text-lg">{tr.billSeatPicker}</h3>
-                  </div>
-                  <div className="grid grid-cols-4 gap-3 mb-6">
-                    {Array.from({ length: scan!.capacity }, (_, i) => i + 1).map(seat => (
-                      <button
-                        key={seat}
-                        onClick={() => toggleBillSeat(seat)}
-                        className={`h-14 rounded-2xl flex flex-col items-center justify-center text-sm font-black transition-all active:scale-90
-                          ${billSeats.includes(seat)
-                            ? 'bg-blue-500 text-white ring-2 ring-blue-300'
-                            : seat === scan!.seatNumber
-                              ? 'bg-blue-900/40 border-2 border-blue-500/40 text-blue-300'
-                              : 'bg-gray-800 text-gray-400'
-                          }`}
-                      >
-                        <span>{seat}</span>
-                        {seat === scan!.seatNumber && <span className="text-[9px] mt-0.5 opacity-70">me</span>}
-                      </button>
-                    ))}
-                  </div>
-                  <button
-                    onClick={() => requestBill('SEATS', billSeats)}
-                    disabled={billSending || billSeats.length === 0}
-                    className="w-full py-3.5 rounded-2xl bg-blue-500 hover:bg-blue-400 disabled:opacity-50 text-white font-black text-base active:scale-95 transition-all"
-                  >
-                    {billSending ? '…' : `${tr.billConfirm} (${billSeats.length} ${tr.seat})`}
-                  </button>
-                </>
-              )}
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* ── Waiter Modal ── */}
-      <AnimatePresence>
-        {waiterOpen && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-40 bg-black/60 flex items-end" onClick={() => setWaiterOpen(false)}>
-            <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', damping: 30 }}
-              className="w-full bg-gray-900 rounded-t-3xl p-5" onClick={e => e.stopPropagation()}>
-              <div className="w-12 h-1 bg-gray-700 rounded-full mx-auto mb-4" />
-              <h3 className="font-black text-lg mb-4">{tr.waiterTitle}</h3>
-              {waiterMsg && <p className="text-emerald-400 text-sm font-bold mb-3">{waiterMsg}</p>}
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { type: 'call_waiter' as const, emoji: '🔔', label: tr.callWaiter },
-                  { type: 'pay_cash'   as const, emoji: '💵', label: tr.payCash },
-                  { type: 'pay_tpe'   as const, emoji: '💳', label: tr.payCard },
-                  { type: 'water'     as const, emoji: '🧊', label: tr.water },
-                  { type: 'clean'     as const, emoji: '🧹', label: tr.clean },
-                  { type: 'question'  as const, emoji: '❓', label: tr.question },
-                ].map(btn => (
-                  <button key={btn.type} onClick={() => callWaiter(btn.type)}
-                    className="bg-gray-800 hover:bg-gray-700 active:scale-95 rounded-2xl p-4 text-left transition-all">
-                    <p className="text-2xl mb-1">{btn.emoji}</p>
-                    <p className="text-xs font-bold text-gray-200 leading-tight">{btn.label}</p>
-                  </button>
-                ))}
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* ── Payment Modal ── */}
-      <AnimatePresence>
-        {showPayment && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/70 flex items-end" onClick={() => setShowPayment(false)}>
-            <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', damping: 30 }}
-              className="w-full bg-gray-900 rounded-t-3xl p-5" onClick={e => e.stopPropagation()}>
-              <div className="w-12 h-1 bg-gray-700 rounded-full mx-auto mb-4" />
-              <div className="flex items-center justify-between mb-1">
-                <h3 className="font-black text-lg text-white">{tr.paymentTitle}</h3>
-                <button onClick={() => setShowPayment(false)} className="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center text-gray-400">✕</button>
-              </div>
-              <p className="text-sm text-gray-400 mb-5">{tr.paymentSub}</p>
+      {/* ── Bill sheet ── */}
+      <BottomSheet open={billOpen} onClose={() => { setBillOpen(false); setBillPhase('choice') }} ariaLabel={tr.billModalTitle}>
+        <div className="px-5 pb-5 overflow-y-auto">
+          {billPhase === 'choice' && (
+            <>
+              <h3 className="font-extrabold text-lg text-white mb-4">{tr.billModalTitle}</h3>
               <div className="space-y-2.5">
-                {paymentOptions.map((opt, i) => (
-                  <button key={i} onClick={opt.action}
-                    className="w-full bg-gray-800 hover:bg-gray-700 active:scale-95 rounded-2xl p-4 flex items-center gap-4 transition-all">
-                    <span className="text-2xl shrink-0">{opt.emoji}</span>
-                    <div className={isRTL ? 'text-right' : 'text-left'}>
-                      <p className="font-bold text-white text-sm">{opt.label}</p>
-                      <p className="text-xs text-gray-400">{opt.sub}</p>
-                    </div>
-                  </button>
-                ))}
-                <button onClick={() => { setShowPayment(false); openBillModal() }}
-                  className="w-full bg-blue-600/20 border border-blue-500/30 hover:bg-blue-600/30 active:scale-95 rounded-2xl p-4 flex items-center gap-4 transition-all">
-                  <span className="text-2xl shrink-0">🧾</span>
-                  <div className={isRTL ? 'text-right' : 'text-left'}>
-                    <p className="font-bold text-blue-300 text-sm">{tr.requestBill}</p>
-                    <p className="text-xs text-gray-400">{isRTL ? 'اختر طريقة الدفع وشارك الفاتورة' : lang === 'fr' ? 'Partager ou payer séparément' : 'Split or share the bill'}</p>
+                {/* Just me */}
+                <button
+                  onClick={() => requestBill('SEATS', [scan!.seatNumber])}
+                  disabled={billSending}
+                  className="w-full bg-white/[0.05] active:bg-white/[0.09] active:scale-[0.98] rounded-2xl p-4 text-start transition-all flex items-center gap-4 disabled:opacity-50"
+                >
+                  <span className="text-2xl w-11 h-11 rounded-full bg-white/[0.06] flex items-center justify-center shrink-0">🙋</span>
+                  <div className="min-w-0">
+                    <p className="font-bold text-white">{tr.billMyself}</p>
+                    <p className="text-xs text-zinc-400">{tr.billMyselfSub} — {tr.seat} {scan!.seatNumber}</p>
                   </div>
                 </button>
+
+                {/* Whole table */}
+                <button
+                  onClick={() => requestBill('TABLE')}
+                  disabled={billSending}
+                  className="w-full bg-white/[0.05] active:bg-white/[0.09] active:scale-[0.98] rounded-2xl p-4 text-start transition-all flex items-center gap-4 disabled:opacity-50"
+                >
+                  <span className="text-2xl w-11 h-11 rounded-full bg-white/[0.06] flex items-center justify-center shrink-0">👨‍👩‍👧‍👦</span>
+                  <div className="min-w-0">
+                    <p className="font-bold text-white">{tr.billTable}</p>
+                    <p className="text-xs text-zinc-400">{tr.billTableSub}</p>
+                  </div>
+                </button>
+
+                {/* Choose seats */}
+                {scan!.capacity > 1 && (
+                  <button
+                    onClick={() => setBillPhase('pick')}
+                    className="w-full bg-white/[0.05] active:bg-white/[0.09] active:scale-[0.98] rounded-2xl p-4 text-start transition-all flex items-center gap-4"
+                  >
+                    <span className="text-2xl w-11 h-11 rounded-full bg-white/[0.06] flex items-center justify-center shrink-0">🪑</span>
+                    <div className="min-w-0">
+                      <p className="font-bold text-white">{tr.billGroup}</p>
+                      <p className="text-xs text-zinc-400">{tr.billGroupSub}</p>
+                    </div>
+                  </button>
+                )}
               </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            </>
+          )}
 
-      {/* ── WhatsApp Opt-in popup — shown once after first order ── */}
-      <AnimatePresence>
-        {showOptIn && (
-          <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 bg-black/60" onClick={dismissOptIn} />
-            <motion.div
-              initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 28, stiffness: 260 }}
-              className="fixed bottom-0 left-0 right-0 z-50 bg-gray-900 rounded-t-3xl p-6"
-              dir={isRTL ? 'rtl' : 'ltr'}
-            >
-              <div className="w-10 h-1 bg-gray-700 rounded-full mx-auto mb-5" />
+          {billPhase === 'pick' && (
+            <>
+              <div className="flex items-center gap-2 mb-5">
+                <button onClick={() => setBillPhase('choice')} aria-label={tr.back}
+                  className="w-9 h-9 rounded-full bg-white/[0.07] flex items-center justify-center text-zinc-300 shrink-0">
+                  <BackIcon size={18} />
+                </button>
+                <h3 className="font-extrabold text-lg text-white">{tr.billSeatPicker}</h3>
+              </div>
+              <div className="grid grid-cols-4 gap-2.5 mb-6">
+                {Array.from({ length: Math.max(scan!.capacity, scan!.seatNumber, scan!.occupiedCount) }, (_, i) => i + 1).map(seat => (
+                  <button
+                    key={seat}
+                    onClick={() => toggleBillSeat(seat)}
+                    className={`h-14 rounded-2xl flex flex-col items-center justify-center text-sm font-extrabold transition-all active:scale-90
+                      ${billSeats.includes(seat)
+                        ? 'bg-[var(--brand)] text-[var(--brand-fg)]'
+                        : seat === scan!.seatNumber
+                          ? 'bg-[var(--brand-soft)] ring-1 ring-[var(--brand)] text-[var(--brand-text)]'
+                          : 'bg-white/[0.06] text-zinc-300'
+                      }`}
+                  >
+                    <span>{seat}</span>
+                    {seat === scan!.seatNumber && <span className="text-[9px] mt-0.5 opacity-80">{tr.me}</span>}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={() => requestBill('SEATS', billSeats)}
+                disabled={billSending || billSeats.length === 0}
+                className="w-full py-3.5 rounded-full bg-[var(--brand)] text-[var(--brand-fg)] disabled:opacity-50 font-extrabold text-base active:scale-[0.98] transition-all"
+              >
+                {billSending ? '…' : `${tr.billConfirm} (${billSeats.length} ${tr.seat})`}
+              </button>
+            </>
+          )}
+        </div>
+      </BottomSheet>
 
-              {optInDone ? (
-                <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-                  className="flex flex-col items-center gap-3 py-4">
-                  <span className="text-5xl">✅</span>
-                  <p className="text-white font-black text-lg">{tr.optInDone}</p>
-                </motion.div>
-              ) : (
-                <>
-                  <div className="mb-5">
-                    <p className="font-black text-white text-lg">{tr.optInTitle}</p>
-                    <p className="text-sm text-gray-400 mt-1">{tr.optInSub}</p>
-                  </div>
-                  <div className="space-y-3 mb-5">
-                    <input
-                      type="tel"
-                      value={optInPhone}
-                      onChange={e => setOptInPhone(e.target.value)}
-                      placeholder={tr.optInPhone.replace('{dial}', dialCode)}
-                      inputMode="tel"
-                      className="w-full bg-gray-800 text-white placeholder-gray-500 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500 font-mono"
-                    />
-                    <input
-                      type="text"
-                      value={optInName}
-                      onChange={e => setOptInName(e.target.value)}
-                      placeholder={tr.optInName}
-                      className="w-full bg-gray-800 text-white placeholder-gray-500 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500"
-                    />
-                  </div>
-                  <div className="flex gap-3">
-                    <button onClick={dismissOptIn}
-                      className="flex-1 py-3 rounded-xl bg-gray-800 text-gray-400 font-bold text-sm active:scale-95 transition-all">
-                      {tr.optInSkip}
-                    </button>
-                    <button onClick={submitOptIn} disabled={!optInPhone.trim() || optInSending}
-                      className="flex-[2] py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-white font-black text-sm active:scale-95 transition-all">
-                      {optInSending ? '…' : tr.optInConfirm}
-                    </button>
-                  </div>
-                </>
-              )}
+      {/* ── Waiter sheet ── */}
+      <BottomSheet open={waiterOpen} onClose={() => setWaiterOpen(false)} ariaLabel={tr.waiterTitle}>
+        <SheetHeader title={tr.waiterTitle} onClose={() => setWaiterOpen(false)} closeLabel={tr.close} />
+        <div className="px-5 pb-5">
+          {waiterMsg && <p className={`${waiterMsg.startsWith('⚠️') ? 'text-red-400' : 'text-[var(--brand-text)]'} text-sm font-bold mb-3`}>{waiterMsg}</p>}
+          <div className="grid grid-cols-2 gap-2.5">
+            {[
+              { type: 'call_waiter' as const, emoji: '🔔', label: tr.callWaiter },
+              { type: 'pay_cash'   as const, emoji: '💵', label: tr.payCash },
+              { type: 'pay_tpe'   as const, emoji: '💳', label: tr.payCard },
+              { type: 'water'     as const, emoji: '🧊', label: tr.water },
+              { type: 'clean'     as const, emoji: '🧹', label: tr.clean },
+              { type: 'question'  as const, emoji: '❓', label: tr.question },
+            ].map(btn => (
+              <button key={btn.type} onClick={() => callWaiter(btn.type)}
+                className="bg-white/[0.05] active:bg-white/[0.09] active:scale-95 rounded-2xl p-4 text-start transition-all flex flex-col gap-2 min-h-[92px]">
+                <span className="text-2xl leading-none" aria-hidden>{btn.emoji}</span>
+                <span className="text-[13px] font-bold text-zinc-100 leading-tight">{stripEmoji(btn.label)}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </BottomSheet>
+
+      {/* ── Payment sheet ── */}
+      <BottomSheet open={showPayment} onClose={() => setShowPayment(false)} z={50} ariaLabel={tr.paymentTitle}>
+        <SheetHeader title={tr.paymentTitle} sub={tr.paymentSub} onClose={() => setShowPayment(false)} closeLabel={tr.close} />
+        <div className="px-5 pb-5 space-y-2.5 overflow-y-auto">
+          {paymentOptions.map((opt, i) => (
+            <button key={i} onClick={opt.action}
+              className="w-full bg-white/[0.05] active:bg-white/[0.09] active:scale-[0.98] rounded-2xl p-4 flex items-center gap-4 transition-all text-start">
+              <span className="text-2xl shrink-0 w-11 h-11 rounded-full bg-white/[0.06] flex items-center justify-center" aria-hidden>{opt.emoji}</span>
+              <div className="min-w-0">
+                <p className="font-bold text-white text-sm">{stripEmoji(opt.label)}</p>
+                <p className="text-xs text-zinc-400">{opt.sub}</p>
+              </div>
+            </button>
+          ))}
+          <button onClick={() => { setShowPayment(false); openBillModal() }}
+            className="w-full bg-[var(--brand-soft)] ring-1 ring-[var(--brand-soft)] active:scale-[0.98] rounded-2xl p-4 flex items-center gap-4 transition-all text-start">
+            <span className="text-2xl shrink-0 w-11 h-11 rounded-full bg-white/[0.06] flex items-center justify-center" aria-hidden>🧾</span>
+            <div className="min-w-0">
+              <p className="font-bold text-[var(--brand-text)] text-sm">{stripEmoji(tr.requestBill)}</p>
+              <p className="text-xs text-zinc-400">{isRTL ? 'اختر طريقة الدفع وشارك الفاتورة' : lang === 'fr' ? 'Partager ou payer séparément' : 'Split or share the bill'}</p>
+            </div>
+          </button>
+        </div>
+      </BottomSheet>
+
+      {/* ── WhatsApp Opt-in — shown once after first order ── */}
+      <BottomSheet open={showOptIn} onClose={dismissOptIn} z={50} ariaLabel={tr.optInTitle}>
+        <div className="px-6 pb-6">
+          {optInDone ? (
+            <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+              className="flex flex-col items-center gap-3 py-4">
+              <span className="text-5xl">✅</span>
+              <p className="text-white font-extrabold text-lg">{tr.optInDone}</p>
             </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+          ) : (
+            <>
+              <div className="mb-5">
+                <p className="font-extrabold text-white text-lg">{tr.optInTitle}</p>
+                <p className="text-sm text-zinc-400 mt-1">{tr.optInSub}</p>
+              </div>
+              <div className="space-y-3 mb-5">
+                <input
+                  type="tel"
+                  value={optInPhone}
+                  onChange={e => setOptInPhone(e.target.value)}
+                  placeholder={tr.optInPhone.replace('{dial}', dialCode)}
+                  inputMode="tel"
+                  className="w-full bg-white/[0.06] text-white placeholder-zinc-500 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-[var(--brand)] font-mono"
+                />
+                <input
+                  type="text"
+                  value={optInName}
+                  onChange={e => setOptInName(e.target.value)}
+                  placeholder={tr.optInName}
+                  className="w-full bg-white/[0.06] text-white placeholder-zinc-500 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-[var(--brand)]"
+                />
+              </div>
+              <div className="flex gap-3">
+                <button onClick={dismissOptIn}
+                  className="flex-1 py-3 rounded-full bg-white/[0.07] text-zinc-300 font-bold text-sm active:scale-95 transition-all">
+                  {tr.optInSkip}
+                </button>
+                <button onClick={submitOptIn} disabled={!optInPhone.trim() || optInSending}
+                  className="flex-[2] py-3 rounded-full bg-[var(--brand)] text-[var(--brand-fg)] disabled:opacity-50 font-extrabold text-sm active:scale-95 transition-all">
+                  {optInSending ? '…' : tr.optInConfirm}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </BottomSheet>
 
       {/* ── Review prompt — shown after WhatsApp opt-in ── */}
-      <AnimatePresence>
-        {showReview && (
-          <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 bg-black/60" onClick={() => setShowReview(false)} />
-            <motion.div
-              initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 28, stiffness: 260 }}
-              className="fixed bottom-0 left-0 right-0 z-50 bg-gray-900 rounded-t-3xl p-6"
-              dir={isRTL ? 'rtl' : 'ltr'}
-            >
-              <div className="w-10 h-1 bg-gray-700 rounded-full mx-auto mb-5" />
-              <div className="flex flex-col items-center text-center gap-2 mb-6">
-                <span className="text-4xl">⭐</span>
-                <p className="font-black text-white text-lg">
-                  {lang === 'ar' ? 'أعجبك المكان؟' : lang === 'fr' ? 'Vous avez aimé ?' : 'Did you enjoy your visit?'}
-                </p>
-                <p className="text-sm text-gray-400">
-                  {lang === 'ar' ? 'ساعدنا بتقييمك — يستغرق ثانية فقط 🙏' : lang === 'fr' ? 'Laissez-nous un avis — ça prend 10 secondes 🙏' : 'Leave a quick review — takes 10 seconds 🙏'}
-                </p>
-              </div>
-              <div className="space-y-3 mb-4">
-                {cafeShare.googleMapsUrl && (
-                  <a href={cafeShare.googleMapsUrl} target="_blank" rel="noopener noreferrer"
-                    onClick={() => setShowReview(false)}
-                    className="flex items-center justify-center gap-3 w-full py-4 rounded-2xl bg-white text-gray-800 font-bold text-sm active:scale-95 transition-all shadow-lg">
-                    <svg width="20" height="20" viewBox="0 0 48 48" fill="none">
-                      <path d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 7.9 2.9l5.7-5.7C34.5 6.5 29.5 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.2-.1-2.5-.4-3.5z" fill="#FFC107"/>
-                      <path d="M6.3 14.7l6.6 4.8C14.5 16 19 12 24 12c3.1 0 5.8 1.1 7.9 2.9l5.7-5.7C34.5 6.5 29.5 4 24 4 16.3 4 9.7 8.3 6.3 14.7z" fill="#FF3D00"/>
-                      <path d="M24 44c5.3 0 10.1-1.9 13.8-5.1l-6.4-5.4C29.4 35.1 26.8 36 24 36c-5.3 0-9.7-3.3-11.3-8H6.1C9.4 37 16.1 44 24 44z" fill="#4CAF50"/>
-                      <path d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.4 5.4C37.4 38.6 44 33 44 24c0-1.2-.1-2.5-.4-3.5z" fill="#1976D2"/>
-                    </svg>
-                    {lang === 'ar' ? 'قيّمنا على Google Maps' : lang === 'fr' ? 'Nous noter sur Google Maps' : 'Rate us on Google Maps'}
-                  </a>
-                )}
-                {cafeShare.tripadvisorUrl && (
-                  <a href={cafeShare.tripadvisorUrl} target="_blank" rel="noopener noreferrer"
-                    onClick={() => setShowReview(false)}
-                    className="flex items-center justify-center gap-3 w-full py-4 rounded-2xl bg-[#34e0a1] text-gray-900 font-bold text-sm active:scale-95 transition-all shadow-lg">
-                    <span className="text-xl">🦉</span>
-                    {lang === 'ar' ? 'قيّمنا على Tripadvisor' : lang === 'fr' ? 'Nous noter sur Tripadvisor' : 'Rate us on Tripadvisor'}
-                  </a>
-                )}
-              </div>
-              <button onClick={() => setShowReview(false)}
-                className="w-full py-3 rounded-xl bg-gray-800 text-gray-400 font-bold text-sm active:scale-95 transition-all">
-                {lang === 'ar' ? 'لاحقاً' : lang === 'fr' ? 'Plus tard' : 'Maybe later'}
-              </button>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+      <BottomSheet open={showReview} onClose={() => setShowReview(false)} z={50}>
+        <div className="px-6 pb-6">
+          <div className="flex flex-col items-center text-center gap-2 mb-6">
+            <span className="text-4xl">⭐</span>
+            <p className="font-extrabold text-white text-lg">
+              {lang === 'ar' ? 'أعجبك المكان؟' : lang === 'fr' ? 'Vous avez aimé ?' : 'Did you enjoy your visit?'}
+            </p>
+            <p className="text-sm text-zinc-400">
+              {lang === 'ar' ? 'ساعدنا بتقييمك — يستغرق ثانية فقط 🙏' : lang === 'fr' ? 'Laissez-nous un avis — ça prend 10 secondes 🙏' : 'Leave a quick review — takes 10 seconds 🙏'}
+            </p>
+          </div>
+          <div className="space-y-3 mb-4">
+            {cafeShare.googleMapsUrl && (
+              <a href={cafeShare.googleMapsUrl} target="_blank" rel="noopener noreferrer"
+                onClick={() => setShowReview(false)}
+                className="flex items-center justify-center gap-3 w-full py-4 rounded-2xl bg-white text-gray-800 font-bold text-sm active:scale-95 transition-all shadow-lg">
+                <GoogleIcon />
+                {lang === 'ar' ? 'قيّمنا على Google Maps' : lang === 'fr' ? 'Nous noter sur Google Maps' : 'Rate us on Google Maps'}
+              </a>
+            )}
+            {cafeShare.tripadvisorUrl && (
+              <a href={cafeShare.tripadvisorUrl} target="_blank" rel="noopener noreferrer"
+                onClick={() => setShowReview(false)}
+                className="flex items-center justify-center gap-3 w-full py-4 rounded-2xl bg-[#34e0a1] text-gray-900 font-bold text-sm active:scale-95 transition-all shadow-lg">
+                <span className="text-xl">🦉</span>
+                {lang === 'ar' ? 'قيّمنا على Tripadvisor' : lang === 'fr' ? 'Nous noter sur Tripadvisor' : 'Rate us on Tripadvisor'}
+              </a>
+            )}
+          </div>
+          <button onClick={() => setShowReview(false)}
+            className="w-full py-3 rounded-full bg-white/[0.07] text-zinc-300 font-bold text-sm active:scale-95 transition-all">
+            {lang === 'ar' ? 'لاحقاً' : lang === 'fr' ? 'Plus tard' : 'Maybe later'}
+          </button>
+        </div>
+      </BottomSheet>
 
-      {/* ── Share popup — triggered when order is DELIVERED ── */}
-      <AnimatePresence>
-        {showShare && (
-          <>
-            {/* Backdrop */}
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 bg-black/50" onClick={() => { setShowShare(false); setSelectedShareImg(null) }} />
+      {/* ── Share sheet — triggered when order is DELIVERED ── */}
+      <BottomSheet
+        open={showShare}
+        onClose={() => { setShowShare(false); setSelectedShareImg(null) }}
+        z={50}
+        style={{ height: 'calc(50dvh + env(safe-area-inset-bottom))', minHeight: '300px' }}
+        ariaLabel={tr.shareDone}
+      >
+        <SheetHeader title={tr.shareDone} sub={tr.shareSub} onClose={() => { setShowShare(false); setSelectedShareImg(null) }} closeLabel={tr.close} />
 
-            {/* Bottom sheet — 50% height */}
-            <motion.div
-              initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 28, stiffness: 260 }}
-              className="fixed bottom-0 left-0 right-0 z-50 bg-gray-900 rounded-t-3xl flex flex-col"
-              style={{ height: '50dvh', minHeight: '280px' }}
-            >
-              {/* Handle + header */}
-              <div className="shrink-0 px-5 pt-3 pb-2">
-                <div className="w-10 h-1 bg-gray-700 rounded-full mx-auto mb-3" />
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-black text-white text-base">{tr.shareDone}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">{tr.shareSub}</p>
-                  </div>
-                  <button onClick={() => { setShowShare(false); setSelectedShareImg(null) }}
-                    className="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center text-gray-400 text-sm shrink-0">
-                    ✕
-                  </button>
+        {/* Hidden camera input */}
+        <input
+          ref={cameraInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="hidden"
+          onChange={handleCameraInput}
+        />
+
+        {/* Photos row: user photo (if any) + menu images + camera button */}
+        <div className="shrink-0 flex gap-3 px-5 overflow-x-auto py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+
+          {/* User-taken photo — shown first when available */}
+          {userPhoto && (
+            <div className="shrink-0 flex flex-col items-center gap-1">
+              <div className="relative">
+                <img src={userPhoto} alt="photo"
+                  className="w-20 h-20 rounded-2xl object-cover ring-2 ring-[var(--brand)]" />
+                {/* SmartRestau branding badge */}
+                <div className="absolute bottom-1 inset-x-1 bg-black/70 rounded-lg px-1 py-0.5 flex items-center justify-center gap-1">
+                  <span className="text-[8px] font-black text-white leading-none">Smart</span>
+                  <span className="text-[8px] font-black text-[#FF4B1F] leading-none">Resto</span>
                 </div>
+                <button onClick={() => setUserPhoto(null)}
+                  className="absolute -top-1 -end-1 w-5 h-5 bg-red-500 rounded-full text-white text-[10px] flex items-center justify-center font-bold">
+                  ✕
+                </button>
               </div>
+              <p className="text-[10px] text-[var(--brand-text)] w-20 text-center">
+                {lang === 'ar' ? '+ الشعار' : lang === 'fr' ? '+ branding' : '+ branding'}
+              </p>
+            </div>
+          )}
 
-              {/* Hidden camera input */}
-              <input
-                ref={cameraInputRef}
-                type="file"
-                accept="image/*"
-                capture="environment"
-                className="hidden"
-                onChange={handleCameraInput}
-              />
-
-              {/* Photos row: user photo (if any) + menu images + camera button */}
-              <div className="shrink-0 flex gap-3 px-5 overflow-x-auto py-2" style={{ scrollbarWidth: 'none' }}>
-
-                {/* User-taken photo — shown first when available */}
-                {userPhoto && (
-                  <div className="shrink-0 flex flex-col items-center gap-1">
-                    <div className="relative">
-                      <img src={userPhoto} alt="photo"
-                        className="w-20 h-20 rounded-2xl object-cover border-2 border-emerald-500 ring-2 ring-emerald-500/30" />
-                      {/* SmartRestau branding badge */}
-                      <div className="absolute bottom-1 left-1 right-1 bg-black/70 rounded-lg px-1 py-0.5 flex items-center justify-center gap-1">
-                        <span className="text-[8px] font-black text-white leading-none">Smart</span>
-                        <span className="text-[8px] font-black text-[#FF4B1F] leading-none">Resto</span>
-                      </div>
-                      <button onClick={() => setUserPhoto(null)}
-                        className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-white text-[10px] flex items-center justify-center font-bold">
-                        ✕
-                      </button>
+          {/* Menu item images — selectable */}
+          {shareImages.map((item, idx) => {
+            const isSelected = selectedShareImg === item.imageUrl
+            return (
+              <button key={idx} onClick={() => setSelectedShareImg(isSelected ? null : item.imageUrl)}
+                className="shrink-0 flex flex-col items-center gap-1 active:scale-95 transition-transform">
+                <div className="relative">
+                  <img src={item.imageUrl} alt={item.name} loading="lazy"
+                    className={`w-20 h-20 rounded-2xl object-cover transition-all ${
+                      isSelected
+                        ? 'ring-2 ring-[var(--brand)]'
+                        : 'ring-1 ring-white/10 opacity-70'
+                    }`} />
+                  {isSelected && (
+                    <div className="absolute inset-0 flex items-end justify-center pb-1.5">
+                      <span className="text-[10px] font-black bg-[var(--brand)] text-[var(--brand-fg)] px-1.5 py-0.5 rounded-full">✓</span>
                     </div>
-                    <p className="text-[10px] text-emerald-400 w-20 text-center">
-                      {lang === 'ar' ? '+ برندينغ' : lang === 'fr' ? '+ branding' : '+ branding'}
-                    </p>
-                  </div>
-                )}
-
-                {/* Menu item images — selectable */}
-                {shareImages.map((item, idx) => {
-                  const isSelected = selectedShareImg === item.imageUrl
-                  return (
-                    <button key={idx} onClick={() => setSelectedShareImg(isSelected ? null : item.imageUrl)}
-                      className="shrink-0 flex flex-col items-center gap-1 active:scale-95 transition-transform">
-                      <div className="relative">
-                        <img src={item.imageUrl} alt={item.name} loading="lazy"
-                          className={`w-20 h-20 rounded-2xl object-cover transition-all ${
-                            isSelected
-                              ? 'border-2 border-emerald-400 ring-2 ring-emerald-400/40'
-                              : 'border border-gray-700 opacity-70'
-                          }`} />
-                        {isSelected && (
-                          <div className="absolute inset-0 flex items-end justify-center pb-1.5">
-                            <span className="text-[10px] font-black bg-emerald-500 text-white px-1.5 py-0.5 rounded-full">✓</span>
-                          </div>
-                        )}
-                        {item.qty > 1 && (
-                          <span className="absolute -top-1 -right-1 bg-emerald-500 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center">
-                            {item.qty}
-                          </span>
-                        )}
-                      </div>
-                      <p className={`text-[10px] w-20 text-center truncate ${isSelected ? 'text-emerald-400 font-bold' : 'text-gray-400'}`}>
-                        {item.name}
-                      </p>
-                    </button>
-                  )
-                })}
-
-                {/* Cafe logo fallback */}
-                {shareImages.length === 0 && !userPhoto && scan?.cafeLogoUrl && (
-                  <div className="shrink-0 flex flex-col items-center gap-1">
-                    <img src={scan.cafeLogoUrl} alt={scan.cafeName}
-                      className="w-20 h-20 rounded-2xl object-contain bg-white/5 border border-gray-700" />
-                    <p className="text-[10px] text-gray-400 w-20 text-center truncate">{scan.cafeName}</p>
-                  </div>
-                )}
-
-                {/* Camera button — always last */}
-                <button onClick={() => cameraInputRef.current?.click()}
-                  className="shrink-0 flex flex-col items-center gap-1">
-                  <div className="w-20 h-20 rounded-2xl border-2 border-dashed border-gray-600 hover:border-emerald-500 bg-gray-800/60 flex flex-col items-center justify-center gap-1 transition-colors active:scale-95">
-                    <span className="text-2xl">📷</span>
-                    <span className="text-[10px] text-gray-400 font-bold">
-                      {lang === 'ar' ? 'صوّر' : lang === 'fr' ? 'Photo' : 'Photo'}
+                  )}
+                  {item.qty > 1 && (
+                    <span className="absolute -top-1 -end-1 bg-[var(--brand)] text-[var(--brand-fg)] text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center">
+                      {item.qty}
                     </span>
-                  </div>
-                </button>
-              </div>
+                  )}
+                </div>
+                <p className={`text-[10px] w-20 text-center truncate ${isSelected ? 'text-[var(--brand-text)] font-bold' : 'text-zinc-400'}`}>
+                  {item.name}
+                </p>
+              </button>
+            )
+          })}
 
-              {/* Share buttons */}
-              <div className="mt-auto px-5 pb-6 space-y-2.5">
-                <button onClick={handleShare}
-                  className="w-full bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white font-bold py-3 rounded-2xl flex items-center justify-center gap-2 transition-all text-sm">
-                  📤 {lang === 'ar' ? 'شارك مع أصدقائك' : lang === 'fr' ? 'Partager avec des amis' : 'Share with friends'}
-                </button>
-                <a href={`https://wa.me/?text=${encodeURIComponent(shareText)}`} target="_blank" rel="noreferrer"
-                  className="w-full bg-[#25D366] active:scale-95 text-white font-bold py-3 rounded-2xl flex items-center justify-center gap-2 text-sm">
-                  💬 WhatsApp
-                </a>
-                <button
-                  onClick={() => { setShowShare(false); setShowPayment(true) }}
-                  className="w-full bg-blue-600/20 border border-blue-500/40 text-blue-300 font-bold py-3 rounded-2xl flex items-center justify-center gap-2 text-sm active:scale-95 transition-all"
-                >
-                  {tr.goToPay}
-                </button>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+          {/* Cafe logo fallback */}
+          {shareImages.length === 0 && !userPhoto && scan?.cafeLogoUrl && (
+            <div className="shrink-0 flex flex-col items-center gap-1">
+              <img src={scan.cafeLogoUrl} alt={scan.cafeName}
+                className="w-20 h-20 rounded-2xl object-contain bg-white/[0.05] ring-1 ring-white/10" />
+              <p className="text-[10px] text-zinc-400 w-20 text-center truncate">{scan.cafeName}</p>
+            </div>
+          )}
+
+          {/* Camera button — always last */}
+          <button onClick={() => cameraInputRef.current?.click()}
+            className="shrink-0 flex flex-col items-center gap-1">
+            <div className="w-20 h-20 rounded-2xl border-2 border-dashed border-zinc-600 bg-white/[0.04] flex flex-col items-center justify-center gap-1 transition-colors active:scale-95">
+              <span className="text-2xl">📷</span>
+              <span className="text-[10px] text-zinc-400 font-bold">
+                {lang === 'ar' ? 'صوّر' : lang === 'fr' ? 'Photo' : 'Photo'}
+              </span>
+            </div>
+          </button>
+        </div>
+
+        {/* Share buttons */}
+        <div className="mt-auto px-5 pb-5 space-y-2.5">
+          <button onClick={handleShare}
+            className="w-full bg-[var(--brand)] text-[var(--brand-fg)] active:scale-[0.98] font-bold py-3 rounded-full flex items-center justify-center gap-2 transition-all text-sm">
+            📤 {lang === 'ar' ? 'شارك مع أصدقائك' : lang === 'fr' ? 'Partager avec des amis' : 'Share with friends'}
+          </button>
+          <a href={`https://wa.me/?text=${encodeURIComponent(shareText)}`} target="_blank" rel="noreferrer"
+            className="w-full bg-[#25D366] active:scale-[0.98] text-white font-bold py-3 rounded-full flex items-center justify-center gap-2 text-sm">
+            💬 WhatsApp
+          </a>
+          <button
+            onClick={() => { setShowShare(false); setShowPayment(true) }}
+            className="w-full bg-white/[0.07] text-zinc-100 font-bold py-3 rounded-full flex items-center justify-center gap-2 text-sm active:scale-[0.98] transition-all"
+          >
+            {tr.goToPay}
+          </button>
+        </div>
+      </BottomSheet>
     </div>
+  )
+}
+
+function GoogleIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 48 48" fill="none" aria-hidden>
+      <path d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 7.9 2.9l5.7-5.7C34.5 6.5 29.5 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.2-.1-2.5-.4-3.5z" fill="#FFC107"/>
+      <path d="M6.3 14.7l6.6 4.8C14.5 16 19 12 24 12c3.1 0 5.8 1.1 7.9 2.9l5.7-5.7C34.5 6.5 29.5 4 24 4 16.3 4 9.7 8.3 6.3 14.7z" fill="#FF3D00"/>
+      <path d="M24 44c5.3 0 10.1-1.9 13.8-5.1l-6.4-5.4C29.4 35.1 26.8 36 24 36c-5.3 0-9.7-3.3-11.3-8H6.1C9.4 37 16.1 44 24 44z" fill="#4CAF50"/>
+      <path d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.4 5.4C37.4 38.6 44 33 44 24c0-1.2-.1-2.5-.4-3.5z" fill="#1976D2"/>
+    </svg>
   )
 }
 
 export default function TablePage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-        <div className="w-10 h-10 rounded-full border-4 border-emerald-500 border-t-transparent animate-spin" />
-      </div>
-    }>
-      <TablePageInner />
-    </Suspense>
+    <MotionConfig reducedMotion="user">
+      <Suspense fallback={
+        <div className="min-h-[100dvh] bg-zinc-950 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-full border-4 border-emerald-500 border-t-transparent animate-spin motion-reduce:animate-none" />
+        </div>
+      }>
+        <TablePageInner />
+      </Suspense>
+    </MotionConfig>
   )
 }

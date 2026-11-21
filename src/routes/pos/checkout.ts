@@ -12,12 +12,14 @@ import logger from '../../logger'
 import authorizePOS from '../../middleware/authorizePOS'
 import requireUnlockedShift from '../../middleware/requireUnlockedShift'
 import requireActiveBilling from '../../middleware/requireActiveBilling'
+import requireOpenShiftForCash from '../../middleware/requireOpenShiftForCash'
 import { completeOrderFinancials, awardLoyaltyBestEffort } from '../../services/orderCompletion'
 import { emitOrderStatusUpdate } from '../../services/kds'
+import { releaseSettledSessions } from '../../tables/sessionRelease'
 
 const router = express.Router()
 
-router.patch('/api/pos/orders/:orderId/checkout', authorizePOS, requireUnlockedShift, requireActiveBilling, async (req: Request, res: Response) => {
+router.patch('/api/pos/orders/:orderId/checkout', authorizePOS, requireUnlockedShift, requireOpenShiftForCash, requireActiveBilling, async (req: Request, res: Response) => {
   try {
     const { staffId, cafeId } = req.staff!
     const orderId = req.params['orderId'] as string
@@ -84,6 +86,7 @@ router.patch('/api/pos/orders/:orderId/checkout', authorizePOS, requireUnlockedS
     }
 
     logger.info({ msg: 'POS checkout', orderId, staffId, totalCommission, method, billStatus })
+    await releaseSettledSessions(cafeId, order.tableId)
     return res.json({ order: updated })
   } catch (err) {
     logger.error({ msg: 'PATCH /api/pos/orders/:orderId/checkout error', err })
@@ -93,7 +96,7 @@ router.patch('/api/pos/orders/:orderId/checkout', authorizePOS, requireUnlockedS
 
 // ─── PATCH /api/pos/tables/:tableId/checkout — close ALL open orders for a table ──
 
-router.patch('/api/pos/tables/:tableId/checkout', authorizePOS, requireUnlockedShift, requireActiveBilling, async (req: Request, res: Response) => {
+router.patch('/api/pos/tables/:tableId/checkout', authorizePOS, requireUnlockedShift, requireOpenShiftForCash, requireActiveBilling, async (req: Request, res: Response) => {
   try {
     const { staffId, cafeId } = req.staff!
     const tableId = req.params['tableId'] as string
@@ -164,6 +167,7 @@ router.patch('/api/pos/tables/:tableId/checkout', authorizePOS, requireUnlockedS
     const ordersOut = updated.map(({ result }) => result)
 
     logger.info({ msg: 'POS table checkout', tableId, staffId, orderCount: ordersOut.length, totalPrice })
+    await releaseSettledSessions(cafeId, tableId)
     return res.json({ orders: ordersOut, totalPrice, items })
   } catch (err) {
     logger.error({ msg: 'PATCH /api/pos/tables/:tableId/checkout error', err })

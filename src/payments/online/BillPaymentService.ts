@@ -14,6 +14,7 @@ import type { Server as SocketIOServer } from 'socket.io'
 import prisma from '../../prisma'
 import logger from '../../logger'
 import { decryptSecret } from './secretBox'
+import { releaseSettledSessions } from '../../tables/sessionRelease'
 import { getPlanAccess } from '../../billing/planAccess'
 import { createCheckout, fetchStatus, minorFactor, type OnlineProvider, ONLINE_PROVIDERS } from './gateways'
 
@@ -130,6 +131,10 @@ export async function verifyBillPayment(payId: string, io: SocketIOServer | null
     data:  { isPaid: true, paymentMethod: 'ONLINE', billStatus: 'CLOSED_VIRTUAL', paidAt: new Date() },
   })
   logger.info({ msg: 'Bill paid online', payId, cafeId: pay.cafeId, provider, amount: pay.amount, orders: settled.count })
+  {
+    const first = await prisma.order.findFirst({ where: { id: { in: pay.orderIds } }, select: { tableId: true } })
+    await releaseSettledSessions(pay.cafeId, first?.tableId)
+  }
 
   if (io) {
     const orders = await prisma.order.findMany({ where: { id: { in: pay.orderIds } }, select: { id: true, tableId: true } })

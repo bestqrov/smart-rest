@@ -8,6 +8,24 @@ import prisma from '../prisma'
 
 const router = express.Router()
 
+// Legacy per-seat QR codes (/<sub>/t/<n>/s/<seat>?token=<seatToken>) now
+// redirect to the single table QR flow, so old printed stickers keep working
+// but go through seat assignment, release at checkout and the current UI.
+router.get('/api/public/seat-redirect', async (req: Request, res: Response) => {
+  try {
+    const token = String(req.query.token ?? '').trim()
+    if (!token || token.length > 64) return res.status(400).json({ error: 'token required' })
+    const seat = await prisma.seat.findUnique({
+      where:  { qrToken: token },
+      select: { table: { select: { tableNumber: true, qrToken: true, isActive: true, cafe: { select: { subdomain: true } } } } },
+    })
+    if (!seat?.table?.isActive) return res.status(404).json({ error: 'Seat not found' })
+    return res.json({ subdomain: seat.table.cafe.subdomain, tableNumber: seat.table.tableNumber, tableToken: seat.table.qrToken })
+  } catch {
+    return res.status(500).json({ error: 'Server error' })
+  }
+})
+
 router.get('/api/public/cafe/:subdomain', async (req: Request, res: Response) => {
   try {
     const subdomain = (req.params.subdomain as string).trim().toLowerCase()

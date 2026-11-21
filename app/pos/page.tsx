@@ -1103,7 +1103,8 @@ export default function POSPage() {
             <p className="text-gray-400 text-sm mb-5">{L('split_select')}</p>
 
             <div className="grid grid-cols-4 gap-3 mb-6">
-              {Array.from({ length: selTable.capacity || 6 }, (_, i) => i + 1).map(seat => (
+              {/* +2: tables accept up to 2 extra guests beyond their seats (SEAT_OVERFLOW) */}
+              {Array.from({ length: (selTable.capacity || 4) + 2 }, (_, i) => i + 1).map(seat => (
                 <button
                   key={seat}
                   onClick={() => setSplitSeats(prev =>

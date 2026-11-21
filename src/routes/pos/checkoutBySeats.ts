@@ -12,15 +12,18 @@
 import express, { Request, Response } from 'express'
 import { Server as SocketIOServer } from 'socket.io'
 import prisma from '../../prisma'
+import { releaseSettledSessions } from '../../tables/sessionRelease'
 import logger from '../../logger'
 import authorizePOS from '../../middleware/authorizePOS'
 import requireActiveBilling from '../../middleware/requireActiveBilling'
+import requireUnlockedShift from '../../middleware/requireUnlockedShift'
+import requireOpenShiftForCash from '../../middleware/requireOpenShiftForCash'
 import { completeOrderFinancials, awardLoyaltyBestEffort } from '../../services/orderCompletion'
 import { emitOrderStatusUpdate } from '../../services/kds'
 
 const router = express.Router()
 
-router.post('/api/pos/checkout/by-seats', authorizePOS, requireActiveBilling, async (req: Request, res: Response) => {
+router.post('/api/pos/checkout/by-seats', authorizePOS, requireUnlockedShift, requireOpenShiftForCash, requireActiveBilling, async (req: Request, res: Response) => {
   try {
     const { staffId, cafeId } = req.staff!
     const {
@@ -152,6 +155,7 @@ router.post('/api/pos/checkout/by-seats', authorizePOS, requireActiveBilling, as
       billStatus,
     })
 
+    await releaseSettledSessions(cafeId, tableId)
     return res.json({
       closed:      closedOrders.length,
       scope,

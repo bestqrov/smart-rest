@@ -495,6 +495,12 @@ model Product {
   nameEs         String   @default("")
   nameDe         String   @default("")
   description    String?
+  // Optional translations of the description, shown by guest language;
+  // `description` stays the main text used when a translation is empty.
+  descriptionAr  String   @default("")
+  descriptionEn  String   @default("")
+  descriptionFr  String   @default("")
+  descriptionEs  String   @default("")
   price          Float
   // PIECE (default, price = per unit) | WEIGHT (price = per KG — sold by
   // weight at the counter, e.g. pastries/cakes; quantity on OrderItem is
