@@ -30,7 +30,7 @@ const T = {
     for: {
       STARTER: 'عربات الطعام والكافيهات الصغيرة والمطاعم الناشئة',
       PRO: 'المطاعم والكافيهات المزدحمة التي تريد أتمتة كاملة',
-      ENTERPRISE: 'المطاعم الكبيرة والسلاسل متعددة الفروع',
+      ENTERPRISE: 'المطاعم الكبيرة والمجموعات',
     } as Record<PlanId, string>,
   },
   en: {
@@ -43,7 +43,7 @@ const T = {
     for: {
       STARTER: 'Food trucks, small cafés and new restaurants',
       PRO: 'Busy restaurants and cafés that want full automation',
-      ENTERPRISE: 'Large restaurants, chains and multi-branch groups',
+      ENTERPRISE: 'Large restaurants and groups',
     } as Record<PlanId, string>,
   },
   fr: {
@@ -56,7 +56,7 @@ const T = {
     for: {
       STARTER: 'Food trucks, petits cafés et restaurants qui démarrent',
       PRO: 'Restaurants et cafés très fréquentés, automatisation complète',
-      ENTERPRISE: 'Grands restaurants, chaînes et groupes multi-sites',
+      ENTERPRISE: 'Grands restaurants et groupes',
     } as Record<PlanId, string>,
   },
 } as const
@@ -77,7 +77,6 @@ const ROWS: Row[] = [
     inc: [{ ar: 'ذاتي', en: 'Self-service', fr: 'En autonomie' },
           { ar: 'مجاناً — فريقنا يدخله', en: 'Free — done by our team', fr: 'Offerte — par notre équipe' },
           { ar: 'مجاناً + تصميم هوية المنيو', en: 'Free + menu branding', fr: 'Offerte + identité du menu' }] },
-  { ar: 'إدارة عدة فروع', en: 'Multi-branch management', fr: 'Gestion multi-sites', inc: [false, false, true] },
   { ar: 'الدعم', en: 'Support', fr: 'Support',
     inc: [{ ar: 'واتساب وبريد', en: 'WhatsApp & email', fr: 'WhatsApp et e-mail' },
           { ar: 'أولوية عبر واتساب', en: 'Priority on WhatsApp', fr: 'Prioritaire sur WhatsApp' },
