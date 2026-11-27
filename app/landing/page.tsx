@@ -51,7 +51,7 @@ const T: Record<Lang, Record<string, string | string[]>> = {
     trustBar: 'Arabic & English · mada, Apple Pay & cards · WhatsApp',
     badges: ['No contract', 'Quick setup', 'Arabic & English', 'No credit card'],
     whoLabel: 'Who Is It For', whoTitle: 'Better Results for Every F&B Business',
-    whoSub: 'From a single café to a multi-branch chain — faster service, fewer mistakes, clearer numbers',
+    whoSub: 'For restaurants, cafés and snack bars — faster service, fewer mistakes, clearer numbers',
     howLabel: 'How It Works', howTitle: 'Up and Running in 5 Steps',
     howSub: 'From signup to taking orders — without long training or IT projects',
     featLabel: 'Modules', featTitle: 'Everything You Need to Run the Day',
@@ -119,7 +119,7 @@ const T: Record<Lang, Record<string, string | string[]>> = {
     trustBar: 'Arabe & anglais · mada, Apple Pay & cartes · WhatsApp',
     badges: ['Sans engagement', 'Mise en place rapide', 'Arabe & anglais', 'Sans carte bancaire'],
     whoLabel: 'Pour Qui', whoTitle: 'De Meilleurs Résultats pour Chaque Business F&B',
-    whoSub: "Du café unique à la chaîne multi-sites — service plus rapide, moins d'erreurs, chiffres plus clairs",
+    whoSub: "Pour restaurants, cafés et snacks — service plus rapide, moins d'erreurs, chiffres plus clairs",
     howLabel: 'Comment Ça Marche', howTitle: 'Opérationnel en 5 Étapes',
     howSub: "De l'inscription aux premières commandes — sans longue formation ni projet informatique",
     featLabel: 'Modules', featTitle: "Tout ce qu'il Faut pour Gérer la Journée",
@@ -187,7 +187,7 @@ const T: Record<Lang, Record<string, string | string[]>> = {
     trustBar: 'العربية والإنجليزية · مدى وApple Pay والبطاقات · واتساب',
     badges: ['بدون عقد', 'إعداد سريع', 'عربي وإنجليزي', 'بدون بطاقة ائتمان'],
     whoLabel: 'لمن هذه المنصة', whoTitle: 'نتائج أفضل لكل منشآت الأغذية والمشروبات',
-    whoSub: 'من مقهى واحد إلى سلسلة متعددة الفروع — خدمة أسرع، أخطاء أقل، وأرقام أوضح',
+    whoSub: 'للمطاعم والمقاهي والسناك — خدمة أسرع، أخطاء أقل، وأرقام أوضح',
     howLabel: 'كيف تعمل المنصة', howTitle: 'جاهز للعمل في 5 خطوات',
     howSub: 'من التسجيل إلى استقبال الطلبات — دون تدريب طويل أو مشاريع تقنية معقدة',
     featLabel: 'الوحدات', featTitle: 'كل ما تحتاجه لإدارة يومك',
@@ -292,20 +292,6 @@ const PERSONAS = [
     ar:  { title: 'مقهى وسناك',            pain: 'الخدمة البطيئة تضر بالولاء والإيراد',  gain: 'طلب عبر QR، خدمة أسرع، ومتوسط فاتورة أعلى' },
     border: 'border-amber-200 hover:border-amber-500', iconBg: 'bg-amber-50', iconColor: 'text-amber-600', gainColor: 'text-amber-700',
   },
-  {
-    icon: Building2,
-    en:  { title: 'Hotel & Resort',        pain: 'Room service chaos & billing errors', gain: 'Automated operations, real-time reports, less revenue leakage' },
-    fr:  { title: 'Hôtel & Resort',        pain: 'Chaos du service en chambre et erreurs de facturation', gain: 'Opérations automatisées, rapports en temps réel, moins de pertes' },
-    ar:  { title: 'فندق ومنتجع',           pain: 'فوضى الغرف وأخطاء الفواتير',          gain: 'عمليات مؤتمتة، تقارير فورية، وتسرّب أقل في الإيرادات' },
-    border: 'border-sky-200 hover:border-sky-500', iconBg: 'bg-sky-50', iconColor: 'text-sky-600', gainColor: 'text-sky-700',
-  },
-  {
-    icon: ShoppingBag,
-    en:  { title: 'Chain & Food Court',    pain: 'Managing multiple outlets is hard',   gain: 'AI command center — all branches, one dashboard, full control' },
-    fr:  { title: 'Chaîne & Food Court',   pain: 'Gérer plusieurs points de vente',     gain: 'Poste de commande IA — toutes les branches, un seul tableau de bord' },
-    ar:  { title: 'سلسلة وفود كورت',       pain: 'إدارة فروع متعددة صعبة ومرهقة',      gain: 'مركز قيادة ذكي — كل الفروع من لوحة تحكم واحدة' },
-    border: 'border-rose-200 hover:border-rose-500', iconBg: 'bg-rose-50', iconColor: 'text-rose-600', gainColor: 'text-rose-700',
-  },
 ]
 
 const BUSINESS_CARDS = [
@@ -332,12 +318,6 @@ const BUSINESS_CARDS = [
     en: { title: 'Traiteur', desc: 'Events, quotations, planning and production.' },
     fr: { title: 'Traiteur', desc: 'Événements, devis, planification et production.' },
     ar: { title: 'تريتور',   desc: 'مناسبات، عروض أسعار، تخطيط وإنتاج.' },
-  },
-  {
-    emoji: '🏨',
-    en: { title: 'Hôtel', desc: 'Restaurant, room service and hospitality workflows.' },
-    fr: { title: 'Hôtel', desc: 'Restaurant, room service et opérations hôtelières.' },
-    ar: { title: 'فندق',  desc: 'المطعم، خدمة الغرف وعمليات الضيافة.' },
   },
   {
     emoji: '🥐',
@@ -1306,7 +1286,7 @@ export default function LandingPage() {
             <h2 className="text-4xl font-extrabold text-gray-900">{t('whoTitle')}</h2>
             <p className="mt-3 text-gray-500 text-lg max-w-2xl mx-auto">{t('whoSub')}</p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 max-w-4xl mx-auto">
             {PERSONAS.map((p, i) => {
               const Icon = p.icon
               const d = tl(p, lang)

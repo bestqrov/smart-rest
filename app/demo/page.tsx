@@ -24,7 +24,6 @@ const BUSINESS_TYPES: BusinessType[] = [
   { value: 'TRAITEUR',   icon: '🎂', label: 'تريتور',     desc: 'فعاليات' },
   { value: 'PASTRY',     icon: '🧁', label: 'حلويات',     desc: 'مخبزة' },
   { value: 'FOOD_TRUCK', icon: '🚚', label: 'فود تراك',   desc: 'متنقل' },
-  { value: 'HOTEL',      icon: '🏨', label: 'فندق',       desc: 'إقامة' },
 ]
 
 // ─── Feature cards data ───────────────────────────────────────────────────────

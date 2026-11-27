@@ -29,7 +29,7 @@ type Lang = 'ar' | 'fr' | 'en' | 'es'
 const D = {
   page_title:       { ar: 'أنشئ حسابك', fr: 'Créer votre compte', en: 'Create your account', es: 'Crea tu cuenta' },
   page_subtitle:    { ar: 'جاهز في أقل من دقيقتين · بدون بطاقة بنكية', fr: 'Prêt en moins de 2 min · Sans carte bancaire', en: 'Ready in under 2 minutes · No credit card', es: 'Listo en menos de 2 min · Sin tarjeta' },
-  brand_tagline:    { ar: 'الحل الذكي الشامل للمطاعم والفنادق والتريتور', fr: 'La solution intelligente pour restaurants, hôtels & traiteurs', en: 'The all-in-one platform for restaurants, hotels & caterers', es: 'La plataforma inteligente para restaurantes, hoteles y catering' },
+  brand_tagline:    { ar: 'الحل الذكي الشامل للمطاعم والمقاهي والتريتور', fr: 'La solution intelligente pour restaurants, cafés & traiteurs', en: 'The all-in-one platform for restaurants, cafés & caterers', es: 'La plataforma inteligente para restaurantes, cafeterías y catering' },
   label_name:       { ar: 'اسم المطعم', fr: 'Nom du restaurant', en: 'Restaurant name', es: 'Nombre del restaurante' },
   ph_name:          { ar: 'مثال: مقهى النجمة', fr: 'Ex. Café des Étoiles', en: 'E.g. The Golden Star', es: 'Ej. Café La Estrella' },
   label_email:      { ar: 'البريد الإلكتروني', fr: 'Adresse e-mail', en: 'E-mail address', es: 'Correo electrónico' },
