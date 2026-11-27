@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, ReactNode } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
-  LayoutDashboard, Store, CreditCard,
+  LayoutDashboard, Store, CreditCard, Building2,
   Brain, ShieldCheck, LogOut,
   ChevronDown, ChevronLeft, ChevronRight, Menu, X, KeyRound, HeartPulse,
   ShoppingBag, Tag, Handshake, Package, Truck, ClipboardList, Warehouse, Contact, Globe, FileText, Landmark,
@@ -25,6 +25,7 @@ const NAV = [
     items: [
       { href: '/superadmin/restaurants', icon: Store,   label: 'المطاعم' },
       { href: '/superadmin/client',      icon: Contact, label: 'حسابات الدخول' },
+      { href: '/superadmin/branches',    icon: Building2, label: 'الفروع' },
     ],
   },
   {

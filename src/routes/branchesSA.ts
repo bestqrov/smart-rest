@@ -1,8 +1,19 @@
 import { Router } from 'express'
 import { addBranch, removeBranch, listBranches, getBranchGroupReport } from '../branches/BranchService'
 import { requireSuperAdmin, saEmail } from './_billingAuthGuard'
+import prisma from '../prisma'
 
 const router = Router()
+
+// GET /api/superadmin/branches — every venue (minimal) for the linking screen
+router.get('/api/superadmin/branches', async (req, res) => {
+  if (!requireSuperAdmin(req, res)) return
+  const cafes = await prisma.cafe.findMany({
+    select: { id: true, name: true, businessName: true, subdomain: true, planId: true, parentCafeId: true, isDemo: true },
+    orderBy: { name: 'asc' },
+  })
+  res.json({ cafes })
+})
 
 // GET /api/superadmin/branches/:parentCafeId
 router.get('/api/superadmin/branches/:parentCafeId', async (req, res) => {

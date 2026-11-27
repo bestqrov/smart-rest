@@ -6,7 +6,7 @@ import {
   LayoutDashboard, UtensilsCrossed, QrCode, Share2, CreditCard, ChevronDown,
   Users, BarChart3, Sparkles, Settings, TrendingUp, Film,
   Package, Lock, LayoutGrid, Wrench, Receipt, ShoppingCart, CalendarDays, Radio, ShieldCheck,
-  Store, ChevronRight, CalendarClock, Gift, Cake, PartyPopper, Ticket,
+  Store, ChevronRight, CalendarClock, Gift, Cake, PartyPopper, Ticket, Building2,
 } from 'lucide-react'
 import type { AdminT } from '@/lib/adminI18n'
 
@@ -43,6 +43,7 @@ export const NAV_GROUPS: NavGroup[] = [
     { href: '/admin/requisitions',  icon: ShoppingCart, key: 'requisitions' },
     { href: '/admin/equipment',     icon: Wrench,       key: 'equipment'    },
     { href: '/admin/billing',       icon: CreditCard,   key: 'billing'      },
+    { href: '/admin/branches',      icon: Building2,    key: 'branches'     },
   ]},
   { group: 'growth', items: [
     { href: '/admin/loyalty',       icon: Gift,        key: 'loyalty'       },

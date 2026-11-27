@@ -9,7 +9,6 @@
 import prisma from '../prisma'
 import { getPlanAccess } from '../billing/planAccess'
 import { publishStandardEvent } from '../core'
-import { isFeatureAvailable } from '../tenant/services/FeatureResolutionService'
 
 async function getCafeOrThrow(cafeId: string) {
   const cafe = await prisma.cafe.findUnique({ where: { id: cafeId } })
@@ -24,8 +23,6 @@ export async function addBranch(parentCafeId: string, branchCafeId: string, perf
   if (!(await getPlanAccess(parentCafeId)).features.multiBranch) {
     throw new Error('Multi-branch requires the Enterprise plan')
   }
-  const allowed = await isFeatureAvailable(parentCafeId, 'multiLocation')
-  if (!allowed) throw new Error('Multi-location is not enabled on the parent cafe\'s plan')
 
   const [parent, branch] = await Promise.all([getCafeOrThrow(parentCafeId), getCafeOrThrow(branchCafeId)])
 
