@@ -5,6 +5,7 @@ import bcrypt from 'bcrypt'
 
 import logger from '../logger'
 import prisma from '../prisma'
+import { Prisma } from '@prisma/client'
 import { recordInvoiceCommission } from '../affiliate/AgencyService'
 import { issueDueInvoiceFor } from '../billing/subscriptionBilling'
 import { JWT_SECRET } from '../config'
@@ -20,53 +21,55 @@ import { isSuperAdminRequest } from '../middleware/superAdminAuth'
 const router = express.Router()
 
 // ─── Full cascade delete for a single cafe ────────────────────────────────────
+// Generic: walks the Prisma schema (DMMF) so every model with a `cafeId` is
+// swept — new models can't be forgotten. Uses raw MongoDB deletes because
+// Prisma's emulated referential integrity (Restrict) would otherwise block
+// the delete whenever any related row was missed.
+const DMMF_MODELS = Prisma.dmmf.datamodel.models
+const collectionOf = (name: string) => DMMF_MODELS.find(m => m.name === name)?.dbName ?? name
+const CAFE_SCOPED = DMMF_MODELS.filter(m => m.name !== 'Cafe' && m.fields.some(f => f.name === 'cafeId'))
+const CAFE_SCOPED_NAMES = new Set(CAFE_SCOPED.map(m => m.name))
+// Child rows that point at a cafe-scoped parent but carry no cafeId themselves
+// (e.g. OrderItem → Order, Product → Category).
+const CHILD_LINKS = DMMF_MODELS
+  .filter(m => m.name !== 'Cafe' && !CAFE_SCOPED_NAMES.has(m.name))
+  .flatMap(m => m.fields
+    .filter(f => f.kind === 'object' && CAFE_SCOPED_NAMES.has(f.type) && (f.relationFromFields?.length ?? 0) === 1)
+    .map(f => ({ model: m.name, fk: f.relationFromFields![0]!, parent: f.type })))
+
+type OidDoc = { _id: { $oid: string } }
+
+async function rawDelete(model: string, filter: Record<string, unknown>) {
+  await prisma.$runCommandRaw({
+    delete: collectionOf(model),
+    deletes: [{ q: filter, limit: 0 }],
+  } as never)
+}
+
 async function deleteCafeCascade(id: string) {
-  await prisma.cafeCustomer.deleteMany({ where: { cafeId: id } })
-  await prisma.activeSession.deleteMany({ where: { cafeId: id } })
-  await prisma.clientSession.deleteMany({ where: { cafeId: id } })
-  await prisma.loyaltyAccount.deleteMany({ where: { cafeId: id } })
-  await prisma.reviewGallery.deleteMany({ where: { cafeId: id } })
-  await prisma.marketingCampaign.deleteMany({ where: { cafeId: id } })
-  await prisma.event.deleteMany({ where: { cafeId: id } })
-  await prisma.guest.deleteMany({ where: { cafeId: id } })
-  await prisma.zone.deleteMany({ where: { cafeId: id } })
-  await prisma.maintenanceRecord.deleteMany({ where: { cafeId: id } })
-  await prisma.equipment.deleteMany({ where: { cafeId: id } })
-  await prisma.supplierInvoice.deleteMany({ where: { cafeId: id } })
-  await prisma.purchaseRequisition.deleteMany({ where: { cafeId: id } })
-  await prisma.purchaseOrder.deleteMany({ where: { cafeId: id } })
-  await prisma.inventorySupplier.deleteMany({ where: { cafeId: id } })
-  await prisma.walletLog.deleteMany({ where: { cafeId: id } })
-  await prisma.fraudAlert.deleteMany({ where: { cafeId: id } })
-  await prisma.feedback.deleteMany({ where: { cafeId: id } })
-  await prisma.qrScan.deleteMany({ where: { cafeId: id } })
-  await prisma.printerLog.deleteMany({ where: { cafeId: id } })
-  await prisma.onlinePayment.deleteMany({ where: { cafeId: id } })
-  await prisma.paymentRequest.deleteMany({ where: { cafeId: id } })
-  await prisma.billingInvoice.deleteMany({ where: { cafeId: id } })
-  await prisma.systemNotification.deleteMany({ where: { cafeId: id } })
-  await prisma.loyaltyReward.deleteMany({ where: { cafeId: id } })
-  await prisma.billRequest.deleteMany({ where: { cafeId: id } })
-  await prisma.waiterCall.deleteMany({ where: { cafeId: id } })
-  await prisma.reservation.deleteMany({ where: { cafeId: id } })
-  await prisma.expense.deleteMany({ where: { cafeId: id } })
-  await prisma.stockItem.deleteMany({ where: { cafeId: id } })
-  await prisma.recipe.deleteMany({ where: { cafeId: id } })
-  const orderIds = (await prisma.order.findMany({ where: { cafeId: id }, select: { id: true } })).map(o => o.id)
-  if (orderIds.length > 0) await prisma.orderItem.deleteMany({ where: { orderId: { in: orderIds } } })
-  await prisma.order.deleteMany({ where: { cafeId: id } })
-  await prisma.cashierShift.deleteMany({ where: { cafeId: id } })
-  await prisma.waiterShift.deleteMany({ where: { cafeId: id } })
-  await prisma.waiterQRToken.deleteMany({ where: { cafeId: id } })
-  await prisma.billingTier.deleteMany({ where: { cafeId: id } })
-  await prisma.staff.deleteMany({ where: { cafeId: id } })
-  await prisma.seat.deleteMany({ where: { cafeId: id } })
-  await prisma.table.deleteMany({ where: { cafeId: id } })
-  const catIds = (await prisma.category.findMany({ where: { cafeId: id }, select: { id: true } })).map(c => c.id)
-  if (catIds.length > 0) await prisma.product.deleteMany({ where: { categoryId: { in: catIds } } })
-  await prisma.category.deleteMany({ where: { cafeId: id } })
-  await prisma.user.deleteMany({ where: { cafeId: id } })
-  await prisma.cafe.delete({ where: { id } })
+  const cafeOid = { $oid: id }
+
+  // 1. Grand-children first: collect parent ids, then delete children by FK.
+  const parentIds = new Map<string, { $oid: string }[]>()
+  for (const link of CHILD_LINKS) {
+    if (!parentIds.has(link.parent)) {
+      const res = await prisma.$runCommandRaw({
+        find: collectionOf(link.parent),
+        filter: { cafeId: cafeOid },
+        projection: { _id: 1 },
+        batchSize: 1_000_000,
+      } as never) as { cursor?: { firstBatch?: OidDoc[] } }
+      parentIds.set(link.parent, (res.cursor?.firstBatch ?? []).map(d => d._id))
+    }
+    const ids = parentIds.get(link.parent)!
+    if (ids.length > 0) await rawDelete(link.model, { [link.fk]: { $in: ids } })
+  }
+
+  // 2. Every cafe-scoped collection.
+  for (const m of CAFE_SCOPED) await rawDelete(m.name, { cafeId: cafeOid })
+
+  // 3. The cafe itself.
+  await rawDelete('Cafe', { _id: cafeOid })
 }
 
 function requireSuperAdmin(req: Request, res: Response, next: NextFunction) {

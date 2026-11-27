@@ -191,7 +191,12 @@ export default function RestaurantsPage() {
   async function deleteTenant(id: string) {
     setDeleting(true)
     try {
-      await fetch(`/api/superadmin/tenants/${id}`, { method: 'DELETE', headers: superHeader() })
+      const res = await fetch(`/api/superadmin/tenants/${id}`, { method: 'DELETE', headers: superHeader() })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        alert(`Delete failed (${res.status}): ${body.error ?? 'unknown error'}`)
+        return
+      }
       setDeleteConfirm(null); loadAll(1)
     } finally { setDeleting(false) }
   }
